@@ -1,0 +1,24 @@
+[project]
+name = "MindTrace"
+version = "0.1.0"
+description = "Service for managing mindtrace"
+authors = [
+    { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
+]
+requires-python = ">=3.14"
+readme = "README.md"
+
+dependencies = [
+    "fastapi[standard]",
+    "pydantic-settings",
+    "uvicorn",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
