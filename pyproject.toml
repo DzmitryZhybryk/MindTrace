@@ -1,6 +1,6 @@
 [project]
 name = "MindTrace"
-version = "0.1.0"
+version = "0.2.0"
 description = "Service for managing mindtrace"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
@@ -9,16 +9,88 @@ requires-python = ">=3.14"
 readme = "README.md"
 
 dependencies = [
-    "fastapi[standard]",
-    "pydantic-settings",
-    "uvicorn",
+    "fastapi[standard]>=0.124.4",
+    "pydantic-settings>=2.12.0",
+    "uvicorn>=0.38.0",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest",
-    "ruff",
+    "pytest>=9.0.2",
+    "ruff>=0.14.9",
+    "ty>=0.0.3",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 120
+exclude = [
+    # for local development
+    "service-lib",
+]
+
+[tool.ruff.lint]
+# https://docs.astral.sh/ruff/rules
+select = [
+    "E",     # pycodestyle (Error)
+    "W",     # pycodestyle (Warning)
+    "F",     # Pyflakes
+    "C90",   # mccabe - name is too complex
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "YTT",   # flake8-2020
+    "ASYNC", # flake8-async
+    "S",     # flake8-bandit - security issues
+    "B",     # flake8-bugbear - common bugs
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "T10",   # flake8-debugger
+    "T20",   # flake8-print
+    "FA",    # flake8-future-annotations
+    "ISC",   # flake8-implicit-str-concat
+    "ICN",   # flake8-import-conventions
+    "PIE",   # flake8-pie
+    "PT",    # flake8-pytest-style
+    "Q",     # flake8-quotes
+    "RET",   # flake8-return
+    "SLF",   # flake8-self
+    "SIM",   # flake8-simplify
+    "ERA",   # eradicate - Found commented-out code
+    "PLE",   # Pylint Error
+    "TRY",   # tryceratops
+    "RUF",   # Ruff-specific rules (unused imports, etc.)
+    "PERF",  # Performance checks
+]
+unfixable = [
+    "ERA", # do not autoremove commented out code
+]
+ignore = [
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "B008",   # Do not perform function calls in argument defaults
+    "ISC001", # Implicitly concatenated string literals on one line
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "B008", "C4", "ISC", "SLF", "PT004"]
+"app/migrations/versions/*" = ["E501"]
+
+[tool.ruff.lint.pep8-naming]
+# Allow Pydantic's `@validator` decorator to trigger class method treatment.
+# https://github.com/astral-sh/ruff/issues/2868
+classmethod-decorators = ["pydantic.validator", "pydantic.root_validator"]
+
+[tool.ty.rules]
+unused-ignore-comment = "warn"
+redundant-cast = "ignore"
+possibly-missing-attribute = "error"
+possibly-missing-import = "error"
+
+[tool.ty]
+# Override rules for specific files
+# Pydantic Settings loads values from .env at runtime, so missing-argument is expected
+overrides = [
+    { include = ["app/settings.py"], rules = { "missing-argument" = "ignore" } },
+]

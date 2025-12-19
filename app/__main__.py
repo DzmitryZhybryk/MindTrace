@@ -1,15 +1,15 @@
 import uvicorn
+
 from app.settings import settings
-from app.enum import AppEnvEnum
 
 
 def run_application() -> None:
     """Run FastAPI application with settings from config."""
     uvicorn.run(
         "app.main:create_app",
-        host="0.0.0.0",
+        host=settings.HOST,
         port=settings.PORT,
-        reload=settings.ENVIRONMENT == AppEnvEnum.LOCAL,
+        reload=settings.RELOAD,
         factory=True,
     )
 
