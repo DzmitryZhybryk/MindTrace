@@ -1,6 +1,6 @@
 [project]
 name = "MindTrace"
-version = "0.2.0"
+version = "0.3.0"
 description = "Service for managing mindtrace"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
@@ -9,8 +9,13 @@ requires-python = ">=3.14"
 readme = "README.md"
 
 dependencies = [
+    "alembic>=1.17.2",
+    "asyncpg>=0.31.0",
     "fastapi[standard]>=0.124.4",
+    "orjson>=3.11.5",
     "pydantic-settings>=2.12.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "sqlmodel>=0.0.27",
     "uvicorn>=0.38.0",
 ]
 
@@ -30,6 +35,9 @@ exclude = [
     # for local development
     "service-lib",
 ]
+
+[tool.ruff.format]
+quote-style = "double"
 
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/rules
@@ -68,14 +76,17 @@ unfixable = [
     "ERA", # do not autoremove commented out code
 ]
 ignore = [
-    "TRY003", # Avoid specifying long messages outside the exception class
-    "B008",   # Do not perform function calls in argument defaults
-    "ISC001", # Implicitly concatenated string literals on one line
+    "RUF002", # Docstring содержит неоднозначные символы (разрешить кириллицу в комментариях/docstrings)
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S", "B008", "C4", "ISC", "SLF", "PT004"]
-"app/migrations/versions/*" = ["E501"]
+"tests/*" = []
+
+"migrations/versions/*" = []
+
+"app/infra/components/registry.py" = [
+    "RUF002", # Docstring содержит неоднозначные символы (разрешить кириллицу в комментариях/docstrings)
+]
 
 [tool.ruff.lint.pep8-naming]
 # Allow Pydantic's `@validator` decorator to trigger class method treatment.

@@ -1,4 +1,4 @@
-.PHONY: help format lint typecheck
+.PHONY: help format lint typecheck migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -25,7 +25,7 @@ else
 endif
 
 # Sources to check
-RUFF_SOURCES := app
+RUFF_SOURCES := app migrations
 
 help: ## Show this help message
 	@echo "Available targets:"
@@ -33,7 +33,7 @@ help: ## Show this help message
 
 format: ## Auto-format python source files
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}ruff${AZURE}' format${RESET}"
-	@uv run --no-sync ruff check --select F --select I --select E --fix $(RUFF_SOURCES)
+	@uv run --no-sync ruff check --select F --select I --select E --select RUF --fix $(RUFF_SOURCES)
 	@uv run --no-sync ruff format $(RUFF_SOURCES)
 
 lint: ## Lint python source files with ruff
@@ -43,3 +43,35 @@ lint: ## Lint python source files with ruff
 typecheck: ## Type check python source files with ty
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}ty${AZURE}' typecheck${RESET}"
 	@uv run --no-sync ty check $(RUFF_SOURCES)
+
+migrate-create: ## Create a new migration (usage: make migrate-create "description")
+	@ARGS="$(filter-out $@,$(MAKECMDGOALS))"; \
+	if [ -z "$$ARGS" ]; then \
+		echo "${RED}ERROR: Message is required. Usage: make migrate-create \"description\"${RESET}"; \
+		exit 1; \
+	fi; \
+	echo "${GREEN}INFO :  ${AZURE}Creating migration: ${PURPLE}$$ARGS${RESET}"; \
+	docker exec -it mindtrace_app uv run alembic revision --autogenerate -m "$$ARGS"
+
+migrate-upgrade: ## Apply all pending migrations
+	@echo "${GREEN}INFO :  ${AZURE}Applying migrations${RESET}"
+	@docker exec -it mindtrace_app uv run alembic upgrade head
+
+migrate-downgrade: ## Downgrade one migration (usage: make migrate-downgrade)
+	@REVISION="$(filter-out $@,$(MAKECMDGOALS))"; \
+	if [ -z "$$REVISION" ]; then \
+		REVISION="-1"; \
+	fi; \
+	echo "${GREEN}INFO :  ${AZURE}Downgrading migration: ${PURPLE}$$REVISION${RESET}"; \
+	docker exec -it mindtrace_app uv run alembic downgrade $$REVISION
+
+%:
+	@:
+
+migrate-history: ## Show migration history
+	@echo "${GREEN}INFO :  ${AZURE}Migration history${RESET}"
+	@docker exec -it mindtrace_app uv run alembic history
+
+migrate-current: ## Show current migration version
+	@echo "${GREEN}INFO :  ${AZURE}Current migration version${RESET}"
+	@docker exec -it mindtrace_app uv run alembic current

@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar, TypeVar
 
+from app.exceptions import UnsupportedFileTypeError
+
 T = TypeVar("T")
 
 
@@ -40,8 +42,7 @@ class FileReaderFactory:
         suffix = file_path.suffix.lower()
         reader_class = cls._readers.get(suffix)
         if reader_class is None:
-            # TODO: add logging and custom exception
-            raise ValueError(f"Unsupported file type: {suffix}")
+            raise UnsupportedFileTypeError(suffix=suffix)
 
         return reader_class()
 
