@@ -1,5 +1,6 @@
 from fastapi.responses import ORJSONResponse
 
+from app.infra.components.postgres import SqlAlchemyComponent
 from app.routes.v1 import message_router
 from app.schemas import BFastAPI
 from app.settings import settings
@@ -11,6 +12,7 @@ def create_app() -> BFastAPI:
         title=settings.SERVICE_NAME,
         version=settings.SERVICE_VERSION,
         description=settings.SERVICE_DESCRIPTION,
+        components=[SqlAlchemyComponent(settings=settings)],
         default_response_class=ORJSONResponse,
     )
 

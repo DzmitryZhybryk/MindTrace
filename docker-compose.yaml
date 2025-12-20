@@ -1,0 +1,46 @@
+name: mindtrace
+
+networks:
+  default:
+    name: mindtrace-network
+    external: true
+
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mindtrace_app
+    command: python -m app
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/src/app
+      - ./migrations:/src/migrations
+      # - ./logs:/code/logs
+    tty: true
+    # network_mode: host
+    depends_on:
+      - mindtrace_pg
+    networks:
+      - default
+
+  mindtrace_pg:
+    image: postgres:17-alpine
+    container_name: mindtrace_pg
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mindtrace_db
+    ports:
+      - "5430:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - default
+
+volumes:
+  pg_data:
+    driver: local
