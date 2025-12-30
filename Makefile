@@ -33,7 +33,7 @@ help: ## Show this help message
 
 format: ## Auto-format python source files
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}ruff${AZURE}' format${RESET}"
-	@uv run --no-sync ruff check --select F --select I --select E --select RUF --fix $(RUFF_SOURCES)
+	@uv run --no-sync ruff check --fix $(RUFF_SOURCES)
 	@uv run --no-sync ruff format $(RUFF_SOURCES)
 
 lint: ## Lint python source files with ruff

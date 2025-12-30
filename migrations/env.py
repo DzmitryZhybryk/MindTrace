@@ -15,7 +15,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", settings.POSTGRES_DSN)
+config.set_main_option("sqlalchemy.url", settings.postgres_dsn)
 
 # Use metadata from the base model class
 # All models are automatically added to SQLModel.metadata on import
