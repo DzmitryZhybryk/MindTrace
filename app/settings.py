@@ -16,7 +16,11 @@ pyproject_data = read_file(_ROOT_DIR / "pyproject.toml")
 
 
 class PostgressSettings(BaseModel):
-    POSTGRES_DSN: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
     POSTGRES_POOL_PRE_PING: bool = True  # ВКЛЮЧЕНО: Проверка соединений перед использованием
     POSTGRES_POOL_RECYCLE: int = 3600  # Переустановка соединений старше 1 часа
     POSTGRES_POOL_TIMEOUT: int = 30
@@ -26,6 +30,14 @@ class PostgressSettings(BaseModel):
     POSTGRES_ECHO: bool = False
     POSTGRES_CONNECTION_TIMEOUT: int = 5  # Таймаут для установки нового соединения
     POSTGRES_COMMAND_TIMEOUT: int = 10  # Таймаут для выполнения любой команды
+
+    @property
+    def postgres_dsn(self) -> str:
+        """Собирает DSN из отдельных параметров PostgreSQL."""
+        return (
+            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
 
     @property
     def engine_kwargs(self) -> DictStrAny:

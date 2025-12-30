@@ -38,10 +38,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY ./app ./app
 COPY ./migrations ./migrations
 COPY ./alembic.ini ./
-COPY ./entrypoint.sh ./
 COPY pyproject.toml uv.lock ./
-
-RUN chmod +x ./entrypoint.sh
 
 # Sync the project
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -57,7 +54,6 @@ COPY --from=builder --chown=nonroot:nonroot /src/app ./app
 COPY --from=builder --chown=nonroot:nonroot /src/pyproject.toml ./pyproject.toml
 COPY --from=builder --chown=nonroot:nonroot /src/migrations ./migrations
 COPY --from=builder --chown=nonroot:nonroot /src/alembic.ini ./alembic.ini
-COPY --from=builder --chown=nonroot:nonroot /src/entrypoint.sh /entrypoint.sh
 
 ENV PATH="/src/.venv/bin:$PATH"
 USER nonroot

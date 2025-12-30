@@ -1,6 +1,6 @@
 [project]
 name = "MindTrace"
-version = "0.3.0"
+version = "0.4.0"
 description = "Service for managing mindtrace"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
@@ -16,6 +16,7 @@ dependencies = [
     "pydantic-settings>=2.12.0",
     "sqlalchemy[asyncio]>=2.0.0",
     "sqlmodel>=0.0.27",
+    "structlog>=25.5.0",
     "uvicorn>=0.38.0",
 ]
 
@@ -77,6 +78,7 @@ unfixable = [
 ]
 ignore = [
     "RUF002", # Docstring содержит неоднозначные символы (разрешить кириллицу в комментариях/docstrings)
+    "RUF003", # Комментарии содержат неоднозначные символы (разрешить кириллицу в комментариях)
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -86,6 +88,7 @@ ignore = [
 
 "app/infra/components/registry.py" = [
     "RUF002", # Docstring содержит неоднозначные символы (разрешить кириллицу в комментариях/docstrings)
+    "RUF003",
 ]
 
 [tool.ruff.lint.pep8-naming]
