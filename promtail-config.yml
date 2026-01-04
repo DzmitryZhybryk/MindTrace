@@ -28,3 +28,24 @@ scrape_configs:
       # Добавляем метку для приложения
       - target_label: 'app'
         replacement: 'mindtrace'
+    pipeline_stages:
+      # Парсим JSON логи
+      - json:
+          expressions:
+            level: level
+            logger: logger
+            timestamp: timestamp
+            message: event
+            # Для uvicorn.access логов
+            client: client
+            method: method
+            path: path
+            status_code: status_code
+      # Извлекаем уровень логирования как метку
+      - labels:
+          level:
+          logger:
+      # Форматируем timestamp если он есть
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano

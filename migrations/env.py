@@ -7,8 +7,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # Импорт базового класса моделей, который автоматически импортирует все модели
-from app.models import BaseDBModel
-from app.settings import settings
+from app.shared.models import BaseDBModel
+from app.shared.settings import settings
 
 config = context.config
 

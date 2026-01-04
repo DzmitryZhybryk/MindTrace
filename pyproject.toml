@@ -9,9 +9,9 @@ requires-python = ">=3.14"
 readme = "README.md"
 
 dependencies = [
+    "fastapi[standard]>=0.124.4",
     "alembic>=1.17.2",
     "asyncpg>=0.31.0",
-    "fastapi[standard]>=0.124.4",
     "orjson>=3.11.5",
     "pydantic-settings>=2.12.0",
     "sqlalchemy[asyncio]>=2.0.0",
@@ -77,8 +77,9 @@ unfixable = [
     "ERA", # do not autoremove commented out code
 ]
 ignore = [
-    "RUF002", # Docstring содержит неоднозначные символы (разрешить кириллицу в комментариях/docstrings)
-    "RUF003", # Комментарии содержат неоднозначные символы (разрешить кириллицу в комментариях)
+    "RUF001", # Это и ниже для того, чтобы разрешить кириллицу в комментариях/docstrings
+    "RUF002",
+    "RUF003",
 ]
 
 [tool.ruff.lint.per-file-ignores]

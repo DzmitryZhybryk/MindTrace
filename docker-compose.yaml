@@ -12,20 +12,27 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: mindtrace_app
-    # Запуск приложения через Python модуль app
-    command: python -m app
+    command: >
+      sh -c "uvicorn app.main:create_app --factory --no-use-colors
+      --host ${HOST} --port ${PORT}
+      --log-level error
+      ${RELOAD:+--reload}"
     env_file: .env
     ports:
       - "8050:8000"
     volumes:
       - ./app:/src/app
       - ./migrations:/src/migrations
-    tty: true
     depends_on:
       - mindtrace_pg
     restart: unless-stopped
     networks:
       - default
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   mindtrace_pg:
     image: postgres:17-alpine
@@ -35,6 +42,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    command: postgres -c log_min_messages=warning
     ports:
       - "5439:5432"
     volumes:
@@ -44,26 +52,24 @@ services:
       - default
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.6.3
     container_name: mindtrace_loki
-    # -config.file - путь к конфигурационному файлу Loki
-    # -log.level=warn - уровень логирования (только предупреждения и ошибки, без info)
-    # -target=all - режим single-binary (все компоненты в одном процессе, убирает ошибку "empty ring")
-    command: -config.file=/etc/loki/local-config.yaml -log.level=warn -target=all
+    command: -config.file=/etc/loki/loki.yaml -log.level=error -target=all
     ports:
       - "3100:3100"
     volumes:
       - loki_data:/loki
+      - ./loki.yaml:/etc/loki/loki.yaml:ro
     restart: unless-stopped
     networks:
       - default
 
   promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:3.6.3
     container_name: mindtrace_promtail
-    # -config.file - путь к конфигурационному файлу Promtail
-    # -log.level=warn - уровень логирования (только предупреждения и ошибки, без info)
-    command: -config.file=/etc/promtail/config.yml -log.level=warn
+    command:
+      - -config.file=/etc/promtail/config.yml
+      - -log.level=error
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -75,13 +81,13 @@ services:
       - default
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:12.3.1
     container_name: mindtrace_grafana
     env_file: .env
     environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-      - GF_LOG_LEVEL=warn
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_LOG_LEVEL: warn
     ports:
       - "3000:3000"
     volumes:
@@ -94,8 +100,108 @@ services:
 
 volumes:
   pg_data:
-    driver: local
   loki_data:
-    driver: local
   grafana_data:
-    driver: local
+# name: mindtrace
+
+# networks:
+#   default:
+#     name: mindtrace-network
+#     external: true
+
+# services:
+
+#   app:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     container_name: mindtrace_app
+#     command: >
+#       sh -c "uvicorn app.main:create_app --no-use-colors --factory
+#       --host ${HOST} --port ${PORT}
+#       ${RELOAD:+--reload}"
+#     env_file: .env
+#     ports:
+#       - "8050:8000"
+#     volumes:
+#       - ./app:/src/app
+#       - ./migrations:/src/migrations
+#     tty: true
+#     depends_on:
+#       - mindtrace_pg
+#     restart: unless-stopped
+#     networks:
+#       - default
+
+#   mindtrace_pg:
+#     image: postgres:17-alpine
+#     container_name: mindtrace_pg
+#     env_file: .env
+#     environment:
+#       POSTGRES_USER: ${POSTGRES_USER}
+#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#       POSTGRES_DB: ${POSTGRES_DB}
+#     ports:
+#       - "5439:5432"
+#     volumes:
+#       - pg_data:/var/lib/postgresql/data
+#     restart: unless-stopped
+#     networks:
+#       - default
+
+#   loki:
+#     image: grafana/loki:latest
+#     container_name: mindtrace_loki
+#     # -config.file - путь к конфигурационному файлу Loki
+#     # -log.level=warn - уровень логирования (только предупреждения и ошибки, без info)
+#     # -target=all - режим single-binary (все компоненты в одном процессе, убирает ошибку "empty ring")
+#     command: -config.file=/etc/loki/local-config.yaml -log.level=warn -target=all
+#     ports:
+#       - "3100:3100"
+#     volumes:
+#       - loki_data:/loki
+#     restart: unless-stopped
+#     networks:
+#       - default
+
+#   promtail:
+#     image: grafana/promtail:latest
+#     container_name: mindtrace_promtail
+#     # -config.file - путь к конфигурационному файлу Promtail
+#     # -log.level=warn - уровень логирования (только предупреждения и ошибки, без info)
+#     command: -config.file=/etc/promtail/config.yml -log.level=warn
+#     volumes:
+#       - /var/lib/docker/containers:/var/lib/docker/containers:ro
+#       - /var/run/docker.sock:/var/run/docker.sock:ro
+#       - ./promtail-config.yml:/etc/promtail/config.yml:ro
+#     depends_on:
+#       - loki
+#     restart: unless-stopped
+#     networks:
+#       - default
+
+#   grafana:
+#     image: grafana/grafana:latest
+#     container_name: mindtrace_grafana
+#     env_file: .env
+#     environment:
+#       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+#       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+#       - GF_LOG_LEVEL=warn
+#     ports:
+#       - "3000:3000"
+#     volumes:
+#       - grafana_data:/var/lib/grafana
+#     depends_on:
+#       - loki
+#     restart: unless-stopped
+#     networks:
+#       - default
+
+# volumes:
+#   pg_data:
+#     driver: local
+#   loki_data:
+#     driver: local
+#   grafana_data:
+#     driver: local
