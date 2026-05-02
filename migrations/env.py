@@ -6,9 +6,12 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-# Импорт базового класса моделей, который автоматически импортирует все модели
-from app.models import BaseDBModel
-from app.settings import settings
+# Импорт базового класса моделей и явная загрузка модулей с моделями,
+# чтобы все таблицы регистрировались в BaseDBModel.metadata для autogenerate.
+from app.auth.infra import models as _auth_models  # noqa: F401
+from app.shared.models import BaseDBModel
+from app.shared.settings import settings
+from app.users.infra import models as _users_models  # noqa: F401
 
 config = context.config
 
@@ -17,8 +20,6 @@ if config.config_file_name is not None:
 
 config.set_main_option("sqlalchemy.url", settings.postgres_dsn)
 
-# Use metadata from the base model class
-# All models are automatically added to SQLModel.metadata on import
 target_metadata = BaseDBModel.metadata
 
 

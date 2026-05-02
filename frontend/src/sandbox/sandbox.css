@@ -1,0 +1,41 @@
+.city-label {
+  position: relative;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.city-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffd54a;
+  box-shadow: 0 0 8px 2px rgba(255, 213, 74, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.35);
+  transform: translate(-50%, -50%);
+  animation: cityPulse 2.4s ease-in-out infinite;
+}
+
+.city-name {
+  position: absolute;
+  left: 8px;
+  top: 0;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  color: #ffffff;
+  font: 600 11px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.7);
+}
+
+@keyframes cityPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px 2px rgba(255, 213, 74, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 14px 4px rgba(255, 213, 74, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.55);
+  }
+}

@@ -1,4 +1,4 @@
-.PHONY: help format lint typecheck migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
+.PHONY: help format lint typecheck dead-code check migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -33,7 +33,7 @@ help: ## Show this help message
 
 format: ## Auto-format python source files
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}ruff${AZURE}' format${RESET}"
-	@uv run --no-sync ruff check --fix $(RUFF_SOURCES)
+	@uv run --no-sync ruff check --fix --unsafe-fixes $(RUFF_SOURCES)
 	@uv run --no-sync ruff format $(RUFF_SOURCES)
 
 lint: ## Lint python source files with ruff
@@ -43,6 +43,12 @@ lint: ## Lint python source files with ruff
 typecheck: ## Type check python source files with ty
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}ty${AZURE}' typecheck${RESET}"
 	@uv run --no-sync ty check $(RUFF_SOURCES)
+
+dead-code: ## Find unused code with vulture
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}vulture${AZURE}' dead code check${RESET}"
+	@uv run --no-sync vulture
+
+check: format lint typecheck dead-code ## Run format + lint + typecheck + dead-code
 
 migrate-create: ## Create a new migration (usage: make migrate-create "description")
 	@ARGS="$(filter-out $@,$(MAKECMDGOALS))"; \

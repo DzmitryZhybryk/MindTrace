@@ -1,6 +1,6 @@
 import uvicorn
 
-from app.settings import settings
+from app.shared.settings import settings
 
 
 def run_application() -> None:
