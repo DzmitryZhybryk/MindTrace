@@ -1,4 +1,4 @@
-.PHONY: help format lint typecheck dead-code check migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
+.PHONY: help format lint typecheck dead-code check test-all migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -49,6 +49,10 @@ dead-code: ## Find unused code with vulture
 	@uv run --no-sync vulture
 
 check: format lint typecheck dead-code ## Run format + lint + typecheck + dead-code
+
+test-all: ## Run all tests in the tests/ directory
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' tests${RESET}"
+	@uv run --no-sync pytest tests
 
 migrate-create: ## Create a new migration (usage: make migrate-create "description")
 	@ARGS="$(filter-out $@,$(MAKECMDGOALS))"; \
