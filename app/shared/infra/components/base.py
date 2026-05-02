@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
 
 from app.shared.infra.components.registry import ComponentRegistry
-from app.shared.infra.helthcheck import BaseHealthCheck, BaseStartCheck
 
 
-class BaseComponent(BaseHealthCheck, BaseStartCheck, ABC):
+class BaseComponent(ABC):
     @abstractmethod
     async def startup(self, registry: ComponentRegistry) -> None:
         pass

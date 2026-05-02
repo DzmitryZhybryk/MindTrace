@@ -1,9 +1,5 @@
 """Маппинг доменных исключений."""
 
-from __future__ import annotations
-
-from typing import Type
-
 from app.shared.exceptions import (
     BadRequestError,
     ConflictError,
@@ -15,7 +11,7 @@ from app.shared.exceptions import (
     UnprocessableEntityError,
 )
 
-ExceptionMappingT = dict[Type[Exception], tuple[int, str]]
+ExceptionMappingT = dict[type[Exception], tuple[int, str]]
 
 # Маппинг доменных исключений в HTTP ответы (status_code, message)
 # Базовые классы обрабатывают все дочерние исключения автоматически
@@ -30,7 +26,6 @@ DOMAIN_EXCEPTION_MAPPING: ExceptionMappingT = {
     TooManyRequestsError: (429, "Превышен лимит запросов"),
     ServerError: (500, "Внутренняя ошибка сервера"),
     # Можно также регистрировать конкретные исключения для переопределения сообщений
-    # PasswordsDoNotMatchError: (400, "Пароли не совпадают"),
     # ComponentNotRegisteredError: (500, "Компонент не зарегистрирован"),
     # Validation errors
     ValueError: (400, "Некорректные данные"),

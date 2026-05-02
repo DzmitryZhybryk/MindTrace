@@ -5,35 +5,34 @@
 presentation фреймворку (FastAPI, gRPC и т.д.).
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 
 from app.shared.exceptions import BaseDomainError
 from app.shared.exceptions.mappings import DOMAIN_EXCEPTION_MAPPING, ExceptionMappingT
 from app.shared.exceptions.schemas import ErrorResponse
+from app.shared.types import OptionalDict
 from app.shared.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-type ExceptionHandlerT = Callable[[Request, Any], ORJSONResponse]
+type ExceptionHandlerT = Callable[[Request, Any], JSONResponse]
 
 
 def _create_error_response(
     status_code: int,
     exc: Exception,
-    details: dict[str, Any] | None = None,
-) -> ORJSONResponse:
+    details: OptionalDict = None,
+) -> JSONResponse:
     """Создает HTTP ответ для исключения используя типизированную схему."""
     if isinstance(exc, BaseDomainError):
         error_response = ErrorResponse(
             code=exc.code,
             message=exc.message,
-            details=details,
+            details=details if details is not None else exc.details,
         )
     else:
         error_response = ErrorResponse(
@@ -42,13 +41,13 @@ def _create_error_response(
             details=details,
         )
 
-    return ORJSONResponse(
+    return JSONResponse(
         status_code=status_code,
         content=error_response.model_dump(),
     )
 
 
-def domain_exception_handler(request: Request, exc: Exception) -> ORJSONResponse:
+def domain_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Обрабатывает доменные исключения, преобразуя их в HTTP ответы."""
     # Логирование выполняется в HTTPLoggingMiddleware
     # Ищем точное совпадение типа исключения
@@ -63,13 +62,13 @@ def domain_exception_handler(request: Request, exc: Exception) -> ORJSONResponse
             return _create_error_response(status_code, exc)
 
     # Если не найдено в маппинге, возвращаем общую ошибку
-    return ORJSONResponse(
+    return JSONResponse(
         status_code=500,
         content={"code": "internal_server_error", "message": "Внутренняя ошибка сервера"},
     )
 
 
-def global_exception_handler(request: Request, exc: Exception) -> ORJSONResponse:
+def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Обрабатывает все необработанные исключения."""
     # Сначала пробуем обработать как доменное исключение
     if isinstance(exc, BaseDomainError):
@@ -77,7 +76,7 @@ def global_exception_handler(request: Request, exc: Exception) -> ORJSONResponse
 
     # Логирование выполняется в HTTPLoggingMiddleware
     # Возвращаем общую ошибку
-    return ORJSONResponse(
+    return JSONResponse(
         status_code=500,
         content={"code": "internal_server_error", "message": "Внутренняя ошибка сервера"},
     )

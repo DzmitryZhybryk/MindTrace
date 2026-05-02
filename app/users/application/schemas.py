@@ -1,11 +1,14 @@
+import datetime as dt
+from uuid import UUID
+
 from pydantic import BaseModel, EmailStr
 
-__all__ = [
-    "UserCreateDTO",
-]
+__all__ = ["UserCreate"]
 
 
-class UserCreateDTO(BaseModel):
+class UserCreate(BaseModel):
+    user_id: UUID
     username: str
     email: EmailStr
-    password: str
+    marketing_emails_consent: bool
+    terms_accepted_at: dt.datetime

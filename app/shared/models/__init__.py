@@ -1,12 +1,13 @@
-from sqlmodel import SQLModel
+from sqlalchemy.orm import DeclarativeBase
 
-from app.shared.models.base_model import Base, DateTimeMixin
+from app.shared.models.base_model import DateTimeMixin
 
-# BaseDBModel используется в миграциях Alembic
-BaseDBModel = SQLModel
+
+class BaseDBModel(DeclarativeBase):
+    """Базовый класс декларативных моделей. Используется в миграциях Alembic."""
+
 
 __all__ = [
-    "Base",
     "BaseDBModel",
     "DateTimeMixin",
 ]

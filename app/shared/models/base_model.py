@@ -1,11 +1,7 @@
 import datetime as dt
 
-from sqlalchemy.orm import DeclarativeBase
-from sqlmodel import Field
-
-
-class Base(DeclarativeBase):
-    """Base model class."""
+from sqlalchemy import DateTime
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class DateTimeMixin:
@@ -13,6 +9,9 @@ class DateTimeMixin:
     Mixin для добавления полей дат создания, обновления и удаления.
     """
 
-    created_at: dt.datetime = Field(default_factory=dt.datetime.now)
-    updated_at: dt.datetime | None = Field(default=None)
-    deleted_at: dt.datetime | None = Field(default=None)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: dt.datetime.now(tz=dt.UTC),
+    )
+    updated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), default=None)

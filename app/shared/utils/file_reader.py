@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar, TypeVar
 
+from app.shared.types import DictStrAny
 from app.shared.utils.utils_exceptions import UnsupportedFileTypeError
 
 T = TypeVar("T")
@@ -17,15 +18,15 @@ class BaseFileReader[T](ABC):
         raise NotImplementedError
 
 
-class TomlFileReader(BaseFileReader[dict[str, Any]]):
+class TomlFileReader(BaseFileReader[DictStrAny]):
     """Reads a TOML file and returns its contents as a dictionary."""
 
-    def read(self, file_path: Path) -> dict[str, Any]:
+    def read(self, file_path: Path) -> DictStrAny:
         """Read TOML file and return dictionary."""
         try:
             with file_path.open("rb") as f:
                 return tomllib.load(f)
-        except (FileNotFoundError, tomllib.TOMLDecodeError):
+        except FileNotFoundError, tomllib.TOMLDecodeError:
             return {}
 
 

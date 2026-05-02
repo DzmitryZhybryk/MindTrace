@@ -1,11 +1,11 @@
 """Схемы для ответов ошибок API."""
 
 import datetime as dt
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from pydantic import BaseModel, Field
 
-from app.shared.types import DictStrAny
+from app.shared.types import DictStrAny, OptionalDict
 
 
 class ErrorResponse(BaseModel):
@@ -25,7 +25,7 @@ class ErrorResponse(BaseModel):
         description="Человекочитаемое сообщение об ошибке",
         examples=["Некорректный запрос", "Ресурс не найден"],
     )
-    details: dict[str, Any] | None = Field(
+    details: OptionalDict = Field(
         default=None,
         description="Дополнительные детали ошибки (опционально)",
         examples=[{"field": "email", "reason": "Invalid email format"}],

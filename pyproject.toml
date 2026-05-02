@@ -1,6 +1,6 @@
 [project]
 name = "MindTrace"
-version = "0.4.0"
+version = "0.6.0"
 description = "Service for managing mindtrace"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
@@ -15,9 +15,10 @@ dependencies = [
     "orjson>=3.11.5",
     "pydantic-settings>=2.12.0",
     "sqlalchemy[asyncio]>=2.0.0",
-    "sqlmodel>=0.0.27",
     "structlog>=25.5.0",
     "uvicorn>=0.38.0",
+    "argon2-cffi>=25.1.0",
+    "pyjwt>=2.10.0",
 ]
 
 [dependency-groups]
@@ -25,6 +26,7 @@ dev = [
     "pytest>=9.0.2",
     "ruff>=0.14.9",
     "ty>=0.0.3",
+    "vulture>=2.16",
 ]
 
 [tool.pytest.ini_options]
@@ -107,5 +109,32 @@ possibly-missing-import = "error"
 # Override rules for specific files
 # Pydantic Settings loads values from .env at runtime, so missing-argument is expected
 overrides = [
-    { include = ["app/settings.py"], rules = { "missing-argument" = "ignore" } },
+    { include = ["app/shared/settings.py"], rules = { "missing-argument" = "ignore" } },
+]
+
+[tool.vulture]
+paths = ["app", "vulture_whitelist.py"]
+min_confidence = 60
+# Декораторы, после которых vulture не должен считать функцию мёртвой:
+# фреймворк (FastAPI/Starlette) или Pydantic вызывают такие функции неявно.
+ignore_decorators = [
+    # FastAPI/APIRouter HTTP-методы (любой роутер: app, router, *_router)
+    "@*.get",
+    "@*.post",
+    "@*.put",
+    "@*.delete",
+    "@*.patch",
+    "@*.head",
+    "@*.options",
+    "@*.exception_handler",
+    "@*.middleware",
+    "@*.on_event",
+    # Pydantic-валидаторы
+    "@field_validator",
+    "@model_validator",
+    "@validator",
+    "@root_validator",
+    # Контекст-менеджеры lifespan
+    "@asynccontextmanager",
+    "@contextmanager",
 ]

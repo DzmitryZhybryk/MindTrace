@@ -68,12 +68,19 @@ class WebSettings(BaseModel):
     RELOAD: bool = False
 
 
-class Settings(BaseSettings, WebSettings, PostgressSettings):
+class JWTSettings(BaseModel):
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+
+
+class Settings(BaseSettings, WebSettings, PostgressSettings, JWTSettings):
     SERVICE_NAME: str = _PYPROJECT_DATA["project"]["name"]
     SERVICE_VERSION: str = _PYPROJECT_DATA["project"]["version"]
     SERVICE_DESCRIPTION: str = _PYPROJECT_DATA["project"]["description"]
 
-    model_config = SettingsConfigDict(frozen=True, env_file=".env")
+    model_config = SettingsConfigDict(frozen=True, env_file=".env", extra="ignore")
 
 
 @cache

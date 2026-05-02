@@ -1,7 +1,5 @@
 """Утилиты для логирования HTTP запросов."""
 
-from __future__ import annotations
-
 import logging
 
 from starlette.requests import Request

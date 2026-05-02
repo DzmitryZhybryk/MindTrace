@@ -1,5 +1,7 @@
 """Базовые исключения для доменов."""
 
+from app.shared.types import OptionalDict
+
 
 class BaseDomainError(Exception):
     """
@@ -7,21 +9,33 @@ class BaseDomainError(Exception):
 
     Все доменные исключения должны наследоваться от этого класса.
     Дочерние классы могут задать атрибуты класса `code` и `message` для дефолтных значений.
+    Поле `details` несёт машинно-читаемую метаинформацию для клиента
+    (например, ``{"field": "email"}`` для подсветки конкретного поля формы).
     """
 
     code: str = "unknown_error"
     message: str = "Произошла ошибка"
+    details: OptionalDict = None
 
-    def __init__(self, message: str | None = None, code: str | None = None) -> None:
+    def __init__(
+        self,
+        message: str | None = None,
+        code: str | None = None,
+        details: OptionalDict = None,
+    ) -> None:
         if message is None:
             message = self.message
 
         if code is None:
             code = self.code
 
+        if details is None:
+            details = self.details
+
         super().__init__(message)
         self.message = message
         self.code = code
+        self.details = details
 
 
 class BadRequestError(BaseDomainError):

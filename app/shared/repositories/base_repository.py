@@ -1,27 +1,44 @@
-from typing import Any
-from uuid import UUID
-
-from sqlalchemy import Select, select
+from sqlalchemy import Select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.shared.models.base_model import Base
+from app.shared.models import BaseDBModel
 
 
-class BaseDBRepository[ModelT: Base]:
+class BaseDBRepository[ModelT: BaseDBModel]:
+    """Базовый асинхронный репозиторий поверх SQLAlchemy-сессии."""
+
     def __init__(self, session: AsyncSession, model: type[ModelT]) -> None:
+        """
+        Инициализирует репозиторий.
+
+        Args:
+            session: Асинхронная SQLAlchemy-сессия, привязанная к UnitOfWork
+            model: Класс ORM-модели, с которой работает репозиторий
+        """
         self._session = session
-        self.model = model
+        self._model = model
 
     async def _fetch_one(self, query: Select[tuple[ModelT]]) -> ModelT | None:
+        """
+        Выполняет запрос и возвращает одну модель или ``None``.
+
+        Args:
+            query: SELECT-запрос, возвращающий не более одной строки
+
+        Returns:
+            Найденная модель либо ``None``, если запись не найдена
+        """
         result = await self._session.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_by_id(self, idx: int | UUID) -> ModelT | None:
-        select_query = select(self.model).where(self.model.id == idx)
-        return await self._fetch_one(select_query)
+    async def insert(self, data: ModelT) -> None:
+        """
+        Добавляет модель в сессию без коммита.
 
-    async def create(self, data: dict[str, Any], return_model: bool = False) -> ModelT | None:
-        new_obj = self.model(**data)
-        self._session.add(new_obj)
-        await self._session.commit()
-        return new_obj if return_model else None
+        Реальная вставка в БД произойдёт на ближайшем flush, а видимой другим
+        транзакциям запись станет только после ``commit()`` в UnitOfWork.
+
+        Args:
+            data: Экземпляр ORM-модели для вставки
+        """
+        self._session.add(data)

@@ -1,7 +1,5 @@
 """Утилиты для преобразования HTTP запросов в семантические названия событий."""
 
-from __future__ import annotations
-
 EVENT_MAPPER: dict[tuple[str, str], str] = {
     # Пути в маппере должны быть без trailing slash (нормализованные)
     ("POST", "/v1/users/register"): "User registration",
