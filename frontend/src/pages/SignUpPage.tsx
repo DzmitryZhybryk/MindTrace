@@ -92,7 +92,7 @@ export function SignUpPage() {
           <AuthHeader
             hint="Already have an account?"
             actionLabel="Sign In"
-            actionHref="/"
+            actionHref="/login"
           />
         </Box>
 
