@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, SecretStr
 
-__all__ = ["ClientMetadata", "IssuedRefreshToken", "Registration", "TokenPairResult"]
+__all__ = ["ClientMetadata", "IssuedRefreshToken", "Login", "Registration", "TokenPairResult"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +20,13 @@ class Registration(BaseModel):
     email: str
     password: SecretStr
     marketing_emails_consent: bool
+
+
+class Login(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    login: str
+    password: SecretStr
 
 
 @dataclass(frozen=True, slots=True)

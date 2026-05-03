@@ -77,3 +77,19 @@ class RefreshTokenEntity:
             ip_address=ip_address,
             user_agent=user_agent,
         )
+
+    def is_active(self, *, now: dt.datetime) -> bool:
+        """
+        Проверяет, что токен не отозван и не истёк.
+
+        Время передаётся снаружи, чтобы метод оставался чистым: одно и то же
+        ``now`` можно использовать для нескольких проверок в рамках одной
+        операции, и тесты получают полную власть над временем.
+
+        Args:
+            now: Текущий момент времени, относительно которого проверяется срок жизни
+
+        Returns:
+            ``True``, если токен можно использовать; иначе ``False``
+        """
+        return self.revoked_at is None and self.expires_at > now

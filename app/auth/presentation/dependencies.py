@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -13,6 +14,20 @@ from app.shared.infra.password_hasher import Argon2PasswordHasher
 from app.shared.settings import settings
 from app.users.application.services import UserService
 from app.users.infra.user_uow import UserUnitOfWork
+
+
+@dataclass(frozen=True, slots=True)
+class _AuthServiceConfig:
+    """
+    Адаптер ``Settings`` под ``AuthServiceConfig``-протокол.
+
+    Создаётся в DI-слое, чтобы ``AuthService`` не знал про форму глобального
+    ``Settings`` (например, что нужное ему значение зовётся
+    ``JWT_REFRESH_TOKEN_EXPIRE_DAYS``). Тесты могут конструировать свой
+    объект с тем же атрибутом — или вовсе без участия этого адаптера.
+    """
+
+    refresh_token_ttl_days: int
 
 
 def client_metadata_dependency(request: Request) -> ClientMetadata:
@@ -53,5 +68,5 @@ def auth_service_dependency(
         uow=uow,
         hasher=Argon2PasswordHasher(),
         jwt_service=jwt_service,
-        refresh_token_ttl_days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
+        config=_AuthServiceConfig(refresh_token_ttl_days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS),
     )

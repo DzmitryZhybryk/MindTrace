@@ -72,17 +72,6 @@ export function HomePage() {
       </header>
 
       <main className="home-main">
-        <div className="home-greeting">
-          <span className="home-greeting__hello">Hello, {GREETING_NAME}</span>
-          <span className="home-greeting__date">{GREETING_DATE}</span>
-        </div>
-
-        <div className="home-stage" role="img" aria-label="Globe placeholder">
-          <span className="home-stage__hint">globe goes here</span>
-        </div>
-
-        <p className="home-aura">{AURA_WORD}</p>
-
         <aside className="home-recommend" aria-label="Recommended for you">
           <div className="home-recommend__head">
             <span className="home-recommend__title">you might like</span>
@@ -115,6 +104,19 @@ export function HomePage() {
             </ul>
           </div>
         </aside>
+
+        <div className="home-stage-cluster">
+          <div className="home-greeting">
+            <span className="home-greeting__hello">Hello, {GREETING_NAME}</span>
+            <span className="home-greeting__date">{GREETING_DATE}</span>
+          </div>
+
+          <div className="home-stage" role="img" aria-label="Globe placeholder">
+            <span className="home-stage__hint">globe goes here</span>
+          </div>
+
+          <p className="home-aura">{AURA_WORD}</p>
+        </div>
 
         <aside className="home-right" aria-label="Activity">
           <div className="home-stats">

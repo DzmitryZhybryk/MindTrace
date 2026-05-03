@@ -1,6 +1,6 @@
 from typing import ClassVar
 
-from app.shared.exceptions import BadRequestError, ConflictError
+from app.shared.exceptions import BadRequestError, ConflictError, UnauthorizedError
 from app.shared.types import OptionalDict
 
 
@@ -20,3 +20,13 @@ class UsernameAlreadyExistError(ConflictError):
     code = "auth.username_already_taken"
     message = "Пользователь с таким username уже существует"
     details: ClassVar[OptionalDict] = {"field": "username"}
+
+
+class InvalidCredentialsError(UnauthorizedError):
+    code = "auth.invalid_credentials"
+    message = "Неверный логин или пароль"
+
+
+class InvalidRefreshTokenError(UnauthorizedError):
+    code = "auth.invalid_refresh_token"
+    message = "Refresh-токен недействителен или истёк"

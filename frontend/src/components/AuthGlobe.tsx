@@ -137,17 +137,7 @@ export function AuthGlobe() {
   }, [hasSize]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: "relative",
-        width: "100%",
-        height: "100%",
-        overflow: "hidden",
-        background: "radial-gradient(ellipse at center, #0a1230 0%, #02040a 60%, #000 100%)",
-        touchAction: "none",
-      }}
-    >
+    <div ref={containerRef} className="auth-globe">
       {size.width > 0 && size.height > 0 && (
         <Globe
           ref={globeRef}

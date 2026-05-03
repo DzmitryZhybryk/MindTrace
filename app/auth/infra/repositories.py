@@ -1,4 +1,7 @@
-from sqlalchemy import select
+import datetime as dt
+from uuid import UUID
+
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.domain.entities import RefreshTokenEntity, UserCredentialsEntity
@@ -32,22 +35,46 @@ class CredentialsRepository(BaseDBRepository[UserCredentials]):
         """
         await self.insert(data=self._to_model(entity=credentials))
 
+    async def find_user_credentials_by_user_id(self, user_id: UUID) -> UserCredentialsEntity | None:
+        """
+        Загружает учётные данные пользователя по его ``user_id``.
+
+        Используется при refresh-flow, чтобы получить актуальную роль для
+        нового access-токена — refresh-токен хранит только ``user_id``,
+        чтобы изменения роли применялись со следующего refresh.
+
+        Args:
+            user_id: Идентификатор пользователя
+
+        Returns:
+            Доменная сущность учётных данных или ``None``, если запись не найдена
+        """
+        query = select(UserCredentials).where(UserCredentials.user_id == user_id)
+        model = await self._fetch_one(query=query)
+        return self._to_entity(model=model) if model is not None else None
+
     async def find_user_credentials_by_email_or_username(
         self,
         email: str,
         username: str,
     ) -> list[UserCredentialsEntity]:
         """
-        Загружает все записи, у которых совпадает email или username.
+        Загружает все записи, у которых ``email`` или ``username`` совпадает с переданными значениями.
 
-        Используется при регистрации, чтобы одним запросом обнаружить конфликт
-        по обоим полям. PostgreSQL планирует это как ``BitmapOr`` из двух
-        independent index scan'ов по уникальным индексам ``email`` и
-        ``username``, поэтому возвращается максимум 2 строки.
+        Запрос идёт по двум уникальным индексам, PostgreSQL планирует это как
+        ``BitmapOr`` из двух independent index scan'ов и возвращает максимум
+        2 строки.
+
+        Универсальный по двум сценариям:
+
+        - **Регистрация**: ``email`` и ``username`` — разные значения из запроса,
+          метод ищет конфликт хотя бы по одному из полей.
+        - **Логин**: один и тот же идентификатор передаётся в оба параметра,
+          чтобы матчить строку логина против обоих полей одновременно.
 
         Args:
-            email: Email из запроса регистрации
-            username: Username из запроса регистрации
+            email: Значение для проверки против колонки ``email``
+            username: Значение для проверки против колонки ``username``
 
         Returns:
             Список найденных доменных сущностей (0..2 элементов)
@@ -124,6 +151,40 @@ class RefreshTokenRepository(BaseDBRepository[RefreshToken]):
         """
         await self.insert(data=self._to_model(entity=token))
 
+    async def find_refresh_token_by_id(self, token_id: UUID) -> RefreshTokenEntity | None:
+        """
+        Загружает refresh-токен по его идентификатору.
+
+        Args:
+            token_id: Идентификатор refresh-токена (значение из cookie)
+
+        Returns:
+            Доменная сущность refresh-токена или ``None``, если запись не найдена
+        """
+        query = select(RefreshToken).where(RefreshToken.id == token_id)
+        model = await self._fetch_one(query=query)
+        return self._to_entity(model=model) if model is not None else None
+
+    async def revoke_refresh_token(self, token_id: UUID, revoked_at: dt.datetime) -> None:
+        """
+        Помечает refresh-токен отозванным (UPDATE без коммита).
+
+        Идемпотентен: фильтр ``revoked_at IS NULL`` гарантирует, что повторный
+        вызов на уже отозванном токене не перезапишет момент отзыва. Если
+        токен с таким id отсутствует — UPDATE затронет 0 строк, что также
+        корректно для logout-flow (idempotent endpoint).
+
+        Args:
+            token_id: Идентификатор refresh-токена
+            revoked_at: Момент отзыва (UTC)
+        """
+        statement = (
+            update(RefreshToken)
+            .where(RefreshToken.id == token_id, RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=revoked_at)
+        )
+        await self._session.execute(statement)
+
     def _to_model(self, entity: RefreshTokenEntity) -> RefreshToken:
         """
         Конвертирует доменную сущность refresh-токена в ORM-модель.
@@ -142,4 +203,24 @@ class RefreshTokenRepository(BaseDBRepository[RefreshToken]):
             revoked_at=entity.revoked_at,
             ip_address=entity.ip_address,
             user_agent=entity.user_agent,
+        )
+
+    def _to_entity(self, model: RefreshToken) -> RefreshTokenEntity:
+        """
+        Конвертирует ORM-модель refresh-токена в доменную сущность.
+
+        Args:
+            model: ORM-модель из БД
+
+        Returns:
+            Доменная сущность refresh-токена
+        """
+        return RefreshTokenEntity(
+            token_id=model.id,
+            user_id=model.user_id,
+            expires_at=model.expires_at,
+            last_seen_at=model.last_seen_at,
+            revoked_at=model.revoked_at,
+            ip_address=model.ip_address,
+            user_agent=model.user_agent,
         )

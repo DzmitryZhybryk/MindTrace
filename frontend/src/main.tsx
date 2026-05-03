@@ -2,6 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
+import "@fontsource-variable/fraunces";
+import "@fontsource-variable/geist";
 import App from "./App.tsx";
 import { theme } from "./theme";
 import "./index.css";

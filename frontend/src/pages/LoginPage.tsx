@@ -39,14 +39,7 @@ export function LoginPage() {
   };
 
   return (
-    <Box
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        background:
-          "radial-gradient(ellipse 50% 75% at 25% 50%, #f5f8fc 0%, #dbe5f3 55%, #b8c8e0 100%)",
-      }}
-    >
+    <Box className="auth-shell">
       <Box
         style={{
           flex: 1,
@@ -72,7 +65,7 @@ export function LoginPage() {
             style={{
               width: "100%",
               maxWidth: 420,
-              borderColor: "#dbe2ec",
+              borderColor: "var(--ink-200)",
               backgroundColor: "#ffffff",
               boxShadow: "0 12px 32px rgba(15, 30, 80, 0.10)",
             }}
@@ -119,7 +112,7 @@ export function LoginPage() {
                     Forgot password?
                   </Anchor>
 
-                  <Button type="submit" size="md" radius="md" fullWidth mt="xs">
+                  <Button type="submit" size="md" radius="md" fullWidth mt="xs" color="space.8">
                     Sign in
                   </Button>
                 </Stack>
@@ -130,7 +123,7 @@ export function LoginPage() {
       </Box>
 
       <Box visibleFrom="md" style={{ flex: 1, padding: 16, display: "flex" }}>
-        <Box style={{ flex: 1, borderRadius: 24, overflow: "hidden" }}>
+        <Box className="auth-globe-pane">
           <AuthGlobe />
         </Box>
       </Box>

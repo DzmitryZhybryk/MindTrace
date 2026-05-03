@@ -3,19 +3,15 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(
-    ellipse 60% 80% at 50% 42%,
-    #f5f8fc 0%,
-    #dbe5f3 55%,
-    #b8c8e0 100%
-  );
+  background: var(--bg-aurora);
 }
 
 .home-header {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 20px 32px;
+  min-height: var(--header-height);
+  padding: 0 32px;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -35,15 +31,18 @@
 .home-tab {
   position: relative;
   padding: 10px 6px;
-  font: 500 22px/1 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1;
   letter-spacing: -0.015em;
-  color: #1e293b;
+  color: var(--ink-800);
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
 .home-tab:hover {
-  color: #0f172a;
+  color: var(--ink-900);
 }
 
 .home-tab::after {
@@ -54,7 +53,7 @@
   bottom: 2px;
   height: 2px;
   border-radius: 2px;
-  background: #0f172a;
+  background: var(--ink-900);
   transform: scaleX(0);
   transform-origin: center;
   transition: transform 0.18s ease;
@@ -80,12 +79,37 @@
 
 .home-main {
   flex: 1;
+  display: grid;
+  grid-template-columns: 1fr min(70vmin, 700px) 1fr;
+  align-items: center;
+  gap: 48px;
+  padding: 16px 56px 40px;
+}
+
+.home-stage-cluster {
+  grid-column: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 22px;
-  padding: 16px 32px 40px;
+}
+
+.home-recommend {
+  grid-column: 1;
+  justify-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 260px;
+}
+
+.home-right {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  align-items: flex-end;
 }
 
 .home-greeting {
@@ -96,24 +120,33 @@
 }
 
 .home-greeting__hello {
-  font: 500 18px/1 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1;
   letter-spacing: -0.01em;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .home-greeting__date {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--ink-500);
 }
 
 .home-aura {
   margin: 0;
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--ink-500);
 }
 
 .home-stage {
@@ -121,7 +154,7 @@
   width: min(70vmin, 700px);
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  background: radial-gradient(circle at 32% 30%, #0a1230 0%, #02040a 62%, #000 100%);
+  background: radial-gradient(circle at 32% 30%, var(--space-deep) 0%, var(--space-void) 62%, #000 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -146,21 +179,13 @@
 
 .home-stage__hint {
   color: #cfe6ff;
-  font: 500 12px/1.4 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1.4;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   opacity: 0.55;
-}
-
-.home-recommend {
-  position: absolute;
-  left: 56px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  max-width: 260px;
 }
 
 .home-recommend__head {
@@ -170,15 +195,21 @@
 }
 
 .home-recommend__title {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--ink-500);
 }
 
 .home-recommend__caption {
-  font: 400 12px/1.4 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #94a3b8;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-400);
   max-width: 240px;
 }
 
@@ -189,10 +220,13 @@
 }
 
 .home-recommend__group-label {
-  font: 600 10px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 10px;
+  line-height: 1;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: var(--ink-400);
 }
 
 .home-recommend__list {
@@ -214,9 +248,12 @@
 .home-recommend__name {
   position: relative;
   align-self: flex-start;
-  font: 600 16px/1.1 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.1;
   letter-spacing: -0.01em;
-  color: #0f172a;
+  color: var(--ink-900);
 }
 
 .home-recommend__name::after {
@@ -237,19 +274,11 @@
 }
 
 .home-recommend__desc {
-  font: 400 12px/1.3 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #64748b;
-}
-
-.home-right {
-  position: absolute;
-  right: 56px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 36px;
-  align-items: flex-end;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--ink-500);
 }
 
 .home-stats {
@@ -261,10 +290,13 @@
 }
 
 .home-stats__title {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--ink-500);
 }
 
 .home-stats__list {
@@ -287,9 +319,12 @@
 
 .home-stat__name {
   position: relative;
-  font: 600 16px/1.1 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.1;
   letter-spacing: -0.01em;
-  color: #0f172a;
+  color: var(--ink-900);
 }
 
 .home-stat__name::after {
@@ -310,10 +345,13 @@
 }
 
 .home-stat__meta {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--ink-500);
 }
 
 .home-recent {
@@ -325,10 +363,13 @@
 }
 
 .home-recent__title {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--ink-500);
 }
 
 .home-recent__list {
@@ -351,9 +392,12 @@
 
 .home-recent__city {
   position: relative;
-  font: 600 16px/1.1 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.1;
   letter-spacing: -0.01em;
-  color: #0f172a;
+  color: var(--ink-900);
 }
 
 .home-recent__city::after {
@@ -374,8 +418,60 @@
 }
 
 .home-recent__date {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--ink-500);
+}
+
+@media (max-width: 1100px) {
+  .home-main {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+    gap: 32px;
+    padding: 16px 24px 40px;
+  }
+
+  .home-stage-cluster {
+    grid-column: 1;
+    order: 1;
+  }
+
+  .home-recommend {
+    grid-column: 1;
+    justify-self: stretch;
+    order: 2;
+    max-width: none;
+  }
+
+  .home-right {
+    grid-column: 1;
+    justify-self: stretch;
+    order: 3;
+    align-items: flex-start;
+  }
+
+  .home-stats,
+  .home-recent {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .home-stats__list,
+  .home-recent__list {
+    align-items: flex-start;
+  }
+
+  .home-stat,
+  .home-recent__item {
+    align-items: flex-start;
+  }
+
+  .home-stat__name::after,
+  .home-recent__city::after {
+    transform-origin: left;
+  }
 }

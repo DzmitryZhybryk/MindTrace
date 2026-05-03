@@ -14,8 +14,10 @@ export function AuthHeader({ hint, actionLabel, actionHref }: AuthHeaderProps) {
       justify="space-between"
       align="center"
       px="xl"
-      py="md"
-      style={{ backgroundColor: "transparent" }}
+      style={{
+        minHeight: "var(--header-height)",
+        backgroundColor: "transparent",
+      }}
     >
       <BrandMark />
 

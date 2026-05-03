@@ -13,15 +13,27 @@ const slate: MantineColorsTuple = [
   "#0f172a",
 ];
 
-const fontStack =
-  '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+// Намеренно отдельный цвет от slate: deep-space с лёгким сине-фиолетовым оттенком,
+// якорный для брендовых поверхностей (кнопки auth, ядро глобуса).
+const space: MantineColorsTuple = [
+  "#e7eaf3",
+  "#c4cae0",
+  "#9ba4c5",
+  "#727faa",
+  "#4f5d8f",
+  "#34406f",
+  "#212c52",
+  "#141d3f",
+  "#0a1230",
+  "#04081a",
+];
 
 export const theme = createTheme({
   primaryColor: "slate",
   primaryShade: 6,
-  colors: { slate },
-  fontFamily: fontStack,
-  headings: { fontFamily: fontStack, fontWeight: "600" },
+  colors: { slate, space },
+  fontFamily: "var(--font-body)",
+  headings: { fontFamily: "var(--font-display)", fontWeight: "500" },
   defaultRadius: "md",
   radius: {
     xs: "4px",

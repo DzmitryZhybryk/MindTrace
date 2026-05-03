@@ -1,9 +1,25 @@
 from typing import Final
 
-from app.auth.exceptions import EmailAlreadyExistError, TermsNotAcceptedError, UsernameAlreadyExistError
+from app.auth.exceptions import (
+    EmailAlreadyExistError,
+    InvalidCredentialsError,
+    InvalidRefreshTokenError,
+    TermsNotAcceptedError,
+    UsernameAlreadyExistError,
+)
 from app.shared.exceptions import ErrorResponse, ServerError
 from app.shared.exceptions.examples import error_response_example
 from app.shared.types import DictStrAny
+
+_SERVER_ERROR_RESPONSE: Final[DictStrAny] = {
+    "description": "Внутренняя ошибка сервера",
+    "model": ErrorResponse,
+    "content": {
+        "application/json": {
+            "example": error_response_example(ServerError),
+        }
+    },
+}
 
 REGISTER_RESPONSES: Final[dict[int | str, DictStrAny]] = {
     400: {
@@ -33,13 +49,35 @@ REGISTER_RESPONSES: Final[dict[int | str, DictStrAny]] = {
             }
         },
     },
-    500: {
-        "description": "Внутренняя ошибка сервера",
+    500: _SERVER_ERROR_RESPONSE,
+}
+
+LOGIN_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+    401: {
+        "description": "Неверный логин или пароль",
         "model": ErrorResponse,
         "content": {
             "application/json": {
-                "example": error_response_example(ServerError),
+                "example": error_response_example(InvalidCredentialsError),
             }
         },
     },
+    500: _SERVER_ERROR_RESPONSE,
+}
+
+LOGOUT_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+    500: _SERVER_ERROR_RESPONSE,
+}
+
+REFRESH_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+    401: {
+        "description": "Refresh-токен недействителен или истёк",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": error_response_example(InvalidRefreshTokenError),
+            }
+        },
+    },
+    500: _SERVER_ERROR_RESPONSE,
 }

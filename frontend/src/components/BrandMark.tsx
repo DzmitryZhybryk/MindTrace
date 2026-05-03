@@ -8,15 +8,16 @@ export function BrandMark() {
     <Text
       component={Link}
       to="/"
-      fw={600}
-      fz="1.8rem"
-      c="slate.8"
+      fw={400}
+      fz="1.9rem"
+      c="slate.9"
       style={{
         textDecoration: "none",
-        letterSpacing: "-0.01em",
+        letterSpacing: "-0.015em",
         display: "inline-flex",
         alignItems: "center",
         gap: "0.02em",
+        fontFamily: "var(--font-display)",
       }}
     >
       MyJ
@@ -30,7 +31,8 @@ export function BrandMark() {
           backgroundImage: `url(${GLOBE_MINI_URL})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          boxShadow: "0 0 4px rgba(74, 179, 255, 0.6), inset 0 0 6px rgba(0, 0, 0, 0.35)",
+          boxShadow:
+            "0 0 4px rgba(74, 179, 255, 0.6), inset 0 0 6px rgba(0, 0, 0, 0.35)",
         }}
       />
       urney

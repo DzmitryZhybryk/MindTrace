@@ -71,14 +71,7 @@ export function SignUpPage() {
   };
 
   return (
-    <Box
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        background:
-          "radial-gradient(ellipse 50% 75% at 25% 50%, #f5f8fc 0%, #dbe5f3 55%, #b8c8e0 100%)",
-      }}
-    >
+    <Box className="auth-shell">
       <Box
         style={{
           flex: 1,
@@ -104,7 +97,7 @@ export function SignUpPage() {
             style={{
               width: "100%",
               maxWidth: 420,
-              borderColor: "#dbe2ec",
+              borderColor: "var(--ink-200)",
               backgroundColor: "#ffffff",
               boxShadow: "0 12px 32px rgba(15, 30, 80, 0.10)",
             }}
@@ -159,7 +152,7 @@ export function SignUpPage() {
 
                   <Checkbox
                     size="sm"
-                    color="#0a1230"
+                    color="space.8"
                     key={form.key("termsAccepted")}
                     {...form.getInputProps("termsAccepted", { type: "checkbox" })}
                     label={
@@ -178,7 +171,7 @@ export function SignUpPage() {
 
                   <Checkbox
                     size="sm"
-                    color="#0a1230"
+                    color="space.8"
                     label="Send me product updates and news by email"
                     key={form.key("marketingEmailsConsent")}
                     {...form.getInputProps("marketingEmailsConsent", { type: "checkbox" })}
@@ -190,7 +183,7 @@ export function SignUpPage() {
                     radius="md"
                     fullWidth
                     mt="xs"
-                    color="#0a1230"
+                    color="space.8"
                     disabled={!termsAccepted}
                     loading={submitting}
                   >
@@ -204,7 +197,7 @@ export function SignUpPage() {
       </Box>
 
       <Box visibleFrom="md" style={{ flex: 1, padding: 16, display: "flex" }}>
-        <Box style={{ flex: 1, borderRadius: 24, overflow: "hidden" }}>
+        <Box className="auth-globe-pane">
           <AuthGlobe />
         </Box>
       </Box>

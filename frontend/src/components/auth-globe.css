@@ -1,3 +1,12 @@
+.auth-globe {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-globe);
+  touch-action: none;
+}
+
 .capital-label {
   position: relative;
   width: 0;
@@ -13,7 +22,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #ffd54a;
+  background: var(--gold);
   box-shadow: 0 0 8px 2px rgba(255, 213, 74, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.35);
   transform: translate(-50%, -50%);
 }
@@ -25,7 +34,10 @@
   transform: translateY(-50%);
   white-space: nowrap;
   color: #ffffff;
-  font: 600 12px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
   letter-spacing: 0.02em;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.7);
 }

@@ -34,6 +34,11 @@ class RegisterRequest(BaseModel):
         return self
 
 
+class LoginRequest(BaseModel):
+    login: Annotated[str, Field(max_length=254)]
+    password: Annotated[SecretStr, Field(min_length=5, max_length=50)]
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"  # noqa: S105

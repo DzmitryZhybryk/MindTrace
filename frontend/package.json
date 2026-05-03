@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/geist": "^5.2.8",
     "@mantine/core": "^9.0.2",
     "@mantine/form": "^9.0.2",
     "@mantine/hooks": "^9.0.2",
