@@ -75,7 +75,11 @@ class JWTSettings(BaseModel):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
 
-class Settings(BaseSettings, WebSettings, PostgressSettings, JWTSettings):
+class ExternalServicesSettings(BaseModel):
+    RESEND_API_KEY: str
+
+
+class Settings(BaseSettings, WebSettings, PostgressSettings, JWTSettings, ExternalServicesSettings):
     SERVICE_NAME: str = _PYPROJECT_DATA["project"]["name"]
     SERVICE_VERSION: str = _PYPROJECT_DATA["project"]["version"]
     SERVICE_DESCRIPTION: str = _PYPROJECT_DATA["project"]["description"]

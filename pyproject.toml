@@ -19,6 +19,10 @@ dependencies = [
     "uvicorn>=0.38.0",
     "argon2-cffi>=25.1.0",
     "pyjwt>=2.10.0",
+    "httpx>=0.28.0",
+    "procrastinate>=3.8.1",
+    "jinja2>=3.1.6",
+    "psycopg[binary]>=3.3.4",
 ]
 
 [dependency-groups]

@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from app.auth import auth_router
-from app.messages.presentation.routes import router as message_router
 
 # Настраиваем логирование в самом начале, до всех остальных импортов
 # Это гарантирует, что handlers создаются с правильным форматтером
@@ -81,7 +80,6 @@ def create_app() -> BFastAPI:
 
     register_exception_handlers(app)
 
-    app.include_router(message_router, prefix="/v1/messages")
     app.include_router(auth_router, prefix="/v1/auth", tags=["v1.auth"])
     app.include_router(user_router, prefix="/v1/users", tags=["v1.users"])
 
