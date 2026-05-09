@@ -7,7 +7,7 @@ from app.auth.exceptions import EmailAlreadyExistError, UsernameAlreadyExistErro
 from app.auth.infra.clients.internal_users_client import InternalUsersClient, UserCreate
 from app.auth.infra.uow import AuthUnitOfWork
 from app.shared.infra.jwt_service import JWTService
-from app.shared.infra.password_hasher import PasswordHasher
+from app.shared.infra.secret_hasher import SecretHasher
 
 
 class AuthService:
@@ -15,7 +15,7 @@ class AuthService:
         self,
         uow: AuthUnitOfWork,
         users_client: InternalUsersClient,
-        hasher: PasswordHasher,
+        hasher: SecretHasher,
         jwt_service: JWTService,
         refresh_token_ttl_days: int,
     ) -> None:
@@ -38,7 +38,7 @@ class AuthService:
             username=registration.username,
             password=password,
         )
-        await self._uow.credentials_repository.insert_user_credentials(credentials=credentials_entity)
+        await self._uow.user_credentials_repository.insert_user_credentials(credentials=credentials_entity)
         await self._users_client.create_user(
             user=UserCreate(
                 user_id=credentials_entity.user_id,
@@ -82,7 +82,7 @@ class AuthService:
             EmailAlreadyExistError: Если email уже зарегистрирован.
             UsernameAlreadyExistError: Если username уже занят.
         """
-        conflicts = await self._uow.credentials_repository.find_user_credentials_by_email_or_username(
+        conflicts = await self._uow.user_credentials_repository.find_user_credentials_by_email_or_username(
             email=email,
             username=username,
         )

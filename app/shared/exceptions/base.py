@@ -73,6 +73,13 @@ class ConflictError(BaseDomainError):
     message = "Конфликт данных"
 
 
+class GoneError(BaseDomainError):
+    """Базовое исключение для ресурсов, которые когда-то были и истекли (HTTP 410)."""
+
+    code = "gone"
+    message = "Ресурс больше недоступен"
+
+
 class UnprocessableEntityError(BaseDomainError):
     """Базовое исключение для ошибок обработки сущности (HTTP 422)."""
 

@@ -8,16 +8,6 @@ from app.shared.models import BaseDBModel
 from app.shared.models.base_model import DateTimeMixin
 
 
-class UserCredentials(DateTimeMixin, BaseDBModel):
-    __tablename__ = "user_credentials"
-
-    user_id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
-    email: Mapped[str] = mapped_column(String(254), unique=True)
-    username: Mapped[str] = mapped_column(String(50), unique=True)
-    password_hash: Mapped[str]
-    role: Mapped[str] = mapped_column(String(20))
-
-
 class RefreshToken(DateTimeMixin, BaseDBModel):
     __tablename__ = "refresh_token"
 

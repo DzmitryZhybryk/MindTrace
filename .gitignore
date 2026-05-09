@@ -219,5 +219,8 @@ ZTODO
 # Claude Code instructions (personal)
 CLAUDE.md
 
+# Claude Code /plan working state (ephemeral, per-task)
+.claude/.current-plan.md
+
 # Cursor settings backups
 cursor-settings-*.tgz

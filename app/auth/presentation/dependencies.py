@@ -9,7 +9,7 @@ from app.auth.infra.clients.internal_users_client import InternalUsersClient
 from app.auth.infra.uow import AuthUnitOfWork
 from app.shared.dependencies.db_dependency import db_session_dependency
 from app.shared.infra.jwt_service import JWTService
-from app.shared.infra.password_hasher import Argon2PasswordHasher
+from app.shared.infra.secret_hasher import Argon2SecretHasher
 from app.shared.settings import settings
 from app.users.application.services import UserService
 from app.users.infra.user_uow import UserUnitOfWork
@@ -51,7 +51,7 @@ def auth_service_dependency(
     return AuthService(
         users_client=users_client,
         uow=uow,
-        hasher=Argon2PasswordHasher(),
+        hasher=Argon2SecretHasher(),
         jwt_service=jwt_service,
         refresh_token_ttl_days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
     )

@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from app.auth import auth_router
+from app.auth.infra.tasks import auth_blueprint
 
 # Настраиваем логирование в самом начале, до всех остальных импортов
 # Это гарантирует, что handlers создаются с правильным форматтером
@@ -10,7 +11,9 @@ from app.shared.enums import AppEnvEnum
 from app.shared.exceptions import register_exception_handlers
 from app.shared.infra.components.base import BaseComponent
 from app.shared.infra.components.postgres import SqlAlchemyComponent
+from app.shared.infra.components.procrastinate import ProcrastinateComponent
 from app.shared.infra.components.registry import ComponentRegistry
+from app.shared.infra.components.resend import ResendComponent
 from app.shared.middlewares import HTTPLoggingMiddleware
 from app.shared.schemas.base import BFastAPI
 from app.shared.settings import settings
@@ -71,7 +74,11 @@ def create_app() -> BFastAPI:
         title=settings.SERVICE_NAME,
         version=settings.SERVICE_VERSION,
         description=settings.SERVICE_DESCRIPTION,
-        components=[SqlAlchemyComponent(settings=settings)],
+        components=[
+            SqlAlchemyComponent(settings=settings),
+            ResendComponent(settings=settings),
+            ProcrastinateComponent(settings=settings, blueprints=[auth_blueprint]),
+        ],
     )
 
     # Регистрируем unified middleware для логирования HTTP запросов и исключений

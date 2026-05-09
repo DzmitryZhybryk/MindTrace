@@ -2,7 +2,7 @@ from functools import cache
 from pathlib import Path
 from typing import Final
 
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.shared.enums import AppEnvEnum
@@ -30,13 +30,31 @@ class PostgressSettings(BaseModel):
     POSTGRES_ISOLATION_LEVEL: str = "READ COMMITTED"
     POSTGRES_ECHO: bool = False
     POSTGRES_CONNECTION_TIMEOUT: int = 5  # Таймаут для установки нового соединения
-    POSTGRES_COMMAND_TIMEOUT: int = 10  # Таймаут для выполнения любой команды
+    POSTGRES_STATEMENT_TIMEOUT_MS: int = 10_000  # statement_timeout сервера в миллисекундах
 
     @property
     def postgres_dsn(self) -> str:
-        """Собирает DSN из отдельных параметров PostgreSQL."""
+        """
+        Собирает SQLAlchemy DSN.
+
+        Драйвер — psycopg3 (async). Выбран сознательно вместо asyncpg, чтобы
+        procrastinate.PsycopgConnector мог делить connection с SQLAlchemy
+        для атомарного defer_async() в одной транзакции.
+        """
         return (
-            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
+
+    @property
+    def procrastinate_dsn(self) -> str:
+        """
+        Plain libpq DSN для procrastinate.PsycopgConnector (без +driver-префикса).
+
+        Procrastinate шарит БД с приложением — отдельная инстанция PG не предусмотрена.
+        """
+        return (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
@@ -51,8 +69,8 @@ class PostgressSettings(BaseModel):
             "pool_timeout": self.POSTGRES_POOL_TIMEOUT,
             "isolation_level": self.POSTGRES_ISOLATION_LEVEL,
             "connect_args": {
-                "timeout": self.POSTGRES_CONNECTION_TIMEOUT,
-                "command_timeout": self.POSTGRES_COMMAND_TIMEOUT,
+                "connect_timeout": self.POSTGRES_CONNECTION_TIMEOUT,
+                "options": f"-c statement_timeout={self.POSTGRES_STATEMENT_TIMEOUT_MS}",
             },
         }
 
@@ -75,11 +93,40 @@ class JWTSettings(BaseModel):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
 
-class ExternalServicesSettings(BaseModel):
-    RESEND_API_KEY: str
+class ResendSettings(BaseModel):
+    RESEND_API_KEY: SecretStr
+    RESEND_FROM_EMAIL: str
+    RESEND_BASE_URL: str = "https://api.resend.com"
+    RESEND_TIMEOUT_SECONDS: float = 10.0
 
 
-class Settings(BaseSettings, WebSettings, PostgressSettings, JWTSettings, ExternalServicesSettings):
+class EmailVerificationSettings(BaseModel):
+    EMAIL_VERIFICATION_TTL_MINUTES: int = 15
+    EMAIL_VERIFICATION_MAX_ATTEMPTS: int = 5
+    EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
+
+
+class ProcrastinateSettings(PostgressSettings):
+    """
+    Procrastinate шарит БД с приложением — наследует PG-конфиг для DSN.
+
+    Procrastinate-специфичны только пул и concurrency; connection info
+    приходит через ``procrastinate_dsn`` из ``PostgressSettings``.
+    """
+
+    PROCRASTINATE_POOL_MIN_SIZE: int = 2
+    PROCRASTINATE_POOL_MAX_SIZE: int = 5
+    PROCRASTINATE_WORKER_CONCURRENCY: int = 10
+
+
+class Settings(
+    BaseSettings,
+    WebSettings,
+    JWTSettings,
+    ResendSettings,
+    EmailVerificationSettings,
+    ProcrastinateSettings,
+):
     SERVICE_NAME: str = _PYPROJECT_DATA["project"]["name"]
     SERVICE_VERSION: str = _PYPROJECT_DATA["project"]["version"]
     SERVICE_DESCRIPTION: str = _PYPROJECT_DATA["project"]["description"]
