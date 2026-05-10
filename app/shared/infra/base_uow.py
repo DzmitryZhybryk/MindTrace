@@ -17,6 +17,17 @@ class BaseUnitOfWork:
 
         await self._session.close()
 
+    @property
+    def session(self) -> AsyncSession:
+        """
+        Доступ к async-сессии для случаев, требующих низкоуровневой работы.
+
+        Используется, в частности, для атомарного ``defer_async`` procrastinate-таски
+        в той же транзакции, что и pending writes (см. ``defer_in_session``).
+        Не злоупотреблять — большинство сценариев должно идти через репозитории.
+        """
+        return self._session
+
     async def rollback(self) -> None:
         await self._session.rollback()
 

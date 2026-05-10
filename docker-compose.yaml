@@ -38,6 +38,29 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  mindtrace_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: mindtrace_worker
+    command: python -m app.worker
+    env_file: .env
+    volumes:
+      - ./app:/src/app
+      - ./pyproject.toml:/src/pyproject.toml:ro
+    depends_on:
+      mindtrace_pg:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - default
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   frontend:
     build:
       context: ./frontend

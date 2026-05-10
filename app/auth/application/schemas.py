@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, SecretStr
 
-__all__ = ["ClientMetadata", "IssuedRefreshToken", "Registration", "TokenPairResult"]
+__all__ = ["ClientMetadata", "IssuedRefreshToken", "RegistrationCommand", "TokenPairResult"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,7 +13,7 @@ class ClientMetadata:
     user_agent: str | None = None
 
 
-class Registration(BaseModel):
+class RegistrationCommand(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     username: str

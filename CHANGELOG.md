@@ -6,6 +6,18 @@
 
 Формат версий соответствует [SemVer](https://semver.org/lang/ru/).
 
+## [0.8.0] 2026-05-10
+
+### Добавлено
+
+- Подтверждение email: эндпоинты `/v1/auth/email/send-verification/` и `/v1/auth/email/verify/`
+- Асинхронная отправка писем через `procrastinate` + Resend (новый worker-контейнер)
+- JWT-claim `email_verified` в access-токене
+
+### Изменено
+
+- Глобальный exception handler: 4xx-ошибки теперь корректно возвращают доменный JSON вместо 500
+
 ## [0.7.0] 2025-05-02
 
 ### Добавлено

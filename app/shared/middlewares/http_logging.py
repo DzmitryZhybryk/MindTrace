@@ -85,7 +85,7 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
             # Вычисляем время обработки
             process_time = time.perf_counter() - start_time
 
-            # Формируем полный контекст для логирования успешного запроса
+            # Формируем полный контекст для логирования
             log_context = build_log_context(
                 request=request,
                 status_code=response.status_code,
@@ -93,8 +93,18 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
                 context=request_context,
             )
 
-            # Получаем семантическое название события и логируем запрос
+            # Получаем семантическое название события
             event = get_event_name(request.method, request.url.path)
-            logger.info(event=event, **log_context)
+
+            # Уровень лога зависит от статуса: 5xx -> error, 4xx -> warning, иначе info.
+            # Доменные исключения теперь конвертируются ExceptionMiddleware в Response 4xx
+            # и приходят сюда как готовый response, а не exception.
+            match response.status_code:
+                case status if status >= 500:
+                    logger.warning(event=event, **log_context)
+                case status if status >= 400:
+                    logger.warning(event=event, **log_context)
+                case _:
+                    logger.info(event=event, **log_context)
 
             return response

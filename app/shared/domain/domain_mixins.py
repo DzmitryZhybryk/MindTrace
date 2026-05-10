@@ -27,3 +27,13 @@ class TimestampedEntityMixin:
     @property
     def deleted_at(self) -> dt.datetime | None:
         return self._deleted_at
+
+    def _mark_updated(self) -> None:
+        """
+        Помечает сущность как изменённую, обновляя ``updated_at`` текущим временем.
+
+        Вызывается изнутри мутирующих методов наследников. Внешний код
+        в норме не зовёт его напрямую — изменение состояния должно идти
+        через явные доменные операции, которые сами вызывают ``_mark_updated``.
+        """
+        self._updated_at = dt.datetime.now(tz=dt.UTC)

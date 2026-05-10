@@ -14,7 +14,6 @@ class UserEntity(TimestampedEntityMixin):
         terms_accepted_at: dt.datetime,
         marketing_emails_consent: bool,
         display_name: str | None = None,
-        email_verified_at: dt.datetime | None = None,
         **timestamp_kwargs: dt.datetime | None,
     ) -> None:
         super().__init__(**timestamp_kwargs)
@@ -24,7 +23,6 @@ class UserEntity(TimestampedEntityMixin):
         self.terms_accepted_at = terms_accepted_at
         self.marketing_emails_consent = marketing_emails_consent
         self.display_name = display_name
-        self.email_verified_at = email_verified_at
 
     @classmethod
     def create_new_user_entity(

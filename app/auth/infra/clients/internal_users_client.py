@@ -2,18 +2,18 @@ import datetime as dt
 from dataclasses import dataclass
 from uuid import UUID
 
-from app.users.application.schemas import UserCreate as ExternalUserCreate
+from app.users.application.schemas import CreateUserCommand
 from app.users.application.services import UserService
 
 
 @dataclass(frozen=True, slots=True)
-class UserCreate:
+class CreateUserRequest:
     """
-    Входной контракт auth-домена для создания пользователя в users-домене.
+    Контракт исходящего вызова users-сервиса: создание пользователя.
 
-    Отдельный тип в auth-домене (даже при совпадающем имени с users) намеренно:
-    защищает auth от изменений схемы в users и фиксирует ровно тот набор полей,
-    который auth передаёт в users-сервис.
+    Отдельный тип на стороне auth даже при совпадении полей с users-доменом
+    намеренно: защищает auth от изменений схемы users и фиксирует ровно тот
+    набор полей, который auth отправляет в users.
     """
 
     user_id: UUID
@@ -27,7 +27,7 @@ class InternalUsersClient:
     def __init__(self, user_service: UserService) -> None:
         self._user_service = user_service
 
-    async def create_user(self, user: UserCreate) -> None:
+    async def create_user(self, request: CreateUserRequest) -> None:
         await self._user_service.create_user(
-            user=ExternalUserCreate.model_validate(user, from_attributes=True),
+            user=CreateUserCommand.model_validate(request, from_attributes=True),
         )

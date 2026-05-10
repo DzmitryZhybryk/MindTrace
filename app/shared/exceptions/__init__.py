@@ -3,6 +3,7 @@ from app.shared.exceptions.base import (
     BaseDomainError,
     ConflictError,
     ForbiddenError,
+    GoneError,
     NotFoundError,
     ServerError,
     TooManyRequestsError,
@@ -21,6 +22,7 @@ __all__ = [
     # Схемы
     "ErrorResponse",
     "ForbiddenError",
+    "GoneError",
     "NotFoundError",
     "ServerError",
     "TooManyRequestsError",

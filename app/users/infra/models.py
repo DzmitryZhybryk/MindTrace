@@ -17,4 +17,3 @@ class User(DateTimeMixin, BaseDBModel):
     display_name: Mapped[str | None] = mapped_column(String(50), default=None)
     terms_accepted_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
     marketing_emails_consent: Mapped[bool] = mapped_column(default=False)
-    email_verified_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), default=None)

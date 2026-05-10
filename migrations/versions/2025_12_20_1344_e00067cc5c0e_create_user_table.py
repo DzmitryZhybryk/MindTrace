@@ -1,5 +1,5 @@
 """
-Migration name: create user, user_credentials and refresh_token tables
+Migration name: create user, user_credentials, refresh_token and challenge tables
 
 Revision ID: e00067cc5c0e
 Revises: None
@@ -31,7 +31,6 @@ def upgrade() -> None:
         sa.Column("display_name", sa.String(length=50), nullable=True),
         sa.Column("terms_accepted_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("marketing_emails_consent", sa.Boolean(), nullable=False),
-        sa.Column("email_verified_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("email"),
     )
@@ -45,6 +44,7 @@ def upgrade() -> None:
         sa.Column("username", sa.String(length=50), nullable=False),
         sa.Column("password_hash", sa.String(), nullable=False),
         sa.Column("role", sa.String(length=20), nullable=False),
+        sa.Column("email_verified_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("user_id"),
         sa.UniqueConstraint("email"),
         sa.UniqueConstraint("username"),
@@ -66,9 +66,39 @@ def upgrade() -> None:
     )
     op.create_index("ix_refresh_token_user_id", "refresh_token", ["user_id"])
     op.create_index("ix_refresh_token_expires_at", "refresh_token", ["expires_at"])
+    op.create_table(
+        "challenge",
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("user_id", sa.Uuid(), nullable=False),
+        sa.Column("challenge_type", sa.String(length=32), nullable=False),
+        sa.Column("code_hash", sa.Text(), nullable=False),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("used_at", sa.DateTime(timezone=True), nullable=True),
+        sa.ForeignKeyConstraint(["user_id"], ["user_credentials.user_id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    # Один активный challenge данного типа на пользователя: композитный
+    # партиальный unique-индекс по неиспользованным записям.
+    op.create_index(
+        "ix_challenge_active_user_id_type",
+        "challenge",
+        ["user_id", "challenge_type"],
+        unique=True,
+        postgresql_where=sa.text("used_at IS NULL"),
+    )
 
 
 def downgrade() -> None:
+    op.drop_index(
+        "ix_challenge_active_user_id_type",
+        table_name="challenge",
+        postgresql_where=sa.text("used_at IS NULL"),
+    )
+    op.drop_table("challenge")
     op.drop_index("ix_refresh_token_expires_at", table_name="refresh_token")
     op.drop_index("ix_refresh_token_user_id", table_name="refresh_token")
     op.drop_table("refresh_token")

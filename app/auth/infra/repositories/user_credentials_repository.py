@@ -1,14 +1,17 @@
-from sqlalchemy import select
+from uuid import UUID
+
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.domain.entities import RefreshTokenEntity, UserCredentialsEntity
+from app.auth.domain.entities import UserCredentialsEntity
 from app.auth.domain.enums import UserRole
 from app.auth.domain.value_objects import Password
-from app.auth.infra.models import RefreshToken, UserCredentials
+from app.auth.infra.models import UserCredentials
 from app.shared.repositories.base_repository import BaseDBRepository
+from app.shared.types import DictStrAny
 
 
-class CredentialsRepository(BaseDBRepository[UserCredentials]):
+class UserCredentialsRepository(BaseDBRepository[UserCredentials]):
     def __init__(self, session: AsyncSession) -> None:
         """
         Инициализирует репозиторий учётных данных пользователей.
@@ -32,6 +35,36 @@ class CredentialsRepository(BaseDBRepository[UserCredentials]):
         """
         await self.insert(data=self._to_model(entity=credentials))
 
+    async def update_user_credentials_by_user_id(self, credentials: UserCredentialsEntity) -> None:
+        """
+        Персистит изменённое состояние учётных данных через atomic UPDATE по PK.
+
+        Все non-PK-поля переписываются текущим состоянием entity.
+
+        Args:
+            credentials: Доменная сущность с уже обновлённым состоянием
+        """
+        query = (
+            sa.update(UserCredentials)
+            .where(UserCredentials.user_id == credentials.user_id)
+            .values(**self._to_update_values(entity=credentials))
+        )
+        await self._session.execute(query)
+
+    async def find_user_credentials_by_user_id(self, user_id: UUID) -> UserCredentialsEntity | None:
+        """
+        Загружает учётные данные пользователя по его PK.
+
+        Args:
+            user_id: UUID пользователя
+
+        Returns:
+            Доменная сущность учётных данных либо ``None``, если запись не найдена
+        """
+        query = sa.select(UserCredentials).where(UserCredentials.user_id == user_id)
+        model = await self._fetch_one(query=query)
+        return self._to_entity(model=model) if model else None
+
     async def find_user_credentials_by_email_or_username(
         self,
         email: str,
@@ -52,7 +85,7 @@ class CredentialsRepository(BaseDBRepository[UserCredentials]):
         Returns:
             Список найденных доменных сущностей (0..2 элементов)
         """
-        query = select(UserCredentials).where(
+        query = sa.select(UserCredentials).where(
             (UserCredentials.email == email) | (UserCredentials.username == username),
         )
         result = await self._session.execute(query)
@@ -75,10 +108,36 @@ class CredentialsRepository(BaseDBRepository[UserCredentials]):
             username=entity.username,
             password_hash=entity.password.hash,
             role=entity.role.value,
+            email_verified_at=entity.email_verified_at,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
             deleted_at=entity.deleted_at,
         )
+
+    def _to_update_values(self, entity: UserCredentialsEntity) -> DictStrAny:
+        """
+        Собирает dict non-PK-полей для UPDATE-выражения.
+
+        Симметрично с ``_to_model``/``_to_entity``: маппинг полей собран в одном
+        месте, чтобы при добавлении нового поля на entity не забыть прокинуть
+        его в UPDATE.
+
+        Args:
+            entity: Доменная сущность учётных данных
+
+        Returns:
+            Словарь ``column -> value`` без PK ``user_id``
+        """
+        return {
+            "email": entity.email,
+            "username": entity.username,
+            "password_hash": entity.password.hash,
+            "role": entity.role.value,
+            "email_verified_at": entity.email_verified_at,
+            "created_at": entity.created_at,
+            "updated_at": entity.updated_at,
+            "deleted_at": entity.deleted_at,
+        }
 
     def _to_entity(self, model: UserCredentials) -> UserCredentialsEntity:
         """
@@ -96,50 +155,8 @@ class CredentialsRepository(BaseDBRepository[UserCredentials]):
             username=model.username,
             password=Password(hash=model.password_hash),
             role=UserRole(model.role),
+            email_verified_at=model.email_verified_at,
             created_at=model.created_at,
             updated_at=model.updated_at,
             deleted_at=model.deleted_at,
-        )
-
-
-class RefreshTokenRepository(BaseDBRepository[RefreshToken]):
-    def __init__(self, session: AsyncSession) -> None:
-        """
-        Инициализирует репозиторий refresh-токенов.
-
-        Args:
-            session: Асинхронная SQLAlchemy-сессия, привязанная к UnitOfWork
-        """
-        super().__init__(session=session, model=RefreshToken)
-
-    async def insert_refresh_token(self, token: RefreshTokenEntity) -> None:
-        """
-        Добавляет refresh-токен в сессию без коммита.
-
-        Запись становится видимой другим транзакциям только после ``commit()``
-        в UnitOfWork.
-
-        Args:
-            token: Доменная сущность refresh-токена
-        """
-        await self.insert(data=self._to_model(entity=token))
-
-    def _to_model(self, entity: RefreshTokenEntity) -> RefreshToken:
-        """
-        Конвертирует доменную сущность refresh-токена в ORM-модель.
-
-        Args:
-            entity: Доменная сущность refresh-токена
-
-        Returns:
-            ORM-модель, готовая к добавлению в сессию
-        """
-        return RefreshToken(
-            id=entity.token_id,
-            user_id=entity.user_id,
-            expires_at=entity.expires_at,
-            last_seen_at=entity.last_seen_at,
-            revoked_at=entity.revoked_at,
-            ip_address=entity.ip_address,
-            user_agent=entity.user_agent,
         )

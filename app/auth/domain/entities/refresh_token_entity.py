@@ -2,44 +2,6 @@ import datetime as dt
 from typing import Self
 from uuid import UUID, uuid4
 
-from app.auth.domain.enums import UserRole
-from app.auth.domain.value_objects import Password
-from app.shared.domain.domain_mixins import TimestampedEntityMixin
-
-
-class UserCredentialsEntity(TimestampedEntityMixin):
-    def __init__(
-        self,
-        user_id: UUID,
-        email: str,
-        username: str,
-        password: Password,
-        role: UserRole,
-        **timestamp_kwargs: dt.datetime | None,
-    ) -> None:
-        super().__init__(**timestamp_kwargs)
-        self.user_id = user_id
-        self.email = email
-        self.username = username
-        self.password = password
-        self.role = role
-
-    @classmethod
-    def create(
-        cls,
-        email: str,
-        username: str,
-        password: Password,
-        role: UserRole = UserRole.FREE,
-    ) -> Self:
-        return cls(
-            user_id=uuid4(),
-            email=email,
-            username=username,
-            password=password,
-            role=role,
-        )
-
 
 class RefreshTokenEntity:
     def __init__(
