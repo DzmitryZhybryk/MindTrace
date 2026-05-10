@@ -19,13 +19,12 @@ import asyncio
 
 from app.auth.infra.tasks import auth_blueprint
 from app.shared.enums import AppEnvEnum
-from app.shared.infra.clients.email import EmailTransport
-from app.shared.infra.components.base import BaseComponent
-from app.shared.infra.components.procrastinate import ProcrastinateApp, ProcrastinateComponent
-from app.shared.infra.components.registry import ComponentRegistry
-from app.shared.infra.components.resend import ResendComponent
+from app.shared.infra.di.base import BaseComponent
+from app.shared.infra.di.registry import ComponentRegistry
+from app.shared.infra.email import EmailTransport, ResendComponent
+from app.shared.infra.procrastinate import ProcrastinateApp, ProcrastinateComponent
+from app.shared.logging import configure_logging, get_logger
 from app.shared.settings import settings
-from app.shared.utils.logger import configure_logging, get_logger
 
 logger = get_logger(__name__)
 

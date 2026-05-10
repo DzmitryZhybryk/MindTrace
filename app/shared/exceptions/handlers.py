@@ -14,8 +14,8 @@ from fastapi.responses import JSONResponse
 from app.shared.exceptions import BaseDomainError
 from app.shared.exceptions.mappings import DOMAIN_EXCEPTION_MAPPING, ExceptionMappingT
 from app.shared.exceptions.schemas import ErrorResponse
+from app.shared.logging import get_logger
 from app.shared.types import OptionalDict
-from app.shared.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

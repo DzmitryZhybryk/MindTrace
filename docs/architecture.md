@@ -6,17 +6,44 @@
 
 ```text
 app/
-  shared/                          # Общие компоненты (инфраструктура)
+  shared/                          # Общая инфраструктура — нарезана по вертикалям-интеграциям
     infra/
-      components/                  # БД, Redis и другие инфраструктурные компоненты
-        postgres.py                # SqlAlchemyComponent
-        registry.py                # ResourceRegistry
-      uow/
-        base_uow.py                # Базовый UnitOfWork
+      di/                          # DI-каркас
+        base.py                    # BaseComponent (lifecycle: startup/shutdown)
+        registry.py                # ComponentRegistry (типизированный store)
+        exceptions.py              # ComponentNotRegisteredError
+      postgres/                    # ВСЁ про SQLAlchemy в одном пакете
+        component.py               # SqlAlchemyComponent + SessionMaker
+        uow.py                     # BaseUnitOfWork
+        dependency.py              # db_session_dependency
+      procrastinate/               # ВСЁ про procrastinate
+        component.py               # ProcrastinateComponent + ProcrastinateApp
+        bus.py                     # TaskBus + SessionBoundTaskBus
+        bus_component.py           # TaskBusComponent
+      email/                       # ВСЁ про email transport
+        component.py               # ResendComponent
+        transport.py               # EmailTransport (Protocol)
+        resend_client.py           # ResendClient
+        schemas.py                 # EmailMessage
+      http/                        # Базовый HTTP-клиент (используют email и др.)
+        client.py                  # BaseHTTPClient
+        config.py                  # HTTPClientConfig
+        exceptions.py              # ExternalAPI*Error
+      jwt/
+        service.py                 # JWTService + JWTDecodeError
+      crypto/
+        protocol.py                # SecretHasher (Protocol)
+        argon2.py                  # Argon2SecretHasher
+    logging/                       # Логирование как самостоятельная вертикаль
+      config.py                    # configure_logging, get_logger
+      context.py                   # build_log_context, build_error_log_context
+      classify.py                  # get_log_level_for_exception, get_status_code_from_exception
+      events.py                    # get_event_name
+      middleware.py                # HTTPLoggingMiddleware
     repositories/
       base_repository.py           # Базовый репозиторий
     exceptions/                    # Общие исключения
-    utils/                         # Общие утилиты
+    utils/                         # Узкие утилиты (file_reader, json_serializer)
     settings.py                    # Настройки приложения
     types.py                       # Общие типы
     enums.py                       # Общие перечисления

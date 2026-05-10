@@ -11,9 +11,11 @@ from app.auth.application.settings import AuthServiceSettings, get_auth_service_
 from app.auth.exceptions import InvalidAccessTokenError
 from app.auth.infra.clients.internal_users_client import InternalUsersClient
 from app.auth.infra.uow import AuthUnitOfWork
-from app.shared.dependencies.db_dependency import db_session_dependency
-from app.shared.infra.jwt_service import JWTDecodeError, JWTService, get_jwt_service
-from app.shared.infra.secret_hasher import Argon2SecretHasher
+from app.shared.infra.crypto import Argon2SecretHasher
+from app.shared.infra.jwt import JWTDecodeError, JWTService, get_jwt_service
+from app.shared.infra.postgres.dependency import db_session_dependency
+from app.shared.infra.procrastinate import TaskBus
+from app.shared.schemas.base import BFastAPI
 from app.users.application.services import UserService
 from app.users.infra.user_uow import UserUnitOfWork
 
@@ -78,16 +80,23 @@ def auth_service_settings_dependency() -> AuthServiceSettings:
     return get_auth_service_settings()
 
 
+def task_bus_dependency(request: Request) -> TaskBus:
+    app: BFastAPI = request.app
+    return app.registry.get(TaskBus)
+
+
 def auth_service_dependency(
     uow: Annotated[AuthUnitOfWork, Depends(auth_uow_dependency)],
     users_client: Annotated[InternalUsersClient, Depends(users_client_dependency)],
     jwt_service: Annotated[JWTService, Depends(jwt_service_dependency)],
     auth_settings: Annotated[AuthServiceSettings, Depends(auth_service_settings_dependency)],
+    task_bus: Annotated[TaskBus, Depends(task_bus_dependency)],
 ) -> AuthService:
     return AuthService(
         uow=uow,
         users_client=users_client,
         hasher=Argon2SecretHasher(),
         jwt_service=jwt_service,
+        task_bus=task_bus,
         auth_settings=auth_settings,
     )

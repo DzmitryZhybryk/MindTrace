@@ -8,7 +8,7 @@
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 
-from app.shared.infra.clients.email import EmailMessage
+from app.shared.infra.email import EmailMessage
 
 _environment = Environment(
     loader=PackageLoader(package_name="app.auth.infra", package_path="email_templates"),

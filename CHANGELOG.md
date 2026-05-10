@@ -6,6 +6,20 @@
 
 Формат версий соответствует [SemVer](https://semver.org/lang/ru/).
 
+## [0.8.1] 2026-05-10
+
+### Добавлено
+
+- `TaskBus` / `SessionBoundTaskBus` в `app/shared/infra/procrastinate/` — atomic defer procrastinate-таски в SA-транзакции через `task_bus.bind_to(uow.session).defer(...)`
+
+### Изменено
+
+- Реструктуризация `app/shared/` по вертикалям-интеграциям: `infra/{di, postgres, procrastinate, email, http, jwt, crypto}` + `shared/logging/`. Старые папки `infra/components/`, `infra/clients/`, `shared/middlewares/`, `shared/dependencies/` удалены
+
+### Исправлено
+
+- `HTTPLoggingMiddleware`: 5xx ответы теперь логируются как `error` (раньше `warning`)
+
 ## [0.8.0] 2026-05-10
 
 ### Добавлено
