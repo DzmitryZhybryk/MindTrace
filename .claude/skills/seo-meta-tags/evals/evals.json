@@ -1,0 +1,26 @@
+{
+  "skill_name": "seo-meta-tags",
+  "evals": [
+    {
+      "id": 0,
+      "name": "empty-head",
+      "prompt": "Edit this HTML to make it production-ready. The file is at <INPUT_PATH>. Save the result to <OUTPUT_PATH>.",
+      "expected_output": "All 7 SEO tags present in <head>: title, meta description, og:type, og:title, og:description, og:image, twitter:card. Values must be on-brand (MyJourney travel + reflection tone, no hype words, no keyword stuffing). No <meta name=\"keywords\">, no <link rel=\"canonical\">, no <meta name=\"robots\">.",
+      "files": ["empty-head.html"]
+    },
+    {
+      "id": 1,
+      "name": "partial-head",
+      "prompt": "Add missing SEO tags to the HTML at <INPUT_PATH>. Save the result to <OUTPUT_PATH>.",
+      "expected_output": "Existing <title>Sign in — MyJourney</title> and existing description are preserved verbatim. The 5 missing OG/Twitter tags are added. No keywords/canonical/robots.",
+      "files": ["partial-head.html"]
+    },
+    {
+      "id": 2,
+      "name": "full-head",
+      "prompt": "Audit the SEO of this HTML and fix anything that needs fixing. File: <INPUT_PATH>. Save the result to <OUTPUT_PATH>.",
+      "expected_output": "All 7 tags are already present (even if some values look weak). The skill must NOT rewrite them. Output should be byte-identical to input, or have only whitespace/formatting differences. No new tags added.",
+      "files": ["full-head.html"]
+    }
+  ]
+}

@@ -14,9 +14,9 @@ EmailTransport достаётся из ``context.additional_context`` — сло
 from procrastinate import Blueprint, JobContext, RetryStrategy
 
 from app.auth.infra.email_renderer import render_verification_email
-from app.shared.infra.clients.email import EmailTransport
-from app.shared.infra.clients.exceptions import ExternalAPITemporaryError
-from app.shared.utils.logger import get_logger
+from app.shared.infra.email import EmailTransport
+from app.shared.infra.http.exceptions import ExternalAPITemporaryError
+from app.shared.logging import get_logger
 
 auth_blueprint = Blueprint()
 

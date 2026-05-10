@@ -9,15 +9,14 @@ from app.auth.infra.tasks import auth_blueprint
 # Это гарантирует, что handlers создаются с правильным форматтером
 from app.shared.enums import AppEnvEnum
 from app.shared.exceptions import register_exception_handlers
-from app.shared.infra.components.base import BaseComponent
-from app.shared.infra.components.postgres import SqlAlchemyComponent
-from app.shared.infra.components.procrastinate import ProcrastinateComponent
-from app.shared.infra.components.registry import ComponentRegistry
-from app.shared.infra.components.resend import ResendComponent
-from app.shared.middlewares import HTTPLoggingMiddleware
+from app.shared.infra.di.base import BaseComponent
+from app.shared.infra.di.registry import ComponentRegistry
+from app.shared.infra.email import ResendComponent
+from app.shared.infra.postgres.component import SqlAlchemyComponent
+from app.shared.infra.procrastinate import ProcrastinateComponent, TaskBusComponent
+from app.shared.logging import HTTPLoggingMiddleware, configure_logging, get_logger
 from app.shared.schemas.base import BFastAPI
 from app.shared.settings import settings
-from app.shared.utils.logger import configure_logging, get_logger
 from app.users import router as user_router
 
 logger = get_logger(__name__)
@@ -78,6 +77,7 @@ def create_app() -> BFastAPI:
             SqlAlchemyComponent(settings=settings),
             ResendComponent(settings=settings),
             ProcrastinateComponent(settings=settings, blueprints=[auth_blueprint]),
+            TaskBusComponent(),
         ],
     )
 

@@ -17,9 +17,9 @@ from app.auth.exceptions import (
 from app.auth.infra.clients.internal_users_client import CreateUserRequest, InternalUsersClient
 from app.auth.infra.tasks import send_verification_email
 from app.auth.infra.uow import AuthUnitOfWork
-from app.shared.infra.components.procrastinate import defer_in_session
-from app.shared.infra.jwt_service import JWTService
-from app.shared.infra.secret_hasher import SecretHasher
+from app.shared.infra.crypto import SecretHasher
+from app.shared.infra.jwt import JWTService
+from app.shared.infra.procrastinate import TaskBus
 
 
 class AuthService:
@@ -30,12 +30,14 @@ class AuthService:
         hasher: SecretHasher,
         jwt_service: JWTService,
         auth_settings: AuthServiceSettings,
+        task_bus: TaskBus,
     ) -> None:
         self._uow = uow
         self._users_client = users_client
         self._hasher = hasher
         self._jwt_service = jwt_service
         self._auth_settings = auth_settings
+        self._task_bus = task_bus
 
     async def register(
         self,
@@ -133,8 +135,7 @@ class AuthService:
         )
         await self._uow.challenge_repository.insert_challenge(challenge=new_challenge)
 
-        await defer_in_session(
-            session=self._uow.session,
+        await self._task_bus.bind_to(self._uow.session).defer(
             task=send_verification_email,
             lock=f"email_verification:user:{user_id}",
             user_id=str(user_id),

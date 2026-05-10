@@ -5,7 +5,7 @@ from app.auth.infra.repositories import (
     RefreshTokenRepository,
     UserCredentialsRepository,
 )
-from app.shared.infra.base_uow import BaseUnitOfWork
+from app.shared.infra.postgres.uow import BaseUnitOfWork
 
 
 class AuthUnitOfWork(BaseUnitOfWork):

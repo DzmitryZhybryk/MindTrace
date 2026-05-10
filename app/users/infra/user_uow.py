@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.shared.infra.base_uow import BaseUnitOfWork
+from app.shared.infra.postgres.uow import BaseUnitOfWork
 from app.users.infra.repositories import UserRepository
 
 
