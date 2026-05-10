@@ -37,3 +37,7 @@ class RegisterRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"  # noqa: S105
+
+
+class VerifyEmailRequest(BaseModel):
+    code: Annotated[str, Field(pattern=r"^\d{6}$")]

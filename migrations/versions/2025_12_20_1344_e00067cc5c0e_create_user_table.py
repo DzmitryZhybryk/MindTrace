@@ -1,5 +1,5 @@
 """
-Migration name: create user, user_credentials, refresh_token and email_verification_token tables
+Migration name: create user, user_credentials, refresh_token and challenge tables
 
 Revision ID: e00067cc5c0e
 Revises: None
@@ -67,12 +67,13 @@ def upgrade() -> None:
     op.create_index("ix_refresh_token_user_id", "refresh_token", ["user_id"])
     op.create_index("ix_refresh_token_expires_at", "refresh_token", ["expires_at"])
     op.create_table(
-        "email_verification_token",
+        "challenge",
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Uuid(), nullable=False),
+        sa.Column("challenge_type", sa.String(length=32), nullable=False),
         sa.Column("code_hash", sa.Text(), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
@@ -80,11 +81,12 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["user_id"], ["user_credentials.user_id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    # Один активный токен на user_id: партиальный индекс по неиспользованным записям.
+    # Один активный challenge данного типа на пользователя: композитный
+    # партиальный unique-индекс по неиспользованным записям.
     op.create_index(
-        "ix_email_verification_token_active_user_id",
-        "email_verification_token",
-        ["user_id"],
+        "ix_challenge_active_user_id_type",
+        "challenge",
+        ["user_id", "challenge_type"],
         unique=True,
         postgresql_where=sa.text("used_at IS NULL"),
     )
@@ -92,11 +94,11 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_index(
-        "ix_email_verification_token_active_user_id",
-        table_name="email_verification_token",
+        "ix_challenge_active_user_id_type",
+        table_name="challenge",
         postgresql_where=sa.text("used_at IS NULL"),
     )
-    op.drop_table("email_verification_token")
+    op.drop_table("challenge")
     op.drop_index("ix_refresh_token_expires_at", table_name="refresh_token")
     op.drop_index("ix_refresh_token_user_id", table_name="refresh_token")
     op.drop_table("refresh_token")

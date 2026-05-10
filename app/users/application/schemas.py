@@ -3,10 +3,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
-__all__ = ["UserCreate"]
+__all__ = ["CreateUserCommand"]
 
 
-class UserCreate(BaseModel):
+class CreateUserCommand(BaseModel):
     user_id: UUID
     username: str
     email: EmailStr

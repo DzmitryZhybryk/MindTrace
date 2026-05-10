@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.infra.repositories import (
-    EmailVerificationTokenRepository,
+    ChallengeRepository,
     RefreshTokenRepository,
     UserCredentialsRepository,
 )
@@ -13,4 +13,4 @@ class AuthUnitOfWork(BaseUnitOfWork):
         super().__init__(session=session)
         self.user_credentials_repository = UserCredentialsRepository(session=session)
         self.refresh_token_repository = RefreshTokenRepository(session=session)
-        self.email_verification_token_repository = EmailVerificationTokenRepository(session=session)
+        self.challenge_repository = ChallengeRepository(session=session)

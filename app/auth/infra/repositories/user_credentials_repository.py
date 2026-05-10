@@ -1,5 +1,6 @@
-from sqlalchemy import select
-from sqlalchemy import update as sa_update
+from uuid import UUID
+
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.domain.entities import UserCredentialsEntity
@@ -44,11 +45,25 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials]):
             credentials: Доменная сущность с уже обновлённым состоянием
         """
         query = (
-            sa_update(UserCredentials)
+            sa.update(UserCredentials)
             .where(UserCredentials.user_id == credentials.user_id)
             .values(**self._to_update_values(entity=credentials))
         )
         await self._session.execute(query)
+
+    async def find_user_credentials_by_user_id(self, user_id: UUID) -> UserCredentialsEntity | None:
+        """
+        Загружает учётные данные пользователя по его PK.
+
+        Args:
+            user_id: UUID пользователя
+
+        Returns:
+            Доменная сущность учётных данных либо ``None``, если запись не найдена
+        """
+        query = sa.select(UserCredentials).where(UserCredentials.user_id == user_id)
+        model = await self._fetch_one(query=query)
+        return self._to_entity(model=model) if model else None
 
     async def find_user_credentials_by_email_or_username(
         self,
@@ -70,7 +85,7 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials]):
         Returns:
             Список найденных доменных сущностей (0..2 элементов)
         """
-        query = select(UserCredentials).where(
+        query = sa.select(UserCredentials).where(
             (UserCredentials.email == email) | (UserCredentials.username == username),
         )
         result = await self._session.execute(query)

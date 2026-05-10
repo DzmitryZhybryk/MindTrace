@@ -57,15 +57,6 @@ class BaseHTTPClient:
     async def post(self, endpoint: str, **kwargs: Any) -> httpx.Response:
         return await self._request(method=HTTPMethod.POST, endpoint=endpoint, **kwargs)
 
-    async def put(self, endpoint: str, **kwargs: Any) -> httpx.Response:
-        return await self._request(method=HTTPMethod.PUT, endpoint=endpoint, **kwargs)
-
-    async def patch(self, endpoint: str, **kwargs: Any) -> httpx.Response:
-        return await self._request(method=HTTPMethod.PATCH, endpoint=endpoint, **kwargs)
-
-    async def delete(self, endpoint: str, **kwargs: Any) -> httpx.Response:
-        return await self._request(method=HTTPMethod.DELETE, endpoint=endpoint, **kwargs)
-
     async def _request(self, *, method: HTTPMethod, endpoint: str, **kwargs: Any) -> httpx.Response:
         bound_log = logger.bind(method=method.value, endpoint=endpoint, base_url=self._config.base_url)
         try:

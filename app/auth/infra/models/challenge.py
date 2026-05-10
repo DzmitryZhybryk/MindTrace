@@ -1,21 +1,22 @@
 import datetime as dt
 import uuid
 
-from sqlalchemy import DateTime, ForeignKey, Index, Text, text
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.shared.models import BaseDBModel
 from app.shared.models.base_model import DateTimeMixin
 
 
-class EmailVerificationToken(DateTimeMixin, BaseDBModel):
-    __tablename__ = "email_verification_token"
+class Challenge(DateTimeMixin, BaseDBModel):
+    __tablename__ = "challenge"
     __table_args__ = (
-        # Один активный токен на пользователя; обеспечивается партиальным unique-индексом.
-        # Должен совпадать с миграцией `e00067cc5c0e`.
+        # Один активный challenge данного типа на пользователя; обеспечивается
+        # композитным партиальным unique-индексом. Должен совпадать с миграцией.
         Index(
-            "ix_email_verification_token_active_user_id",
+            "ix_challenge_active_user_id_type",
             "user_id",
+            "challenge_type",
             unique=True,
             postgresql_where=text("used_at IS NULL"),
         ),
@@ -25,6 +26,7 @@ class EmailVerificationToken(DateTimeMixin, BaseDBModel):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("user_credentials.user_id", ondelete="CASCADE"),
     )
+    challenge_type: Mapped[str] = mapped_column(String(32))
     code_hash: Mapped[str] = mapped_column(Text())
     expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
     attempts: Mapped[int] = mapped_column(default=0)

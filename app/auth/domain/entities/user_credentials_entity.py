@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from app.auth.domain.enums import UserRole
 from app.auth.domain.value_objects import Password
+from app.auth.exceptions import EmailAlreadyVerifiedError
 from app.shared.domain.domain_mixins import TimestampedEntityMixin
 
 
@@ -41,6 +42,25 @@ class UserCredentialsEntity(TimestampedEntityMixin):
             password=password,
             role=role,
         )
+
+    @property
+    def is_email_verified(self) -> bool:
+        """Признак того, что email пользователя подтверждён."""
+        return self.email_verified_at is not None
+
+    def ensure_not_verified(self) -> None:
+        """
+        Проверяет, что email ещё не подтверждён.
+
+        Используется как прекондиция всех use case'ов, инициирующих верификацию
+        (запрос нового кода, ввод кода): нельзя начать процесс на уже
+        подтверждённом email.
+
+        Raises:
+            EmailAlreadyVerifiedError: Email уже подтверждён
+        """
+        if self.is_email_verified:
+            raise EmailAlreadyVerifiedError()
 
     def mark_email_verified(self) -> None:
         """

@@ -14,7 +14,10 @@ Domain-tasks объявляются через локальные ``Blueprint``-
 ``defer_async(connection=...)``).
 """
 
+from typing import Any
+
 from procrastinate import App, Blueprint, PsycopgConnector
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.shared.infra.components.base import BaseComponent
 from app.shared.infra.components.registry import ComponentRegistry
@@ -58,3 +61,37 @@ class ProcrastinateComponent(BaseComponent):
 
     async def shutdown(self) -> None:
         await self._app.close_async()
+
+
+async def defer_in_session(
+    *,
+    session: AsyncSession,
+    task: Any,
+    lock: str | None = None,
+    **task_kwargs: Any,
+) -> None:
+    """
+    Атомарно ставит procrastinate-таску в той же транзакции, что и pending writes сессии.
+
+    SA-сессия с psycopg3-драйвером оборачивает raw psycopg.AsyncConnection в
+    ``AsyncAdapt_psycopg_connection``; raw-объект достаётся через
+    ``get_raw_connection().driver_connection`` и передаётся в
+    ``Task.configure(connection=...)``. Без commit'а — caller отвечает за
+    фиксацию через ``UnitOfWork.commit()``.
+
+    Args:
+        session: Активная async-сессия SQLAlchemy
+        task: Procrastinate Task (объект с ``.configure().defer_async()``)
+        lock: Lock-строка procrastinate (одновременно может выполняться только
+            один job с таким lock'ом). ``None`` — без lock'а.
+        **task_kwargs: Аргументы, которые получит task на исполнении
+
+    Returns:
+        None
+    """
+    sa_connection = await session.connection()
+    raw_connection = await sa_connection.get_raw_connection()
+    await task.configure(
+        connection=raw_connection.driver_connection,
+        lock=lock,
+    ).defer_async(**task_kwargs)

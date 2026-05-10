@@ -1,4 +1,4 @@
-from app.users.application.schemas import UserCreate
+from app.users.application.schemas import CreateUserCommand
 from app.users.domain.entities import UserEntity
 from app.users.infra.user_uow import UserUnitOfWork
 
@@ -9,7 +9,7 @@ class UserService:
     def __init__(self, uow: UserUnitOfWork) -> None:
         self.uow = uow
 
-    async def create_user(self, user: UserCreate) -> None:
+    async def create_user(self, user: CreateUserCommand) -> None:
         """
         Создаёт нового пользователя.
 

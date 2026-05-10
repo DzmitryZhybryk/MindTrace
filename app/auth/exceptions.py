@@ -1,6 +1,13 @@
 from typing import ClassVar
 
-from app.shared.exceptions import BadRequestError, ConflictError, GoneError, TooManyRequestsError
+from app.shared.exceptions import (
+    BadRequestError,
+    ConflictError,
+    GoneError,
+    NotFoundError,
+    TooManyRequestsError,
+    UnauthorizedError,
+)
 from app.shared.types import OptionalDict
 
 
@@ -8,6 +15,16 @@ class TermsNotAcceptedError(BadRequestError):
     code = "auth.terms_not_accepted"
     message = "Необходимо принять пользовательское соглашение"
     details: ClassVar[OptionalDict] = {"field": "terms_accepted"}
+
+
+class InvalidAccessTokenError(UnauthorizedError):
+    code = "auth.invalid_access_token"
+    message = "Невалидный или истёкший access-токен"
+
+
+class UserCredentialsNotFoundError(NotFoundError):
+    code = "auth.user_credentials_not_found"
+    message = "Учётная запись не найдена"
 
 
 class EmailAlreadyExistError(ConflictError):
@@ -33,16 +50,21 @@ class VerificationCodeInvalidError(BadRequestError):
     details: ClassVar[OptionalDict] = {"field": "code"}
 
 
-class VerificationCodeExpiredError(GoneError):
-    code = "auth.verification_code_expired"
+class ChallengeNotFoundError(NotFoundError):
+    code = "auth.challenge_not_found"
+    message = "Код подтверждения не запрошен или больше недоступен"
+
+
+class ChallengeExpiredError(GoneError):
+    code = "auth.challenge_expired"
     message = "Срок действия кода подтверждения истёк"
 
 
-class VerificationAttemptsExceededError(TooManyRequestsError):
-    code = "auth.verification_attempts_exceeded"
+class ChallengeAttemptsExceededError(TooManyRequestsError):
+    code = "auth.challenge_attempts_exceeded"
     message = "Превышено количество попыток ввода кода"
 
 
-class VerificationResendCooldownError(TooManyRequestsError):
-    code = "auth.verification_resend_cooldown"
+class ChallengeResendCooldownError(TooManyRequestsError):
+    code = "auth.challenge_resend_cooldown"
     message = "Слишком частая отправка кода, повторите попытку позже"

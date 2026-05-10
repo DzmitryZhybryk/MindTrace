@@ -6,9 +6,57 @@ Procrastinate-таски домена auth.
 blueprint'ы всех доменов и передаёт их в ``ProcrastinateComponent``,
 который через ``add_tasks_from`` подключает их к App-инстансу.
 
-Реальные таски будут добавлены в Phase 3.
+EmailTransport достаётся из ``context.additional_context`` — словарь
+наполняется на старте worker'а (см. Phase 6) — а не через module-level
+синглтоны: воркер и API-процесс могут собирать registry по-разному.
 """
 
-from procrastinate import Blueprint
+from procrastinate import Blueprint, JobContext, RetryStrategy
+
+from app.auth.infra.email_renderer import render_verification_email
+from app.shared.infra.clients.email import EmailTransport
+from app.shared.infra.clients.exceptions import ExternalAPITemporaryError
+from app.shared.utils.logger import get_logger
 
 auth_blueprint = Blueprint()
+
+logger = get_logger(__name__)
+
+
+@auth_blueprint.task(
+    name="auth.send_verification_email",
+    pass_context=True,
+    retry=RetryStrategy(
+        max_attempts=3,
+        wait=10,
+        exponential_wait=2,
+        retry_exceptions={ExternalAPITemporaryError},
+    ),
+)
+async def send_verification_email(
+    context: JobContext,
+    *,
+    user_id: str,
+    email: str,
+    code: str,
+) -> None:
+    """
+    Отправляет письмо с одноразовым кодом подтверждения email.
+
+    Permanent-ошибки клиента (4xx, 500) падают сразу — retry не делается.
+    Temporary (502/503/504, таймаут, сетевая ошибка) поднимают
+    ``ExternalAPITemporaryError`` и попадают под retry-стратегию (3 попытки,
+    экспоненциальный backoff от 10 сек).
+
+    Args:
+        context: Procrastinate JobContext с ``additional_context``, в котором
+            worker должен предоставить ``email_transport: EmailTransport``
+        user_id: ID пользователя; используется только для логов и lock'а
+            (lock задаётся при defer'е в сервисе, не здесь)
+        email: Адрес получателя
+        code: Plaintext-код, который увидит пользователь в письме
+    """
+    transport: EmailTransport = context.additional_context["email_transport"]
+    message = render_verification_email(email=email, code=code)
+    await transport.send(message=message)
+    logger.info("auth.verification_email.sent", user_id=user_id, email=email)
