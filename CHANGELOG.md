@@ -6,6 +6,19 @@
 
 Формат версий соответствует [SemVer](https://semver.org/lang/ru/).
 
+## [0.9.0] 2026-05-11
+
+### Добавлено
+
+- Эндпоинты `/v1/auth/login/`, `/v1/auth/logout/`, `/v1/auth/refresh/` — полный flow аутентификации с access-JWT и refresh-cookie
+- Ротация refresh-токена с reuse detection (OAuth 2.1): использование уже отозванного токена инвалидирует все активные сессии пользователя
+- Shared-компонент `DeterministicHasher` (`app/shared/infra/crypto/`) с реализацией `Sha256DeterministicHasher` — для index-lookup по детерминированному hash'у
+
+### Изменено
+
+- Refresh-токены хранятся как `token_hash` (SHA-256) с unique-индексом; в cookie уходит plaintext-секрет, БД компрометация не даёт rerun'нуть существующие сессии
+- Из `RefreshTokenEntity` убран `last_seen_at` — его роль закрывает `updated_at` от `TimestampedEntityMixin`
+
 ## [0.8.1] 2026-05-10
 
 ### Добавлено

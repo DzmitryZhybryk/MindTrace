@@ -22,6 +22,16 @@ class InvalidAccessTokenError(UnauthorizedError):
     message = "Невалидный или истёкший access-токен"
 
 
+class InvalidCredentialsError(UnauthorizedError):
+    code = "auth.invalid_credentials"
+    message = "Неверный логин или пароль"
+
+
+class InvalidRefreshTokenError(UnauthorizedError):
+    code = "auth.invalid_refresh_token"
+    message = "Невалидный или истёкший refresh-токен"
+
+
 class UserCredentialsNotFoundError(NotFoundError):
     code = "auth.user_credentials_not_found"
     message = "Учётная запись не найдена"

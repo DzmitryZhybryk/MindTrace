@@ -1,10 +1,15 @@
 import datetime as dt
 from dataclasses import dataclass
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, SecretStr
 
-__all__ = ["ClientMetadata", "IssuedRefreshToken", "RegistrationCommand", "TokenPairResult"]
+__all__ = [
+    "ClientMetadata",
+    "IssuedRefreshToken",
+    "LoginCommand",
+    "RegistrationCommand",
+    "TokenPairResult",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,16 +27,31 @@ class RegistrationCommand(BaseModel):
     marketing_emails_consent: bool
 
 
-@dataclass(frozen=True, slots=True)
-class IssuedRefreshToken:
-    """Сужённый view на refresh-токен для presentation-слоя."""
+class LoginCommand(BaseModel):
+    model_config = ConfigDict(frozen=True)
 
-    token_id: UUID
+    login: str
+    password: SecretStr
+
+
+class IssuedRefreshToken(BaseModel):
+    """
+    Сужённый view на refresh-токен для presentation-слоя.
+
+    Plaintext-секрет уходит в HttpOnly cookie, в БД лежит только его
+    детерминированный hash. ``SecretStr`` гарантирует, что секрет не утечёт
+    в логи через ``repr()`` / structlog — для извлечения нужен явный
+    ``get_secret_value()`` на границе HTTP.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    secret: SecretStr
     expires_at: dt.datetime
 
 
 class TokenPairResult(BaseModel):
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(frozen=True)
 
     access_token: SecretStr
     refresh_token: IssuedRefreshToken

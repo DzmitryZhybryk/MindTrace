@@ -8,6 +8,8 @@ from app.auth.exceptions import (
     EmailAlreadyExistError,
     EmailAlreadyVerifiedError,
     InvalidAccessTokenError,
+    InvalidCredentialsError,
+    InvalidRefreshTokenError,
     TermsNotAcceptedError,
     UserCredentialsNotFoundError,
     UsernameAlreadyExistError,
@@ -42,6 +44,63 @@ REGISTER_RESPONSES: Final[dict[int | str, DictStrAny]] = {
                         "value": error_response_example(UsernameAlreadyExistError),
                     },
                 },
+            }
+        },
+    },
+    500: {
+        "description": "Внутренняя ошибка сервера",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": error_response_example(ServerError),
+            }
+        },
+    },
+}
+
+
+LOGIN_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+    401: {
+        "description": "Неверные учётные данные",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": error_response_example(InvalidCredentialsError),
+            }
+        },
+    },
+    500: {
+        "description": "Внутренняя ошибка сервера",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": error_response_example(ServerError),
+            }
+        },
+    },
+}
+
+
+LOGOUT_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+    500: {
+        "description": "Внутренняя ошибка сервера",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": error_response_example(ServerError),
+            }
+        },
+    },
+}
+
+
+REFRESH_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+    401: {
+        "description": "Невалидный или истёкший refresh-токен",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": error_response_example(InvalidRefreshTokenError),
             }
         },
     },
