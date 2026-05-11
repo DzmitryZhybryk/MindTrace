@@ -8,10 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.application.schemas import ClientMetadata
 from app.auth.application.services import AuthService
 from app.auth.application.settings import AuthServiceSettings, get_auth_service_settings
-from app.auth.exceptions import InvalidAccessTokenError
+from app.auth.exceptions import InvalidAccessTokenError, InvalidRefreshTokenError
 from app.auth.infra.clients.internal_users_client import InternalUsersClient
 from app.auth.infra.uow import AuthUnitOfWork
-from app.shared.infra.crypto import Argon2SecretHasher
+from app.auth.presentation.cookies import read_refresh_token_cookie
+from app.shared.infra.crypto import Argon2SecretHasher, DeterministicHasher, Sha256DeterministicHasher
 from app.shared.infra.jwt import JWTDecodeError, JWTService, get_jwt_service
 from app.shared.infra.postgres.dependency import db_session_dependency
 from app.shared.infra.procrastinate import TaskBus
@@ -85,17 +86,55 @@ def task_bus_dependency(request: Request) -> TaskBus:
     return app.registry.get(TaskBus)
 
 
+def token_hasher_dependency() -> DeterministicHasher:
+    """
+    Возвращает детерминированный хешер для refresh-токенов.
+
+    Stateless и без внешних зависимостей — singleton не нужен, конструктор
+    дешёвый. Через override этой dependency тесты подменяют реализацию.
+    """
+    return Sha256DeterministicHasher()
+
+
+def optional_refresh_secret_dependency(request: Request) -> str | None:
+    """
+    Возвращает plaintext-секрет refresh-токена из cookie или ``None``.
+
+    Используется в /logout: операция идемпотентна и должна 204'нуть даже без cookie.
+    """
+    return read_refresh_token_cookie(request=request)
+
+
+def required_refresh_secret_dependency(request: Request) -> str:
+    """
+    Возвращает plaintext-секрет refresh-токена из cookie или 401.
+
+    Используется в /refresh: без cookie ротация невозможна, поэтому
+    отсутствие cookie — это уже ошибка аутентификации, а не валидации тела.
+
+    Raises:
+        InvalidRefreshTokenError: Cookie ``refresh_token`` отсутствует
+    """
+    secret = read_refresh_token_cookie(request=request)
+    if secret is None:
+        raise InvalidRefreshTokenError()
+
+    return secret
+
+
 def auth_service_dependency(
     uow: Annotated[AuthUnitOfWork, Depends(auth_uow_dependency)],
     users_client: Annotated[InternalUsersClient, Depends(users_client_dependency)],
     jwt_service: Annotated[JWTService, Depends(jwt_service_dependency)],
     auth_settings: Annotated[AuthServiceSettings, Depends(auth_service_settings_dependency)],
     task_bus: Annotated[TaskBus, Depends(task_bus_dependency)],
+    token_hasher: Annotated[DeterministicHasher, Depends(token_hasher_dependency)],
 ) -> AuthService:
     return AuthService(
         uow=uow,
         users_client=users_client,
         hasher=Argon2SecretHasher(),
+        token_hasher=token_hasher,
         jwt_service=jwt_service,
         task_bus=task_bus,
         auth_settings=auth_settings,

@@ -1,8 +1,16 @@
+import secrets
+from typing import Final
 from uuid import UUID
 
 from pydantic import SecretStr
 
-from app.auth.application.schemas import ClientMetadata, IssuedRefreshToken, RegistrationCommand, TokenPairResult
+from app.auth.application.schemas import (
+    ClientMetadata,
+    IssuedRefreshToken,
+    LoginCommand,
+    RegistrationCommand,
+    TokenPairResult,
+)
 from app.auth.application.settings import AuthServiceSettings
 from app.auth.domain.entities import ChallengeEntity, RefreshTokenEntity, UserCredentialsEntity
 from app.auth.domain.enums import ChallengeType
@@ -10,6 +18,8 @@ from app.auth.domain.value_objects import Password
 from app.auth.exceptions import (
     ChallengeNotFoundError,
     EmailAlreadyExistError,
+    InvalidCredentialsError,
+    InvalidRefreshTokenError,
     UserCredentialsNotFoundError,
     UsernameAlreadyExistError,
     VerificationCodeInvalidError,
@@ -17,9 +27,18 @@ from app.auth.exceptions import (
 from app.auth.infra.clients.internal_users_client import CreateUserRequest, InternalUsersClient
 from app.auth.infra.tasks import send_verification_email
 from app.auth.infra.uow import AuthUnitOfWork
-from app.shared.infra.crypto import SecretHasher
+from app.shared.infra.crypto import Argon2SecretHasher, DeterministicHasher, SecretHasher
 from app.shared.infra.jwt import JWTService
 from app.shared.infra.procrastinate import TaskBus
+
+_REFRESH_TOKEN_SECRET_BYTES: Final[int] = 32
+
+# Заранее посчитанный argon2-хеш фиксированной строки. Используется в ``login``
+# для timing mitigation: если по логину никого не найдено, мы всё равно делаем
+# ``hasher.verify`` против этой константы, чтобы потраченное время не отличалось
+# от случая «юзер найден, пароль неверный». Считается один раз при импорте —
+# по-запросный argon2 был бы +50ms на каждом login'е.
+_DUMMY_PASSWORD_HASH: Final[str] = Argon2SecretHasher().hash(secret="timing_mitigation_dummy")  # noqa: S106
 
 
 class AuthService:
@@ -28,6 +47,7 @@ class AuthService:
         uow: AuthUnitOfWork,
         users_client: InternalUsersClient,
         hasher: SecretHasher,
+        token_hasher: DeterministicHasher,
         jwt_service: JWTService,
         auth_settings: AuthServiceSettings,
         task_bus: TaskBus,
@@ -35,6 +55,7 @@ class AuthService:
         self._uow = uow
         self._users_client = users_client
         self._hasher = hasher
+        self._token_hasher = token_hasher
         self._jwt_service = jwt_service
         self._auth_settings = auth_settings
         self._task_bus = task_bus
@@ -63,28 +84,154 @@ class AuthService:
             ),
         )
 
-        refresh_token = RefreshTokenEntity.create_refresh_token_entity(
+        refresh_secret, refresh_token = self._issue_refresh_token(
             user_id=credentials_entity.user_id,
-            ttl_days=self._auth_settings.refresh_token_ttl_days,
-            ip_address=client_metadata.ip_address,
-            user_agent=client_metadata.user_agent,
+            client_metadata=client_metadata,
         )
         await self._uow.refresh_token_repository.insert_refresh_token(token=refresh_token)
         await self._uow.commit()
 
         await self.request_email_verification(user_id=credentials_entity.user_id)
 
-        access_token = self._jwt_service.create_access_token(
-            user_id=credentials_entity.user_id,
-            role=credentials_entity.role.value,
-            email_verified=credentials_entity.is_email_verified,
+        return self._build_token_pair(
+            credentials=credentials_entity,
+            refresh_secret=refresh_secret,
+            refresh_token=refresh_token,
         )
-        return TokenPairResult(
-            access_token=SecretStr(access_token),
-            refresh_token=IssuedRefreshToken(
-                token_id=refresh_token.token_id,
-                expires_at=refresh_token.expires_at,
-            ),
+
+    async def login(self, command: LoginCommand, client_metadata: ClientMetadata) -> TokenPairResult:
+        """
+        Аутентифицирует пользователя по email/username и паролю.
+
+        Любая ошибка (нет такого пользователя, неверный пароль) превращается
+        в один и тот же ``InvalidCredentialsError`` — это не даёт атакующему
+        отличить "несуществующий логин" от "неверный пароль" по коду ответа.
+
+        Timing-attack mitigation: если по логину никого не найдено, мы всё
+        равно вызываем ``hasher.verify`` против ``_DUMMY_PASSWORD_HASH``. Без
+        этого юзер-enumeration был бы тривиален по разнице во времени ответа.
+
+        Args:
+            command: Введённые логин и пароль
+            client_metadata: IP/user-agent для аудита refresh-токена
+
+        Returns:
+            Пара access + refresh для presentation-слоя
+
+        Raises:
+            InvalidCredentialsError: Логин не найден или пароль не совпал
+        """
+        candidates = await self._uow.user_credentials_repository.find_user_credentials_by_email_or_username(
+            email=command.login,
+            username=command.login,
+        )
+        credentials = next(
+            (c for c in candidates if c.email == command.login or c.username == command.login),
+            None,
+        )
+
+        if credentials is None:
+            self._hasher.verify(secret=command.password.get_secret_value(), hashed=_DUMMY_PASSWORD_HASH)
+            raise InvalidCredentialsError()
+
+        if not self._hasher.verify(secret=command.password.get_secret_value(), hashed=credentials.password.hash):
+            raise InvalidCredentialsError()
+
+        refresh_secret, refresh_token = self._issue_refresh_token(
+            user_id=credentials.user_id,
+            client_metadata=client_metadata,
+        )
+        await self._uow.refresh_token_repository.insert_refresh_token(token=refresh_token)
+        await self._uow.commit()
+
+        return self._build_token_pair(
+            credentials=credentials,
+            refresh_secret=refresh_secret,
+            refresh_token=refresh_token,
+        )
+
+    async def logout(self, refresh_secret: str | None) -> None:
+        """
+        Отзывает текущий refresh-токен по секрету из cookie.
+
+        Идемпотентная операция: отсутствие cookie / неизвестный секрет /
+        уже revoked-токен — все три случая завершаются молча, без ошибки.
+        Это позволяет фронту звать /logout без предварительной проверки
+        состояния и без боязни race с другим табом.
+
+        Args:
+            refresh_secret: Plaintext-секрет из cookie или ``None``, если cookie не пришла
+        """
+        if refresh_secret is None:
+            return
+
+        token_hash = self._token_hasher.digest(secret=refresh_secret)
+        token = await self._uow.refresh_token_repository.find_by_hash_for_update(token_hash=token_hash)
+        if token is None or token.is_revoked:
+            return
+
+        token.revoke()
+        await self._uow.refresh_token_repository.update_refresh_token_by_id(token=token)
+        await self._uow.commit()
+
+    async def refresh(self, refresh_secret: str, client_metadata: ClientMetadata) -> TokenPairResult:
+        """
+        Ротация refresh-токена с reuse detection (OAuth 2.1).
+
+        Поток:
+          1. По hash'у секрета берём строку под ``FOR UPDATE`` — параллельные
+             /refresh с одним секретом сериализуются.
+          2. Если токен уже revoked — это reuse: либо двойной /refresh, либо
+             утечка cookie. Защитная реакция — отозвать все активные refresh-токены
+             пользователя и вернуть 401, чтобы вынудить полный re-login.
+          3. Если истёк — 401 без побочных эффектов.
+          4. Подгружаем credentials по ``user_id`` (нужно для нового access-token'а).
+             Если их нет — race с удалением аккаунта, 401.
+          5. Старый токен помечаем revoked, выпускаем новый, всё одной транзакцией.
+
+        Args:
+            refresh_secret: Plaintext-секрет из cookie
+            client_metadata: IP/user-agent для аудита нового refresh-токена
+
+        Returns:
+            Новая пара access + refresh
+
+        Raises:
+            InvalidRefreshTokenError: Секрет не найден / уже revoked / истёк / связанный аккаунт не существует
+        """
+        token_hash = self._token_hasher.digest(secret=refresh_secret)
+        token = await self._uow.refresh_token_repository.find_by_hash_for_update(token_hash=token_hash)
+        if token is None:
+            raise InvalidRefreshTokenError()
+
+        if token.is_revoked:
+            await self._uow.refresh_token_repository.revoke_all_active_by_user_id(user_id=token.user_id)
+            await self._uow.commit()
+            raise InvalidRefreshTokenError()
+
+        if token.is_expired:
+            raise InvalidRefreshTokenError()
+
+        credentials = await self._uow.user_credentials_repository.find_user_credentials_by_user_id(
+            user_id=token.user_id,
+        )
+        if credentials is None:
+            raise InvalidRefreshTokenError()
+
+        token.revoke()
+        await self._uow.refresh_token_repository.update_refresh_token_by_id(token=token)
+
+        new_refresh_secret, new_refresh_token = self._issue_refresh_token(
+            user_id=token.user_id,
+            client_metadata=client_metadata,
+        )
+        await self._uow.refresh_token_repository.insert_refresh_token(token=new_refresh_token)
+        await self._uow.commit()
+
+        return self._build_token_pair(
+            credentials=credentials,
+            refresh_secret=new_refresh_secret,
+            refresh_token=new_refresh_token,
         )
 
     async def request_email_verification(self, user_id: UUID) -> None:
@@ -191,6 +338,65 @@ class AuthService:
         await self._uow.challenge_repository.update_challenge_by_id(challenge=challenge)
         await self._uow.user_credentials_repository.update_user_credentials_by_user_id(credentials=credentials)
         await self._uow.commit()
+
+    def _issue_refresh_token(
+        self,
+        user_id: UUID,
+        client_metadata: ClientMetadata,
+    ) -> tuple[str, RefreshTokenEntity]:
+        """
+        Генерирует plaintext-секрет и доменную сущность refresh-токена.
+
+        Plaintext уходит в HttpOnly cookie, в БД лежит только его
+        детерминированный hash — компрометация дампа БД не даёт rerun'нуть
+        существующие сессии без знания самого секрета.
+
+        Args:
+            user_id: ID пользователя, которому выдаём токен
+            client_metadata: IP/user-agent для аудита
+
+        Returns:
+            Кортеж ``(plaintext-секрет, RefreshTokenEntity готовый к insert'у)``
+        """
+        plaintext = secrets.token_urlsafe(_REFRESH_TOKEN_SECRET_BYTES)
+        token = RefreshTokenEntity.create_refresh_token_entity(
+            user_id=user_id,
+            token_hash=self._token_hasher.digest(secret=plaintext),
+            ttl_days=self._auth_settings.refresh_token_ttl_days,
+            ip_address=client_metadata.ip_address,
+            user_agent=client_metadata.user_agent,
+        )
+        return plaintext, token
+
+    def _build_token_pair(
+        self,
+        credentials: UserCredentialsEntity,
+        refresh_secret: str,
+        refresh_token: RefreshTokenEntity,
+    ) -> TokenPairResult:
+        """
+        Собирает ``TokenPairResult`` из credentials и пары plaintext/entity.
+
+        Args:
+            credentials: Доменная сущность учётных данных (нужна для role + email_verified в JWT)
+            refresh_secret: Plaintext-секрет refresh-токена
+            refresh_token: Доменная сущность refresh-токена (источник ``expires_at``)
+
+        Returns:
+            Готовый к отдаче через presentation-слой результат
+        """
+        access_token = self._jwt_service.create_access_token(
+            user_id=credentials.user_id,
+            role=credentials.role.value,
+            email_verified=credentials.is_email_verified,
+        )
+        return TokenPairResult(
+            access_token=SecretStr(access_token),
+            refresh_token=IssuedRefreshToken(
+                secret=SecretStr(refresh_secret),
+                expires_at=refresh_token.expires_at,
+            ),
+        )
 
     async def _ensure_credentials_unique(self, email: str, username: str) -> None:
         """
