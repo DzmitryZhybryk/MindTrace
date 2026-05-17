@@ -1,12 +1,14 @@
-"""Реализация ``SecretHasher`` через Argon2."""
+"""Реализация ``SaltedHasher`` через Argon2."""
+
+from functools import cache
 
 from argon2 import PasswordHasher as Argon2Hasher
 from argon2.exceptions import VerifyMismatchError
 
 
-class Argon2SecretHasher:
+class Argon2SaltedHasher:
     """
-    Реализация ``SecretHasher`` через Argon2.
+    Реализация ``SaltedHasher`` через Argon2.
 
     Argon2 — победитель Password Hashing Competition (PHC), рекомендован
     OWASP для хеширования паролей и других чувствительных секретов.
@@ -44,3 +46,15 @@ class Argon2SecretHasher:
             return False
         else:
             return True
+
+
+@cache
+def get_argon2_salted_hasher() -> Argon2SaltedHasher:
+    """
+    Возвращает singleton ``Argon2SaltedHasher`` на процесс.
+
+    Hasher stateless и thread-safe, пересоздавать на каждый запрос
+    бессмысленно. Тестируемость сохраняется через ``app.dependency_overrides``
+    на presentation-обёртке.
+    """
+    return Argon2SaltedHasher()

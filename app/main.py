@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from app.auth import auth_router
-from app.auth.infra.tasks import auth_blueprint
+from app.auth.infra import auth_blueprint
 
 # Настраиваем логирование в самом начале, до всех остальных импортов
 # Это гарантирует, что handlers создаются с правильным форматтером
@@ -17,7 +17,6 @@ from app.shared.infra.procrastinate import ProcrastinateComponent, TaskBusCompon
 from app.shared.logging import HTTPLoggingMiddleware, configure_logging, get_logger
 from app.shared.schemas.base import BFastAPI
 from app.shared.settings import settings
-from app.users import router as user_router
 
 logger = get_logger(__name__)
 
@@ -88,6 +87,5 @@ def create_app() -> BFastAPI:
     register_exception_handlers(app)
 
     app.include_router(auth_router, prefix="/v1/auth", tags=["v1.auth"])
-    app.include_router(user_router, prefix="/v1/users", tags=["v1.users"])
 
     return app

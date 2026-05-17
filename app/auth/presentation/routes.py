@@ -3,13 +3,15 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response, status
 
+from app.auth.application.auth_service import AuthService
+from app.auth.application.email_verification_service import EmailVerificationService
 from app.auth.application.schemas import ClientMetadata, LoginCommand, RegistrationCommand
-from app.auth.application.services import AuthService
 from app.auth.presentation.cookies import clear_refresh_token_cookie, set_refresh_token_cookie
 from app.auth.presentation.dependencies import (
     auth_service_dependency,
     client_metadata_dependency,
     current_user_id_dependency,
+    email_verification_service_dependency,
     optional_refresh_secret_dependency,
     required_refresh_secret_dependency,
 )
@@ -100,9 +102,9 @@ async def refresh(
 )
 async def send_email_verification(
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
-    auth_service: Annotated[AuthService, Depends(auth_service_dependency)],
+    email_verification_service: Annotated[EmailVerificationService, Depends(email_verification_service_dependency)],
 ) -> None:
-    await auth_service.request_email_verification(user_id=user_id)
+    await email_verification_service.request_email_verification(user_id=user_id)
 
 
 @auth_router.post(
@@ -113,6 +115,6 @@ async def send_email_verification(
 async def verify_email(
     body: VerifyEmailRequest,
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
-    auth_service: Annotated[AuthService, Depends(auth_service_dependency)],
+    email_verification_service: Annotated[EmailVerificationService, Depends(email_verification_service_dependency)],
 ) -> None:
-    await auth_service.verify_email(user_id=user_id, code=body.code)
+    await email_verification_service.verify_email(user_id=user_id, code=body.code)

@@ -35,9 +35,20 @@ Create an implementation plan **before** writing code. Run inline (do not invoke
 - MEDIUM: ...
 
 ## Estimated complexity: HIGH/MEDIUM/LOW
-
-**WAITING FOR CONFIRMATION** — yes / no / modify
 ```
+
+## Confirmation prompt
+
+After printing the plan, ask via `AskUserQuestion` (do **not** ask in chat — the user wants a keyboard-navigable picker, not a typed reply):
+
+- **question**: `"Confirm the plan and start Phase 1?"`
+- **header**: `"Plan"`
+- Options (in this order):
+  1. `Proceed` (Recommended) — "Start Phase 1 with the plan as-is"
+  2. `Modify` — "Discuss changes before starting"
+  3. `Cancel` — "Drop the plan, don't write `.current-plan.md`"
+
+If the plan has any explicit per-phase open questions (e.g. "Phase N — execute or skip?", "Phase M — approach A or B?"), include them as additional questions in the **same** `AskUserQuestion` call. Limit: 4 questions total per call, so prioritize the most decision-blocking ones.
 
 ## After confirmation
 
@@ -87,9 +98,16 @@ After finishing each phase, stop before starting the next one. Report briefly:
 - what's done in this phase (1–2 lines)
 - what's next
 
-Then ask the user: **"Phase N complete. Move on to Phase N+1, or anything to discuss? — yes / chat about this"**
+Then ask via `AskUserQuestion` (do **not** ask in chat — keyboard-navigable picker):
 
-Wait for an explicit answer. Do not proceed on silence or implicit signals. Once the user confirms — update `.claude/.current-plan.md` (check the phase off, log a line) before starting the next phase.
+- **question**: `"Phase N complete. Move on to Phase N+1?"` (substitute actual numbers)
+- **header**: `"Phase N→N+1"` (substitute actual numbers, max 12 chars)
+- Options (in this order):
+  1. `Move on` (Recommended) — "Start Phase N+1"
+  2. `Discuss this phase` — "Chat about what shipped before moving on"
+  3. `Stop here` — "Pause the plan; keep `.current-plan.md` for later resumption"
+
+Wait for an explicit answer. Do not proceed on silence or implicit signals. Once the user picks `Move on` — update `.claude/.current-plan.md` (check the phase off, log a line) before starting the next phase.
 
 ## Task completion: CHANGELOG + version bump
 

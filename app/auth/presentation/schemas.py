@@ -22,6 +22,12 @@ class RegisterRequest(BaseModel):
         application-слой — фактический момент принятия условий фиксируется
         в роуте через ``terms_accepted_at`` и пробрасывается дальше для аудита.
 
+        Pydantic v2 оборачивает в ``ValidationError`` только ``ValueError``/
+        ``AssertionError``/``PydanticCustomError``; ``TermsNotAcceptedError``
+        (наследник ``BaseDomainError``) пробрасывается наружу как есть и
+        ловится глобальным exception handler'ом → HTTP 400 с правильным
+        ``code`` через ``DOMAIN_EXCEPTION_MAPPING``, а не 422 от FastAPI.
+
         Returns:
             Сам валидируемый объект (контракт ``model_validator(mode="after")``)
 

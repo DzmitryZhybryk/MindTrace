@@ -31,7 +31,7 @@ class ChallengeEntity(TimestampedEntityMixin):
 
     Хранит **только хэш** кода — plaintext знают только сервис, который его
     сгенерировал, и пользователь, получивший письмо. Хеширование/верификация
-    делаются на стороне application через ``SecretHasher`` (тот же контракт,
+    делаются на стороне application через ``SaltedHasher`` (тот же контракт,
     что и у паролей): сущность об алгоритме не знает.
     """
 
@@ -79,7 +79,7 @@ class ChallengeEntity(TimestampedEntityMixin):
         Args:
             user_id: ID пользователя, которому принадлежит challenge
             challenge_type: Сценарий, для которого выпускается challenge
-            code_hash: Хэш кода, полученный из ``SecretHasher.hash``
+            code_hash: Хэш кода, полученный из ``SaltedHasher.hash``
             ttl_minutes: Срок жизни challenge'а в минутах
 
         Returns:

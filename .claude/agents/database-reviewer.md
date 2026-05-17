@@ -2,7 +2,7 @@
 name: database-reviewer
 description: PostgreSQL database specialist for query optimization, schema design, security, and performance. Use when writing SQL, creating Alembic migrations, designing schemas, or troubleshooting database performance.
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
-model: sonnet
+model: opus
 ---
 
 # Database Reviewer

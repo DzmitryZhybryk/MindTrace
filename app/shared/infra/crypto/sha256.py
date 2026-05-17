@@ -1,6 +1,7 @@
 """Реализация ``DeterministicHasher`` через SHA-256."""
 
 import hashlib
+from functools import cache
 
 
 class Sha256DeterministicHasher:
@@ -23,3 +24,14 @@ class Sha256DeterministicHasher:
             64-символьная hex-строка SHA-256-дайджеста
         """
         return hashlib.sha256(secret.encode()).hexdigest()
+
+
+@cache
+def get_sha256_deterministic_hasher() -> Sha256DeterministicHasher:
+    """
+    Возвращает singleton ``Sha256DeterministicHasher`` на процесс.
+
+    Hasher не имеет состояния, плодить инстансы бессмысленно. Тестируемость
+    сохраняется через ``app.dependency_overrides`` на presentation-обёртке.
+    """
+    return Sha256DeterministicHasher()

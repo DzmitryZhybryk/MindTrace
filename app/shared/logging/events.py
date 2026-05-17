@@ -2,8 +2,12 @@
 
 EVENT_MAPPER: dict[tuple[str, str], str] = {
     # Пути в маппере должны быть без trailing slash (нормализованные)
-    ("POST", "/v1/users/register"): "User registration",
-    # Добавьте другие маршруты по мере необходимости
+    ("POST", "/v1/auth/register"): "User registration",
+    ("POST", "/v1/auth/login"): "User login",
+    ("POST", "/v1/auth/logout"): "User logout",
+    ("POST", "/v1/auth/refresh"): "Refresh access token",
+    ("POST", "/v1/auth/email/send-verification"): "Send email verification",
+    ("POST", "/v1/auth/email/verify"): "Verify email",
 }
 
 
