@@ -17,7 +17,7 @@ Schema procrastinate применяется здесь же при старте:
 
 import asyncio
 
-from app.auth.infra.tasks import auth_blueprint
+from app.auth.infra import auth_blueprint
 from app.shared.enums import AppEnvEnum
 from app.shared.infra.di.base import BaseComponent
 from app.shared.infra.di.registry import ComponentRegistry

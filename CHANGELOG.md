@@ -6,6 +6,32 @@
 
 Формат версий соответствует [SemVer](https://semver.org/lang/ru/).
 
+## [0.9.2] 2026-05-17
+
+### Изменено
+
+- Унифицированы singleton-factories для stateless-инфры: `get_argon2_salted_hasher()` и `get_sha256_deterministic_hasher()` зеркалят существующий `get_jwt_service()`. Презентационные dependency-функции теперь импортируют factory вместо прямых конструкторов — больше нет дублей инстансов hasher'ов на запрос
+- `EVENT_MAPPER` (`app/shared/logging/events.py`) актуализирован — устаревший `/v1/users/register` заменён на 6 actual auth-routes (register/login/logout/refresh/email send/email verify)
+- `auth_blueprint` re-export через `app/auth/infra/__init__.py` — composition root (`main.py` + `worker.py`) больше не лезет в `infra/tasks.py` напрямую
+
+### Удалено
+
+- Пустая директория `app/users/presentation/` (router без endpoints, schemas/responses с пустыми `__all__`). DDD-нарезка users-домена сохраняется, presentation-слой добавится обратно, когда появится первый endpoint
+
+### Исправлено
+
+- Драйфт документации в `CLAUDE.md`: убран несуществующий `messages` домен, переписаны секции `crypto` (`SaltedHasher`/`DeterministicHasher` + factories) и `BaseDBRepository` (`_fetch_one`/`insert`), уточнено описание `Password` value object, добавлен раздел Component+Registry vs `@cache`-factory с критерием выбора
+
+## [0.9.1] 2026-05-17
+
+### Изменено
+
+- Монолитный `AuthService` разделён на `AuthService` (register/login/logout/refresh) и `EmailVerificationService` (request/verify) — две application-роли в auth-домене, общий `AuthUnitOfWork`
+- Выделен `TokenIssuer` (`app/auth/application/token_issuer.py`) — инкапсулирует выпуск refresh-секретов, их детерминированный hash и сборку `TokenPairResult`; `AuthService` больше не знает про JWT и hashing-детали
+- Из `AuthServiceSettings` выделен `EmailVerificationSettings` (`app/auth/application/settings.py`) — `EmailVerificationService` получает только свой конфиг; параметры refresh-token'а живут примитивом в `TokenIssuer.__init__` (single-field конфиг не оборачиваем в settings-класс)
+- Переименования в `app/shared/infra/crypto/`: `SecretHasher` → `SaltedHasher`, `Argon2SecretHasher` → `Argon2SaltedHasher` — имя протокола теперь зеркально `DeterministicHasher` по реальной property (salted vs deterministic), которая и определяет применимость
+- Унифицированы singleton-factories для stateless-инфры: `get_argon2_salted_hasher()` и `get_sha256_deterministic_hasher()` зеркалят существующий `get_jwt_service()` — больше нет дублирования инстансов hasher'ов между dependency-функциями
+
 ## [0.9.0] 2026-05-11
 
 ### Добавлено
