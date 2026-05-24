@@ -6,9 +6,9 @@ from app.auth.exceptions import TermsNotAcceptedError
 
 
 class RegisterRequest(BaseModel):
-    username: Annotated[str, Field(max_length=50)]
+    username: Annotated[str, Field(min_length=3, max_length=50)]
     email: Annotated[EmailStr, Field(max_length=254)]
-    password: Annotated[SecretStr, Field(min_length=5, max_length=50)]
+    password: Annotated[SecretStr, Field(min_length=8, max_length=50)]
     terms_accepted: bool
     marketing_emails_consent: bool
 
@@ -41,8 +41,11 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    login: Annotated[str, Field(min_length=3, max_length=254)]
-    password: Annotated[SecretStr, Field(min_length=5, max_length=50)]
+    # На login пароль/логин на длину/политику не валидируем — проверяем лишь, что
+    # они непустые и в пределах max. Иначе юзер со «старым» коротким паролем
+    # залочится на входе; неверные креды и так дадут 401, а не 422.
+    login: Annotated[str, Field(min_length=1, max_length=254)]
+    password: Annotated[SecretStr, Field(min_length=1, max_length=50)]
 
 
 class TokenResponse(BaseModel):

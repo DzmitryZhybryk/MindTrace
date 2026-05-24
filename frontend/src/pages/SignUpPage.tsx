@@ -1,5 +1,4 @@
 import {
-  Alert,
   Anchor,
   Box,
   Button,
@@ -8,6 +7,7 @@ import {
   Paper,
   PasswordInput,
   Stack,
+  Text,
   TextInput,
   Title,
 } from "@mantine/core";
@@ -18,6 +18,7 @@ import { AuthHeader } from "../components/AuthHeader";
 import { AuthGlobe } from "../components/AuthGlobe";
 import { register } from "../api/auth";
 import { applyApiError } from "../api/errors";
+import { useAuth } from "../auth/AuthContext";
 
 type SignUpFormValues = {
   username: string;
@@ -29,6 +30,7 @@ type SignUpFormValues = {
 
 export function SignUpPage() {
   const navigate = useNavigate();
+  const { setAccessToken } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -42,12 +44,22 @@ export function SignUpPage() {
       marketingEmailsConsent: false,
     },
     validate: {
-      username: (value) =>
-        value.trim().length < 3 ? "Username must be at least 3 characters" : null,
-      email: (value) =>
-        /^\S+@\S+\.\S+$/.test(value) ? null : "Enter a valid email",
-      password: (value) =>
-        value.length < 8 ? "Password must be at least 8 characters" : null,
+      username: (value) => {
+        const trimmed = value.trim();
+        if (trimmed.length < 3) return "Username must be at least 3 characters";
+        if (trimmed.length > 50) return "Username must be at most 50 characters";
+        return null;
+      },
+      email: (value) => {
+        if (!/^\S+@\S+\.\S+$/.test(value)) return "Enter a valid email";
+        if (value.length > 254) return "Email is too long";
+        return null;
+      },
+      password: (value) => {
+        if (value.length < 8) return "Password must be at least 8 characters";
+        if (value.length > 50) return "Password must be at most 50 characters";
+        return null;
+      },
       termsAccepted: (value) =>
         value ? null : "You must accept the terms to continue",
     },
@@ -61,7 +73,7 @@ export function SignUpPage() {
     setSubmitting(true);
     try {
       const { access_token } = await register(values);
-      sessionStorage.setItem("access_token", access_token);
+      setAccessToken(access_token);
       navigate("/");
     } catch (err) {
       setFormError(applyApiError(err, form));
@@ -120,9 +132,9 @@ export function SignUpPage() {
               </Stack>
 
               {formError && (
-                <Alert color="red" radius="md" variant="light">
+                <Text size="sm" c="red" fw={500}>
                   {formError}
-                </Alert>
+                </Text>
               )}
 
               <form onSubmit={form.onSubmit(handleSubmit)}>

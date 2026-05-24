@@ -23,3 +23,34 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
+
+/*
+ * Стиль ошибок валидации: само поле остаётся нейтральным (без красной рамки,
+ * текста, плейсхолдера и иконки) — красным остаётся только сообщение под полем.
+ * Переопределяем error-переменные Mantine на их обычные значения; префикс
+ * [data-mantine-color-scheme] добивает специфичность правил из @mantine/core.
+ */
+[data-mantine-color-scheme] .mantine-Input-wrapper[data-error]:not([data-variant="unstyled"]) {
+  --input-bd: var(--mantine-color-gray-4);
+}
+
+[data-mantine-color-scheme] .mantine-Input-wrapper[data-error] {
+  --input-color: var(--mantine-color-text);
+  --input-placeholder-color: var(--mantine-color-placeholder);
+  --input-section-color: var(--mantine-color-dimmed);
+}
+
+/* Обычная рамка фокуса сохраняется даже когда у поля есть ошибка. */
+[data-mantine-color-scheme] .mantine-Input-wrapper[data-error] .mantine-Input-input:focus,
+[data-mantine-color-scheme] .mantine-Input-wrapper[data-error] .mantine-Input-input:focus-within {
+  --input-bd: var(--input-bd-focus);
+}
+
+/*
+ * Текст ошибки поля (Input.Error от form.setFieldError) — medium weight (500):
+ * акцент даём весом, а не размером. Держит встроенные ошибки полей в одном
+ * стиле с кастомными <Text c="red" fw={500}> в формах и диалогах.
+ */
+[data-mantine-color-scheme] .mantine-InputWrapper-error {
+  font-weight: 500;
+}
