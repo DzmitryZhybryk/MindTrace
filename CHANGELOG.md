@@ -6,6 +6,23 @@
 
 Формат версий соответствует [SemVer](https://semver.org/lang/ru/).
 
+## [0.9.4] 2026-05-24
+
+### Изменено
+
+- Доменные исключения стали транспортно-нейтральными: вместо HTTP-привязки введена `ErrorCategory`, а перевод категории в HTTP-статус живёт единственным маппингом в HTTP-адаптере (`resolve_http_status`). Это убирает дублирование резолва (handler + логирование) и развязывает домен с транспортом — добавление gRPC/другого адаптера не требует правок домена
+- Базовые классы исключений переименованы из HTTP-жаргона в доменно-семантические: `BadRequestError`→`InvalidInputError`, `UnauthorizedError`→`UnauthenticatedError`, `ForbiddenError`→`PermissionDeniedError`, `UnprocessableEntityError`→`UnprocessableError`, `TooManyRequestsError`→`RateLimitedError`, `ServerError`→`InternalError` (+ соответствующие базовые `code`). `auth.*`-коды и контракт фронта не затронуты
+- `ErrorResponse`: `timestamp` теперь tz-aware (UTC); схема переведена на `model_config`/`ConfigDict` (pydantic v2)
+
+### Исправлено
+
+- Не-доменные (необработанные) исключения теперь дают HTTP 500 консистентно и в ответе, и в логах — раньше `ValueError` логировался как 400, а отвечал 500
+- Устранена потенциальная утечка текста внутренней ошибки (`str(exc)`) в теле ответа; пример ошибки в OpenAPI больше не содержит несуществующего поля `error`
+
+### Удалено
+
+- Мёртвый код: `request.state.exception_handled`/`exception_type`, неиспользуемые override-параметры `register_exception_handlers`, словарь `DOMAIN_EXCEPTION_MAPPING`
+
 ## [0.9.3] 2026-05-24
 
 ### Изменено

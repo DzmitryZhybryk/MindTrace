@@ -1,33 +1,33 @@
 from typing import ClassVar
 
 from app.shared.exceptions import (
-    BadRequestError,
     ConflictError,
     GoneError,
+    InvalidInputError,
     NotFoundError,
-    TooManyRequestsError,
-    UnauthorizedError,
+    RateLimitedError,
+    UnauthenticatedError,
 )
 from app.shared.types import OptionalDict
 
 
-class TermsNotAcceptedError(BadRequestError):
+class TermsNotAcceptedError(InvalidInputError):
     code = "auth.terms_not_accepted"
     message = "Необходимо принять пользовательское соглашение"
     details: ClassVar[OptionalDict] = {"field": "terms_accepted"}
 
 
-class InvalidAccessTokenError(UnauthorizedError):
+class InvalidAccessTokenError(UnauthenticatedError):
     code = "auth.invalid_access_token"
     message = "Невалидный или истёкший access-токен"
 
 
-class InvalidCredentialsError(UnauthorizedError):
+class InvalidCredentialsError(UnauthenticatedError):
     code = "auth.invalid_credentials"
     message = "Неверный логин или пароль"
 
 
-class InvalidRefreshTokenError(UnauthorizedError):
+class InvalidRefreshTokenError(UnauthenticatedError):
     code = "auth.invalid_refresh_token"
     message = "Невалидный или истёкший refresh-токен"
 
@@ -54,7 +54,7 @@ class EmailAlreadyVerifiedError(ConflictError):
     message = "Email уже подтверждён"
 
 
-class VerificationCodeInvalidError(BadRequestError):
+class VerificationCodeInvalidError(InvalidInputError):
     code = "auth.verification_code_invalid"
     message = "Неверный код подтверждения"
     details: ClassVar[OptionalDict] = {"field": "code"}
@@ -70,11 +70,11 @@ class ChallengeExpiredError(GoneError):
     message = "Срок действия кода подтверждения истёк"
 
 
-class ChallengeAttemptsExceededError(TooManyRequestsError):
+class ChallengeAttemptsExceededError(RateLimitedError):
     code = "auth.challenge_attempts_exceeded"
     message = "Превышено количество попыток ввода кода"
 
 
-class ChallengeResendCooldownError(TooManyRequestsError):
+class ChallengeResendCooldownError(RateLimitedError):
     code = "auth.challenge_resend_cooldown"
     message = "Слишком частая отправка кода, повторите попытку позже"

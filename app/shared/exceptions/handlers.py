@@ -13,60 +13,37 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.shared.exceptions import BaseDomainError
-from app.shared.exceptions.mappings import DOMAIN_EXCEPTION_MAPPING, ExceptionMappingT
+from app.shared.exceptions.mappings import resolve_http_status
 from app.shared.exceptions.schemas import ErrorResponse
 from app.shared.logging import get_logger
-from app.shared.types import OptionalDict
 
 logger = get_logger(__name__)
 
 type ExceptionHandlerT = Callable[[Request, Any], JSONResponse]
 
+# Ответ на не-доменное / необработанное исключение: наружу не утекают детали внутренней ошибки.
+_INTERNAL_ERROR_CONTENT = {"code": "internal", "message": "Внутренняя ошибка сервера"}
 
-def _create_error_response(
-    status_code: int,
-    exc: Exception,
-    details: OptionalDict = None,
-) -> JSONResponse:
-    """Создает HTTP ответ для исключения используя типизированную схему."""
-    if isinstance(exc, BaseDomainError):
-        error_response = ErrorResponse(
-            code=exc.code,
-            message=exc.message,
-            details=details if details is not None else exc.details,
-        )
-    else:
-        error_response = ErrorResponse(
-            code="internal_server_error",
-            message=str(exc),
-            details=details,
-        )
 
+def _create_error_response(exc: BaseDomainError) -> JSONResponse:
+    """Создает HTTP ответ для доменного исключения используя типизированную схему."""
+    error_response = ErrorResponse(code=exc.code, message=exc.message, details=exc.details)
     return JSONResponse(
-        status_code=status_code,
+        status_code=resolve_http_status(exc),
         content=error_response.model_dump(mode="json"),
     )
 
 
 def domain_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Обрабатывает доменные исключения, преобразуя их в HTTP ответы."""
-    # Логирование выполняется в HTTPLoggingMiddleware
-    # Ищем точное совпадение типа исключения
-    exc_type = type(exc)
-    if exc_type in DOMAIN_EXCEPTION_MAPPING:
-        status_code, _ = DOMAIN_EXCEPTION_MAPPING[exc_type]
-        return _create_error_response(status_code, exc)
+    # Логирование выполняется в HTTPLoggingMiddleware. Handler зарегистрирован на
+    # BaseDomainError, поэтому exc гарантированно доменный; HTTP-статус и тело берём
+    # прямо из исключения через единый resolve_http_status.
+    if isinstance(exc, BaseDomainError):
+        return _create_error_response(exc)
 
-    # Ищем по базовому классу (для иерархии исключений)
-    for exc_class, (status_code, _) in DOMAIN_EXCEPTION_MAPPING.items():
-        if isinstance(exc, exc_class):
-            return _create_error_response(status_code, exc)
-
-    # Если не найдено в маппинге, возвращаем общую ошибку
-    return JSONResponse(
-        status_code=500,
-        content={"code": "internal_server_error", "message": "Внутренняя ошибка сервера"},
-    )
+    # Страховка на случай прямого вызова с не-доменным исключением.
+    return JSONResponse(status_code=500, content=_INTERNAL_ERROR_CONTENT)
 
 
 def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -114,10 +91,7 @@ def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
 
     # Логирование выполняется в HTTPLoggingMiddleware
     # Возвращаем общую ошибку
-    return JSONResponse(
-        status_code=500,
-        content={"code": "internal_server_error", "message": "Внутренняя ошибка сервера"},
-    )
+    return JSONResponse(status_code=500, content=_INTERNAL_ERROR_CONTENT)
 
 
 BASE_EXCEPTION_HANDLERS: dict[type[Exception], ExceptionHandlerT] = {
@@ -132,24 +106,12 @@ BASE_EXCEPTION_HANDLERS: dict[type[Exception], ExceptionHandlerT] = {
 }
 
 
-def register_exception_handlers(
-    app: FastAPI,
-    *,
-    handlers: dict[type[Exception], ExceptionHandlerT] | None = None,
-    exception_mapping: ExceptionMappingT | None = None,
-) -> None:
+def register_exception_handlers(app: FastAPI) -> None:
     """
     Регистрирует обработчики исключений для FastAPI приложения.
 
     Args:
         app: Экземпляр FastAPI приложения
-        handlers: Дополнительные обработчики исключений (по умолчанию используется BASE_EXCEPTION_HANDLERS)
-        exception_mapping: Дополнительный маппинг доменных исключений в HTTP ответы
     """
-    if exception_mapping is not None:
-        DOMAIN_EXCEPTION_MAPPING.update(exception_mapping)
-
-    handlers_to_register = handlers or BASE_EXCEPTION_HANDLERS
-
-    for exc_class, handler in handlers_to_register.items():
+    for exc_class, handler in BASE_EXCEPTION_HANDLERS.items():
         app.add_exception_handler(exc_class, handler)

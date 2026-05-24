@@ -1,9 +1,9 @@
 """Исключения для компонентов инфраструктуры."""
 
-from app.shared.exceptions.base import ServerError
+from app.shared.exceptions.base import InternalError
 
 
-class ComponentNotRegisteredError(ServerError):
+class ComponentNotRegisteredError(InternalError):
     """
     Исключение, возникающее когда компонент не зарегистрирован в ComponentRegistry.
 

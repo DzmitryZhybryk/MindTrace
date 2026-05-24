@@ -15,7 +15,7 @@ from app.auth.exceptions import (
     UsernameAlreadyExistError,
     VerificationCodeInvalidError,
 )
-from app.shared.exceptions import ErrorResponse, ServerError
+from app.shared.exceptions import ErrorResponse, InternalError
 from app.shared.exceptions.examples import error_response_example
 from app.shared.types import DictStrAny
 
@@ -52,7 +52,7 @@ REGISTER_RESPONSES: Final[dict[int | str, DictStrAny]] = {
         "model": ErrorResponse,
         "content": {
             "application/json": {
-                "example": error_response_example(ServerError),
+                "example": error_response_example(InternalError),
             }
         },
     },
@@ -74,7 +74,7 @@ LOGIN_RESPONSES: Final[dict[int | str, DictStrAny]] = {
         "model": ErrorResponse,
         "content": {
             "application/json": {
-                "example": error_response_example(ServerError),
+                "example": error_response_example(InternalError),
             }
         },
     },
@@ -87,7 +87,7 @@ LOGOUT_RESPONSES: Final[dict[int | str, DictStrAny]] = {
         "model": ErrorResponse,
         "content": {
             "application/json": {
-                "example": error_response_example(ServerError),
+                "example": error_response_example(InternalError),
             }
         },
     },
@@ -109,7 +109,7 @@ REFRESH_RESPONSES: Final[dict[int | str, DictStrAny]] = {
         "model": ErrorResponse,
         "content": {
             "application/json": {
-                "example": error_response_example(ServerError),
+                "example": error_response_example(InternalError),
             }
         },
     },
@@ -158,7 +158,7 @@ SEND_EMAIL_VERIFICATION_RESPONSES: Final[dict[int | str, DictStrAny]] = {
         "model": ErrorResponse,
         "content": {
             "application/json": {
-                "example": error_response_example(ServerError),
+                "example": error_response_example(InternalError),
             }
         },
     },
@@ -234,7 +234,7 @@ VERIFY_EMAIL_RESPONSES: Final[dict[int | str, DictStrAny]] = {
         "model": ErrorResponse,
         "content": {
             "application/json": {
-                "example": error_response_example(ServerError),
+                "example": error_response_example(InternalError),
             }
         },
     },

@@ -1,11 +1,10 @@
 """Схемы для ответов ошибок API."""
 
 import datetime as dt
-from typing import ClassVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from app.shared.types import DictStrAny, OptionalDict
+from app.shared.types import OptionalDict
 
 
 class ErrorResponse(BaseModel):
@@ -18,7 +17,7 @@ class ErrorResponse(BaseModel):
     code: str = Field(
         ...,
         description="Код ошибки для программной обработки",
-        examples=["bad_request", "not_found", "internal_server_error"],
+        examples=["invalid_input", "not_found", "internal"],
     )
     message: str = Field(
         ...,
@@ -31,16 +30,17 @@ class ErrorResponse(BaseModel):
         examples=[{"field": "email", "reason": "Invalid email format"}],
     )
     timestamp: dt.datetime = Field(
-        default_factory=dt.datetime.now,
-        description="Временная метка возникновения ошибки",
+        default_factory=lambda: dt.datetime.now(dt.UTC),
+        description="Временная метка возникновения ошибки (UTC)",
     )
 
-    class Config:
-        json_schema_extra: ClassVar[DictStrAny] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
-                "code": "bad_request",
+                "code": "invalid_input",
                 "message": "Некорректный запрос",
                 "details": None,
-                "timestamp": "2024-01-01T12:00:00",
+                "timestamp": "2024-01-01T12:00:00Z",
             }
         }
+    )
