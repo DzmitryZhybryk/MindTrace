@@ -8,7 +8,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from app.shared.exceptions import BaseDomainError
 from app.shared.logging.classify import get_log_level_for_exception
 from app.shared.logging.config import get_logger
 from app.shared.logging.context import (
@@ -27,8 +26,9 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
 
     Заменяет стандартное логирование uvicorn.access и позволяет
     обогащать логи дополнительными данными (user_id и т.д.).
-    Также перехватывает исключения на уровне ASGI и логирует их
-    в нужном формате, помечая в request.state для фильтрации uvicorn.
+    Также перехватывает необработанные исключения на уровне ASGI и логирует их
+    в нужном формате. Доменные исключения сюда не доходят как exception: их
+    раньше конвертирует ExceptionMiddleware, и они приходят готовым Response.
     """
 
     async def dispatch(self, request: Request, call_next: Any) -> Response:
@@ -56,13 +56,6 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
 
             # Определяем уровень логирования по типу исключения
             log_level = get_log_level_for_exception(exc)
-
-            # Помечаем исключение в request.state для фильтра uvicorn
-            if isinstance(exc, BaseDomainError):
-                request.state.exception_handled = True
-                request.state.exception_type = type(exc)
-            else:
-                request.state.exception_handled = False
 
             # Получаем семантическое название события
             event = get_event_name(request.method, request.url.path)

@@ -1,34 +1,43 @@
-"""Маппинг доменных исключений."""
+"""
+Маппинг доменных категорий ошибок в HTTP-статус.
 
-from app.shared.exceptions import (
-    BadRequestError,
-    ConflictError,
-    ForbiddenError,
-    GoneError,
-    NotFoundError,
-    ServerError,
-    TooManyRequestsError,
-    UnauthorizedError,
-    UnprocessableEntityError,
-)
+Это HTTP-транспортный адаптер: единственное место, где доменная `ErrorCategory`
+превращается в HTTP-код. Логика резолва вынесена в `resolve_http_status`, чтобы
+её переиспользовали и HTTP-handler, и логирование, без дублирования. Для другого
+транспорта (gRPC и т.п.) заводится отдельный аналогичный маппинг.
 
-ExceptionMappingT = dict[type[Exception], tuple[int, str]]
+Модуль намеренно не импортирует FastAPI: им пользуется в том числе слой логирования.
+"""
 
-# Маппинг доменных исключений в HTTP ответы (status_code, message)
-# Базовые классы обрабатывают все дочерние исключения автоматически
-DOMAIN_EXCEPTION_MAPPING: ExceptionMappingT = {
-    # Базовые категории по HTTP кодам (обрабатывают все дочерние исключения)
-    BadRequestError: (400, "Некорректный запрос"),
-    UnauthorizedError: (401, "Требуется авторизация"),
-    ForbiddenError: (403, "Доступ запрещен"),
-    NotFoundError: (404, "Ресурс не найден"),
-    ConflictError: (409, "Конфликт данных"),
-    GoneError: (410, "Ресурс больше недоступен"),
-    UnprocessableEntityError: (422, "Невозможно обработать запрос"),
-    TooManyRequestsError: (429, "Превышен лимит запросов"),
-    ServerError: (500, "Внутренняя ошибка сервера"),
-    # Можно также регистрировать конкретные исключения для переопределения сообщений
-    # ComponentNotRegisteredError: (500, "Компонент не зарегистрирован"),
-    # Validation errors
-    ValueError: (400, "Некорректные данные"),
+from app.shared.exceptions.base import BaseDomainError, ErrorCategory
+
+# Категория не найдена в маппинге / исключение не доменное — отдаём 500.
+_DEFAULT_HTTP_STATUS = 500
+
+_CATEGORY_HTTP_STATUS: dict[ErrorCategory, int] = {
+    ErrorCategory.INVALID_INPUT: 400,
+    ErrorCategory.UNAUTHENTICATED: 401,
+    ErrorCategory.PERMISSION_DENIED: 403,
+    ErrorCategory.NOT_FOUND: 404,
+    ErrorCategory.CONFLICT: 409,
+    ErrorCategory.GONE: 410,
+    ErrorCategory.UNPROCESSABLE: 422,
+    ErrorCategory.RATE_LIMITED: 429,
+    ErrorCategory.INTERNAL: 500,
 }
+
+
+def resolve_http_status(exc: Exception) -> int:
+    """
+    Возвращает HTTP-статус для исключения по его доменной категории.
+
+    Args:
+        exc: Исключение. Не-доменные исключения трактуются как внутренняя ошибка.
+
+    Returns:
+        HTTP статус-код (по умолчанию 500).
+    """
+    if isinstance(exc, BaseDomainError):
+        return _CATEGORY_HTTP_STATUS.get(exc.category, _DEFAULT_HTTP_STATUS)
+
+    return _DEFAULT_HTTP_STATUS

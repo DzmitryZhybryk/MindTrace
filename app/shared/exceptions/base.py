@@ -1,6 +1,28 @@
 """Базовые исключения для доменов."""
 
+from enum import Enum
+
 from app.shared.types import OptionalDict
+
+
+class ErrorCategory(Enum):
+    """
+    Транспортно-нейтральная категория доменной ошибки.
+
+    Домен классифицирует род сбоя в собственных терминах и НЕ знает про HTTP,
+    gRPC и прочие транспорты. Перевод категории в конкретный код транспорта —
+    забота адаптера (HTTP-handler, будущий gRPC-handler и т.д.).
+    """
+
+    INVALID_INPUT = "invalid_input"
+    UNAUTHENTICATED = "unauthenticated"
+    PERMISSION_DENIED = "permission_denied"
+    NOT_FOUND = "not_found"
+    CONFLICT = "conflict"
+    GONE = "gone"
+    UNPROCESSABLE = "unprocessable"
+    RATE_LIMITED = "rate_limited"
+    INTERNAL = "internal"
 
 
 class BaseDomainError(Exception):
@@ -8,11 +30,17 @@ class BaseDomainError(Exception):
     Базовое исключение для всех доменных ошибок.
 
     Все доменные исключения должны наследоваться от этого класса.
-    Дочерние классы могут задать атрибуты класса `code` и `message` для дефолтных значений.
-    Поле `details` несёт машинно-читаемую метаинформацию для клиента
+    Дочерние классы могут задать атрибуты класса `category`, `code` и `message`
+    для дефолтных значений.
+
+    Поле `category` несёт транспортно-нейтральный род ошибки (см. `ErrorCategory`):
+    адаптер транспорта переводит его в свой код (HTTP-статус и т.п.).
+    Поле `code` — стабильный машинно-читаемый идентификатор ошибки для клиента
+    (часть API-контракта). Поле `details` несёт дополнительную метаинформацию
     (например, ``{"field": "email"}`` для подсветки конкретного поля формы).
     """
 
+    category: ErrorCategory = ErrorCategory.INTERNAL
     code: str = "unknown_error"
     message: str = "Произошла ошибка"
     details: OptionalDict = None
@@ -38,64 +66,73 @@ class BaseDomainError(Exception):
         self.details = details
 
 
-class BadRequestError(BaseDomainError):
-    """Базовое исключение для ошибок валидации и некорректных запросов (HTTP 400)."""
+class InvalidInputError(BaseDomainError):
+    """Базовое исключение для ошибок валидации и некорректного ввода."""
 
-    code = "bad_request"
+    category = ErrorCategory.INVALID_INPUT
+    code = "invalid_input"
     message = "Некорректный запрос"
 
 
-class UnauthorizedError(BaseDomainError):
-    """Базовое исключение для ошибок авторизации (HTTP 401)."""
+class UnauthenticatedError(BaseDomainError):
+    """Базовое исключение для ошибок аутентификации."""
 
-    code = "unauthorized"
+    category = ErrorCategory.UNAUTHENTICATED
+    code = "unauthenticated"
     message = "Требуется авторизация"
 
 
-class ForbiddenError(BaseDomainError):
-    """Базовое исключение для ошибок доступа (HTTP 403)."""
+class PermissionDeniedError(BaseDomainError):
+    """Базовое исключение для ошибок доступа."""
 
-    code = "forbidden"
+    category = ErrorCategory.PERMISSION_DENIED
+    code = "permission_denied"
     message = "Доступ запрещен"
 
 
 class NotFoundError(BaseDomainError):
-    """Базовое исключение для ошибок "ресурс не найден" (HTTP 404)."""
+    """Базовое исключение для ошибок "ресурс не найден"."""
 
+    category = ErrorCategory.NOT_FOUND
     code = "not_found"
     message = "Ресурс не найден"
 
 
 class ConflictError(BaseDomainError):
-    """Базовое исключение для конфликтов данных (HTTP 409)."""
+    """Базовое исключение для конфликтов данных."""
 
+    category = ErrorCategory.CONFLICT
     code = "conflict"
     message = "Конфликт данных"
 
 
 class GoneError(BaseDomainError):
-    """Базовое исключение для ресурсов, которые когда-то были и истекли (HTTP 410)."""
+    """Базовое исключение для ресурсов, которые когда-то были и истекли."""
 
+    category = ErrorCategory.GONE
     code = "gone"
     message = "Ресурс больше недоступен"
 
 
-class UnprocessableEntityError(BaseDomainError):
-    """Базовое исключение для ошибок обработки сущности (HTTP 422)."""
+class UnprocessableError(BaseDomainError):
+    """Базовое исключение для ошибок обработки корректно сформированной сущности."""
 
-    code = "unprocessable_entity"
+    category = ErrorCategory.UNPROCESSABLE
+    code = "unprocessable"
     message = "Невозможно обработать запрос"
 
 
-class TooManyRequestsError(BaseDomainError):
-    """Базовое исключение для ошибок превышения лимита запросов (HTTP 429)."""
+class RateLimitedError(BaseDomainError):
+    """Базовое исключение для ошибок превышения лимита запросов."""
 
-    code = "too_many_requests"
+    category = ErrorCategory.RATE_LIMITED
+    code = "rate_limited"
     message = "Превышен лимит запросов"
 
 
-class ServerError(BaseDomainError):
-    """Базовое исключение для внутренних ошибок сервера (HTTP 500)."""
+class InternalError(BaseDomainError):
+    """Базовое исключение для внутренних ошибок сервера."""
 
-    code = "internal_server_error"
+    category = ErrorCategory.INTERNAL
+    code = "internal"
     message = "Внутренняя ошибка сервера"

@@ -1,14 +1,15 @@
 from app.shared.exceptions.base import (
-    BadRequestError,
     BaseDomainError,
     ConflictError,
-    ForbiddenError,
+    ErrorCategory,
     GoneError,
+    InternalError,
+    InvalidInputError,
     NotFoundError,
-    ServerError,
-    TooManyRequestsError,
-    UnauthorizedError,
-    UnprocessableEntityError,
+    PermissionDeniedError,
+    RateLimitedError,
+    UnauthenticatedError,
+    UnprocessableError,
 )
 from app.shared.exceptions.examples import error_response_example
 from app.shared.exceptions.handlers import register_exception_handlers
@@ -16,18 +17,20 @@ from app.shared.exceptions.schemas import ErrorResponse
 
 __all__ = [
     # Базовые исключения
-    "BadRequestError",
     "BaseDomainError",
     "ConflictError",
+    # Категории
+    "ErrorCategory",
     # Схемы
     "ErrorResponse",
-    "ForbiddenError",
     "GoneError",
+    "InternalError",
+    "InvalidInputError",
     "NotFoundError",
-    "ServerError",
-    "TooManyRequestsError",
-    "UnauthorizedError",
-    "UnprocessableEntityError",
+    "PermissionDeniedError",
+    "RateLimitedError",
+    "UnauthenticatedError",
+    "UnprocessableError",
     "error_response_example",
     # Обработчики
     "register_exception_handlers",
