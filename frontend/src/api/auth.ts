@@ -1,4 +1,9 @@
-import { ApiError, type ApiErrorBody } from "./errors";
+import { apiFetch } from "./client";
+
+export type TokenResponse = {
+  access_token: string;
+  token_type: string;
+};
 
 export type RegisterPayload = {
   username: string;
@@ -8,32 +13,53 @@ export type RegisterPayload = {
   marketingEmailsConsent: boolean;
 };
 
-export type RegisterResponse = {
-  access_token: string;
-  token_type: string;
+export type LoginPayload = {
+  login: string;
+  password: string;
 };
 
-export async function register(payload: RegisterPayload): Promise<RegisterResponse> {
-  const response = await fetch("/v1/auth/register/", {
+export type VerifyEmailPayload = {
+  code: string;
+};
+
+export function register(payload: RegisterPayload): Promise<TokenResponse> {
+  return apiFetch<TokenResponse>("/v1/auth/register/", {
     method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+    json: {
       username: payload.username,
       email: payload.email,
       password: payload.password,
       terms_accepted: payload.termsAccepted,
       marketing_emails_consent: payload.marketingEmailsConsent,
-    }),
+    },
   });
+}
 
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
-    throw new ApiError(
-      response.status,
-      body ?? { code: "unknown_error", message: "Unexpected server response" },
-    );
-  }
+export function login(payload: LoginPayload): Promise<TokenResponse> {
+  return apiFetch<TokenResponse>("/v1/auth/login/", {
+    method: "POST",
+    json: {
+      login: payload.login,
+      password: payload.password,
+    },
+  });
+}
 
-  return (await response.json()) as RegisterResponse;
+export function logout(): Promise<void> {
+  return apiFetch<void>("/v1/auth/logout/", { method: "POST" });
+}
+
+export function refresh(): Promise<TokenResponse> {
+  return apiFetch<TokenResponse>("/v1/auth/refresh/", { method: "POST" });
+}
+
+export function sendEmailVerification(): Promise<void> {
+  return apiFetch<void>("/v1/auth/email/send-verification/", { method: "POST" });
+}
+
+export function verifyEmail(payload: VerifyEmailPayload): Promise<void> {
+  return apiFetch<void>("/v1/auth/email/verify/", {
+    method: "POST",
+    json: { code: payload.code },
+  });
 }

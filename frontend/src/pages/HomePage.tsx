@@ -1,7 +1,10 @@
-import { Avatar, Menu, UnstyledButton } from "@mantine/core";
-import { Link } from "react-router-dom";
+import { Avatar, Indicator, Menu, UnstyledButton } from "@mantine/core";
+import { Link, useNavigate } from "react-router-dom";
 
+import { logout } from "../api/auth";
+import { useAuth } from "../auth/AuthContext";
 import { BrandMark } from "../components/BrandMark";
+import { EmailVerificationBanner } from "../components/EmailVerificationBanner";
 import "./home.css";
 
 const TABS = [
@@ -39,6 +42,21 @@ const GREETING_DATE = "Saturday · May 2026";
 const AURA_WORD = "atmosphere · still";
 
 export function HomePage() {
+  const navigate = useNavigate();
+  const { emailVerified, clearSession, openVerifyDialog } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      // Logout идемпотентен на бэке (204 даже без cookie); сетевая ошибка
+      // не должна оставить пользователя залогиненным локально.
+    } finally {
+      clearSession();
+      navigate("/login");
+    }
+  };
+
   return (
     <div className="home-shell">
       <header className="home-header">
@@ -55,21 +73,36 @@ export function HomePage() {
         </nav>
 
         <div className="home-header__user">
-          <Menu position="bottom-end" withArrow shadow="md" radius="md" width={180}>
+          <Menu position="bottom-end" withArrow shadow="md" radius="md" width={200}>
             <Menu.Target>
               <UnstyledButton aria-label="Open profile menu" className="home-avatar-button">
-                <Avatar radius="xl" size="md" color="slate" name="Dzmitry Zhybryk" />
+                <Indicator
+                  disabled={emailVerified}
+                  color="yellow"
+                  size={10}
+                  offset={4}
+                  withBorder
+                >
+                  <Avatar radius="xl" size="md" color="slate" name="Dzmitry Zhybryk" />
+                </Indicator>
               </UnstyledButton>
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Label>Account</Menu.Label>
               <Menu.Item>Profile</Menu.Item>
+              {!emailVerified && (
+                <Menu.Item onClick={openVerifyDialog}>
+                  Verify email
+                </Menu.Item>
+              )}
               <Menu.Divider />
-              <Menu.Item color="red">Logout</Menu.Item>
+              <Menu.Item color="red" onClick={handleLogout}>Logout</Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </div>
       </header>
+
+      {!emailVerified && <EmailVerificationBanner onVerifyClick={openVerifyDialog} />}
 
       <main className="home-main">
         <div className="home-greeting">

@@ -41,6 +41,29 @@ user.name = name           // no
 
 `async/await` + `try/catch`, `unknown` error with safe narrowing via `instanceof Error`.
 
+## UI error display (forms & dialogs)
+
+One visual language for **all** user-facing errors in forms and dialogs. Do **not**
+use a filled `<Alert>` (colored background) for form/validation errors — that style
+is reserved for persistent informational banners (e.g. the email-verification
+banner), not transient errors.
+
+- **Style:** plain red text, medium weight — `<Text size="sm" c="red" fw={500}>`,
+  or Mantine's built-in field error via `form.setFieldError` (weight set globally
+  in `index.css`). No background fill, no border, no icon. Emphasis comes from
+  color + weight, **not** font size (don't make error text larger than body).
+- **Field stays neutral:** no red border / placeholder / icon on the input itself —
+  only the message below it is red (enforced globally in `frontend/src/index.css`).
+- **Placement:**
+  - *Field-scoped* (tied to one input) → directly under that field. Use
+    `form.setFieldError(field, msg)`; for non-form controls (e.g. `PinInput`) render
+    the red `<Text>` right under the control.
+  - *Operation-scoped* (the whole action failed, not one field) → at form level,
+    next to the primary action (under the submit button / by the dialog actions).
+- **Text source:** always resolve via `messageForCode(code)` from `api/errors.ts`
+  (English, owned by the frontend) — never render the backend `message` (it's in
+  Russian and won't match the UI language).
+
 ## Input Validation
 
 Schema validation via **Zod** at boundaries (HTTP, forms); the type is inferred from the schema — `z.infer<typeof schema>`.

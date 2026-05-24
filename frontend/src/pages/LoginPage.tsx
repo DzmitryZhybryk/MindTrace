@@ -10,32 +10,53 @@ import {
   Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AuthHeader } from "../components/AuthHeader";
 import { AuthGlobe } from "../components/AuthGlobe";
+import { login } from "../api/auth";
+import { applyApiError } from "../api/errors";
+import { useAuth } from "../auth/AuthContext";
 
 type LoginFormValues = {
-  identifier: string;
+  login: string;
   password: string;
 };
 
 export function LoginPage() {
+  const navigate = useNavigate();
+  const { setAccessToken } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+
   const form = useForm<LoginFormValues>({
     mode: "uncontrolled",
     initialValues: {
-      identifier: "",
+      login: "",
       password: "",
     },
     validate: {
-      identifier: (value) =>
+      login: (value) =>
         value.trim().length === 0 ? "Enter your username or email" : null,
       password: (value) =>
         value.length === 0 ? "Enter your password" : null,
     },
   });
 
-  const handleSubmit = (values: LoginFormValues) => {
-    // TODO: подключить к бэкенду после добавления auth эндпоинта
-    console.log("login submit", values);
+  const handleSubmit = async (values: LoginFormValues) => {
+    setSubmitting(true);
+    try {
+      const { access_token } = await login(values);
+      setAccessToken(access_token);
+      navigate("/");
+    } catch (err) {
+      // Общие ошибки логина (неверные креды, сеть) показываем под полем password.
+      const message = applyApiError(err, form);
+      if (message) {
+        form.setFieldError("password", message);
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -95,8 +116,8 @@ export function LoginPage() {
                     size="md"
                     radius="md"
                     autoComplete="username"
-                    key={form.key("identifier")}
-                    {...form.getInputProps("identifier")}
+                    key={form.key("login")}
+                    {...form.getInputProps("login")}
                   />
 
                   <PasswordInput
@@ -119,7 +140,7 @@ export function LoginPage() {
                     Forgot password?
                   </Anchor>
 
-                  <Button type="submit" size="md" radius="md" fullWidth mt="xs">
+                  <Button type="submit" size="md" radius="md" fullWidth mt="xs" loading={submitting}>
                     Sign in
                   </Button>
                 </Stack>

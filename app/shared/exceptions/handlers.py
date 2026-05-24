@@ -9,6 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.shared.exceptions import BaseDomainError
@@ -68,6 +69,43 @@ def domain_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     )
 
 
+def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """
+    Преобразует ошибки валидации FastAPI/pydantic (422) в единый ErrorResponse.
+
+    По умолчанию FastAPI отдаёт 422 в формате ``{"detail": [...]}`` без поля
+    ``code``, что ломает контракт ошибки на клиенте. Здесь 422 заворачивается в
+    тот же envelope, что и доменные ошибки: ``code="validation_error"`` плюс
+    ``details`` со списком проблемных полей (берём из ``loc``/``msg`` только
+    строки, чтобы тело гарантированно сериализовалось в JSON).
+
+    Args:
+        request: HTTP-запрос (не используется, требуется сигнатурой handler'а)
+        exc: Исключение валидации pydantic с детализацией по полям
+
+    Returns:
+        JSON-ответ 422 в формате ErrorResponse
+    """
+    fields = [
+        {
+            "field": ".".join(str(part) for part in error["loc"] if part != "body"),
+            "reason": error["msg"],
+        }
+        for error in exc.errors()
+    ]
+
+    error_response = ErrorResponse(
+        code="validation_error",
+        message="Переданы некорректные данные",
+        details={"fields": fields},
+    )
+
+    return JSONResponse(
+        status_code=422,
+        content=error_response.model_dump(mode="json"),
+    )
+
+
 def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Обрабатывает все необработанные исключения."""
     # Сначала пробуем обработать как доменное исключение
@@ -87,6 +125,9 @@ BASE_EXCEPTION_HANDLERS: dict[type[Exception], ExceptionHandlerT] = {
     # (внутренний слой). Иначе он попадёт в ServerErrorMiddleware (внешний) и не вызовется
     # корректно из-за известной проблемы BaseHTTPMiddleware с пробрасыванием исключений.
     BaseDomainError: domain_exception_handler,
+    # RequestValidationError перехватываем явно, иначе FastAPI вернёт дефолтный
+    # 422 {"detail": [...]} без поля code — в обход нашего ErrorResponse-контракта.
+    RequestValidationError: validation_exception_handler,
     Exception: global_exception_handler,
 }
 

@@ -9,12 +9,12 @@ from app.shared.models.base_model import DateTimeMixin
 
 
 class Challenge(DateTimeMixin, BaseDBModel):
-    __tablename__ = "challenge"
+    __tablename__ = "challenges"
     __table_args__ = (
         # Один активный challenge данного типа на пользователя; обеспечивается
         # композитным партиальным unique-индексом. Должен совпадать с миграцией.
         Index(
-            "ix_challenge_active_user_id_type",
+            "ix_challenges_active_user_id_type",
             "user_id",
             "challenge_type",
             unique=True,
