@@ -1,5 +1,5 @@
 """
-Migration name: create user, user_credentials, refresh_token and challenge tables
+Migration name: create users, user_credentials, refresh_tokens and challenges tables
 
 Revision ID: e00067cc5c0e
 Revises: None
@@ -21,7 +21,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.create_table(
-        "user",
+        "users",
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
@@ -50,7 +50,7 @@ def upgrade() -> None:
         sa.UniqueConstraint("username"),
     )
     op.create_table(
-        "refresh_token",
+        "refresh_tokens",
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
@@ -63,12 +63,12 @@ def upgrade() -> None:
         sa.Column("user_agent", sa.String(length=512), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["user_credentials.user_id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("token_hash", name="uq_refresh_token_token_hash"),
+        sa.UniqueConstraint("token_hash", name="uq_refresh_tokens_token_hash"),
     )
-    op.create_index("ix_refresh_token_user_id", "refresh_token", ["user_id"])
-    op.create_index("ix_refresh_token_expires_at", "refresh_token", ["expires_at"])
+    op.create_index("ix_refresh_tokens_user_id", "refresh_tokens", ["user_id"])
+    op.create_index("ix_refresh_tokens_expires_at", "refresh_tokens", ["expires_at"])
     op.create_table(
-        "challenge",
+        "challenges",
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
@@ -85,8 +85,8 @@ def upgrade() -> None:
     # Один активный challenge данного типа на пользователя: композитный
     # партиальный unique-индекс по неиспользованным записям.
     op.create_index(
-        "ix_challenge_active_user_id_type",
-        "challenge",
+        "ix_challenges_active_user_id_type",
+        "challenges",
         ["user_id", "challenge_type"],
         unique=True,
         postgresql_where=sa.text("used_at IS NULL"),
@@ -95,13 +95,13 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_index(
-        "ix_challenge_active_user_id_type",
-        table_name="challenge",
+        "ix_challenges_active_user_id_type",
+        table_name="challenges",
         postgresql_where=sa.text("used_at IS NULL"),
     )
-    op.drop_table("challenge")
-    op.drop_index("ix_refresh_token_expires_at", table_name="refresh_token")
-    op.drop_index("ix_refresh_token_user_id", table_name="refresh_token")
-    op.drop_table("refresh_token")
+    op.drop_table("challenges")
+    op.drop_index("ix_refresh_tokens_expires_at", table_name="refresh_tokens")
+    op.drop_index("ix_refresh_tokens_user_id", table_name="refresh_tokens")
+    op.drop_table("refresh_tokens")
     op.drop_table("user_credentials")
-    op.drop_table("user")
+    op.drop_table("users")

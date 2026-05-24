@@ -9,7 +9,7 @@ from app.shared.models.base_model import DateTimeMixin
 
 
 class RefreshToken(DateTimeMixin, BaseDBModel):
-    __tablename__ = "refresh_token"
+    __tablename__ = "refresh_tokens"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(

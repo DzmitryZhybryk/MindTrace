@@ -9,7 +9,7 @@ from app.shared.models.base_model import DateTimeMixin
 
 
 class User(DateTimeMixin, BaseDBModel):
-    __tablename__ = "user"
+    __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(50))
