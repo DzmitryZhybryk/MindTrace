@@ -27,7 +27,7 @@ Create an implementation plan **before** writing code. Run inline (do not invoke
 
 ## Phases
 ### Phase 1: <name>
-- File: app/<domain>/<layer>/<file>.py — <what we do and why>
+- File: backend/app/<domain>/<layer>/<file>.py — <what we do and why>
 - ...
 
 ## Risks
@@ -81,7 +81,7 @@ Branch: <git branch name>
 
 ## Phases
 - [ ] Phase 1: <name>
-  - File: app/<domain>/<layer>/<file>.py — <what & why>
+  - File: backend/app/<domain>/<layer>/<file>.py — <what & why>
 - [ ] Phase 2: <name>
   - ...
 
@@ -111,22 +111,27 @@ Wait for an explicit answer. Do not proceed on silence or implicit signals. Once
 
 ## Task completion: CHANGELOG + version bump
 
+Frontend and backend are versioned **separately**. The single source of truth for the rules is `CLAUDE.md` → Git → **"Versioning & changelog"** — read it rather than relying on the summary here.
+
 When the user confirms the whole task is done (all phases checked off, explicit "done / closed / ship it"), but **before** deleting `.claude/.current-plan.md`:
 
-1. Read the current version from `pyproject.toml` (field `version = "X.Y.Z"`).
-2. Decide the SemVer bump type yourself, based on `.current-plan.md` (Phases + Progress log):
-   - **major** (X+1.0.0) — incompatible changes to public API/contracts: removed/renamed endpoints, non-backwards-compatible SQL migrations, changes to token/auth formats.
-   - **minor** (X.Y+1.0) — new functionality, backwards-compatible: new endpoints, new components, expanded capabilities.
-   - **patch** (X.Y.Z+1) — bug fixes, refactoring with no visible API changes, documentation fixes, code cleanup.
+1. **Determine the area** of the change from `.current-plan.md` — backend, frontend, or both:
+   - backend → version in `backend/pyproject.toml` (+ `backend/uv.lock` if dependencies changed)
+   - frontend → version in `frontend/package.json`
+2. Read the current version of the affected artifact(s) and decide the SemVer bump from the Phases + Progress log:
+   - **major** — incompatible public-contract changes (removed/renamed endpoints, breaking SQL migrations, token/auth-format or error-`code` changes).
+   - **minor** — new backwards-compatible functionality.
+   - **patch** — fixes, refactors, doc/cleanup with no visible contract change.
 3. Ask via `AskUserQuestion`:
-   - **question**: `"Task closed. Update CHANGELOG.md and bump version <current> → <proposed>?"`
+   - **question**: `"Task closed. Bump <artifact> <current> → <proposed> and update CHANGELOG?"`
    - **header**: `"Release"`
-   - Options: first — the recommended bump (label suffix `(Recommended)`), then alternative bumps, then `Skip` (don't update). Each option's description is one line explaining why this bump fits / doesn't fit.
+   - Options: recommended bump first (label suffix `(Recommended)`), then alternatives, then `Skip`. One-line description per option.
 4. If the user picks a bump:
-   - Update `pyproject.toml` (only the `version` field).
-   - Prepend a new release section to `CHANGELOG.md`, **strictly matching the style of existing entries** (language of the existing CHANGELOG, heading `## [X.Y.Z] YYYY-MM-DD`, sections like "Added / Changed / Fixed / Removed" — use the existing localised section names).
-   - **Source content from `.current-plan.md` but do not copy verbatim** — distill 2–5 user/developer-facing bullets ("what" and "why"), not process detail ("moved file X", "updated imports"). For pure refactors with no observable API change, a single line in "Changed" beats enumerating phases.
-5. If the user picks Skip — proceed without touching CHANGELOG/pyproject.
-6. Delete `.claude/.current-plan.md`.
+   - Update only the **affected** artifact's version (`backend/pyproject.toml` + `backend/uv.lock`, and/or `frontend/package.json`) — never bump the untouched artifact.
+   - Prepend to `CHANGELOG.md` (one file at repo root) **in the existing style**: a dated heading with `### Backend X.Y.Z` / `### Frontend X.Y.Z` subsection(s) and the existing localised section names (Добавлено / Изменено / Исправлено / Удалено).
+   - **Source content from `.current-plan.md` but do not copy verbatim** — distill 2–5 user/developer-facing bullets ("what" + "why"), not process detail ("moved file X"). For pure refactors, a single line in "Изменено" beats enumerating phases.
+5. **Docs:** if the task introduced a new domain / shared vertical / changed a layer boundary or naming convention, reflect it in `CLAUDE.md` (and the `docs/architecture.md` principles if affected). Mechanical file-tree changes need **no** doc update — the structure is derived from code, not hand-maintained.
+6. If the user picks Skip — proceed without touching versions/CHANGELOG.
+7. Delete `.claude/.current-plan.md`.
 
 Do NOT propose a CHANGELOG/version bump for cancelled or rolled-back tasks, or when the final build/tests are red.

@@ -1,106 +1,28 @@
 # Архитектура проекта
 
-Проект использует **доменную архитектуру (Domain-Driven Design)** с разделением по доменам, а не по слоям. Это позволяет группировать весь код, относящийся к одной сущности, в одном месте.
+Бэкенд (`backend/app/`) построен по **Domain-Driven Design**: нарезка по доменам (`auth`, `users`), а не по слоям — весь код одной сущности собран в одном месте. Фронтенд (`frontend/`) — отдельный Vite/React SPA; весь стек поднимается из корня одной командой (`docker compose up -d`).
 
-## Структура проекта
+> **Детальная структура и конвенции — в [`CLAUDE.md`](../CLAUDE.md)** (секции «Architecture», «Shared infrastructure», «DTO conventions», «Service Result / Command convention», «Cводная таблица именования по слоям», «Versioning & changelog»). Это единый источник истины.
+>
+> **Дерево файлов здесь намеренно не дублируется.** Оно выводится из кода (`find backend/app`, `grep`) и в ручной доке быстро устаревает — поэтому актуальную структуру всегда смотри в самом коде, а не в этом файле. Этот документ держит только то, что из кода *не* выводится: принципы и причины.
 
-```text
-app/
-  shared/                          # Общая инфраструктура — нарезана по вертикалям-интеграциям
-    infra/
-      di/                          # DI-каркас
-        base.py                    # BaseComponent (lifecycle: startup/shutdown)
-        registry.py                # ComponentRegistry (типизированный store)
-        exceptions.py              # ComponentNotRegisteredError
-      postgres/                    # ВСЁ про SQLAlchemy в одном пакете
-        component.py               # SqlAlchemyComponent + SessionMaker
-        uow.py                     # BaseUnitOfWork
-        dependency.py              # db_session_dependency
-      procrastinate/               # ВСЁ про procrastinate
-        component.py               # ProcrastinateComponent + ProcrastinateApp
-        bus.py                     # TaskBus + SessionBoundTaskBus
-        bus_component.py           # TaskBusComponent
-      email/                       # ВСЁ про email transport
-        component.py               # ResendComponent
-        transport.py               # EmailTransport (Protocol)
-        resend_client.py           # ResendClient
-        schemas.py                 # EmailMessage
-      http/                        # Базовый HTTP-клиент (используют email и др.)
-        client.py                  # BaseHTTPClient
-        config.py                  # HTTPClientConfig
-        exceptions.py              # ExternalAPI*Error
-      jwt/
-        service.py                 # JWTService + JWTDecodeError
-      crypto/
-        protocol.py                # SecretHasher (Protocol)
-        argon2.py                  # Argon2SecretHasher
-    logging/                       # Логирование как самостоятельная вертикаль
-      config.py                    # configure_logging, get_logger
-      context.py                   # build_log_context, build_error_log_context
-      classify.py                  # get_log_level_for_exception, get_status_code_from_exception
-      events.py                    # get_event_name
-      middleware.py                # HTTPLoggingMiddleware
-    repositories/
-      base_repository.py           # Базовый репозиторий
-    exceptions/                    # Общие исключения
-    utils/                         # Узкие утилиты (file_reader, json_serializer)
-    settings.py                    # Настройки приложения
-    types.py                       # Общие типы
-    enums.py                       # Общие перечисления
+## Слои домена
 
-  users/                          # Домен Users
-    domain/                        # Ядро - бизнес-логика (не зависит ни от чего)
-      entities.py                  # UserEntity (чистая бизнес-логика)
-      value_objects.py            # Email, PasswordHash и т.д.
-      repository.py                # Интерфейс IUserRepository (абстракция)
-    
-    infra/                        # Реализация инфраструктуры
-      models.py                    # User (table=True) - SQLModel модель БД
-      repositories.py              # UserRepository - реализация IUserRepository
-      user_uow.py
-    
-    application/                   # Use cases / бизнес-операции
-      schemas.py                   # DTOs для бизнес-операций: UserCreateDTO, UserUpdateDTO, UserDTO
-      services.py                  # UserService (use cases)
-    
-    presentation/                  # API слой
-      schemas.py                   # API схемы: UserCreateRequest, UserResponse (HTTP-специфичные)
-      routes.py                    # user_routes (использует presentation/schemas.py)
-      dependencies.py              # специфичные зависимости для users
-      mappers.py                   # Преобразование presentation -> application и обратно
+Каждый домен самодостаточен и делится на четыре слоя:
 
-  auth/                           # Домен Auth
-    domain/
-      entities.py
-      repository.py
-    infra/
-      models.py
-      repositories.py
-    application/
-      schemas.py                   # AuthTokenCreate, AuthTokenPublic и т.д.
-      services.py
-    presentation/
-      routes.py
-      dependencies.py
+1. **domain/** — чистая бизнес-логика: entities, value objects. Без инфраструктурных импортов.
+2. **infra/** — SQLModel-модели БД, репозитории, UnitOfWork, внешние клиенты.
+3. **application/** — use cases (`*Service`), входы `*Command`, результаты `*Result`.
+4. **presentation/** — HTTP-схемы (`*Request` / `*Response`), роуты, dependencies.
 
-  # ... другие домены
-```
+Presentation-схемы отделены от application-DTO, чтобы не протекали абстракции; конверсия — одной строкой в route (`model_validate(..., from_attributes=True)`), без отдельного слоя мапперов.
 
-## Принципы организации
+## Почему так
 
-1. **Domain слой** - чистая бизнес-логика, не зависит от инфраструктуры
-2. **Infrastructure слой** - реализация репозиториев и моделей БД
-3. **Application слой** - use cases, сервисы и DTOs для бизнес-операций
-4. **Presentation слой** - API схемы (request/response), роуты и мапперы для преобразования между слоями
+- **Высокая связность / низкая связанность** — домены изолированы, код сущности собран вместе.
+- **Масштабирование** — домен можно вынести в отдельный микросервис без переписывания.
+- **Гибкость транспорта** — можно добавить GraphQL/gRPC-presentation поверх тех же application-сервисов.
 
-**Важно:** Presentation слой имеет свои схемы, чтобы избежать протечки абстракций. Presentation схемы преобразуются в Application DTOs через мапперы.
+## Общая инфраструктура
 
-## Преимущества такой структуры
-
-- **Высокая связность** - весь код, относящийся к одной сущности, в одном месте
-- **Низкая связанность** - домены изолированы друг от друга
-- **Проще масштабировать** - можно выделить домен в отдельный микросервис
-- **Проще навигация** - все про User находится в `app/users/`
-- **Командная работа** - разные команды могут работать над разными доменами
-- **Изоляция слоев** - presentation схемы отделены от application DTOs, предотвращает протечку абстракций
-- **Гибкость** - можно добавить другой presentation слой (GraphQL, gRPC) без изменения application слоя
+`backend/app/shared/` нарезана **по вертикалям-интеграциям** (postgres, procrastinate, email, http, jwt, crypto, di, logging) — каждая интеграция самодостаточный пакет с lifecycle-компонентом, клиентами и протоколами. Критерий «Component+Registry vs `@cache`-factory» и разбор каждой вертикали — в `CLAUDE.md` → «Shared infrastructure».

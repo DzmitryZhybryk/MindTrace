@@ -9,7 +9,7 @@ services:
 
   app:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
       target: dev
     container_name: mindtrace_app
@@ -22,10 +22,10 @@ services:
     ports:
       - "8050:8000"
     volumes:
-      - ./app:/src/app
-      - ./migrations:/src/migrations
-      - ./alembic.ini:/src/alembic.ini:ro
-      - ./pyproject.toml:/src/pyproject.toml:ro
+      - ./backend/app:/src/app
+      - ./backend/migrations:/src/migrations
+      - ./backend/alembic.ini:/src/alembic.ini:ro
+      - ./backend/pyproject.toml:/src/pyproject.toml:ro
     depends_on:
       mindtrace_pg:
         condition: service_healthy
@@ -40,15 +40,15 @@ services:
 
   mindtrace_worker:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
       target: dev
     container_name: mindtrace_worker
     command: python -m app.worker
     env_file: .env
     volumes:
-      - ./app:/src/app
-      - ./pyproject.toml:/src/pyproject.toml:ro
+      - ./backend/app:/src/app
+      - ./backend/pyproject.toml:/src/pyproject.toml:ro
     depends_on:
       mindtrace_pg:
         condition: service_healthy

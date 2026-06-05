@@ -216,9 +216,6 @@ __marimo__/
 ZCloude
 ZTODO
 
-# Claude Code instructions (personal)
-CLAUDE.md
-
 # Claude Code /plan working state (ephemeral, per-task)
 .claude/.current-plan.md
 

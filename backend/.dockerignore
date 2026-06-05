@@ -1,0 +1,29 @@
+# Python artifacts
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.ruff_cache
+.ty_cache
+.mypy_cache
+.venv
+venv
+
+# Build context pollution (sent to daemon but never needed in image)
+Dockerfile
+.dockerignore
+Makefile
+.env
+.env.*
+!.env.example
+
+# IDE / tooling
+.idea
+.vscode
+*.swp
+*.swo
+
+# Test artifacts (README.md stays — pyproject references it)
+tests
+.coverage
+htmlcov
