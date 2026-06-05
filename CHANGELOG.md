@@ -2,11 +2,25 @@
 
 <!-- markdownlint-disable-file MD024 -->
 
-Все заметные изменения в этом проекте документируются в этом файле.
+Все заметные изменения документируются в этом файле. Формат версий — [SemVer](https://semver.org/lang/ru/).
 
-Формат версий соответствует [SemVer](https://semver.org/lang/ru/).
+С июня 2026 фронт и бэк версионируются **раздельно** (одна общая нумерация продукта осталась в истории ниже):
 
-## [0.10.0] 2026-06-05
+- **Backend** — версия в `backend/pyproject.toml`. SemVer по контракту HTTP-API и машинным кодам ошибок (`code`). Теги `backend-vX.Y.Z`.
+- **Frontend** — версия в `frontend/package.json`. Маркер релиза SPA (внешнего контракта нет). Теги `frontend-vX.Y.Z`.
+
+CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
+
+## 2026-06-05
+
+### Project
+
+- Монорепо реорганизован: бэкенд переехал в `backend/` (самодостаточный uv-проект — `app`, `migrations`, `tests`, `pyproject.toml`/`uv.lock`, `alembic.ini`, `Dockerfile`, `Makefile`), фронтенд — в `frontend/`; в корне осталась оркестрация (`docker-compose.yaml`, `.env`, конфиги логирования, `docs/`). Стек по-прежнему поднимается из корня одной командой `docker compose up -d`
+- Версионирование разделено на **Backend** (`backend/pyproject.toml`) и **Frontend** (`frontend/package.json`) — раньше единая версия жила в одном `pyproject`. Ошибочный bump бэка (`0.10.0` за чисто фронтовую i18n) откатан до `0.9.4`, фронту проставлена фактическая `0.10.0`
+- `CLAUDE.md` убран из `.gitignore` — теперь трекается в репозитории
+- `docs/architecture.md` ужат до принципов DDD: дерево файлов выводится из кода, а не ведётся руками (источник истины по структуре и конвенциям — `CLAUDE.md`)
+
+## [0.10.0] 2026-06-05 · Frontend
 
 ### Добавлено
 
@@ -23,7 +37,7 @@
 
 - Словарь `ERROR_MESSAGES` и дубль литерала "Network error" — заменены ключами в `errors.json`
 
-## [0.9.4] 2026-05-24
+## [0.9.4] 2026-05-24 · Backend
 
 ### Изменено
 
@@ -40,7 +54,7 @@
 
 - Мёртвый код: `request.state.exception_handled`/`exception_type`, неиспользуемые override-параметры `register_exception_handlers`, словарь `DOMAIN_EXCEPTION_MAPPING`
 
-## [0.9.3] 2026-05-24
+## [0.9.3] 2026-05-24 · Backend
 
 ### Изменено
 
@@ -51,7 +65,7 @@
 
 - FastAPI 422 (`RequestValidationError`) возвращается в едином `ErrorResponse` (`code: "validation_error"`, `details.fields`) вместо дефолтного `{"detail": [...]}` — фронт получает тот же контракт ошибки, что и для доменных исключений
 
-## [0.9.2] 2026-05-17
+## [0.9.2] 2026-05-17 · Backend
 
 ### Изменено
 
@@ -67,7 +81,7 @@
 
 - Драйфт документации в `CLAUDE.md`: убран несуществующий `messages` домен, переписаны секции `crypto` (`SaltedHasher`/`DeterministicHasher` + factories) и `BaseDBRepository` (`_fetch_one`/`insert`), уточнено описание `Password` value object, добавлен раздел Component+Registry vs `@cache`-factory с критерием выбора
 
-## [0.9.1] 2026-05-17
+## [0.9.1] 2026-05-17 · Backend
 
 ### Изменено
 
@@ -77,7 +91,7 @@
 - Переименования в `app/shared/infra/crypto/`: `SecretHasher` → `SaltedHasher`, `Argon2SecretHasher` → `Argon2SaltedHasher` — имя протокола теперь зеркально `DeterministicHasher` по реальной property (salted vs deterministic), которая и определяет применимость
 - Унифицированы singleton-factories для stateless-инфры: `get_argon2_salted_hasher()` и `get_sha256_deterministic_hasher()` зеркалят существующий `get_jwt_service()` — больше нет дублирования инстансов hasher'ов между dependency-функциями
 
-## [0.9.0] 2026-05-11
+## [0.9.0] 2026-05-11 · Backend
 
 ### Добавлено
 
@@ -90,7 +104,7 @@
 - Refresh-токены хранятся как `token_hash` (SHA-256) с unique-индексом; в cookie уходит plaintext-секрет, БД компрометация не даёт rerun'нуть существующие сессии
 - Из `RefreshTokenEntity` убран `last_seen_at` — его роль закрывает `updated_at` от `TimestampedEntityMixin`
 
-## [0.8.1] 2026-05-10
+## [0.8.1] 2026-05-10 · Backend
 
 ### Добавлено
 
@@ -104,7 +118,7 @@
 
 - `HTTPLoggingMiddleware`: 5xx ответы теперь логируются как `error` (раньше `warning`)
 
-## [0.8.0] 2026-05-10
+## [0.8.0] 2026-05-10 · Backend
 
 ### Добавлено
 
@@ -116,33 +130,33 @@
 
 - Глобальный exception handler: 4xx-ошибки теперь корректно возвращают доменный JSON вместо 500
 
-## [0.7.0] 2025-05-02
+## [0.7.0] 2025-05-02 · Frontend
 
 ### Добавлено
 
 - Главная страница приожения на frontend
 
-## [0.6.0] 2025-05-02
+## [0.6.0] 2025-05-02 · Backend
 
 ### Добавлено
 
 - Регистрация пользователя
 - Домены `auth` + `users`
 
-## [0.5.0] 2025-12-30
+## [0.5.0] 2025-12-30 · Backend
 
 ### Добавлено
 
 - Глобальная обработка `Exceptions`
 - `Middlewares` для базовых логов и `Exceptions`
 
-## [0.4.0] 2025-12-30
+## [0.4.0] 2025-12-30 · Backend
 
 ### Добавлено
 
 - Логирование при помощи `structlog`
 
-## [0.3.0] 2025-12-20
+## [0.3.0] 2025-12-20 · Backend
 
 ### Добавлено
 
@@ -151,14 +165,14 @@
 - Компонент для `postgresql`
 - Модель `users`
 
-## [0.2.0] 2025-12-19
+## [0.2.0] 2025-12-19 · Project
 
 ### Добавлено
 
 - Линтеры `ruff`, `ty`
 - `Makefile` и `Changelog`
 
-## [0.1.0] 2025-12-18
+## [0.1.0] 2025-12-18 · Project
 
 ### Добавлено
 
