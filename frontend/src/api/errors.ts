@@ -1,3 +1,5 @@
+import { i18n } from "../i18n";
+
 export type ApiErrorBody = {
   code: string;
   message: string;
@@ -23,43 +25,23 @@ type FormLike = {
   setFieldError: (path: string, error: string) => void;
 };
 
-const NETWORK_ERROR_MESSAGE = "Network error. Please try again.";
-const FALLBACK_ERROR_MESSAGE = "Something went wrong. Please try again.";
-
 /**
- * Сообщения для пользователя по коду ошибки бэка. Фронт владеет английским
- * текстом сам — бэк отдаёт сообщения на русском, и доверять его формулировке
- * для UI нельзя (язык не совпадает с интерфейсом).
- */
-const ERROR_MESSAGES: Record<string, string> = {
-  validation_error: "Please check the entered data and try again",
-  "auth.invalid_credentials": "Incorrect username/email or password",
-  "auth.user_credentials_not_found": "Incorrect username/email or password",
-  "auth.email_already_registered": "This email is already registered",
-  "auth.username_already_taken": "This username is already taken",
-  "auth.terms_not_accepted": "You must accept the terms to continue",
-  "auth.email_already_verified": "Your email is already verified",
-  "auth.verification_code_invalid": "Invalid verification code",
-  "auth.challenge_not_found": "No active code. Request a new one",
-  "auth.challenge_expired": "The code has expired. Request a new one",
-  "auth.challenge_attempts_exceeded": "Too many attempts. Request a new code",
-  "auth.challenge_resend_cooldown": "Please wait before requesting a new code",
-  "auth.invalid_access_token": "Your session has expired. Please sign in again",
-  "auth.invalid_refresh_token": "Your session has expired. Please sign in again",
-};
-
-/**
- * Возвращает английское сообщение для пользователя по коду ошибки.
+ * Возвращает локализованное сообщение для пользователя по коду ошибки бэка.
+ *
+ * Текст берётся из namespace `errors` активного языка (фронт владеет
+ * формулировками сам); бэковый `message` для UI не используется. Неизвестный
+ * код резолвится в `fallback`.
  *
  * Args:
  *     code: Машинный код ошибки из тела ответа бэка.
- *     fallback: Текст на случай неизвестного кода.
+ *     fallback: Текст на случай неизвестного кода (по умолчанию — `errors:fallback`).
  *
  * Returns:
- *     Готовое к показу сообщение на английском.
+ *     Готовое к показу сообщение на языке активной локали.
  */
-export function messageForCode(code: string, fallback: string = FALLBACK_ERROR_MESSAGE): string {
-  return ERROR_MESSAGES[code] ?? fallback;
+export function messageForCode(code: string, fallback?: string): string {
+  const resolvedFallback = fallback ?? i18n.t("fallback", { ns: "errors" });
+  return i18n.t(code, { ns: "errors", defaultValue: resolvedFallback });
 }
 
 function snakeToCamel(value: string): string {
@@ -76,11 +58,12 @@ function snakeToCamel(value: string): string {
  * unknown shape) becomes a top-level message.
  *
  * The user-facing text is resolved from the error `code` via `messageForCode`
- * (English), never from the backend `message` (which is in Russian).
+ * (localized), never from the backend `message` (which is in Russian and may
+ * not match the UI language).
  */
 export function applyApiError(err: unknown, form: FormLike): string | null {
   if (!(err instanceof ApiError)) {
-    return NETWORK_ERROR_MESSAGE;
+    return i18n.t("network", { ns: "errors" });
   }
 
   const rawField = err.details?.field;

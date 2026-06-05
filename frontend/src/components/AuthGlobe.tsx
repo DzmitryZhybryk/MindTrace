@@ -58,18 +58,19 @@ export function AuthGlobe() {
       const entry = entries[0];
       if (!entry) return;
 
-      const { width, height } = entry.contentRect;
-      setSize({ width: Math.round(width), height: Math.round(height) });
+      const width = Math.round(entry.contentRect.width);
+      const height = Math.round(entry.contentRect.height);
+      setSize({ width, height });
+      // Латч «глобус получил размер» — однократно гейтит спавн столиц. Ставим в
+      // callback'е наблюдателя (не в теле эффекта); повторные вызовы с тем же
+      // значением React дедупит.
+      if (width > 0 && height > 0) {
+        setHasSize(true);
+      }
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-
-  useEffect(() => {
-    if (!hasSize && size.width > 0 && size.height > 0) {
-      setHasSize(true);
-    }
-  }, [size.width, size.height, hasSize]);
 
   useEffect(() => {
     const globe = globeRef.current;

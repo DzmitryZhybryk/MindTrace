@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { ensureRefreshed } from "../api/client";
 import { on as onAuthEvent } from "./events";
@@ -9,20 +9,9 @@ import {
   setAccessToken as writeAccessToken,
   subscribeAccessToken,
 } from "./tokenStore";
+import { AuthContext, type AuthContextValue } from "./useAuth";
+import { resetVerifyBannerDismissed } from "./verifyBannerStorage";
 import { VerifyEmailDialog } from "./VerifyEmailDialog";
-
-type AuthContextValue = {
-  accessToken: string | null;
-  claims: AccessTokenClaims | null;
-  isAuthenticated: boolean;
-  isBootstrapping: boolean;
-  emailVerified: boolean;
-  setAccessToken: (token: string) => void;
-  clearSession: () => void;
-  openVerifyDialog: () => void;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 type AuthProviderProps = {
   children: ReactNode;
@@ -79,7 +68,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [accessToken],
   );
 
-  const setAccessToken = useCallback((token: string) => writeAccessToken(token), []);
+  const setAccessToken = useCallback((token: string) => {
+    // Вход/регистрация — новая сессия: сбрасываем «скрытие» плашки о подтверждении
+    // email, чтобы dismiss прежнего аккаунта не утёк в эту вкладку (см. verifyBannerStorage).
+    resetVerifyBannerDismissed();
+    writeAccessToken(token);
+  }, []);
   const clearSession = useCallback(() => clearAccessToken(), []);
   const openVerifyDialog = useCallback(() => setVerifyDialogOpen(true), []);
   const closeVerifyDialog = useCallback(() => setVerifyDialogOpen(false), []);
@@ -108,13 +102,4 @@ export function AuthProvider({ children }: AuthProviderProps) {
       />
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (ctx === null) {
-    throw new Error("useAuth must be used within an <AuthProvider>");
-  }
-
-  return ctx;
 }

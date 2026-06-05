@@ -1,5 +1,6 @@
 import { Button, Group, Modal, PinInput, Stack, Text, Title } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { refresh, sendEmailVerification, verifyEmail } from "../api/auth";
 import { ApiError, messageForCode } from "../api/errors";
@@ -16,19 +17,21 @@ type VerifyEmailDialogProps = {
 const CODE_LENGTH = 6;
 
 export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDialogProps) {
+  const { t } = useTranslation(["auth", "errors"]);
   const [stage, setStage] = useState<Stage>("intro");
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!opened) {
-      setStage("intro");
-      setCode("");
-      setError(null);
-      setSubmitting(false);
-    }
-  }, [opened]);
+  // Сброс состояния делаем в обработчике закрытия (а не в эффекте на `opened`),
+  // чтобы следующее открытие стартовало с чистой стадии "intro".
+  const handleClose = () => {
+    setStage("intro");
+    setCode("");
+    setError(null);
+    setSubmitting(false);
+    onClose();
+  };
 
   const handleSendCode = async () => {
     setError(null);
@@ -42,13 +45,13 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
           // Email уже подтверждён в другой сессии/вкладке — синхронизируем токен.
           await syncVerifiedClaim();
           onVerified();
-          onClose();
+          handleClose();
           return;
         }
 
         setError(messageForCode(err.code));
       } else {
-        setError("Network error. Please try again.");
+        setError(t("network", { ns: "errors" }));
       }
     } finally {
       setSubmitting(false);
@@ -57,7 +60,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
 
   const handleVerify = async () => {
     if (code.length !== CODE_LENGTH) {
-      setError(`Enter the ${CODE_LENGTH}-digit code from the email.`);
+      setError(t("verifyEmail.codeIncomplete"));
       return;
     }
 
@@ -67,14 +70,14 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
       await verifyEmail({ code });
       await syncVerifiedClaim();
       onVerified();
-      onClose();
+      handleClose();
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {
           // Email уже подтверждён — закрываем и синкаем.
           await syncVerifiedClaim();
           onVerified();
-          onClose();
+          handleClose();
           return;
         }
 
@@ -87,7 +90,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
           setCode("");
         }
       } else {
-        setError("Network error. Please try again.");
+        setError(t("network", { ns: "errors" }));
       }
     } finally {
       setSubmitting(false);
@@ -97,12 +100,12 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleClose}
       centered
       radius="lg"
       title={
         <Title order={3} size="h4" c="slate.8">
-          Verify your email
+          {t("verifyEmail.title")}
         </Title>
       }
     >
@@ -110,7 +113,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
         {stage === "intro" ? (
           <>
             <Text size="sm" c="dimmed">
-              We'll send a 6-digit code to your email. Enter it here to confirm your address.
+              {t("verifyEmail.intro")}
             </Text>
             {error && (
               <Text size="sm" c="red" fw={500}>
@@ -118,18 +121,18 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
               </Text>
             )}
             <Group justify="flex-end">
-              <Button variant="default" onClick={onClose} disabled={submitting}>
-                Later
+              <Button variant="default" onClick={handleClose} disabled={submitting}>
+                {t("verifyEmail.later")}
               </Button>
               <Button onClick={handleSendCode} loading={submitting}>
-                Send code
+                {t("verifyEmail.sendCode")}
               </Button>
             </Group>
           </>
         ) : (
           <>
             <Text size="sm" c="dimmed">
-              We sent a code to your email. Enter the 6 digits below.
+              {t("verifyEmail.codeSent")}
             </Text>
 
             <Group justify="center">
@@ -143,7 +146,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
                   setCode(value);
                 }}
                 size="md"
-                aria-label="Email verification code"
+                aria-label={t("verifyEmail.codeInputLabel")}
               />
             </Group>
 
@@ -155,10 +158,10 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
 
             <Group justify="space-between">
               <Button variant="subtle" onClick={handleSendCode} disabled={submitting}>
-                Resend code
+                {t("verifyEmail.resendCode")}
               </Button>
               <Button onClick={handleVerify} loading={submitting}>
-                Verify
+                {t("verifyEmail.verify")}
               </Button>
             </Group>
           </>

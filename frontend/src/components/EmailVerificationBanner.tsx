@@ -1,39 +1,30 @@
 import { ActionIcon, Button, Group, Text } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
-const DISMISS_STORAGE_KEY = "verify-banner-dismissed";
+import { dismissVerifyBanner, isVerifyBannerDismissed } from "../auth/verifyBannerStorage";
 
 type EmailVerificationBannerProps = {
   onVerifyClick: () => void;
 };
 
 export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBannerProps) {
-  const [dismissed, setDismissed] = useState<boolean>(() => readDismissed());
-
-  useEffect(() => {
-    // На случай, если другой таб поменял dismiss-флаг — нечастый кейс,
-    // но storage event для sessionStorage не работает между табами, так что
-    // полагаемся только на текущую сессию.
-  }, []);
+  const { t } = useTranslation("auth");
+  const [dismissed, setDismissed] = useState<boolean>(() => isVerifyBannerDismissed());
 
   if (dismissed) {
     return null;
   }
 
   const handleDismiss = () => {
-    try {
-      sessionStorage.setItem(DISMISS_STORAGE_KEY, "1");
-    } catch {
-      // storage недоступен — закроем только локально на эту страницу.
-    }
-
+    dismissVerifyBanner();
     setDismissed(true);
   };
 
   return (
     <div
       role="region"
-      aria-label="Email verification reminder"
+      aria-label={t("verificationBanner.regionLabel")}
       style={{
         position: "relative",
         width: "100%",
@@ -48,10 +39,10 @@ export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBann
       {/* Сообщение + Verify now — единым кластером по центру полосы. */}
       <Group gap="md" align="center" wrap="nowrap">
         <Text size="sm" c="slate.8">
-          Your email isn't verified yet. Some features may be limited until you confirm it.
+          {t("verificationBanner.message")}
         </Text>
         <Button size="xs" variant="filled" color="slate" onClick={onVerifyClick}>
-          Verify now
+          {t("verificationBanner.action")}
         </Button>
       </Group>
       {/* × — dismiss в правом углу (right:32px = гаттер хедера, под аватаром).
@@ -60,7 +51,7 @@ export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBann
         variant="subtle"
         color="gray"
         size="sm"
-        aria-label="Dismiss reminder for this session"
+        aria-label={t("verificationBanner.dismissLabel")}
         onClick={handleDismiss}
         style={{ position: "absolute", right: 32, top: "50%", transform: "translateY(-50%)" }}
       >
@@ -68,12 +59,4 @@ export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBann
       </ActionIcon>
     </div>
   );
-}
-
-function readDismissed(): boolean {
-  try {
-    return sessionStorage.getItem(DISMISS_STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
 }

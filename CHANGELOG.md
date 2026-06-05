@@ -6,6 +6,23 @@
 
 Формат версий соответствует [SemVer](https://semver.org/lang/ru/).
 
+## [0.10.0] 2026-06-05
+
+### Добавлено
+
+- Интернационализация фронтенда (i18next + react-i18next): полная поддержка EN/RU с переключением языка на лету, детектом языка браузера (`navigator` → fallback EN) и persist в `localStorage`. Архитектура масштабируется на N языков — новый язык = папка `locales/<code>/` + одна запись в реестре `SUPPORTED_LANGUAGES`, без правок в компонентах и переключателе
+- Реестр языков `src/i18n/languages.ts` (`SUPPORTED_LANGUAGES`, `DEFAULT_LANGUAGE`, `LanguageCode`) и lazy-load локалей через `i18next-resources-to-backend` (dynamic `import()` — bundle не растёт с числом языков); namespace'ы `common` / `auth` / `errors`
+- Компонент `LanguageSwitcher` (опции из реестра) в `AuthHeader` и на `HomePage`; синк `<html lang>` при смене языка
+
+### Изменено
+
+- Все user-facing строки auth-поверхности (`LoginPage`, `SignUpPage`, `VerifyEmailDialog`, `EmailVerificationBanner`) и shell (`HomePage` chrome) переведены на `t()`; mock-данные Home намеренно не локализованы
+- `messageForCode` / `applyApiError` (`api/errors.ts`) стали фасадом над standalone-инстансом i18next (`i18n.t('errors:' + code)`) — тексты ошибок переехали из `errors.ts` в `locales/{en,ru}/errors.json` (ключи = backend `code`); валидация форм резолвит сообщения лениво через `t()`, поэтому реагирует на смену языка
+
+### Удалено
+
+- Словарь `ERROR_MESSAGES` и дубль литерала "Network error" — заменены ключами в `errors.json`
+
 ## [0.9.4] 2026-05-24
 
 ### Изменено

@@ -13,12 +13,13 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { AuthHeader } from "../components/AuthHeader";
 import { AuthGlobe } from "../components/AuthGlobe";
 import { register } from "../api/auth";
 import { applyApiError } from "../api/errors";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 
 type SignUpFormValues = {
   username: string;
@@ -29,6 +30,7 @@ type SignUpFormValues = {
 };
 
 export function SignUpPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const { setAccessToken } = useAuth();
   const [submitting, setSubmitting] = useState(false);
@@ -46,22 +48,21 @@ export function SignUpPage() {
     validate: {
       username: (value) => {
         const trimmed = value.trim();
-        if (trimmed.length < 3) return "Username must be at least 3 characters";
-        if (trimmed.length > 50) return "Username must be at most 50 characters";
+        if (trimmed.length < 3) return t("validation.usernameMin");
+        if (trimmed.length > 50) return t("validation.usernameMax");
         return null;
       },
       email: (value) => {
-        if (!/^\S+@\S+\.\S+$/.test(value)) return "Enter a valid email";
-        if (value.length > 254) return "Email is too long";
+        if (!/^\S+@\S+\.\S+$/.test(value)) return t("validation.emailInvalid");
+        if (value.length > 254) return t("validation.emailTooLong");
         return null;
       },
       password: (value) => {
-        if (value.length < 8) return "Password must be at least 8 characters";
-        if (value.length > 50) return "Password must be at most 50 characters";
+        if (value.length < 8) return t("validation.passwordMin");
+        if (value.length > 50) return t("validation.passwordMax");
         return null;
       },
-      termsAccepted: (value) =>
-        value ? null : "You must accept the terms to continue",
+      termsAccepted: (value) => (value ? null : t("validation.termsRequired")),
     },
   });
 
@@ -102,8 +103,8 @@ export function SignUpPage() {
       >
         <Box style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 1 }}>
           <AuthHeader
-            hint="Already have an account?"
-            actionLabel="Sign In"
+            hint={t("signup.headerHint")}
+            actionLabel={t("signup.headerAction")}
             actionHref="/login"
           />
         </Box>
@@ -124,10 +125,10 @@ export function SignUpPage() {
             <Stack gap="lg">
               <Stack gap={4}>
                 <Title order={2} size="h3" c="slate.8">
-                  Create account
+                  {t("signup.title")}
                 </Title>
                 <Box c="dimmed" fz="sm">
-                  Start your journey with MyJourney
+                  {t("signup.subtitle")}
                 </Box>
               </Stack>
 
@@ -140,8 +141,8 @@ export function SignUpPage() {
               <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack gap="md">
                   <TextInput
-                    label="Username"
-                    placeholder="johndoe"
+                    label={t("signup.usernameLabel")}
+                    placeholder={t("signup.usernamePlaceholder")}
                     size="md"
                     radius="md"
                     autoComplete="username"
@@ -150,8 +151,8 @@ export function SignUpPage() {
                   />
 
                   <TextInput
-                    label="Email"
-                    placeholder="you@example.com"
+                    label={t("signup.emailLabel")}
+                    placeholder={t("signup.emailPlaceholder")}
                     size="md"
                     radius="md"
                     autoComplete="email"
@@ -160,8 +161,8 @@ export function SignUpPage() {
                   />
 
                   <PasswordInput
-                    label="Password"
-                    placeholder="At least 8 characters"
+                    label={t("signup.passwordLabel")}
+                    placeholder={t("signup.passwordPlaceholder")}
                     size="md"
                     radius="md"
                     autoComplete="new-password"
@@ -175,23 +176,23 @@ export function SignUpPage() {
                     key={form.key("termsAccepted")}
                     {...form.getInputProps("termsAccepted", { type: "checkbox" })}
                     label={
-                      <>
-                        I agree to the{" "}
-                        <Anchor href="/terms" target="_blank" rel="noopener noreferrer">
-                          Terms of Service
-                        </Anchor>{" "}
-                        and{" "}
-                        <Anchor href="/privacy" target="_blank" rel="noopener noreferrer">
-                          Privacy Policy
-                        </Anchor>
-                      </>
+                      <Trans
+                        t={t}
+                        i18nKey="signup.terms"
+                        components={{
+                          tos: <Anchor href="/terms" target="_blank" rel="noopener noreferrer" />,
+                          privacy: (
+                            <Anchor href="/privacy" target="_blank" rel="noopener noreferrer" />
+                          ),
+                        }}
+                      />
                     }
                   />
 
                   <Checkbox
                     size="sm"
                     color="#0a1230"
-                    label="Send me product updates and news by email"
+                    label={t("signup.marketing")}
                     key={form.key("marketingEmailsConsent")}
                     {...form.getInputProps("marketingEmailsConsent", { type: "checkbox" })}
                   />
@@ -206,7 +207,7 @@ export function SignUpPage() {
                     disabled={!termsAccepted}
                     loading={submitting}
                   >
-                    Create account
+                    {t("signup.submit")}
                   </Button>
                 </Stack>
               </form>
