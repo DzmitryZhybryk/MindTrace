@@ -1,0 +1,18 @@
+{
+  "nav": {
+    "journey": "Journey",
+    "mind": "Mind",
+    "ariaPrimary": "Primary sections"
+  },
+  "profile": {
+    "menuButton": "Open profile menu",
+    "account": "Account",
+    "profile": "Profile",
+    "verifyEmail": "Verify email",
+    "logout": "Logout"
+  },
+  "greeting": "Hello, {{name}}",
+  "language": {
+    "label": "Language"
+  }
+}

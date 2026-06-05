@@ -1,0 +1,18 @@
+{
+  "nav": {
+    "journey": "Путешествие",
+    "mind": "Разум",
+    "ariaPrimary": "Основные разделы"
+  },
+  "profile": {
+    "menuButton": "Открыть меню профиля",
+    "account": "Аккаунт",
+    "profile": "Профиль",
+    "verifyEmail": "Подтвердить email",
+    "logout": "Выйти"
+  },
+  "greeting": "Привет, {{name}}",
+  "language": {
+    "label": "Язык"
+  }
+}

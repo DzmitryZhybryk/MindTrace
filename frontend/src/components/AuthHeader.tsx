@@ -1,6 +1,7 @@
 import { Button, Group, Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 import { BrandMark } from "./BrandMark";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 type AuthHeaderProps = {
   hint: string;
@@ -20,6 +21,7 @@ export function AuthHeader({ hint, actionLabel, actionHref }: AuthHeaderProps) {
       <BrandMark />
 
       <Group gap="sm" align="center">
+        <LanguageSwitcher />
         <Text size="sm" c="dimmed">
           {hint}
         </Text>

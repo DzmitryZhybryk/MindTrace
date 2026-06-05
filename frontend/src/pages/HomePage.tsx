@@ -1,15 +1,17 @@
-import { Avatar, Indicator, Menu, UnstyledButton } from "@mantine/core";
+import { Avatar, Group, Indicator, Menu, UnstyledButton } from "@mantine/core";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 
 import { logout } from "../api/auth";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 import { BrandMark } from "../components/BrandMark";
 import { EmailVerificationBanner } from "../components/EmailVerificationBanner";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import "./home.css";
 
 const TABS = [
-  { label: "Journey", to: "/journey" },
-  { label: "Mind", to: "/mind" },
+  { key: "journey", to: "/journey" },
+  { key: "mind", to: "/mind" },
 ] as const;
 
 const STATS = [
@@ -42,6 +44,7 @@ const GREETING_DATE = "Saturday · May 2026";
 const AURA_WORD = "atmosphere · still";
 
 export function HomePage() {
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const { emailVerified, clearSession, openVerifyDialog } = useAuth();
 
@@ -64,41 +67,44 @@ export function HomePage() {
           <BrandMark />
         </div>
 
-        <nav className="home-tabs" aria-label="Primary sections">
+        <nav className="home-tabs" aria-label={t("nav.ariaPrimary")}>
           {TABS.map((tab) => (
-            <Link key={tab.label} to={tab.to} className="home-tab">
-              {tab.label}
+            <Link key={tab.key} to={tab.to} className="home-tab">
+              {t(`nav.${tab.key}`)}
             </Link>
           ))}
         </nav>
 
         <div className="home-header__user">
-          <Menu position="bottom-end" withArrow shadow="md" radius="md" width={200}>
-            <Menu.Target>
-              <UnstyledButton aria-label="Open profile menu" className="home-avatar-button">
-                <Indicator
-                  disabled={emailVerified}
-                  color="yellow"
-                  size={10}
-                  offset={4}
-                  withBorder
-                >
-                  <Avatar radius="xl" size="md" color="slate" name="Dzmitry Zhybryk" />
-                </Indicator>
-              </UnstyledButton>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>Account</Menu.Label>
-              <Menu.Item>Profile</Menu.Item>
-              {!emailVerified && (
-                <Menu.Item onClick={openVerifyDialog}>
-                  Verify email
+          <Group gap="xs" align="center">
+            <LanguageSwitcher />
+            <Menu position="bottom-end" withArrow shadow="md" radius="md" width={200}>
+              <Menu.Target>
+                <UnstyledButton aria-label={t("profile.menuButton")} className="home-avatar-button">
+                  <Indicator
+                    disabled={emailVerified}
+                    color="yellow"
+                    size={10}
+                    offset={4}
+                    withBorder
+                  >
+                    <Avatar radius="xl" size="md" color="slate" name="Dzmitry Zhybryk" />
+                  </Indicator>
+                </UnstyledButton>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>{t("profile.account")}</Menu.Label>
+                <Menu.Item>{t("profile.profile")}</Menu.Item>
+                {!emailVerified && (
+                  <Menu.Item onClick={openVerifyDialog}>{t("profile.verifyEmail")}</Menu.Item>
+                )}
+                <Menu.Divider />
+                <Menu.Item color="red" onClick={handleLogout}>
+                  {t("profile.logout")}
                 </Menu.Item>
-              )}
-              <Menu.Divider />
-              <Menu.Item color="red" onClick={handleLogout}>Logout</Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
         </div>
       </header>
 
@@ -106,7 +112,7 @@ export function HomePage() {
 
       <main className="home-main">
         <div className="home-greeting">
-          <span className="home-greeting__hello">Hello, {GREETING_NAME}</span>
+          <span className="home-greeting__hello">{t("greeting", { name: GREETING_NAME })}</span>
           <span className="home-greeting__date">{GREETING_DATE}</span>
         </div>
 
