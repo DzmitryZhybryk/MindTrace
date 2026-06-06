@@ -10,7 +10,7 @@ Domain-tasks объявляются через локальные ``Blueprint``-
 декларации в App.
 
 Драйвер psycopg3 (async) выбран сознательно: позволяет atomic defer
-из той же SQLAlchemy-сессии (см. ``SessionBoundTaskBus``).
+из той же SQLAlchemy-сессии (см. ``SessionBoundTaskBusPort``).
 """
 
 from procrastinate import App, Blueprint, PsycopgConnector

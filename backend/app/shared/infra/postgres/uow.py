@@ -10,7 +10,7 @@ class BaseUnitOfWork:
     Async context manager: ``__aenter__`` открывает транзакцию (``session.begin()``),
     ``__aexit__`` rollback'ит на exception и закрывает сессию. Commit явный —
     caller вызывает ``await uow.commit()`` сам (например, после успешного
-    atomic defer procrastinate-таски через ``TaskBus.bind_to(uow.session)``).
+    atomic defer procrastinate-таски через ``TaskBusPort.bind_to(uow.session)``).
 
     Доменные UoW наследуются и добавляют репозитории как ``@property`` lazy-init.
     """
@@ -33,7 +33,7 @@ class BaseUnitOfWork:
         """
         Доступ к async-сессии для интеграций, требующих raw-сессии.
 
-        Главный потребитель — ``SessionBoundTaskBus`` (atomic defer
+        Главный потребитель — ``SessionBoundTaskBusPort`` (atomic defer
         procrastinate-таски в той же транзакции, что и pending writes).
         Не использовать в обычной бизнес-логике — все DB-операции должны
         идти через репозитории.

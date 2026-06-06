@@ -1,4 +1,4 @@
-.PHONY: help format lint typecheck dead-code check test-all migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
+.PHONY: help format lint typecheck dead-code check test-all test-unit test-integration test-api test-auth test-users test-shared test-m migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -25,7 +25,7 @@ else
 endif
 
 # Sources to check
-RUFF_SOURCES := app migrations
+RUFF_SOURCES := app migrations tests
 
 help: ## Show this help message
 	@echo "Available targets:"
@@ -48,11 +48,35 @@ dead-code: ## Find unused code with vulture
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}vulture${AZURE}' dead code check${RESET}"
 	@uv run --no-sync vulture
 
-check: format lint typecheck dead-code ## Run format + lint + typecheck + dead-code
+check: format lint typecheck dead-code test-all ## Run format + lint + typecheck + dead-code + tests
 
-test-all: ## Run all tests in the tests/ directory
-	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' tests${RESET}"
-	@uv run --no-sync pytest tests
+test-all: ## Run all tests in the tests/ directory with coverage
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' tests with coverage${RESET}"
+	@uv run --no-sync pytest tests --cov=app --cov-report=term-missing
+
+# Запуск тестов по осям маркеров (авто-маркировка по пути — см. tests/conftest.py).
+# `|| [ $$? -eq 5 ]` — не считать "тесты не найдены" (exit 5) ошибкой: пустые группы
+# (ещё ненаполненные уровни/домены) не должны валить таргет.
+test-unit: ## Run unit-level tests (-m unit)
+	@uv run --no-sync pytest -m unit || [ $$? -eq 5 ]
+
+test-integration: ## Run integration-level tests (-m integration)
+	@uv run --no-sync pytest -m integration || [ $$? -eq 5 ]
+
+test-api: ## Run api-level tests (-m api)
+	@uv run --no-sync pytest -m api || [ $$? -eq 5 ]
+
+test-auth: ## Run auth-domain tests, any level (-m auth)
+	@uv run --no-sync pytest -m auth || [ $$? -eq 5 ]
+
+test-users: ## Run users-domain tests, any level (-m users)
+	@uv run --no-sync pytest -m users || [ $$? -eq 5 ]
+
+test-shared: ## Run shared-infra tests, any level (-m shared)
+	@uv run --no-sync pytest -m shared || [ $$? -eq 5 ]
+
+test-m: ## Run tests by marker expression (usage: make test-m M="unit and users")
+	@uv run --no-sync pytest -m "$(M)" || [ $$? -eq 5 ]
 
 migrate-create: ## Create a new migration (usage: make migrate-create "description")
 	@ARGS="$(filter-out $@,$(MAKECMDGOALS))"; \

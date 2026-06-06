@@ -1,5 +1,5 @@
 """
-ResendClient — реализация EmailTransport поверх HTTP API Resend.
+ResendClient — реализация EmailTransportPort поверх HTTP API Resend.
 
 Использует общий BaseHTTPClient (httpx) — без resend-sdk: тот синхронный,
 а вся отправка идёт из async-контекста. Ошибки клиента мапятся через
@@ -15,7 +15,7 @@ class ResendClient(BaseHTTPClient):
     """
     HTTP-клиент к Resend API.
 
-    Реализует EmailTransport (structural typing — Protocol).
+    Реализует EmailTransportPort (structural typing — Protocol).
     """
 
     def __init__(self, *, config: HTTPClientConfig, default_from: str) -> None:

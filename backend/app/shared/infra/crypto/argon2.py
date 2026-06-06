@@ -1,4 +1,4 @@
-"""Реализация ``SaltedHasher`` через Argon2."""
+"""Реализация ``SaltedHasherPort`` через Argon2."""
 
 from functools import cache
 
@@ -8,7 +8,7 @@ from argon2.exceptions import VerifyMismatchError
 
 class Argon2SaltedHasher:
     """
-    Реализация ``SaltedHasher`` через Argon2.
+    Реализация ``SaltedHasherPort`` через Argon2.
 
     Argon2 — победитель Password Hashing Competition (PHC), рекомендован
     OWASP для хеширования паролей и других чувствительных секретов.

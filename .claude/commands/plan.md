@@ -12,6 +12,14 @@ Create an implementation plan **before** writing code. Run inline (do not invoke
 - Multiple files or layers are affected (DDD: domain ↔ infra ↔ application ↔ presentation)
 - Requirements are ambiguous
 
+## Test-writing plans
+
+When the task is **writing/extending backend tests**, the testing conventions are the source of
+truth — read `.claude/rules/python/testing.md` (always `@`-included) and shape the plan around it
+(pyramid, `tests/{unit,integration,api}/<domain>/<layer>` layout, hand-written fakes, thin
+repository Protocols, determinism, coverage policy). Execution is done by the `backend-tests` skill;
+the plan's phases should map onto its procedure.
+
 ## What to do
 
 1. **Restate requirements** — rephrase the request explicitly

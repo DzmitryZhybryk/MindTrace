@@ -1,4 +1,4 @@
-"""Реализация ``DeterministicHasher`` через SHA-256."""
+"""Реализация ``DeterministicHasherPort`` через SHA-256."""
 
 import hashlib
 from functools import cache
@@ -6,7 +6,7 @@ from functools import cache
 
 class Sha256DeterministicHasher:
     """
-    Реализация ``DeterministicHasher`` через SHA-256.
+    Реализация ``DeterministicHasherPort`` через SHA-256.
 
     Возвращает hex-представление SHA-256 от UTF-8 байт plaintext'а:
     один и тот же вход всегда даёт один и тот же 64-символьный hex,

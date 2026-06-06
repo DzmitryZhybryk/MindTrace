@@ -3,6 +3,7 @@ from uuid import UUID
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.application.ports import UserCredentialsRepositoryPort
 from app.auth.domain.entities import UserCredentialsEntity
 from app.auth.domain.enums import UserRole
 from app.auth.domain.value_objects import Password
@@ -11,7 +12,7 @@ from app.shared.repositories.base_repository import BaseDBRepository
 from app.shared.types import DictStrAny
 
 
-class UserCredentialsRepository(BaseDBRepository[UserCredentials]):
+class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentialsRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         """
         Инициализирует репозиторий учётных данных пользователей.

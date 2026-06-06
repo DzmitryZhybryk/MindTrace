@@ -3,6 +3,7 @@ from uuid import UUID
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.application.ports import ChallengeRepositoryPort
 from app.auth.domain.entities import ChallengeEntity
 from app.auth.domain.enums import ChallengeType
 from app.auth.infra.models import Challenge
@@ -10,7 +11,7 @@ from app.shared.repositories.base_repository import BaseDBRepository
 from app.shared.types import DictStrAny
 
 
-class ChallengeRepository(BaseDBRepository[Challenge]):
+class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         """
         Инициализирует репозиторий challenge'ей.

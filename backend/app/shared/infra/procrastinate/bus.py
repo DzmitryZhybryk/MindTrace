@@ -1,73 +1,51 @@
 """
 Шина задач procrastinate для application-слоя.
 
-Расщеплена на два класса по зависимостям:
+Вертикаль procrastinate сама владеет своими протоколами (как ``crypto`` —
+``SaltedHasherPort``): application зависит от Protocol'ов ``TaskBusPort`` /
+``SessionBoundTaskBusPort``, а конкретная реализация на procrastinate
+(``ProcrastinateTaskBus`` / ``ProcrastinateSessionBoundTaskBus``) живёт здесь же.
+Тесты подставляют фейк, реализующий тот же Protocol, без наследования impl.
 
-- ``TaskBus`` — операции defer'а вне транзакции (fire-and-forget). Принимает
-  только ``ProcrastinateApp``; никакой сессии. Для atomic defer'а в текущей
-  SA-транзакции используется ``TaskBus.bind_to(session) -> SessionBoundTaskBus``.
-- ``SessionBoundTaskBus`` — view, привязанный к ``AsyncSession``. Все defer'ы
-  выполняются через raw psycopg-connection сессии — попадают в ту же транзакцию,
-  что и pending writes. Commit'ит ``UnitOfWork``.
+Контракт расщеплён на два по зависимостям:
 
-Расширение:
+- ``TaskBusPort`` — defer вне транзакции (fire-and-forget). Для atomic defer'а в
+  текущей SA-транзакции — ``TaskBusPort.bind_to(session) -> SessionBoundTaskBusPort``.
+- ``SessionBoundTaskBusPort`` — view, привязанный к ``AsyncSession``: defer попадает
+  в ту же транзакцию, что и pending writes. Commit'ит ``UnitOfWork``.
 
-- метод не нужна сессия → в ``TaskBus`` (``defer_at``, ``defer_periodic``);
-- методу нужна активная SA-tx → в ``SessionBoundTaskBus``.
-
-Зависимость зашита в типе — каждый новый метод попадает в правильный класс
-без обсуждений.
+Зависимость зашита в тип — каждый новый метод попадает в правильный контракт
+без обсуждений: не нужна сессия → ``TaskBusPort``; нужна активная SA-tx →
+``SessionBoundTaskBusPort``.
 """
 
-from typing import Any
+from typing import Any, Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.shared.infra.procrastinate.component import ProcrastinateApp
 
 
-class TaskBus:
-    """Фасад procrastinate без сессии. Defer'ы выполняются как fire-and-forget."""
+class SessionBoundTaskBusPort(Protocol):
+    """Контракт defer'а procrastinate-таски в текущей SA-транзакции."""
 
-    def __init__(self, *, app: ProcrastinateApp) -> None:
-        self._app = app
-
-    async def defer(self, *, task: Any, lock: str | None = None, **task_kwargs: Any) -> None:
-        """
-        Defer задачи вне транзакции.
-
-        Args:
-            task: Procrastinate Task (объект с ``.configure().defer_async()``)
-            lock: Lock-строка procrastinate (одновременно может выполняться только
-                один job с таким lock'ом). ``None`` — без lock'а.
-            **task_kwargs: Аргументы, которые получит task на исполнении.
-        """
-        await task.configure(lock=lock).defer_async(**task_kwargs)
-
-    def bind_to(self, session: AsyncSession) -> SessionBoundTaskBus:
-        """
-        Возвращает view, привязанный к активной SA-сессии.
-
-        Все defer'ы через возвращённый объект выполняются в той же транзакции,
-        что и pending writes сессии. Используется в сервисах:
-
-            await self._task_bus.bind_to(uow.session).defer(task=..., **kwargs)
-            await uow.commit()  # один commit фиксирует и writes, и procrastinate-job
-
-        Args:
-            session: Активная async-сессия SQLAlchemy.
-
-        Returns:
-            ``SessionBoundTaskBus``, в котором ``defer(...)`` атомарен с сессией.
-        """
-        return SessionBoundTaskBus(session=session)
+    async def defer(self, *, task: Any, lock: str | None = None, **task_kwargs: Any) -> None: ...
 
 
-class SessionBoundTaskBus:
+class TaskBusPort(Protocol):
+    """Контракт постановки procrastinate-задач: fire-and-forget defer и привязка к транзакции."""
+
+    async def defer(self, *, task: Any, lock: str | None = None, **task_kwargs: Any) -> None: ...
+
+    def bind_to(self, session: AsyncSession) -> SessionBoundTaskBusPort: ...
+
+
+class ProcrastinateSessionBoundTaskBus(SessionBoundTaskBusPort):
     """
-    TaskBus, привязанный к активной SA-сессии. Все операции выполняются через
-    raw psycopg-connection сессии — попадают в ту же транзакцию, что и pending
-    writes. Commit'ит ``UnitOfWork``.
+    Реализация ``SessionBoundTaskBusPort`` поверх procrastinate, привязанная к активной SA-сессии.
+
+    Все операции выполняются через raw psycopg-connection сессии — попадают в ту
+    же транзакцию, что и pending writes. Commit'ит ``UnitOfWork``.
 
     SA-сессия с psycopg3-драйвером оборачивает raw psycopg.AsyncConnection в
     ``AsyncAdapt_psycopg_connection``; raw-объект достаётся через
@@ -96,3 +74,40 @@ class SessionBoundTaskBus:
             connection=raw_connection.driver_connection,
             lock=lock,
         ).defer_async(**task_kwargs)
+
+
+class ProcrastinateTaskBus(TaskBusPort):
+    """Реализация ``TaskBusPort`` поверх procrastinate. Defer'ы выполняются как fire-and-forget."""
+
+    def __init__(self, *, app: ProcrastinateApp) -> None:
+        self._app = app
+
+    async def defer(self, *, task: Any, lock: str | None = None, **task_kwargs: Any) -> None:
+        """
+        Defer задачи вне транзакции.
+
+        Args:
+            task: Procrastinate Task (объект с ``.configure().defer_async()``)
+            lock: Lock-строка procrastinate (одновременно может выполняться только
+                один job с таким lock'ом). ``None`` — без lock'а.
+            **task_kwargs: Аргументы, которые получит task на исполнении.
+        """
+        await task.configure(lock=lock).defer_async(**task_kwargs)
+
+    def bind_to(self, session: AsyncSession) -> SessionBoundTaskBusPort:
+        """
+        Возвращает view, привязанный к активной SA-сессии.
+
+        Все defer'ы через возвращённый объект выполняются в той же транзакции,
+        что и pending writes сессии. Используется в сервисах:
+
+            await self._task_bus.bind_to(uow.session).defer(task=..., **kwargs)
+            await uow.commit()  # один commit фиксирует и writes, и procrastinate-job
+
+        Args:
+            session: Активная async-сессия SQLAlchemy.
+
+        Returns:
+            ``SessionBoundTaskBusPort``, в котором ``defer(...)`` атомарен с сессией.
+        """
+        return ProcrastinateSessionBoundTaskBus(session=session)
