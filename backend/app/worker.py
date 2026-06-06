@@ -2,7 +2,7 @@
 Worker entrypoint для procrastinate-задач.
 
 Поднимает только те компоненты, которые нужны исполнителю tasks:
-``ResendComponent`` (даёт ``EmailTransport``) и ``ProcrastinateComponent``
+``ResendComponent`` (даёт ``EmailTransportPort``) и ``ProcrastinateComponent``
 (App + подключённые blueprint'ы доменов). ``SqlAlchemyComponent`` намеренно
 отсутствует — текущая task ``send_verification_email`` БД не трогает,
 рендерит письмо и зовёт provider.
@@ -21,7 +21,7 @@ from app.auth.infra import auth_blueprint
 from app.shared.enums import AppEnvEnum
 from app.shared.infra.di.base import BaseComponent
 from app.shared.infra.di.registry import ComponentRegistry
-from app.shared.infra.email import EmailTransport, ResendComponent
+from app.shared.infra.email import EmailTransportPort, ResendComponent
 from app.shared.infra.procrastinate import ProcrastinateApp, ProcrastinateComponent
 from app.shared.logging import configure_logging, get_logger
 from app.shared.settings import settings
@@ -65,7 +65,7 @@ async def run_worker() -> None:
         await component.startup(registry)
 
     procrastinate_app = registry.get(ProcrastinateApp)
-    email_transport = registry.get(EmailTransport)
+    email_transport = registry.get(EmailTransportPort)
 
     try:
         await _ensure_procrastinate_schema(procrastinate_app=procrastinate_app)

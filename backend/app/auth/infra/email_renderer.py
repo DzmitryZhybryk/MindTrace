@@ -3,7 +3,7 @@
 
 Шаблоны лежат рядом с auth-доменом и подгружаются ``PackageLoader``.
 Рендерер собирает subject/html/text в ``EmailMessage`` — транспорт-агностичную
-структуру, которая дальше уходит в ``EmailTransport`` (Resend и т.п.).
+структуру, которая дальше уходит в ``EmailTransportPort`` (Resend и т.п.).
 """
 
 from jinja2 import Environment, PackageLoader, select_autoescape

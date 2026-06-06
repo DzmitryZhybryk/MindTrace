@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from app.auth.application.ports import AuthUnitOfWorkPort
 from app.auth.application.settings import EmailVerificationSettings
 from app.auth.domain.entities import ChallengeEntity
 from app.auth.domain.enums import ChallengeType
@@ -9,17 +10,16 @@ from app.auth.exceptions import (
     VerificationCodeInvalidError,
 )
 from app.auth.infra.tasks import send_verification_email
-from app.auth.infra.uow import AuthUnitOfWork
-from app.shared.infra.crypto import SaltedHasher
-from app.shared.infra.procrastinate import TaskBus
+from app.shared.infra.crypto import SaltedHasherPort
+from app.shared.infra.procrastinate import TaskBusPort
 
 
 class EmailVerificationService:
     def __init__(
         self,
-        uow: AuthUnitOfWork,
-        salted_hasher: SaltedHasher,
-        task_bus: TaskBus,
+        uow: AuthUnitOfWorkPort,
+        salted_hasher: SaltedHasherPort,
+        task_bus: TaskBusPort,
         email_verification_settings: EmailVerificationSettings,
     ) -> None:
         self._uow = uow

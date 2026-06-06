@@ -11,6 +11,21 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-06-06
+
+### Backend 0.9.5
+
+- Введён бэкенд-набор **unit-тестов** (pytest, `asyncio_mode=auto`): domain + application доменов `auth` и `users`, shared-инфраструктура crypto/jwt и pure-хелперы (`resolve_http_status`, классификация исключений для логирования). 82 теста; покрытие целевых domain/application/shared-pure модулей — 100%, `jwt/service.py` — 97% (не покрыта только bootstrap-фабрика из `settings`)
+- Раскладка `tests/{unit,integration,api}/<домен>/<слой>` с авто-маркировкой по пути (маркеры уровня `unit`/`integration`/`api` и домена `auth`/`users`/`shared` проставляются хуком `pytest_collection_modifyitems`, вручную не тегаются). Classicist-подход: рукописные in-memory фейки в `tests/fakes/`, реализующие те же порты, что и боевые реализации (`ty` ловит расхождение сигнатур); детерминизм через явные timestamp'ы и `FakeSaltedHasher` вместо медленного argon2
+- DIP домена `users` доведён до владельца контракта: добавлен `app/users/application/ports.py` (`UserRepositoryPort`, `UserUnitOfWorkPort`); `UserRepository`/`UserUnitOfWork` явно реализуют порты, `UserService` зависит от порта, а не от конкретного UoW. Внешний HTTP-API и коды ошибок не изменились — поэтому bump патчевый
+- Покрыты ранее не тестированные ветки: негативные пути `JWTService.decode_access_token` (чужая подпись, истёкший токен, битый формат, отсутствующий/не-UUID `sub`) и реальный `Argon2SaltedHasher.verify` (hash→verify roundtrip + неверный секрет + уникальная соль на вызов)
+
+### Project
+
+- `make test-all` теперь печатает coverage (`--cov=app --cov-report=term-missing`); `make check` дополнен прогоном `test-all` (полный конвейер: format → lint → typecheck → dead-code → тесты с покрытием)
+- `.claude/rules/python/testing.md` расширен: правило **«Reuse before create»** (сверяться с уже существующими фикстурами/фейками/билдерами до создания новых), трёхуровневая модель conftest (корневой suite-wide / `tests/unit` cross-domain unit-only / доменный) и требование «фикстуры живут только в conftest, не рядом с тестом»
+- Из инженерных правил `.claude/` убран принцип **YAGNI**: проект осознанно допускает оверинженеринг ради чистой архитектуры под будущий microservices-split (вычищены `rules/common/coding-style.md`, `rules/python/testing.md`; формулировки в `agents/architecture-reviewer.md` переписаны без апелляции к YAGNI)
+
 ## 2026-06-05
 
 ### Project

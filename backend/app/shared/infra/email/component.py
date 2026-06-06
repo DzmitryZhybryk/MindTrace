@@ -2,14 +2,14 @@
 ResendComponent — lifecycle обёртка над ResendClient.
 
 Создаёт инстанс клиента из настроек, регистрирует в registry под ключом
-EmailTransport (доменный код зависит только от Protocol, не от конкретного
+EmailTransportPort (доменный код зависит только от Protocol, не от конкретного
 провайдера). На shutdown закрывает httpx-пул.
 """
 
 from app.shared.infra.di.base import BaseComponent
 from app.shared.infra.di.registry import ComponentRegistry
 from app.shared.infra.email.resend_client import ResendClient
-from app.shared.infra.email.transport import EmailTransport
+from app.shared.infra.email.transport import EmailTransportPort
 from app.shared.infra.http.config import HTTPClientConfig
 from app.shared.settings import ResendSettings
 
@@ -29,7 +29,7 @@ class ResendComponent(BaseComponent):
         )
 
     async def startup(self, registry: ComponentRegistry) -> None:
-        registry.set(EmailTransport, self._client)
+        registry.set(EmailTransportPort, self._client)
 
     async def shutdown(self) -> None:
         await self._client.aclose()

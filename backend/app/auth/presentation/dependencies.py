@@ -15,14 +15,14 @@ from app.auth.infra.clients.internal_users_client import InternalUsersClient
 from app.auth.infra.uow import AuthUnitOfWork
 from app.auth.presentation.cookies import read_refresh_token_cookie
 from app.shared.infra.crypto import (
-    DeterministicHasher,
-    SaltedHasher,
+    DeterministicHasherPort,
+    SaltedHasherPort,
     get_argon2_salted_hasher,
     get_sha256_deterministic_hasher,
 )
 from app.shared.infra.jwt import JWTDecodeError, JWTService, get_jwt_service
 from app.shared.infra.postgres.dependency import db_session_dependency
-from app.shared.infra.procrastinate import TaskBus
+from app.shared.infra.procrastinate import ProcrastinateTaskBus, TaskBusPort
 from app.shared.schemas.base import BFastAPI
 from app.shared.settings import settings
 from app.users.application.services import UserService
@@ -89,12 +89,12 @@ def email_verification_settings_dependency() -> EmailVerificationSettings:
     return get_email_verification_settings()
 
 
-def task_bus_dependency(request: Request) -> TaskBus:
+def task_bus_dependency(request: Request) -> TaskBusPort:
     app: BFastAPI = request.app
-    return app.registry.get(TaskBus)
+    return app.registry.get(ProcrastinateTaskBus)
 
 
-def salted_hasher_dependency() -> SaltedHasher:
+def salted_hasher_dependency() -> SaltedHasherPort:
     """
     Возвращает salt-устойчивый hasher для паролей и OTP-кодов.
 
@@ -104,7 +104,7 @@ def salted_hasher_dependency() -> SaltedHasher:
     return get_argon2_salted_hasher()
 
 
-def deterministic_hasher_dependency() -> DeterministicHasher:
+def deterministic_hasher_dependency() -> DeterministicHasherPort:
     """
     Возвращает детерминированный hasher для refresh-token lookup'а по индексу.
 
@@ -142,8 +142,8 @@ def required_refresh_secret_dependency(request: Request) -> str:
 
 def email_verification_service_dependency(
     uow: Annotated[AuthUnitOfWork, Depends(auth_uow_dependency)],
-    salted_hasher: Annotated[SaltedHasher, Depends(salted_hasher_dependency)],
-    task_bus: Annotated[TaskBus, Depends(task_bus_dependency)],
+    salted_hasher: Annotated[SaltedHasherPort, Depends(salted_hasher_dependency)],
+    task_bus: Annotated[TaskBusPort, Depends(task_bus_dependency)],
     email_verification_settings: Annotated[EmailVerificationSettings, Depends(email_verification_settings_dependency)],
 ) -> EmailVerificationService:
     return EmailVerificationService(
@@ -155,7 +155,7 @@ def email_verification_service_dependency(
 
 
 def token_issuer_dependency(
-    deterministic_hasher: Annotated[DeterministicHasher, Depends(deterministic_hasher_dependency)],
+    deterministic_hasher: Annotated[DeterministicHasherPort, Depends(deterministic_hasher_dependency)],
     jwt_service: Annotated[JWTService, Depends(jwt_service_dependency)],
 ) -> TokenIssuer:
     return TokenIssuer(
@@ -168,7 +168,7 @@ def token_issuer_dependency(
 def auth_service_dependency(
     uow: Annotated[AuthUnitOfWork, Depends(auth_uow_dependency)],
     users_client: Annotated[InternalUsersClient, Depends(users_client_dependency)],
-    salted_hasher: Annotated[SaltedHasher, Depends(salted_hasher_dependency)],
+    salted_hasher: Annotated[SaltedHasherPort, Depends(salted_hasher_dependency)],
     token_issuer: Annotated[TokenIssuer, Depends(token_issuer_dependency)],
     email_verification_service: Annotated[EmailVerificationService, Depends(email_verification_service_dependency)],
 ) -> AuthService:

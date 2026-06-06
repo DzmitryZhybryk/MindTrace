@@ -3,8 +3,7 @@
 ## Core Principles
 
 - **KISS** — the simplest solution that works. Optimize for clarity, not cleverness.
-- **DRY** — extract repeated logic; don't introduce abstractions in advance.
-- **YAGNI** — don't build features and abstractions until there's an actual need.
+- **DRY** — extract repeated logic.
 
 ## Immutability (CRITICAL)
 

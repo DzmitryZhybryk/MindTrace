@@ -6,7 +6,7 @@ from pydantic import SecretStr
 
 from app.auth.application.schemas import ClientMetadata, IssuedRefreshToken, TokenPairResult
 from app.auth.domain.entities import RefreshTokenEntity, UserCredentialsEntity
-from app.shared.infra.crypto import DeterministicHasher
+from app.shared.infra.crypto import DeterministicHasherPort
 from app.shared.infra.jwt import JWTService
 
 _REFRESH_TOKEN_SECRET_BYTES: Final[int] = 32
@@ -23,7 +23,7 @@ class TokenIssuer:
 
     def __init__(
         self,
-        deterministic_hasher: DeterministicHasher,
+        deterministic_hasher: DeterministicHasherPort,
         jwt_service: JWTService,
         refresh_token_ttl_days: int,
     ) -> None:

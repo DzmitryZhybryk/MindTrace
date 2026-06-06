@@ -44,8 +44,8 @@ make migrate-history                       # история миграций
 The project follows DDD with **domain-based** module organization. Each domain (users, auth) is self-contained with four layers:
 
 - **domain/** -- Pure business logic: entities, value objects. No infrastructure imports.
-- **infra/** -- SQLModel DB models, repository implementations, UnitOfWork.
-- **application/** -- Use cases/services and DTOs for business operations.
+- **application/** -- Use cases/services, DTOs, and **outbound ports** (`ports.py`): the `Protocol`s (repositories, UnitOfWork, external clients) the services depend on.
+- **infra/** -- SQLModel DB models plus the **implementations** of those application ports (repositories, UnitOfWork, clients). By DIP `infra` imports the port from `application` and implements it — never the reverse.
 - **presentation/** -- FastAPI routes, HTTP request/response schemas, dependencies.
 
 Presentation schemas are separate from application DTOs to prevent abstraction leakage. Conversion happens in the presentation layer.
@@ -56,11 +56,11 @@ Presentation schemas are separate from application DTOs to prevent abstraction l
 
 - **DI-каркас** (`infra/di/`) — `BaseComponent` и `ComponentRegistry`. Компоненты реализуют `startup(registry)`/`shutdown()` lifecycle, registry attached к `BFastAPI`. Импорт: `from app.shared.infra.di.registry import ComponentRegistry`.
 - **postgres** (`infra/postgres/`) — `SqlAlchemyComponent`+`SessionMaker`, `BaseUnitOfWork` (async ctx-mgr транзакции, ручной commit), `db_session_dependency`. Импорты: `from app.shared.infra.postgres.uow import BaseUnitOfWork`, `from app.shared.infra.postgres.dependency import db_session_dependency`.
-- **procrastinate** (`infra/procrastinate/`) — `ProcrastinateComponent`+`ProcrastinateApp`, `TaskBus`+`SessionBoundTaskBus` (фасад для defer'а: `TaskBus` без сессии для fire-and-forget, `bus.bind_to(uow.session)` — atomic defer в текущей SA-транзакции), `TaskBusComponent`. Импорт: `from app.shared.infra.procrastinate import TaskBus`.
-- **email** (`infra/email/`) — `EmailTransport` Protocol, `ResendClient`, `ResendComponent`, `EmailMessage`. Импорт: `from app.shared.infra.email import EmailTransport`.
+- **procrastinate** (`infra/procrastinate/`) — `ProcrastinateComponent`+`ProcrastinateApp`, Protocol'ы `TaskBusPort`+`SessionBoundTaskBusPort` с реализацией `ProcrastinateTaskBus`+`ProcrastinateSessionBoundTaskBus` (вертикаль владеет своими протоколами, как `crypto`; фасад для defer'а: `TaskBusPort` без сессии для fire-and-forget, `bus.bind_to(uow.session)` — atomic defer в текущей SA-транзакции), `TaskBusComponent` (регистрирует impl под ключом `ProcrastinateTaskBus`). Application зависит от Protocol'а `TaskBusPort`. Импорт: `from app.shared.infra.procrastinate import TaskBusPort`.
+- **email** (`infra/email/`) — `EmailTransportPort` Protocol, `ResendClient`, `ResendComponent`, `EmailMessage`. Импорт: `from app.shared.infra.email import EmailTransportPort`.
 - **http** (`infra/http/`) — `BaseHTTPClient` (используют клиенты-наследники), `HTTPClientConfig`, `ExternalAPI*Error`. Импорт: `from app.shared.infra.http import BaseHTTPClient`.
 - **jwt** (`infra/jwt/`) — `JWTService` + `JWTDecodeError`. Импорт: `from app.shared.infra.jwt import JWTService`.
-- **crypto** (`infra/crypto/`) — два независимых Protocol'а: `SaltedHasher` (с реализацией `Argon2SaltedHasher` — для паролей и других плейнтекст-секретов, где требуется уникальная соль и timing-safe verify) и `DeterministicHasher` (с реализацией `Sha256DeterministicHasher` — для refresh-token lookup'а по индексу). Импорт: `from app.shared.infra.crypto import SaltedHasher, Argon2SaltedHasher, DeterministicHasher, Sha256DeterministicHasher`.
+- **crypto** (`infra/crypto/`) — два независимых Protocol'а: `SaltedHasherPort` (с реализацией `Argon2SaltedHasher` — для паролей и других плейнтекст-секретов, где требуется уникальная соль и timing-safe verify) и `DeterministicHasherPort` (с реализацией `Sha256DeterministicHasher` — для refresh-token lookup'а по индексу). Импорт: `from app.shared.infra.crypto import SaltedHasherPort, Argon2SaltedHasher, DeterministicHasherPort, Sha256DeterministicHasher`.
 - **logging** (`logging/`) — `configure_logging`, `get_logger`, `HTTPLoggingMiddleware` + helper-модули (`events`, `classify`, `context`). Импорт: `from app.shared.logging import get_logger`.
 - **BaseDBRepository[ModelT]** (`repositories/base_repository.py`) — generic async repository с `_fetch_one` (выполнить SELECT и вернуть одну модель или `None`) и `insert` (добавить модель в сессию без коммита). Доменные репозитории наследуются и добавляют собственные SELECT'ы поверх `_fetch_one`.
 - **Exception hierarchy** (`exceptions/`) — `BaseDomainError` базовый класс. Исключения **транспортно-нейтральны**: НЕ несут HTTP-статус, а классифицируются нейтральной `ErrorCategory` (`INVALID_INPUT`, `UNAUTHENTICATED`, `NOT_FOUND`, ...). Базовые подклассы (`InvalidInputError`, `UnauthenticatedError`, `PermissionDeniedError`, `NotFoundError`, `ConflictError`, `GoneError`, `UnprocessableError`, `RateLimitedError`, `InternalError`) задают `category` + дефолтный `code`/`message`. Перевод категории в HTTP-статус живёт единственным маппингом `resolve_http_status` в HTTP-адаптере (`mappings.py`), его переиспользуют и handler, и логирование; для другого транспорта (gRPC) заводится отдельный адаптер, домен не трогается. `code` — стабильный машинный идентификатор и часть внешнего API-контракта (фронт мапит его в текст). Global handler в `handlers.py` конвертирует доменные исключения в `ErrorResponse`.
@@ -75,11 +75,12 @@ Stateless infra **без сетевого ресурса** (`JWTService`, `Argon
 ### Key patterns
 
 - All DB operations are async (psycopg3 async driver — выбран для atomic defer procrastinate в SA-транзакции).
-- `Password` — тонкий value object вокруг argon2-хеша (`_hash: str` + `@property hash`). Само хеширование делает `SaltedHasher` снаружи (infra-protocol); VO нужен как type-level marker «эта строка — argon2-hash, а не любой str» и чтобы entity не зависел от crypto-protocol'а.
+- `Password` — тонкий value object вокруг argon2-хеша (`_hash: str` + `@property hash`). Само хеширование делает `SaltedHasherPort` снаружи (infra-protocol); VO нужен как type-level marker «эта строка — argon2-hash, а не любой str» и чтобы entity не зависел от crypto-protocol'а.
 - FastAPI dependencies chain: session -> UnitOfWork -> Service (см. `presentation/dependencies.py` в каждом домене).
 - App factory pattern: `create_app()` в `app/main.py`, invoked by uvicorn with `--factory`.
 - Routers mounted at `/v1/{domain}` (e.g., `/v1/auth`).
-- **TaskBus pattern** для procrastinate: вне tx — `await task_bus.defer(task=...)`; в tx — `await task_bus.bind_to(uow.session).defer(task=...)` + `await uow.commit()` (один commit фиксирует и pending writes, и procrastinate-job).
+- **Outbound ports (DIP)**: доменно-специфичные исходящие зависимости (репозитории, UnitOfWork, клиенты к другим сервисам) объявлены как `Protocol` в `application/ports.py`; `infra` их реализует (`infra → application`, не наоборот). Сервисы и тестовые фейки опираются на порт, а не на конкретику. Shared cross-cutting инфраструктура (`crypto`, `jwt`, `procrastinate`) — исключение: там протоколом владеет сама вертикаль в `shared/infra/` (см. Shared infrastructure), порт в application не заводится. **Любой класс-наследник `typing.Protocol` (и application-порт, и shared-протокол вертикали) именуется с суффиксом `Port`** (`SaltedHasherPort`, `TaskBusPort`, `RefreshTokenRepositoryPort`), реализация — без него (`Argon2SaltedHasher`, `ProcrastinateTaskBus`, `RefreshTokenRepository`): по имени сразу видно, контракт это или реализация.
+- **TaskBusPort pattern** для procrastinate: вне tx — `await task_bus.defer(task=...)`; в tx — `await task_bus.bind_to(uow.session).defer(task=...)` + `await uow.commit()` (один commit фиксирует и pending writes, и procrastinate-job).
 - **Composition root** (`app/main.py`) собирает компоненты в порядке зависимостей: postgres → email/resend → procrastinate → task_bus (TaskBusComponent читает ProcrastinateApp из registry).
 
 ### DTO conventions: pydantic vs dataclass
@@ -254,6 +255,7 @@ CHANGELOG — **один** файл в корне. Новые записи гр�
 Python (бэкенд `app/`, `tests/`, `migrations/`):
 
 @.claude/rules/python/security.md
+@.claude/rules/python/testing.md
 
 TypeScript / React (фронтенд `frontend/src/`):
 

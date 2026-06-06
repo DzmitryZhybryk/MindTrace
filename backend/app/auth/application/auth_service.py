@@ -1,6 +1,7 @@
 from typing import Final
 
 from app.auth.application.email_verification_service import EmailVerificationService
+from app.auth.application.ports import AuthUnitOfWorkPort, UsersClientPort
 from app.auth.application.schemas import (
     ClientMetadata,
     LoginCommand,
@@ -16,9 +17,7 @@ from app.auth.exceptions import (
     InvalidRefreshTokenError,
     UsernameAlreadyExistError,
 )
-from app.auth.infra.clients.internal_users_client import CreateUserRequest, InternalUsersClient
-from app.auth.infra.uow import AuthUnitOfWork
-from app.shared.infra.crypto import SaltedHasher, get_argon2_salted_hasher
+from app.shared.infra.crypto import SaltedHasherPort, get_argon2_salted_hasher
 
 # Заранее посчитанный argon2-хеш фиксированной строки. Используется в ``login``
 # для timing mitigation: если по логину никого не найдено, мы всё равно делаем
@@ -31,9 +30,9 @@ _DUMMY_PASSWORD_HASH: Final[str] = get_argon2_salted_hasher().hash(secret="timin
 class AuthService:
     def __init__(
         self,
-        uow: AuthUnitOfWork,
-        users_client: InternalUsersClient,
-        salted_hasher: SaltedHasher,
+        uow: AuthUnitOfWorkPort,
+        users_client: UsersClientPort,
+        salted_hasher: SaltedHasherPort,
         token_issuer: TokenIssuer,
         email_verification_service: EmailVerificationService,
     ) -> None:
@@ -58,13 +57,11 @@ class AuthService:
         )
         await self._uow.user_credentials_repository.insert_user_credentials(credentials=credentials_entity)
         await self._users_client.create_user(
-            request=CreateUserRequest(
-                user_id=credentials_entity.user_id,
-                username=registration.username,
-                email=registration.email,
-                marketing_emails_consent=registration.marketing_emails_consent,
-                terms_accepted_at=credentials_entity.created_at,
-            ),
+            user_id=credentials_entity.user_id,
+            username=registration.username,
+            email=registration.email,
+            marketing_emails_consent=registration.marketing_emails_consent,
+            terms_accepted_at=credentials_entity.created_at,
         )
 
         refresh_secret, refresh_token = self._token_issuer.issue_refresh_token(
