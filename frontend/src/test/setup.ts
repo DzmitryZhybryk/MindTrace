@@ -1,20 +1,74 @@
 /**
  * Глобальный setup для Vitest (подключён через `test.setupFiles` в `vite.config.ts`).
  *
- * i18next в приложении грузит локали лениво (dynamic `import()` через
- * `resourcesToBackend`), поэтому в тестах `i18n.t(...)` без подготовки вернул бы
- * сам ключ. Подгружаем `en`-бандлы синхронно на тот же singleton-инстанс, что
- * использует код, — так `messageForCode` / `applyApiError` резолвят реальные
- * тексты, а не моки (тестируем настоящий маппинг кодов ошибок).
+ * Делает четыре вещи:
+ *  1. i18n — синхронно подгружает `en`-бандлы на тот же singleton-инстанс, что
+ *     использует код (в приложении локали грузятся лениво через dynamic `import()`,
+ *     поэтому без этого `i18n.t(...)` вернул бы сам ключ). Так `messageForCode` и UI
+ *     резолвят реальные английские тексты — тестируем настоящий маппинг, а не моки.
+ *  2. jest-dom — регистрирует матчеры (`toBeInTheDocument` и пр.) в `expect`.
+ *  3. jsdom-полифилы — `matchMedia` и `ResizeObserver`, которых нет в jsdom, но к
+ *     которым обращаются Mantine (Menu/Modal) и контейнер `AuthGlobe`.
+ *  4. MSW — сетевой слой component-тестов: listen/reset/close + очистка модульного
+ *     состояния (`tokenStore`, `sessionStorage`) и моков после каждого теста.
+ *     Unit-тесты ставят собственный `fetch`-мок и MSW минуют (см. `handlers.ts`).
  */
 
+import "@testing-library/jest-dom/vitest";
+
+import { cleanup } from "@testing-library/react";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
+
+import { clearAccessToken } from "../auth/tokenStore";
 import enAuth from "../locales/en/auth.json";
 import enCommon from "../locales/en/common.json";
 import enErrors from "../locales/en/errors.json";
 import { i18n } from "../i18n";
+import { server } from "./handlers";
 
 i18n.addResourceBundle("en", "common", enCommon, true, true);
 i18n.addResourceBundle("en", "auth", enAuth, true, true);
 i18n.addResourceBundle("en", "errors", enErrors, true, true);
 
 void i18n.changeLanguage("en");
+
+// matchMedia: Mantine (Menu/Modal/визуальные хуки) обращается к нему, в jsdom его нет.
+// Ставим прямым присваиванием (не через vi.stubGlobal), чтобы `vi.unstubAllGlobals()`
+// в afterEach его не снёс.
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: (query: string): MediaQueryList =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList,
+});
+
+// ResizeObserver: нет в jsdom; контейнер AuthGlobe и часть Mantine его инстанцируют.
+class ResizeObserverStub {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+
+globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+
+afterEach(() => {
+  // Сначала размонтируем дерево (отписки эффектов), затем чистим сеть и состояние.
+  cleanup();
+  server.resetHandlers();
+  clearAccessToken();
+  sessionStorage.clear();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+afterAll(() => server.close());

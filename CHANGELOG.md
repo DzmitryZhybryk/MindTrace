@@ -13,6 +13,18 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 ## 2026-06-07
 
+### Backend 0.9.7
+
+- `send_email_verification` теперь возвращает честно пустое тело на 202 (`Response(status_code=202)`) вместо JSON `null` — артефакта сериализации `None` в `JSONResponse`. Семантика 202 («принято в асинхронную обработку»: письмо ставится в очередь воркеру, клиенту нечего возвращать) сохранена; статус, `code` и поля ответа не менялись — поэтому bump патчевый
+- Контекст: контракт send-verification держался на двух случайностях (FastAPI `None`→`null` + фронтовый парсер, читавший JSON на любом не-204 успехе). 202 с пустым телом REST-корректен (тело опционально, в отличие от 204) и точнее выражает async-приём; обе стороны связки сделаны явными (парный фронт-фикс — `0.10.2`)
+
+### Frontend 0.10.2
+
+- Введён фронтенд-набор **component-тестов** (Vitest + Testing Library + MSW): auth-формы (`LoginPage`/`SignUpPage`), `VerifyEmailDialog`, `EmailVerificationBanner`, `LanguageSwitcher`, `AuthHeader`, `HomePage`, `ProtectedRoute` — 34 теста. Classicist: мокается только сетевая граница (MSW = «API fakes»), запросы как у пользователя (`getByRole`/`getByLabelText`/`findByText`), навигация наблюдается через landing-маркеры (без слежки за `useNavigate`). Внешний контракт SPA не меняется — поэтому bump патчевый
+- Общие seam'ы в `src/test/`: `setup.ts` (jest-dom, моки `matchMedia`/`ResizeObserver`, MSW lifecycle, сбросы `tokenStore`/`sessionStorage`), `handlers.ts` (реюзабельные MSW-handlers `/v1/auth/*` + билдер токена), `render.tsx` (`renderWithProviders`/`renderRoutes`/`makeAuthValue`). `react-globe.gl` мокается на auth-страницах (WebGL вне jsdom)
+- Закалён `api/client.ts` `parseSuccess`: успешный ответ с пустым телом (204 либо любой 2xx без контента, напр. 202 на send-verification) больше не падает на `response.json()` — отдаёт `undefined` (через `response.text()`); покрыто unit-тестом. Фронт устойчив к контракту 202 независимо от формы тела (парный фикс к backend `0.9.7`)
+- eslint: `react-refresh/only-export-components` отключён для тест-файлов (`src/test/**`, `*.test.*`) — правило Vite HMR неприменимо к тест-хелперам, экспортирующим и провайдеры, и функции
+
 ### Backend 0.9.6
 
 - Введён бэкенд-набор **api-тестов** (pytest, `httpx.ASGITransport`) — auth-роуты гоняются через ASGI без реальной БД: 37 тестов, exhaustive по матрице достижимых HTTP-статусов. `register` (201+cookie / 400 / 409×2 / 422×3), `login` (200+cookie / 401×2 / 422), `logout` (204+clear / идемпотентность), `refresh` (200+ротация / 401×4), `email/send-verification` (202 / 401×2 / 404 / 409 / 429), `email/verify` (204 / 400 / 404×2 / 409 / 410 / 429 / 422) и контракт ошибок (envelope `{code,message,details,timestamp}`, `details.field`, `validation_error` с `details.fields[]`, 500 `{code:internal}` без утечки). Внешний HTTP-API и коды ошибок не изменились — поэтому bump патчевый

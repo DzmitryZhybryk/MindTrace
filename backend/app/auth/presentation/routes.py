@@ -103,8 +103,12 @@ async def refresh(
 async def send_email_verification(
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
     email_verification_service: Annotated[EmailVerificationService, Depends(email_verification_service_dependency)],
-) -> None:
+) -> Response:
     await email_verification_service.request_email_verification(user_id=user_id)
+    # Явно пустое тело: 202 = «принято в асинхронную обработку» (письмо ставится в
+    # очередь воркеру), клиенту нечего возвращать. Без этого FastAPI сериализовал бы
+    # None в JSON `null` — не пустой, но и бессмысленный payload.
+    return Response(status_code=status.HTTP_202_ACCEPTED)
 
 
 @auth_router.post(

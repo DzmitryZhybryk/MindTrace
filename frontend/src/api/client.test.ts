@@ -60,6 +60,14 @@ describe("apiFetch", () => {
     expect(await apiFetch("/v1/x/", { method: "DELETE" })).toBeUndefined();
   });
 
+  it("возвращает undefined для успешного ответа с пустым телом (не 204)", async () => {
+    // 202 «принято в async-обработку» с пустым телом (send-verification): не должно
+    // падать на response.json() — parseSuccess отдаёт undefined.
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 202 }));
+
+    expect(await apiFetch("/v1/x/", { method: "POST" })).toBeUndefined();
+  });
+
   it("подставляет Authorization, credentials include и Content-Type для json", async () => {
     setAccessToken("my-token");
     fetchMock.mockResolvedValueOnce(jsonResponse(200, {}));
