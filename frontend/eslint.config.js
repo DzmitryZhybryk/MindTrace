@@ -20,4 +20,12 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Тестовая инфраструктура и тесты: react-refresh — правило Vite HMR для
+    // app-кода, к тест-хелперам (общий render с провайдерами, фикстуры) неприменимо.
+    files: ['src/test/**/*.{ts,tsx}', '**/*.test.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

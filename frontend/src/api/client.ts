@@ -79,11 +79,16 @@ async function sendRequest(path: string, init: ApiFetchInit): Promise<Response> 
 }
 
 async function parseSuccess<T>(response: Response): Promise<T> {
-  if (response.status === 204) {
+  // Успешный ответ может не иметь тела: 204, либо любой 2xx с пустым телом (напр.
+  // 202 «принято в async-обработку» на send-verification). Читаем тело как текст и
+  // парсим JSON только если оно непустое — иначе `response.json()` бросил бы на
+  // пустом теле. Так фронт устойчив к любым success без контента, не только к 204.
+  const rawBody = await response.text();
+  if (rawBody.length === 0) {
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  return JSON.parse(rawBody) as T;
 }
 
 async function parseErrorBody(response: Response): Promise<ApiErrorBody> {
