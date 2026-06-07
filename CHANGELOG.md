@@ -20,8 +20,17 @@ CHANGELOG остаётся один. Новые записи группирую�
 - DIP домена `users` доведён до владельца контракта: добавлен `app/users/application/ports.py` (`UserRepositoryPort`, `UserUnitOfWorkPort`); `UserRepository`/`UserUnitOfWork` явно реализуют порты, `UserService` зависит от порта, а не от конкретного UoW. Внешний HTTP-API и коды ошибок не изменились — поэтому bump патчевый
 - Покрыты ранее не тестированные ветки: негативные пути `JWTService.decode_access_token` (чужая подпись, истёкший токен, битый формат, отсутствующий/не-UUID `sub`) и реальный `Argon2SaltedHasher.verify` (hash→verify roundtrip + неверный секрет + уникальная соль на вызов)
 
+### Frontend 0.10.1
+
+- Введён фронтенд-набор **unit-тестов** (Vitest + jsdom): чистая логика `api/` и `auth/` — 44 теста. Покрытие целевых модулей 100% (`api/errors`, `auth/jwt`, `auth/tokenStore`, `auth/events`, `auth/verifyBannerStorage`) и `api/client` 100% — single-flight refresh, 401-retry с повтором, гарды (`invalid_credentials`/`email_not_verified`/сам refresh-path), события `verify-required`/`auth-required`; это ровно те ветки, что в ручном QA были сложно воспроизводимы (D2/E1/E2). Внешний контракт SPA не меняется — bump патчевый
+- Раскладка co-located `*.test.ts` рядом с модулем; classicist-подход — мокается только сетевая граница (`fetch` через `vi.stubGlobal`), всё под ней (token store, jwt-decode, error-mapping, zod) исполняется по-настоящему
+- Сетап: `test`-блок в `vite.config.ts` (jsdom, v8-coverage без порога), скрипты `test`/`test:run`/`coverage`, синхронный bootstrap i18n в `src/test/setup.ts`. Тестовые API импортируются явно из `vitest` (без global-инъекции, дефолт Vitest) — app-код не видит `describe`/`it`/`vi`
+- Заведён `.claude/rules/typescript/testing.md` — конвенции FE-тестов (пирамида unit/component/e2e, «мок только сеть», детерминизм, reuse-before-create); component (Testing Library + MSW) и e2e (Playwright) — последующие фазы
+- Безопасность: `npm audit fix` обновил уязвимые зависимости — `react-router`/`react-router-dom` 7.14.x → 7.17.0 (high: DoS через unbounded path expansion в `__manifest`) и транзитивный `brace-expansion` (moderate). `npm audit` → 0 уязвимостей; диапазоны версий в `package.json` не менялись (фикс в пределах `^7.14.1`)
+
 ### Project
 
+- Добавлен `frontend/Makefile` — зеркалит backend-нейминг (`make lint`/`typecheck`/`test`/`coverage`/`check`), тонкая обёртка над npm-скриптами для единого интерфейса по монорепо. В `package.json` добавлены скрипты `typecheck` (`tsc -b`) и `lint:fix` (`eslint --fix`)
 - `make test-all` теперь печатает coverage (`--cov=app --cov-report=term-missing`); `make check` дополнен прогоном `test-all` (полный конвейер: format → lint → typecheck → dead-code → тесты с покрытием)
 - `.claude/rules/python/testing.md` расширен: правило **«Reuse before create»** (сверяться с уже существующими фикстурами/фейками/билдерами до создания новых), трёхуровневая модель conftest (корневой suite-wide / `tests/unit` cross-domain unit-only / доменный) и требование «фикстуры живут только в conftest, не рядом с тестом»
 - Из инженерных правил `.claude/` убран принцип **YAGNI**: проект осознанно допускает оверинженеринг ради чистой архитектуры под будущий microservices-split (вычищены `rules/common/coding-style.md`, `rules/python/testing.md`; формулировки в `agents/architecture-reviewer.md` переписаны без апелляции к YAGNI)

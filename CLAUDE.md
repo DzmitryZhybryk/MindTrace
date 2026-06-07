@@ -32,6 +32,17 @@ uv run pytest                              # все тесты (asyncio_mode=aut
 uv run pytest tests/path/test_file.py      # один тест-файл
 uv run pytest -k "test_name"               # один тест по имени
 
+# Frontend dev — из frontend/ (Makefile зеркалит backend-нейминг, обёртка над npm-скриптами)
+cd frontend
+make install                               # npm install
+make dev                                   # Vite dev-сервер
+make lint                                  # eslint
+make lint-fix                              # eslint --fix (форматтера/prettier в проекте нет)
+make typecheck                             # tsc -b
+make test                                  # vitest run (один прогон)
+make coverage                              # vitest run --coverage
+make check                                 # lint + typecheck + test (CI-стиль)
+
 # Database migrations — из backend/, против запущенного контейнера
 make migrate-create "description"          # создать миграцию (autogenerate)
 make migrate-upgrade                       # применить миграции
@@ -260,6 +271,7 @@ Python (бэкенд `app/`, `tests/`, `migrations/`):
 TypeScript / React (фронтенд `frontend/src/`):
 
 @.claude/rules/typescript/coding-style.md
+@.claude/rules/typescript/testing.md
 
 Веб-специфика (UI, performance):
 
