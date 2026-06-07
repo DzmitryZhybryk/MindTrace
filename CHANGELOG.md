@@ -11,6 +11,16 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-06-07
+
+### Backend 0.9.6
+
+- Введён бэкенд-набор **api-тестов** (pytest, `httpx.ASGITransport`) — auth-роуты гоняются через ASGI без реальной БД: 37 тестов, exhaustive по матрице достижимых HTTP-статусов. `register` (201+cookie / 400 / 409×2 / 422×3), `login` (200+cookie / 401×2 / 422), `logout` (204+clear / идемпотентность), `refresh` (200+ротация / 401×4), `email/send-verification` (202 / 401×2 / 404 / 409 / 429), `email/verify` (204 / 400 / 404×2 / 409 / 410 / 429 / 422) и контракт ошибок (envelope `{code,message,details,timestamp}`, `details.field`, `validation_error` с `details.fields[]`, 500 `{code:internal}` без утечки). Внешний HTTP-API и коды ошибок не изменились — поэтому bump патчевый
+- Classicist-сборка: поднимается **настоящий** DI-граф FastAPI, выпуск/декод JWT, куки и exception-handler'ы; фейкается только I/O-граница (UoW/репо, users-client, task-bus, argon2) через `app.dependency_overrides`, переиспользуя классы фейков из `tests/fakes/`. Bearer-токены выпускаются тем же `get_jwt_service()`, которым приложение их и декодит
+- Раскладка harness симметрична unit-уровню: `tests/api/conftest.py` — домен-агностичная generic-проводка (`api_app` без компонентов, generic-сборка `app` из `router`/`router_prefix`/`dependency_overrides`, `client`, фейки shared-инфры, `mint_access_token`); `tests/api/auth/conftest.py` — только auth-данные. Второй домен переиспользует generic-`app`/`client`, отдав три data-фикстуры
+- Закрыты два остававшихся пробела unit-покрытия: `InternalUsersClient` (адаптер auth→users, ловит дрейф полей `CreateUserRequest`↔`CreateUserCommand`) и страховочные ветки `shared/exceptions/handlers` — оба доведены до 100%. Покрытие `app/auth/presentation` — 95% (routes/cookies/responses/schemas 100%; в `dependencies.py` не покрыты только тела листовых deps, которые и подменяются override'ами). Весь suite — 122 теста
+- Тестовый `JWT_SECRET_KEY` в корневом conftest доведён до ≥32 байт — глушит `InsecureKeyLengthWarning` от settings-бэкенного `JWTService` (юнит-тесты со своим секретом не затронуты)
+
 ## 2026-06-06
 
 ### Backend 0.9.5
