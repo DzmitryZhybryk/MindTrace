@@ -26,7 +26,7 @@ _TEST_ENV_DEFAULTS = {
     "HOST": "localhost",
     "PORT": "8000",
     "ENVIRONMENT": "local",
-    "JWT_SECRET_KEY": "test-secret-key",
+    "JWT_SECRET_KEY": "test-secret-key-at-least-32-bytes-long",
     "RESEND_API_KEY": "test-resend-key",
     "RESEND_FROM_EMAIL": "test@example.com",
 }
