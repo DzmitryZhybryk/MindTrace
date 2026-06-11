@@ -10,9 +10,9 @@ from app.shared.infra.procrastinate import SessionBoundTaskBusPort, TaskBusPort
 
 @dataclass(frozen=True, slots=True)
 class DeferredTask:
-    """Запись одного defer'а: задача, lock и переданные task-kwargs."""
+    """Запись одного defer'а: имя задачи, lock и переданные task-kwargs."""
 
-    task: Any
+    task_name: str
     lock: str | None
     kwargs: dict[str, Any]
 
@@ -23,8 +23,8 @@ class FakeSessionBoundTaskBus(SessionBoundTaskBusPort):
     def __init__(self) -> None:
         self.deferred: list[DeferredTask] = []
 
-    async def defer(self, *, task: Any, lock: str | None = None, **task_kwargs: Any) -> None:
-        self.deferred.append(DeferredTask(task=task, lock=lock, kwargs=task_kwargs))
+    async def defer(self, *, task_name: str, lock: str | None = None, **task_kwargs: Any) -> None:
+        self.deferred.append(DeferredTask(task_name=task_name, lock=lock, kwargs=task_kwargs))
 
 
 class FakeTaskBus(TaskBusPort):
@@ -37,8 +37,8 @@ class FakeTaskBus(TaskBusPort):
         self.bound = FakeSessionBoundTaskBus()
         self.bound_session: AsyncSession | None = None
 
-    async def defer(self, *, task: Any, lock: str | None = None, **task_kwargs: Any) -> None:
-        self.bound.deferred.append(DeferredTask(task=task, lock=lock, kwargs=task_kwargs))
+    async def defer(self, *, task_name: str, lock: str | None = None, **task_kwargs: Any) -> None:
+        self.bound.deferred.append(DeferredTask(task_name=task_name, lock=lock, kwargs=task_kwargs))
 
     def bind_to(self, session: AsyncSession) -> SessionBoundTaskBusPort:
         self.bound_session = session

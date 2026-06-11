@@ -5,9 +5,9 @@ import { decodeAccessTokenClaims } from "./jwt";
 /** Кодирует строку в base64url (как payload-сегмент JWT: `+/` → `-_`, без паддинга). */
 function base64Url(value: string): string {
   return btoa(value)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+    .replace(/\+/gu, "-")
+    .replace(/\//gu, "_")
+    .replace(/=+$/u, "");
 }
 
 /** Собирает «токен» `header.<payload>.signature` с произвольным payload (подпись не проверяется). */

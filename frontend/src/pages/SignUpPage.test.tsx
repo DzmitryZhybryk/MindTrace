@@ -21,7 +21,7 @@ function renderSignup() {
   return { ...view, authValue };
 }
 
-const termsCheckbox = { name: /I agree to the/ };
+const termsCheckbox = { name: /I agree to the/u };
 
 describe("SignUpPage", () => {
   it("валидная регистрация передаёт токен в auth и ведёт на главную", async () => {

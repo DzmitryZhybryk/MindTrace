@@ -33,12 +33,12 @@ typecheck: ## Type-check sources with tsc
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}tsc${AZURE}' typecheck${RESET}"
 	@npm run typecheck
 
-lint: ## Lint sources with eslint
-	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}eslint${AZURE}' lint${RESET}"
+lint: ## Lint sources with oxlint
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}oxlint${AZURE}' lint${RESET}"
 	@npm run lint
 
-lint-fix: ## Auto-fix lint issues (eslint --fix)
-	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}eslint --fix${AZURE}'${RESET}"
+lint-fix: ## Auto-fix lint issues (oxlint --fix)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}oxlint --fix${AZURE}'${RESET}"
 	@npm run lint:fix
 
 test: ## Run tests once (vitest run)

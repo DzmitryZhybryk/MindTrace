@@ -13,6 +13,7 @@ EmailTransportPort достаётся из ``context.additional_context`` — с
 
 from procrastinate import Blueprint, JobContext, RetryStrategy
 
+from app.auth.application.task_names import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.infra.email_renderer import render_verification_email
 from app.shared.infra.email import EmailTransportPort
 from app.shared.infra.http.exceptions import ExternalAPITemporaryError
@@ -24,7 +25,7 @@ logger = get_logger(__name__)
 
 
 @auth_blueprint.task(
-    name="auth.send_verification_email",
+    name=SEND_VERIFICATION_EMAIL_TASK,
     pass_context=True,
     retry=RetryStrategy(
         max_attempts=3,

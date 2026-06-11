@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 
 from app.auth.application.email_verification_service import EmailVerificationService
+from app.auth.application.task_names import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.domain.enums import ChallengeType
 from app.auth.exceptions import (
     ChallengeAttemptsExceededError,
@@ -14,7 +15,6 @@ from app.auth.exceptions import (
     UserCredentialsNotFoundError,
     VerificationCodeInvalidError,
 )
-from app.auth.infra.tasks import send_verification_email
 from tests.builders import make_challenge, make_user_credentials
 from tests.fakes import (
     FakeAuthUnitOfWork,
@@ -51,7 +51,7 @@ async def test_request_creates_challenge_and_defers_email_atomically(
 
     assert len(fake_task_bus.bound.deferred) == 1
     deferred = fake_task_bus.bound.deferred[0]
-    assert deferred.task is send_verification_email
+    assert deferred.task_name == SEND_VERIFICATION_EMAIL_TASK
     assert deferred.lock == f"email_verification:user:{credentials.user_id}"
     assert deferred.kwargs["email"] == "neo@example.com"
     assert deferred.kwargs["user_id"] == str(credentials.user_id)

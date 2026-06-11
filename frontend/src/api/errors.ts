@@ -45,7 +45,7 @@ export function messageForCode(code: string, fallback?: string): string {
 }
 
 function snakeToCamel(value: string): string {
-  return value.replace(/_([a-z])/g, (_, ch: string) => ch.toUpperCase());
+  return value.replace(/_([a-z])/gu, (_, ch: string) => ch.toUpperCase());
 }
 
 /**

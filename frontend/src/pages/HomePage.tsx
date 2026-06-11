@@ -116,7 +116,7 @@ export function HomePage() {
           <span className="home-greeting__date">{GREETING_DATE}</span>
         </div>
 
-        <div className="home-stage" role="img" aria-label="Globe placeholder">
+        <div className="home-stage">
           <span className="home-stage__hint">globe goes here</span>
         </div>
 
@@ -126,7 +126,7 @@ export function HomePage() {
           <div className="home-recommend__head">
             <span className="home-recommend__title">you might like</span>
             <span className="home-recommend__caption">
-              Based on places you've rated — or travelers like you, until we know your taste
+              Based on places you&apos;ve rated — or travelers like you, until we know your taste
             </span>
           </div>
 

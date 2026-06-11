@@ -22,8 +22,7 @@ export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBann
   };
 
   return (
-    <div
-      role="region"
+    <section
       aria-label={t("verificationBanner.regionLabel")}
       style={{
         position: "relative",
@@ -57,6 +56,6 @@ export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBann
       >
         ×
       </ActionIcon>
-    </div>
+    </section>
   );
 }

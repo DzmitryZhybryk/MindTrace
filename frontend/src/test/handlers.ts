@@ -16,9 +16,9 @@ import { setupServer } from "msw/node";
 /** base64url-кодирование payload-сегмента JWT (`+/` → `-_`, без паддинга). */
 function base64Url(value: string): string {
   return btoa(value)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+    .replace(/\+/gu, "-")
+    .replace(/\//gu, "_")
+    .replace(/=+$/u, "");
 }
 
 type TokenClaims = {
