@@ -37,7 +37,7 @@ describe("VerifyEmailDialog", () => {
     renderDialog();
 
     expect(
-      screen.getByText(/We'll send a 6-digit code to your email/),
+      screen.getByText(/We'll send a 6-digit code to your email/u),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send code" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Later" })).toBeInTheDocument();

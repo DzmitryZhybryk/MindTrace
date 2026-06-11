@@ -2,6 +2,7 @@ from uuid import UUID
 
 from app.auth.application.ports import AuthUnitOfWorkPort
 from app.auth.application.settings import EmailVerificationSettings
+from app.auth.application.task_names import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.domain.entities import ChallengeEntity
 from app.auth.domain.enums import ChallengeType
 from app.auth.exceptions import (
@@ -9,7 +10,6 @@ from app.auth.exceptions import (
     UserCredentialsNotFoundError,
     VerificationCodeInvalidError,
 )
-from app.auth.infra.tasks import send_verification_email
 from app.shared.infra.crypto import SaltedHasherPort
 from app.shared.infra.procrastinate import TaskBusPort
 
@@ -76,7 +76,7 @@ class EmailVerificationService:
         await self._uow.challenge_repository.insert_challenge(challenge=new_challenge)
 
         await self._task_bus.bind_to(self._uow.session).defer(
-            task=send_verification_email,
+            task_name=SEND_VERIFICATION_EMAIL_TASK,
             lock=f"email_verification:user:{user_id}",
             user_id=str(user_id),
             email=credentials.email,

@@ -20,6 +20,6 @@ describe("AuthHeader", () => {
   it("рендерит BrandMark со ссылкой на главную", () => {
     renderHeader();
 
-    expect(screen.getByRole("link", { name: /MyJ/i })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: /MyJ/iu })).toHaveAttribute("href", "/");
   });
 });

@@ -1,0 +1,46 @@
+# Энфорс DDD-границ: импорт разрешён только «вниз» по слоям
+# (presentation → infra → application → domain). Ключевая инверсия —
+# application НЕ зависит от infra. app.shared — cross-cutting, импортируется всеми.
+# depends_on заполняется `tach sync` из реальных импортов и ревизуется вручную:
+# любой неожиданный edge (напр. application → infra) — это нарушение.
+
+source_roots = ["."]
+
+exclude = [
+    "migrations",
+    "tests",
+    ".venv",
+    "**/__pycache__",
+]
+
+[[modules]]
+path = "app.auth.domain"
+depends_on = ["app.shared"]
+
+[[modules]]
+path = "app.auth.application"
+depends_on = ["app.auth.domain", "app.shared"]
+
+[[modules]]
+path = "app.auth.infra"
+depends_on = ["app.auth.domain", "app.shared", "app.users.application", "app.auth.application"]
+
+[[modules]]
+path = "app.auth.presentation"
+depends_on = ["app.auth.application", "app.shared", "app.auth.infra", "app.users.application", "app.users.infra"]
+
+[[modules]]
+path = "app.users.domain"
+depends_on = ["app.shared"]
+
+[[modules]]
+path = "app.users.application"
+depends_on = ["app.users.domain"]
+
+[[modules]]
+path = "app.users.infra"
+depends_on = ["app.shared", "app.users.application", "app.users.domain"]
+
+[[modules]]
+path = "app.shared"
+depends_on = []

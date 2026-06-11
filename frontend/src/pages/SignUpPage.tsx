@@ -53,7 +53,7 @@ export function SignUpPage() {
         return null;
       },
       email: (value) => {
-        if (!/^\S+@\S+\.\S+$/.test(value)) return t("validation.emailInvalid");
+        if (!/^\S+@\S+\.\S+$/u.test(value)) return t("validation.emailInvalid");
         if (value.length > 254) return t("validation.emailTooLong");
         return null;
       },

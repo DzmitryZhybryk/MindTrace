@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "unicorn", "oxc", "import", "promise", "jsx-a11y", "vitest"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/only-export-components": "warn",
+
+    "react/jsx-no-target-blank": "error",
+    "react/jsx-no-script-url": "error",
+    "react/no-danger": "error",
+    "no-script-url": "error",
+
+    "typescript/no-explicit-any": "error",
+    "no-console": "error",
+    "no-param-reassign": "error",
+    "prefer-const": "error",
+    "eqeqeq": "error",
+    "no-debugger": "error",
+    "react/no-array-index-key": "error",
+
+    "react/no-unescaped-entities": "error",
+    "jsx-a11y/prefer-tag-over-role": "error",
+    "require-unicode-regexp": "error"
+  },
+  "ignorePatterns": ["dist", "coverage"],
+  "overrides": [
+    {
+      "files": ["src/test/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
+      "rules": {
+        "react/only-export-components": "off",
+        "vitest/require-mock-type-parameters": "off"
+      }
+    }
+  ]
+}

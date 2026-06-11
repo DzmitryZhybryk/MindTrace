@@ -9,7 +9,7 @@ const accessTokenClaimsSchema = z.object({
 export type AccessTokenClaims = z.infer<typeof accessTokenClaimsSchema>;
 
 function base64UrlDecode(segment: string): string {
-  const padded = segment.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = segment.replace(/-/gu, "+").replace(/_/gu, "/");
   const padding = padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
   return atob(padded + padding);
 }

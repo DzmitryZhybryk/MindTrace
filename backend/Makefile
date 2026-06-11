@@ -1,4 +1,4 @@
-.PHONY: help format lint typecheck dead-code check test-all test-unit test-integration test-api test-auth test-users test-shared test-m migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
+.PHONY: help format lint typecheck dead-code audit arch check test-all test-unit test-integration test-api test-auth test-users test-shared test-m migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -48,7 +48,15 @@ dead-code: ## Find unused code with vulture
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}vulture${AZURE}' dead code check${RESET}"
 	@uv run --no-sync vulture
 
-check: format lint typecheck dead-code test-all ## Run format + lint + typecheck + dead-code + tests
+audit: ## Scan dependencies for known vulnerabilities (uv audit)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}uv audit${AZURE}' security scan${RESET}"
+	@uv audit --preview-features audit-command
+
+arch: ## Enforce DDD layer/import boundaries (tach)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}tach${AZURE}' boundary check${RESET}"
+	@uv run --no-sync tach check
+
+check: format lint typecheck arch dead-code audit test-all ## Run format + lint + typecheck + arch + dead-code + audit + tests
 
 test-all: ## Run all tests in the tests/ directory with coverage
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' tests with coverage${RESET}"
