@@ -11,6 +11,16 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-06-12
+
+### Frontend 0.10.3
+
+- Введён **e2e-слой** (Playwright Test) — последняя ступень тест-пирамиды. 14 спеков гоняют real-stack auth/session-флоу против поднятого docker-стека: регистрация/логин (по username и email)/логаут, `ProtectedRoute` + bootstrap-refresh из cookie (reload/новая вкладка), атрибуты refresh-cookie (`HttpOnly`/`SameSite`/`Secure`), напоминание о верификации email. Внешний контракт SPA не меняется — поэтому bump патчевый
+- **Прагматичная раскладка по слоям пирамиды:** e2e берёт только то, что MSW-компонентные тесты не достают (настоящий бэкенд-контракт, реальные HttpOnly-cookie, межвкладочный sessionStorage, real-browser-расхождения). Микровалидация форм, диалог верификации, single-flight refresh на 401 осознанно остаются в component/unit-тестах (`SignUpPage`/`LoginPage`/`VerifyEmailDialog`/`client.test`) — без дублирования. Не покрыты в e2e по конструкции: verify-success (код хранится Argon2-хешем, недостижим; флоу покрыт `VerifyEmailDialog.test`) и форс-состояния challenge (expired/attempts → бэкенд-тесты)
+- Инфра e2e в `frontend/e2e/`: хелперы (`registerUser`/`loginViaUi`/`getRefreshCookie`) + фикстуры `freshUser`/`authedPage`, уникальный юзер на прогон (сид через API). `playwright.config.ts` получил кап воркеров (`CI?2:4`) и `expect.timeout=15000` — argon2 на register/login насыщает CPU при полной параллельности. `vite.config.ts` `test.include` сужен до `src/**/*.test.{ts,tsx}` — дефолтный глоб Vitest ловил и e2e-`*.spec.ts` (Playwright), ломая `make check`; теперь чёткое разделение: `.test.ts` в `src/` → Vitest, `.spec.ts` в `e2e/` → Playwright
+- **Кросс-браузер:** матрица chromium + firefox + webkit (37 passed). На WebKit точечно пропущены 5 cookie-зависимых тестов (logout-cleanup, bootstrap-refresh, cookie-атрибуты, межвкладочный баннер): Safari/WebKit отвергает `Secure`-cookie по `http://localhost` (Chromium/Firefox считают localhost secure-контекстом), поэтому refresh/bootstrap-флоу на webkit против http-стека недоступен (в проде по https — работал бы). Skip явный, с причиной (`test.skip(browserName === "webkit", ...)`); остальные 9 флоу на webkit гоняются штатно. Снять skip при появлении https-`E2E_BASE_URL`
+- **Playwright MCP** (`.mcp.json`, headless) для интерактивного авторинга спеков агентом — водит живой UI через `browser_*`, на выходе детерминированный TS-спек. Только инструмент авторинга, в CI не участвует
+
 ## 2026-06-11
 
 ### Project
