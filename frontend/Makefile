@@ -1,4 +1,4 @@
-.PHONY: help install dev build typecheck lint lint-fix test coverage check
+.PHONY: help install dev build typecheck lint lint-fix test test-unit test-component coverage check test-e2e
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -16,7 +16,7 @@ endif
 
 help: ## Show this help message
 	@echo "Available targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${AZURE}%-13s${RESET} %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${AZURE}%-15s${RESET} %s\n", $$1, $$2}'
 
 install: ## Install dependencies (npm install)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}npm install${AZURE}'${RESET}"
@@ -41,12 +41,24 @@ lint-fix: ## Auto-fix lint issues (oxlint --fix)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}oxlint --fix${AZURE}'${RESET}"
 	@npm run lint:fix
 
-test: ## Run tests once (vitest run)
+test: ## Run all Vitest tests once — unit + component (vitest run)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}vitest${AZURE}' tests${RESET}"
 	@npm run test:run
+
+test-unit: ## Run unit tests only (*.test.ts — pure logic)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}vitest${AZURE}' unit tests${RESET}"
+	@npm run test:unit
+
+test-component: ## Run component tests only (*.test.tsx — rendered React)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}vitest${AZURE}' component tests${RESET}"
+	@npm run test:component
 
 coverage: ## Run tests with coverage report
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}vitest${AZURE}' coverage${RESET}"
 	@npm run coverage
 
-check: lint typecheck test ## Run lint + typecheck + tests (CI-style pipeline)
+check: lint typecheck test ## Run lint + typecheck + unit/component (fast; e2e is separate — make test-e2e)
+
+test-e2e: ## Run Playwright e2e (requires the stack up: docker compose up -d)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}playwright test${AZURE}' e2e${RESET}"
+	@npm run e2e

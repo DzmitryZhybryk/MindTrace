@@ -219,5 +219,8 @@ ZTODO
 # Claude Code /plan working state (ephemeral, per-task)
 .claude/.current-plan.md
 
+# Playwright MCP authoring artifacts (snapshots/console logs, written to repo root)
+.playwright-mcp/
+
 # Cursor settings backups
 cursor-settings-*.tgz

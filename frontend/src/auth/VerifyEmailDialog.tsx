@@ -1,4 +1,4 @@
-import { Button, Group, Modal, PinInput, Stack, Text, Title } from "@mantine/core";
+import { Button, Group, Modal, PinInput, Stack, Text } from "@mantine/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -104,9 +104,11 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
       centered
       radius="lg"
       title={
-        <Title order={3} size="h4" c="slate.8">
+        // Modal оборачивает title в свой <h2> — внутри должен быть НЕ заголовок (иначе
+        // <h2><h3> = невалидный HTML + дублирующий heading для скринридера). Text сохраняет вид.
+        <Text size="h4" fw={700} c="slate.8">
           {t("verifyEmail.title")}
-        </Title>
+        </Text>
       }
     >
       <Stack gap="md">
