@@ -36,8 +36,8 @@ uv run pytest -k "test_name"               # один тест по имени
 cd frontend
 make install                               # npm install
 make dev                                   # Vite dev-сервер
-make lint                                  # eslint
-make lint-fix                              # eslint --fix (форматтера/prettier в проекте нет)
+make lint                                  # oxlint
+make lint-fix                              # oxlint --fix (форматтера/prettier в проекте нет)
 make typecheck                             # tsc -b
 make test                                  # vitest run (один прогон)
 make coverage                              # vitest run --coverage
@@ -88,10 +88,11 @@ Stateless infra **без сетевого ресурса** (`JWTService`, `Argon
 - All DB operations are async (psycopg3 async driver — выбран для atomic defer procrastinate в SA-транзакции).
 - `Password` — тонкий value object вокруг argon2-хеша (`_hash: str` + `@property hash`). Само хеширование делает `SaltedHasherPort` снаружи (infra-protocol); VO нужен как type-level marker «эта строка — argon2-hash, а не любой str» и чтобы entity не зависел от crypto-protocol'а.
 - FastAPI dependencies chain: session -> UnitOfWork -> Service (см. `presentation/dependencies.py` в каждом домене).
+- **Транзакционная граница (UoW)**: один use-case = `async with uow.transaction(): … await uow.commit()` (rollback-by-default async-CM из `BaseUnitOfWork`: область видна по блоку, `commit()` — явная фиксация; выход без commit'а / исключение → rollback). **Владелец commit'а = входная точка use-case'а** (`AuthService.register`); cross-domain участник (`UserService.create_user`) пишет в общую request-scoped сессию и **НЕ коммитит** — всё фиксируется одним commit'ом атомарно (Option A, см. memory `project_register_transaction_model`). Cross-domain wiring идёт через `presentation` другого домена (`user_service_dependency`), **не** через его `infra`.
 - App factory pattern: `create_app()` в `app/main.py`, invoked by uvicorn with `--factory`.
 - Routers mounted at `/v1/{domain}` (e.g., `/v1/auth`).
 - **Outbound ports (DIP)**: доменно-специфичные исходящие зависимости (репозитории, UnitOfWork, клиенты к другим сервисам) объявлены как `Protocol` в `application/ports.py`; `infra` их реализует (`infra → application`, не наоборот). Сервисы и тестовые фейки опираются на порт, а не на конкретику. Shared cross-cutting инфраструктура (`crypto`, `jwt`, `procrastinate`) — исключение: там протоколом владеет сама вертикаль в `shared/infra/` (см. Shared infrastructure), порт в application не заводится. **Любой класс-наследник `typing.Protocol` (и application-порт, и shared-протокол вертикали) именуется с суффиксом `Port`** (`SaltedHasherPort`, `TaskBusPort`, `RefreshTokenRepositoryPort`), реализация — без него (`Argon2SaltedHasher`, `ProcrastinateTaskBus`, `RefreshTokenRepository`): по имени сразу видно, контракт это или реализация.
-- **TaskBusPort pattern** для procrastinate: вне tx — `await task_bus.defer(task=...)`; в tx — `await task_bus.bind_to(uow.session).defer(task=...)` + `await uow.commit()` (один commit фиксирует и pending writes, и procrastinate-job).
+- **TaskBusPort pattern** для procrastinate: вне tx — `await task_bus.defer(task=...)`; в tx — `async with uow.transaction(): await task_bus.bind_to(uow.session).defer(task=...); await uow.commit()` (один commit фиксирует и pending writes, и procrastinate-job).
 - **Composition root** (`app/main.py`) собирает компоненты в порядке зависимостей: postgres → email/resend → procrastinate → task_bus (TaskBusComponent читает ProcrastinateApp из registry).
 
 ### DTO conventions: pydantic vs dataclass
@@ -184,11 +185,11 @@ Always pass arguments as keyword arguments:
 
 ```python
 # correct
-Password.from_hash(existing_hash=user_model.password)
+Password(hash=user_model.password)
 User(id=user_entity.user_id, email=user_entity.email)
 
 # wrong
-Password.from_hash(user_model.password)
+Password(user_model.password)
 User(user_entity.user_id, user_entity.email)
 ```
 
@@ -199,8 +200,10 @@ Use `Self` from `typing` instead of string literals for return type annotations:
 ```python
 from typing import Self
 
-@classmethod
-def from_hash(cls, existing_hash: str) -> Self:
+from pydantic import model_validator
+
+@model_validator(mode="after")
+def validate_terms(self) -> Self:
     ...
 ```
 

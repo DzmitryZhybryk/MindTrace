@@ -16,7 +16,7 @@ from tests.fakes import FakeUserRepository, FakeUserUnitOfWork
 
 
 async def test_create_user_maps_fields_and_persists_via_user_service() -> None:
-    """create_user маппит поля в users-команду, кладёт пользователя через UserService и коммитит."""
+    """create_user маппит поля в users-команду и кладёт пользователя через UserService (commit — за вызывающим)."""
     user_repository = FakeUserRepository()
     uow = FakeUserUnitOfWork(user_repository=user_repository)
     client = InternalUsersClient(user_service=UserService(uow=uow))
@@ -37,4 +37,4 @@ async def test_create_user_maps_fields_and_persists_via_user_service() -> None:
     assert stored.email == "new@example.com"
     assert stored.marketing_emails_consent is True
     assert stored.terms_accepted_at == terms_accepted_at
-    uow.commit_mock.assert_awaited_once()
+    uow.commit_mock.assert_not_awaited()

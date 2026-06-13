@@ -96,6 +96,28 @@ async def test_register_raises_when_email_already_exists(
     fake_uow.commit_mock.assert_not_awaited()
 
 
+async def test_register_does_not_commit_when_users_creation_fails(
+    auth_service: AuthService,
+    fake_uow: FakeAuthUnitOfWork,
+    fake_users_client: FakeUsersClient,
+    fake_email_verification_service: FakeEmailVerificationService,
+) -> None:
+    """register: сбой создания users-профиля → ошибка проброшена, без commit (полный rollback) и без верификации."""
+    fake_users_client.error = RuntimeError("users service down")
+    command = RegistrationCommand(
+        username="neo",
+        email="neo@example.com",
+        password=SecretStr("pw"),
+        marketing_emails_consent=True,
+    )
+
+    with pytest.raises(RuntimeError, match="users service down"):
+        await auth_service.register(registration=command, client_metadata=_CLIENT_METADATA)
+
+    fake_uow.commit_mock.assert_not_awaited()
+    assert fake_email_verification_service.requested_user_ids == []
+
+
 async def test_register_raises_when_username_already_taken(
     auth_service: AuthService,
     fake_uow: FakeAuthUnitOfWork,

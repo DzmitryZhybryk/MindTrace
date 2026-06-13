@@ -33,7 +33,11 @@ dialogs, the banner) and e2e thinnest (the critical happy paths from `.claude/.t
   backend `tests/fakes/`). For **unit** tests, stub `fetch` directly with `vi.stubGlobal`.
 - **Playwright** — e2e (added later).
 
-Scripts: `npm run test` (watch), `npm run test:run` (CI one-shot), `npm run coverage`.
+Scripts: `npm run test` (watch), `npm run test:run` (CI one-shot), `npm run coverage`. The suite is
+split by **`VITEST_SCOPE`** (read in `vite.config.ts` → `resolveVitestInclude`): `npm run test:unit`
+(`VITEST_SCOPE=unit` → `src/**/*.test.ts`, pure logic) and `npm run test:component`
+(`VITEST_SCOPE=component` → `src/**/*.test.tsx`, React render); unset runs both. `make test` /
+`test-unit` / `test-component` mirror these. e2e (`*.spec.ts`) is Playwright and never matched here.
 
 ## Directory layout
 
@@ -116,8 +120,8 @@ rg -n "vi\.stubGlobal|http\.(get|post)" src
   paths. Use `findBy*` (async) over `getBy*` when the DOM updates after an await.
 - **Named arguments / explicit options everywhere** (project rule) — including `getByRole("button",
   { name: "Sign in" })`.
-- **No `any`** in tests either — `unknown` + narrowing, or precise types. ESLint applies to
-  `*.test.ts` the same as production code.
+- **No `any`** in tests either — `unknown` + narrowing, or precise types. oxlint applies to
+  `*.test.ts(x)` the same as production code.
 - **Reset in `beforeEach`**, clean up in `afterEach` (`vi.unstubAllGlobals()`, `vi.restoreAllMocks()`).
 
 ## Coverage

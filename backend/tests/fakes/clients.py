@@ -19,10 +19,16 @@ class CreatedUserCall:
 
 
 class FakeUsersClient(UsersClientPort):
-    """Записывает каждый ``create_user`` в ``created`` вместо реального вызова users-сервиса."""
+    """
+    Записывает каждый ``create_user`` в ``created`` вместо реального вызова users-сервиса.
+
+    Тест может выставить ``error`` — тогда ``create_user`` поднимает его вместо записи,
+    моделируя сбой создания users-профиля (например, для проверки атомарного rollback'а register).
+    """
 
     def __init__(self) -> None:
         self.created: list[CreatedUserCall] = []
+        self.error: Exception | None = None
 
     async def create_user(
         self,
@@ -33,6 +39,9 @@ class FakeUsersClient(UsersClientPort):
         marketing_emails_consent: bool,
         terms_accepted_at: dt.datetime,
     ) -> None:
+        if self.error is not None:
+            raise self.error
+
         self.created.append(
             CreatedUserCall(
                 user_id=user_id,

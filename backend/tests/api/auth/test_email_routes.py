@@ -22,7 +22,6 @@ from tests.fakes import (
     FakeUserCredentialsRepository,
 )
 
-_PAST = dt.datetime(2000, 1, 1, tzinfo=dt.UTC)
 _SEND_VERIFICATION_URL = "/v1/auth/email/send-verification/"
 _VERIFY_URL = "/v1/auth/email/verify/"
 
@@ -80,9 +79,10 @@ async def test_send_verification_already_verified_returns_409(
     client: AsyncClient,
     fake_user_credentials_repository: FakeUserCredentialsRepository,
     mint_access_token: Callable[..., str],
+    past: dt.datetime,
 ) -> None:
     """send-verification для уже подтверждённого email → 409 auth.email_already_verified."""
-    credentials = make_user_credentials(email_verified_at=_PAST)
+    credentials = make_user_credentials(email_verified_at=past)
     fake_user_credentials_repository.by_user_id[credentials.user_id] = credentials
     token = mint_access_token(credentials.user_id)
 
@@ -207,9 +207,10 @@ async def test_verify_already_verified_returns_409(
     client: AsyncClient,
     fake_user_credentials_repository: FakeUserCredentialsRepository,
     mint_access_token: Callable[..., str],
+    past: dt.datetime,
 ) -> None:
     """verify для уже подтверждённого email → 409 auth.email_already_verified."""
-    credentials = make_user_credentials(email_verified_at=_PAST)
+    credentials = make_user_credentials(email_verified_at=past)
     fake_user_credentials_repository.by_user_id[credentials.user_id] = credentials
     token = mint_access_token(credentials.user_id)
 
@@ -229,6 +230,7 @@ async def test_verify_expired_challenge_returns_410(
     fake_challenge_repository: FakeChallengeRepository,
     fake_salted_hasher: FakeSaltedHasher,
     mint_access_token: Callable[..., str],
+    past: dt.datetime,
 ) -> None:
     """verify по истёкшему challenge → 410 auth.challenge_expired."""
     code = "123456"
@@ -236,7 +238,7 @@ async def test_verify_expired_challenge_returns_410(
     challenge = make_challenge(
         user_id=credentials.user_id,
         code_hash=fake_salted_hasher.hash(code),
-        expires_at=_PAST,
+        expires_at=past,
     )
     fake_user_credentials_repository.by_user_id[credentials.user_id] = credentials
     fake_challenge_repository.challenges.append(challenge)

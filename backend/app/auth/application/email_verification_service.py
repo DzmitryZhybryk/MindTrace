@@ -49,40 +49,41 @@ class EmailVerificationService:
             EmailAlreadyVerifiedError: Если email уже подтверждён
             ChallengeResendCooldownError: Если активный challenge ещё свежее cooldown'а
         """
-        credentials = await self._uow.user_credentials_repository.find_user_credentials_by_user_id(user_id=user_id)
-        if credentials is None:
-            raise UserCredentialsNotFoundError()
+        async with self._uow.transaction():
+            credentials = await self._uow.user_credentials_repository.find_user_credentials_by_user_id(user_id=user_id)
+            if credentials is None:
+                raise UserCredentialsNotFoundError()
 
-        credentials.ensure_not_verified()
+            credentials.ensure_not_verified()
 
-        existing_challenge = await self._uow.challenge_repository.find_active_challenge_for_update(
-            user_id=user_id,
-            challenge_type=ChallengeType.EMAIL_VERIFICATION,
-        )
-        if existing_challenge is not None:
-            existing_challenge.ensure_resend_cooldown_passed(
-                cooldown_seconds=self._email_verification_settings.email_verification_resend_cooldown_seconds,
+            existing_challenge = await self._uow.challenge_repository.find_active_challenge_for_update(
+                user_id=user_id,
+                challenge_type=ChallengeType.EMAIL_VERIFICATION,
             )
-            existing_challenge.mark_used()
-            await self._uow.challenge_repository.update_challenge_by_id(challenge=existing_challenge)
+            if existing_challenge is not None:
+                existing_challenge.ensure_resend_cooldown_passed(
+                    cooldown_seconds=self._email_verification_settings.email_verification_resend_cooldown_seconds,
+                )
+                existing_challenge.mark_used()
+                await self._uow.challenge_repository.update_challenge_by_id(challenge=existing_challenge)
 
-        code = ChallengeEntity.generate_code()
-        new_challenge = ChallengeEntity.create(
-            user_id=user_id,
-            challenge_type=ChallengeType.EMAIL_VERIFICATION,
-            code_hash=self._salted_hasher.hash(code),
-            ttl_minutes=self._email_verification_settings.email_verification_ttl_minutes,
-        )
-        await self._uow.challenge_repository.insert_challenge(challenge=new_challenge)
+            code = ChallengeEntity.generate_code()
+            new_challenge = ChallengeEntity.create(
+                user_id=user_id,
+                challenge_type=ChallengeType.EMAIL_VERIFICATION,
+                code_hash=self._salted_hasher.hash(code),
+                ttl_minutes=self._email_verification_settings.email_verification_ttl_minutes,
+            )
+            await self._uow.challenge_repository.insert_challenge(challenge=new_challenge)
 
-        await self._task_bus.bind_to(self._uow.session).defer(
-            task_name=SEND_VERIFICATION_EMAIL_TASK,
-            lock=f"email_verification:user:{user_id}",
-            user_id=str(user_id),
-            email=credentials.email,
-            code=code,
-        )
-        await self._uow.commit()
+            await self._task_bus.bind_to(self._uow.session).defer(
+                task_name=SEND_VERIFICATION_EMAIL_TASK,
+                lock=f"email_verification:user:{user_id}",
+                user_id=str(user_id),
+                email=credentials.email,
+                code=code,
+            )
+            await self._uow.commit()
 
     async def verify_email(self, user_id: UUID, code: str) -> None:
         """
@@ -105,29 +106,30 @@ class EmailVerificationService:
             ChallengeExpiredError: Срок действия challenge'а истёк
             ChallengeAttemptsExceededError: Превышен лимит попыток
         """
-        credentials = await self._uow.user_credentials_repository.find_user_credentials_by_user_id(user_id=user_id)
-        if credentials is None:
-            raise UserCredentialsNotFoundError()
+        async with self._uow.transaction():
+            credentials = await self._uow.user_credentials_repository.find_user_credentials_by_user_id(user_id=user_id)
+            if credentials is None:
+                raise UserCredentialsNotFoundError()
 
-        credentials.ensure_not_verified()
+            credentials.ensure_not_verified()
 
-        challenge = await self._uow.challenge_repository.find_active_challenge_for_update(
-            user_id=user_id,
-            challenge_type=ChallengeType.EMAIL_VERIFICATION,
-        )
-        if challenge is None:
-            raise ChallengeNotFoundError()
+            challenge = await self._uow.challenge_repository.find_active_challenge_for_update(
+                user_id=user_id,
+                challenge_type=ChallengeType.EMAIL_VERIFICATION,
+            )
+            if challenge is None:
+                raise ChallengeNotFoundError()
 
-        challenge.ensure_can_attempt(max_attempts=self._email_verification_settings.email_verification_max_attempts)
+            challenge.ensure_can_attempt(max_attempts=self._email_verification_settings.email_verification_max_attempts)
 
-        if not self._salted_hasher.verify(secret=code, hashed=challenge.code_hash):
-            challenge.register_failed_attempt()
+            if not self._salted_hasher.verify(secret=code, hashed=challenge.code_hash):
+                challenge.register_failed_attempt()
+                await self._uow.challenge_repository.update_challenge_by_id(challenge=challenge)
+                await self._uow.commit()
+                raise VerificationCodeInvalidError()
+
+            challenge.mark_used()
+            credentials.mark_email_verified()
             await self._uow.challenge_repository.update_challenge_by_id(challenge=challenge)
+            await self._uow.user_credentials_repository.update_user_credentials_by_user_id(credentials=credentials)
             await self._uow.commit()
-            raise VerificationCodeInvalidError()
-
-        challenge.mark_used()
-        credentials.mark_email_verified()
-        await self._uow.challenge_repository.update_challenge_by_id(challenge=challenge)
-        await self._uow.user_credentials_repository.update_user_credentials_by_user_id(credentials=credentials)
-        await self._uow.commit()

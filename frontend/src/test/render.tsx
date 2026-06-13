@@ -18,7 +18,7 @@
 import { type ReactElement, type ReactNode } from "react";
 
 import { MantineProvider } from "@mantine/core";
-import { render, type RenderResult } from "@testing-library/react";
+import { render, screen, type RenderResult } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
@@ -141,5 +141,22 @@ export function makeAuthValue(overrides: Partial<AuthContextValue> = {}): AuthCo
   };
 }
 
-export { screen, waitFor, within } from "@testing-library/react";
-export { userEvent };
+/**
+ * Возвращает пункт меню Mantine по точному тексту. Меню Mantine в jsdom
+ * закрывается быстро, поэтому снимаем все пункты одним `findAllByRole` и матчим
+ * по `textContent` — надёжнее, чем `findByRole("menuitem", { name })` на конкретный
+ * пункт (тот флапает на закрытии меню).
+ */
+export async function findMenuItem(text: string): Promise<HTMLElement> {
+  const items = await screen.findAllByRole("menuitem");
+  const item = items.find((entry) => entry.textContent === text);
+  if (item === undefined) {
+    const present = items.map((entry) => entry.textContent).join(", ");
+    throw new Error(`Пункт меню "${text}" не найден. Доступны: ${present}`);
+  }
+
+  return item;
+}
+
+export { waitFor, within } from "@testing-library/react";
+export { screen, userEvent };

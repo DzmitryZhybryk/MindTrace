@@ -58,7 +58,7 @@ These are documented in `CLAUDE.md`. Don't re-discover or re-propose them — ve
   - Domain layer → no suffixes
 - **`schemas.py`** is the canonical filename for DTOs in every layer.
 - **Service `*Settings`** classes in `application/settings.py` are local configs **only when ≥2 related fields exist**. A single-field "config" is passed as a primitive (see `TokenIssuer(refresh_token_ttl_days=...)`).
-- **Exception hierarchy** in `app/shared/exceptions/` with `DOMAIN_EXCEPTION_MAPPING` for HTTP translation.
+- **Exception hierarchy** in `app/shared/exceptions/` — transport-neutral (`ErrorCategory`, no HTTP status on exceptions); category → HTTP status is mapped once via `resolve_http_status` in the HTTP adapter (`mappings.py`).
 - **Settings**: `app/shared/settings.py` frozen pydantic-settings singleton. Domain-level config getters in `app/<domain>/application/settings.py` (with `@cache`).
 - **Always-keyword arguments**, `Self` return type, Google-style Russian docstrings, line length 120, ruff + ty (no black/isort/mypy).
 

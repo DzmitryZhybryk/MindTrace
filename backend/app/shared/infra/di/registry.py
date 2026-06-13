@@ -1,8 +1,6 @@
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
 from app.shared.infra.di.exceptions import ComponentNotRegisteredError
-
-Component = TypeVar("Component")
 
 
 class ComponentRegistry:
@@ -19,10 +17,10 @@ class ComponentRegistry:
 
         self._store = store
 
-    def set(self, key: type[Component], value: Component) -> None:
+    def set[Component](self, key: type[Component], value: Component) -> None:
         self._store[key] = value
 
-    def get(self, key: type[Component]) -> Component:
+    def get[Component](self, key: type[Component]) -> Component:
         try:
             return cast(Component, self._store[key])
         except KeyError as err:
@@ -30,5 +28,5 @@ class ComponentRegistry:
                 message=f"{self.__class__.__name__} object has no attribute {key}"
             ) from err
 
-    def __contains__(self, key: type[Component]) -> bool:
+    def __contains__(self, key: type[Any]) -> bool:
         return key in self._store

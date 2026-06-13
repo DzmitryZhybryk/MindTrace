@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { i18n } from "../i18n";
-import { renderWithProviders, screen, waitFor } from "../test/render";
+import { findMenuItem, renderWithProviders, screen, waitFor } from "../test/render";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
 describe("LanguageSwitcher", () => {
@@ -36,5 +36,16 @@ describe("LanguageSwitcher", () => {
     await user.click(await screen.findByRole("menuitem", { name: "Русский" }));
 
     await waitFor(() => expect(i18n.resolvedLanguage).toBe("ru"));
+  });
+
+  it("клик по уже активному языку — no-op (changeLanguage не вызывается)", async () => {
+    const changeSpy = vi.spyOn(i18n, "changeLanguage");
+    const { user } = renderWithProviders(<LanguageSwitcher />);
+
+    await user.click(screen.getByRole("button", { name: "Language" }));
+    await user.click(await findMenuItem("English"));
+
+    expect(changeSpy).not.toHaveBeenCalled();
+    expect(i18n.resolvedLanguage).toBe("en");
   });
 });

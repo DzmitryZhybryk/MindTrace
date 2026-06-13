@@ -24,13 +24,13 @@ Generic-проводка **уровня api** (домен-агностично).
   Атрибуты (HttpOnly/Secure/SameSite/Max-Age) проверяем по этому заголовку, а не по
   httpx-jar: jar не сохраняет ``Secure``-cookie поверх ``http://`` и скрыл бы их атрибуты.
 
-Фейки shared-инфраструктуры (``fake_salted_hasher`` — crypto, ``fake_task_bus`` —
-procrastinate, ``deterministic_hasher`` — crypto) и ``mint_access_token`` (shared jwt) тоже
-живут здесь: их определения импортируют только ``app.shared.infra``, не зная про домен, и
-любой будущий домен переиспользует их как есть. В app они попадают через
-``dependency_overrides`` уже в доменном conftest — instance тут, проводка там.
+Фейки shared-инфраструктуры (``fake_salted_hasher``, ``fake_task_bus``, ``deterministic_hasher``)
+переехали в корневой ``tests/conftest.py`` — они переиспользуются и unit-уровнем. Здесь остаётся
+``mint_access_token`` (shared jwt, специфичен для api: подписывает реальным settings-секретом) и
+``past`` — фиксированная дата в прошлом для просроченных/отозванных сущностей в api-сценариях.
 """
 
+import datetime as dt
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 from uuid import UUID
@@ -41,10 +41,8 @@ from httpx import ASGITransport, AsyncClient, Response
 
 from app.main import create_default_app
 from app.shared.exceptions import register_exception_handlers
-from app.shared.infra.crypto import Sha256DeterministicHasher
 from app.shared.infra.jwt import get_jwt_service
 from app.shared.schemas.base import BFastAPI
-from tests.fakes import FakeSaltedHasher, FakeTaskBus
 
 _BASE_URL = "http://testserver"
 
@@ -113,19 +111,9 @@ def find_set_cookie() -> Callable[[Response, str], str | None]:
 
 
 @pytest.fixture
-def fake_salted_hasher() -> FakeSaltedHasher:
-    return FakeSaltedHasher()
-
-
-@pytest.fixture
-def fake_task_bus() -> FakeTaskBus:
-    return FakeTaskBus()
-
-
-@pytest.fixture
-def deterministic_hasher() -> Sha256DeterministicHasher:
-    """Реальный sha256-hasher для сидинга ``token_hash`` (тот же, что у боевого token_issuer)."""
-    return Sha256DeterministicHasher()
+def past() -> dt.datetime:
+    """Фиксированная дата в прошлом для просроченных/отозванных сущностей в api-сценариях."""
+    return dt.datetime(2000, 1, 1, tzinfo=dt.UTC)
 
 
 @pytest.fixture

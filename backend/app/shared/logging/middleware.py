@@ -58,7 +58,7 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
             log_level = get_log_level_for_exception(exc)
 
             # Получаем семантическое название события
-            event = get_event_name(request.method, request.url.path)
+            event = get_event_name(request)
 
             # Логируем с соответствующим уровнем
             if log_level == logging.ERROR:
@@ -87,7 +87,7 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
             )
 
             # Получаем семантическое название события
-            event = get_event_name(request.method, request.url.path)
+            event = get_event_name(request)
 
             # Уровень лога зависит от статуса: 5xx -> error, 4xx -> warning, иначе info.
             # Доменные исключения теперь конвертируются ExceptionMiddleware в Response 4xx

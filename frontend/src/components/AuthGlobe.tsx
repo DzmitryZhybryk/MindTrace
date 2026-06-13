@@ -89,7 +89,7 @@ export function AuthGlobe() {
     const el = containerRef.current;
     if (!el) return;
 
-    // Блокируем колесо/тачпад-пинч на контейнере, как в sandbox: глобус не должен зумиться скроллом.
+    // Блокируем колесо/тачпад-пинч на контейнере: глобус не должен зумиться скроллом.
     const blockWheel = (e: WheelEvent) => {
       e.preventDefault();
     };
@@ -145,7 +145,7 @@ export function AuthGlobe() {
         width: "100%",
         height: "100%",
         overflow: "hidden",
-        background: "radial-gradient(ellipse at center, #0a1230 0%, #02040a 60%, #000 100%)",
+        background: "var(--globe-bg)",
         touchAction: "none",
       }}
     >

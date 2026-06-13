@@ -35,7 +35,7 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
         Args:
             challenge: Доменная сущность challenge'а
         """
-        await self.insert(data=self._to_model(entity=challenge))
+        await self.insert(data=Challenge(**self._to_columns(entity=challenge)))
 
     async def find_active_challenge_for_update(
         self,
@@ -78,51 +78,27 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
         Args:
             challenge: Доменная сущность с уже обновлённым состоянием
         """
-        query = (
-            sa.update(Challenge)
-            .where(Challenge.id == challenge.challenge_id)
-            .values(**self._to_update_values(entity=challenge))
-        )
+        values = self._to_columns(entity=challenge)
+        del values["id"]  # PK не входит в SET
+        query = sa.update(Challenge).where(Challenge.id == challenge.challenge_id).values(**values)
         await self._session.execute(query)
 
-    def _to_model(self, entity: ChallengeEntity) -> Challenge:
+    def _to_columns(self, entity: ChallengeEntity) -> DictStrAny:
         """
-        Конвертирует доменную сущность в ORM-модель.
+        Единый маппинг entity → колонки ORM-модели (включая PK ``id``).
+
+        Источник истины для обоих путей записи: INSERT (``Challenge(**columns)``)
+        и UPDATE (те же колонки минус PK). Новое поле добавляется здесь один раз —
+        и попадает и в INSERT, и в UPDATE, рассинхрон между ними невозможен.
 
         Args:
             entity: Доменная сущность challenge'а
 
         Returns:
-            ORM-модель, готовая к добавлению в сессию
-        """
-        return Challenge(
-            id=entity.challenge_id,
-            user_id=entity.user_id,
-            challenge_type=entity.challenge_type.value,
-            code_hash=entity.code_hash,
-            expires_at=entity.expires_at,
-            attempts=entity.attempts,
-            used_at=entity.used_at,
-            created_at=entity.created_at,
-            updated_at=entity.updated_at,
-            deleted_at=entity.deleted_at,
-        )
-
-    def _to_update_values(self, entity: ChallengeEntity) -> DictStrAny:
-        """
-        Собирает dict non-PK-полей для UPDATE-выражения.
-
-        Симметрично с ``_to_model``/``_to_entity``: маппинг полей собран в одном
-        месте, чтобы при добавлении нового поля на entity не забыть прокинуть
-        его в UPDATE.
-
-        Args:
-            entity: Доменная сущность challenge'а
-
-        Returns:
-            Словарь ``column -> value`` без PK ``id``
+            Словарь ``column -> value`` со всеми колонками, включая PK
         """
         return {
+            "id": entity.challenge_id,
             "user_id": entity.user_id,
             "challenge_type": entity.challenge_type.value,
             "code_hash": entity.code_hash,

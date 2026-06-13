@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import (
 
 from app.shared.infra.di.base import BaseComponent
 from app.shared.infra.di.registry import ComponentRegistry
-from app.shared.settings import PostgressSettings
+from app.shared.settings import PostgresSettings
 
 
 # SessionMaker используется как ключ в ComponentRegistry для типобезопасного доступа
@@ -16,7 +16,7 @@ class SessionMaker(async_sessionmaker[AsyncSession]):
 
 
 class SqlAlchemyComponent(BaseComponent):
-    def __init__(self, settings: PostgressSettings) -> None:
+    def __init__(self, settings: PostgresSettings) -> None:
         self._engine = create_async_engine(settings.postgres_dsn, **settings.engine_kwargs)
         self._session_maker = SessionMaker(self._engine, **settings.sessionmaker_kwargs)
 

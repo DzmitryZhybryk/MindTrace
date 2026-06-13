@@ -1,34 +1,34 @@
-"""Утилиты для преобразования HTTP запросов в семантические названия событий."""
+"""Утилиты для преобразования HTTP-запросов в семантические названия событий."""
 
-EVENT_MAPPER: dict[tuple[str, str], str] = {
-    # Пути в маппере должны быть без trailing slash (нормализованные)
-    ("POST", "/v1/auth/register"): "User registration",
-    ("POST", "/v1/auth/login"): "User login",
-    ("POST", "/v1/auth/logout"): "User logout",
-    ("POST", "/v1/auth/refresh"): "Refresh access token",
-    ("POST", "/v1/auth/email/send-verification"): "Send email verification",
-    ("POST", "/v1/auth/email/verify"): "Verify email",
-}
+from starlette.requests import Request
+from starlette.routing import Match
 
 
-def get_event_name(method: str, path: str) -> str:
+def get_event_name(request: Request) -> str:
     """
-    Получает семантическое название события на основе method и path.
+    Выводит семантическое название события из имени совпавшего роута.
+
+    Имя роута (``route.name`` — по умолчанию имя функции-обработчика) принадлежит
+    домену, который роут объявил, поэтому shared-логирование не хранит маппинг
+    доменных путей. ``BaseHTTPMiddleware`` не пробрасывает ``scope["route"]``
+    обратно в middleware, поэтому совпавший роут переподбирается вручную по
+    ``request.app.routes``.
 
     Args:
-        method: HTTP метод (GET, POST, PUT, DELETE и т.д.)
-        path: Путь запроса (например, "/v1/users/register/")
+        request: HTTP-запрос (уже прошедший роутинг)
 
     Returns:
-        Семантическое название события или fallback на "method path"
+        Гуманизированное имя события (``send_email_verification`` →
+        ``"Send email verification"``) либо fallback ``"{method} {path}"``,
+        если ни один роут не совпал (например, 404).
     """
-    # Нормализуем path (убираем trailing slash для сравнения)
-    normalized_path = path.rstrip("/") or "/"
+    for route in request.app.routes:
+        match, _ = route.matches(request.scope)
+        if match == Match.FULL:
+            name = getattr(route, "name", None)
+            if name:
+                return name.replace("_", " ").capitalize()
 
-    # Ищем точное совпадение
-    event = EVENT_MAPPER.get((method, normalized_path))
-    if event:
-        return event
+            break
 
-    # Fallback: возвращаем сообщение о том, что нет соответствующего события
-    return f"Неизвестное событие для: ({method}, {path})"
+    return f"{request.method} {request.url.path}"

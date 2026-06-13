@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
 import { server } from "../test/handlers";
-import { makeAuthValue, renderRoutes, screen } from "../test/render";
+import { findMenuItem, makeAuthValue, renderRoutes, screen } from "../test/render";
 import type { AuthContextValue } from "../auth/useAuth";
 import { HomePage } from "./HomePage";
 
@@ -24,7 +24,7 @@ describe("HomePage", () => {
     const { user } = renderHome(authValue);
 
     await user.click(screen.getByRole("button", { name: "Open profile menu" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Logout" }));
+    await user.click(await findMenuItem("Logout"));
 
     expect(await screen.findByText("login-landing")).toBeInTheDocument();
     expect(authValue.clearSession).toHaveBeenCalledOnce();
@@ -36,7 +36,7 @@ describe("HomePage", () => {
     const { user } = renderHome(authValue);
 
     await user.click(screen.getByRole("button", { name: "Open profile menu" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Logout" }));
+    await user.click(await findMenuItem("Logout"));
 
     expect(await screen.findByText("login-landing")).toBeInTheDocument();
     expect(authValue.clearSession).toHaveBeenCalledOnce();
@@ -49,7 +49,7 @@ describe("HomePage", () => {
     expect(screen.getByText(BANNER_MESSAGE)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Open profile menu" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Verify email" }));
+    await user.click(await findMenuItem("Verify email"));
 
     expect(authValue.openVerifyDialog).toHaveBeenCalled();
   });

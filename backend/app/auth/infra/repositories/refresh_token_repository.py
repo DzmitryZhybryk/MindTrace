@@ -31,7 +31,7 @@ class RefreshTokenRepository(BaseDBRepository[RefreshToken], RefreshTokenReposit
         Args:
             token: Доменная сущность refresh-токена
         """
-        await self.insert(data=self._to_model(entity=token))
+        await self.insert(data=RefreshToken(**self._to_columns(entity=token)))
 
     async def find_by_hash_for_update(self, token_hash: str) -> RefreshTokenEntity | None:
         """
@@ -61,11 +61,9 @@ class RefreshTokenRepository(BaseDBRepository[RefreshToken], RefreshTokenReposit
         Args:
             token: Доменная сущность с уже обновлённым состоянием
         """
-        query = (
-            sa.update(RefreshToken)
-            .where(RefreshToken.id == token.token_id)
-            .values(**self._to_update_values(entity=token))
-        )
+        values = self._to_columns(entity=token)
+        del values["id"]  # PK не входит в SET
+        query = sa.update(RefreshToken).where(RefreshToken.id == token.token_id).values(**values)
         await self._session.execute(query)
 
     async def revoke_all_active_by_user_id(self, user_id: UUID) -> None:
@@ -90,44 +88,22 @@ class RefreshTokenRepository(BaseDBRepository[RefreshToken], RefreshTokenReposit
         )
         await self._session.execute(query)
 
-    def _to_model(self, entity: RefreshTokenEntity) -> RefreshToken:
+    def _to_columns(self, entity: RefreshTokenEntity) -> DictStrAny:
         """
-        Конвертирует доменную сущность refresh-токена в ORM-модель.
+        Единый маппинг entity → колонки ORM-модели (включая PK ``id``).
+
+        Источник истины для обоих путей записи: INSERT (``RefreshToken(**columns)``)
+        и UPDATE (те же колонки минус PK). Новое поле добавляется здесь один раз —
+        и попадает и в INSERT, и в UPDATE, рассинхрон между ними невозможен.
 
         Args:
             entity: Доменная сущность refresh-токена
 
         Returns:
-            ORM-модель, готовая к добавлению в сессию
-        """
-        return RefreshToken(
-            id=entity.token_id,
-            user_id=entity.user_id,
-            token_hash=entity.token_hash,
-            expires_at=entity.expires_at,
-            revoked_at=entity.revoked_at,
-            ip_address=entity.ip_address,
-            user_agent=entity.user_agent,
-            created_at=entity.created_at,
-            updated_at=entity.updated_at,
-            deleted_at=entity.deleted_at,
-        )
-
-    def _to_update_values(self, entity: RefreshTokenEntity) -> DictStrAny:
-        """
-        Собирает dict non-PK-полей для UPDATE-выражения.
-
-        Симметрично с ``_to_model``/``_to_entity``: маппинг полей собран в одном
-        месте, чтобы при добавлении нового поля на entity не забыть прокинуть
-        его в UPDATE.
-
-        Args:
-            entity: Доменная сущность refresh-токена
-
-        Returns:
-            Словарь ``column -> value`` без PK ``id``
+            Словарь ``column -> value`` со всеми колонками, включая PK
         """
         return {
+            "id": entity.token_id,
             "user_id": entity.user_id,
             "token_hash": entity.token_hash,
             "expires_at": entity.expires_at,

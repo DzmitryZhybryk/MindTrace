@@ -34,7 +34,7 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
         Args:
             credentials: Доменная сущность учётных данных
         """
-        await self.insert(data=self._to_model(entity=credentials))
+        await self.insert(data=UserCredentials(**self._to_columns(entity=credentials)))
 
     async def update_user_credentials_by_user_id(self, credentials: UserCredentialsEntity) -> None:
         """
@@ -45,11 +45,9 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
         Args:
             credentials: Доменная сущность с уже обновлённым состоянием
         """
-        query = (
-            sa.update(UserCredentials)
-            .where(UserCredentials.user_id == credentials.user_id)
-            .values(**self._to_update_values(entity=credentials))
-        )
+        values = self._to_columns(entity=credentials)
+        del values["user_id"]  # PK не входит в SET
+        query = sa.update(UserCredentials).where(UserCredentials.user_id == credentials.user_id).values(**values)
         await self._session.execute(query)
 
     async def find_user_credentials_by_user_id(self, user_id: UUID) -> UserCredentialsEntity | None:
@@ -93,43 +91,22 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
         models = result.scalars().all()
         return [self._to_entity(model=model) for model in models]
 
-    def _to_model(self, entity: UserCredentialsEntity) -> UserCredentials:
+    def _to_columns(self, entity: UserCredentialsEntity) -> DictStrAny:
         """
-        Конвертирует доменную сущность учётных данных в ORM-модель.
+        Единый маппинг entity → колонки ORM-модели (включая PK ``user_id``).
+
+        Источник истины для обоих путей записи: INSERT (``UserCredentials(**columns)``)
+        и UPDATE (те же колонки минус PK). Новое поле добавляется здесь один раз —
+        и попадает и в INSERT, и в UPDATE, рассинхрон между ними невозможен.
 
         Args:
             entity: Доменная сущность учётных данных
 
         Returns:
-            ORM-модель, готовая к добавлению в сессию
-        """
-        return UserCredentials(
-            user_id=entity.user_id,
-            email=entity.email,
-            username=entity.username,
-            password_hash=entity.password.hash,
-            role=entity.role.value,
-            email_verified_at=entity.email_verified_at,
-            created_at=entity.created_at,
-            updated_at=entity.updated_at,
-            deleted_at=entity.deleted_at,
-        )
-
-    def _to_update_values(self, entity: UserCredentialsEntity) -> DictStrAny:
-        """
-        Собирает dict non-PK-полей для UPDATE-выражения.
-
-        Симметрично с ``_to_model``/``_to_entity``: маппинг полей собран в одном
-        месте, чтобы при добавлении нового поля на entity не забыть прокинуть
-        его в UPDATE.
-
-        Args:
-            entity: Доменная сущность учётных данных
-
-        Returns:
-            Словарь ``column -> value`` без PK ``user_id``
+            Словарь ``column -> value`` со всеми колонками, включая PK
         """
         return {
+            "user_id": entity.user_id,
             "email": entity.email,
             "username": entity.username,
             "password_hash": entity.password.hash,
