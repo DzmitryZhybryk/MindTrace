@@ -105,8 +105,9 @@ class ProcrastinateTaskBus(TaskBusPort):
         Все defer'ы через возвращённый объект выполняются в той же транзакции,
         что и pending writes сессии. Используется в сервисах:
 
-            await self._task_bus.bind_to(uow.session).defer(task_name=..., **kwargs)
-            await uow.commit()  # один commit фиксирует и writes, и procrastinate-job
+            async with uow.transaction():
+                await self._task_bus.bind_to(uow.session).defer(task_name=..., **kwargs)
+                await uow.commit()  # один commit фиксирует и writes, и procrastinate-job
 
         Args:
             session: Активная async-сессия SQLAlchemy.

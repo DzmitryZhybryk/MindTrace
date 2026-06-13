@@ -11,6 +11,28 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-06-13
+
+### Backend 0.9.8
+
+- **Транзакционная модель UoW (Option A).** `UserService.create_user` больше не коммитит: register фиксирует `user_credentials` + `user` + refresh-токен **одной транзакцией** во владении `AuthService.register` — cross-domain атомарность, осиротевшей учётки при сбое не остаётся. `BaseUnitOfWork` очищен от мёртвых `__aenter__`/`__aexit__`/`rollback`. Создан слой `app/users/presentation/` (`user_service_dependency`); auth-зависимости больше не импортируют `users.infra`
+- **Явная транзакционная граница.** `BaseUnitOfWork.transaction()` — rollback-by-default async-CM; сервисы оборачивают работу в `async with uow.transaction(): … await uow.commit()`. Область видна по блоку, `commit()` остаётся явной фиксацией; commit-then-raise (reuse-detection, invalid-code) работает внутри блока
+- **Полировка.** Дедуп entity→колонки в трёх auth-репозиториях (`_to_model` + `_to_update_values` → один `_to_columns`); `ComponentRegistry` на PEP695 method-generics; опечатка `PostgressSettings` → `PostgresSettings`; имя лог-события выводится из `route.name` (shared-логирование больше не хранит маппинг доменных путей)
+- **Тесты.** Unit на тело `send_verification_email` (`FakeEmailTransport` + реальный рендерер, проброс temporary/persistent ошибок); 9 дублированных фикстур подняты в корневой `tests/conftest.py`; `_PAST` → `past`-фикстура. Всего 126 тестов (unit+api)
+- HTTP-контракт и машинные коды ошибок (`code`) не менялись — поэтому bump патчевый
+
+### Frontend 0.10.4
+
+- **Архитектура auth-экранов.** Извлечены `AuthLayout` + `AuthCard` из Login/SignUp (вёрстка дословно сохранена); magic-hex сведены в CSS-токены (`--brand-ink`, `--auth-page-bg`, `--auth-card-*`, `--globe-bg`)
+- **Устойчивость к сбоям.** Корневой `ErrorBoundary` (fallback `RootErrorFallback`) держит UI от белого экрана; локальный вокруг `AuthGlobe` изолирует сбой WebGL/three.js, не ломая форму. `parseSuccess` оборачивает `JSON.parse` в try/catch → `ApiError(code:"invalid_response")` (битый JSON под 2xx больше не роняет голым `SyntaxError`; +i18n en/ru)
+- **Чистка.** Удалён dev-`src/sandbox/` целиком + роут `/sandbox` — мёртвый код и дубль глобуса
+- **Тесты.** `AuthContext.test.tsx` (bootstrap refresh 401/200, verify/auth-required, сброс verify-баннера); стабилизация кликов по Mantine-меню хелпером `findMenuItem`; кейс no-op при выборе активного языка. Всего 85 тестов
+- Внешнего контракта у SPA нет — bump патчевый
+
+### Project
+
+- Дрейф документации устранён: `CLAUDE.md` (`Password(hash=...)` вместо удалённого `from_hash`, frontend `make lint` = oxlint, реальный `-> Self`-пример); `backend/pyproject.toml` — удалён мёртвый per-file-ignore на несуществующий `app/infra/components/registry.py` (RUF002/003 уже в глобальном ignore); `.claude/agents/architecture-reviewer.md` — `resolve_http_status`/`ErrorCategory` вместо `DOMAIN_EXCEPTION_MAPPING`; `.claude/rules/typescript/testing.md` — ESLint → oxlint, описан `VITEST_SCOPE` (unit=`*.test.ts`, component=`*.test.tsx`)
+
 ## 2026-06-12
 
 ### Frontend 0.10.3

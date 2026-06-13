@@ -11,7 +11,14 @@ class UserService:
 
     async def create_user(self, user: CreateUserCommand) -> None:
         """
-        Создаёт нового пользователя.
+        Создаёт нового пользователя в рамках транзакции вызывающего.
+
+        НЕ коммитит: ``create_user`` — cross-domain участник use-case'а, чьей
+        входной точкой владеет вызывающий (``AuthService.register``). Запись
+        кладётся в общую сессию и фиксируется единственным ``commit()`` вызывающего —
+        атомарно вместе с ``user_credentials`` и refresh-токеном. Любой сбой до
+        этого commit'а откатывает всё, осиротевшей учётки не остаётся
+        (Option A транзакционной модели, см. ``BaseUnitOfWork``).
 
         Args:
             user: Данные для создания пользователя.
@@ -24,4 +31,3 @@ class UserService:
             terms_accepted_at=user.terms_accepted_at,
         )
         await self._uow.user_repository.insert_user(user_entity=user_entity)
-        await self._uow.commit()

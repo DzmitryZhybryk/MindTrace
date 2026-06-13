@@ -1,5 +1,7 @@
 """Фейк ``AuthUnitOfWorkPort``: держит фейк-репозитории, мокнутый commit и sentinel-сессию."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import cast
 from unittest.mock import AsyncMock
 
@@ -19,8 +21,9 @@ class FakeAuthUnitOfWork(AuthUnitOfWorkPort):
 
     Репозитории передаются снаружи (фикстуры держат те же инстансы, чтобы тест
     мог проверять их состояние), ``commit`` — ``AsyncMock`` (``commit_mock``) для
-    проверки факта фиксации, ``session`` — sentinel: фейк-bus её не использует, но
-    тест сверяет, что atomic-defer сделан именно в этой сессии.
+    проверки факта фиксации, ``transaction`` — no-op область (rollback реальной
+    сессии проверяется в integration), ``session`` — sentinel: фейк-bus её не
+    использует, но тест сверяет, что atomic-defer сделан именно в этой сессии.
     """
 
     def __init__(
@@ -39,6 +42,10 @@ class FakeAuthUnitOfWork(AuthUnitOfWorkPort):
     @property
     def session(self) -> AsyncSession:
         return self._session
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator[None]:
+        yield
 
     async def commit(self) -> None:
         await self.commit_mock()

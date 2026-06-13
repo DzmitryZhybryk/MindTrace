@@ -47,30 +47,32 @@ class AuthService:
         registration: RegistrationCommand,
         client_metadata: ClientMetadata,
     ) -> TokenPairResult:
-        await self._ensure_credentials_unique(email=registration.email, username=registration.username)
+        async with self._uow.transaction():
+            await self._ensure_credentials_unique(email=registration.email, username=registration.username)
 
-        password = Password(hash=self._salted_hasher.hash(registration.password.get_secret_value()))
-        credentials_entity = UserCredentialsEntity.create(
-            email=registration.email,
-            username=registration.username,
-            password=password,
-        )
-        await self._uow.user_credentials_repository.insert_user_credentials(credentials=credentials_entity)
-        await self._users_client.create_user(
-            user_id=credentials_entity.user_id,
-            username=registration.username,
-            email=registration.email,
-            marketing_emails_consent=registration.marketing_emails_consent,
-            terms_accepted_at=credentials_entity.created_at,
-        )
+            password = Password(hash=self._salted_hasher.hash(registration.password.get_secret_value()))
+            credentials_entity = UserCredentialsEntity.create(
+                email=registration.email,
+                username=registration.username,
+                password=password,
+            )
+            await self._uow.user_credentials_repository.insert_user_credentials(credentials=credentials_entity)
+            await self._users_client.create_user(
+                user_id=credentials_entity.user_id,
+                username=registration.username,
+                email=registration.email,
+                marketing_emails_consent=registration.marketing_emails_consent,
+                terms_accepted_at=credentials_entity.created_at,
+            )
 
-        refresh_secret, refresh_token = self._token_issuer.issue_refresh_token(
-            user_id=credentials_entity.user_id,
-            client_metadata=client_metadata,
-        )
-        await self._uow.refresh_token_repository.insert_refresh_token(token=refresh_token)
-        await self._uow.commit()
+            refresh_secret, refresh_token = self._token_issuer.issue_refresh_token(
+                user_id=credentials_entity.user_id,
+                client_metadata=client_metadata,
+            )
+            await self._uow.refresh_token_repository.insert_refresh_token(token=refresh_token)
+            await self._uow.commit()
 
+        # Вне транзакции register'а: own transaction()/commit (atomic-defer письма) — поэтому ПОСЛЕ блока.
         await self._email_verification_service.request_email_verification(user_id=credentials_entity.user_id)
 
         return self._token_issuer.build_token_pair(
@@ -101,28 +103,32 @@ class AuthService:
         Raises:
             InvalidCredentialsError: Логин не найден или пароль не совпал
         """
-        candidates = await self._uow.user_credentials_repository.find_user_credentials_by_email_or_username(
-            email=command.login,
-            username=command.login,
-        )
-        credentials = next(
-            (c for c in candidates if c.email == command.login or c.username == command.login),
-            None,
-        )
+        async with self._uow.transaction():
+            candidates = await self._uow.user_credentials_repository.find_user_credentials_by_email_or_username(
+                email=command.login,
+                username=command.login,
+            )
+            credentials = next(
+                (c for c in candidates if c.email == command.login or c.username == command.login),
+                None,
+            )
 
-        if credentials is None:
-            self._salted_hasher.verify(secret=command.password.get_secret_value(), hashed=_DUMMY_PASSWORD_HASH)
-            raise InvalidCredentialsError()
+            if credentials is None:
+                self._salted_hasher.verify(secret=command.password.get_secret_value(), hashed=_DUMMY_PASSWORD_HASH)
+                raise InvalidCredentialsError()
 
-        if not self._salted_hasher.verify(secret=command.password.get_secret_value(), hashed=credentials.password.hash):
-            raise InvalidCredentialsError()
+            if not self._salted_hasher.verify(
+                secret=command.password.get_secret_value(),
+                hashed=credentials.password.hash,
+            ):
+                raise InvalidCredentialsError()
 
-        refresh_secret, refresh_token = self._token_issuer.issue_refresh_token(
-            user_id=credentials.user_id,
-            client_metadata=client_metadata,
-        )
-        await self._uow.refresh_token_repository.insert_refresh_token(token=refresh_token)
-        await self._uow.commit()
+            refresh_secret, refresh_token = self._token_issuer.issue_refresh_token(
+                user_id=credentials.user_id,
+                client_metadata=client_metadata,
+            )
+            await self._uow.refresh_token_repository.insert_refresh_token(token=refresh_token)
+            await self._uow.commit()
 
         return self._token_issuer.build_token_pair(
             credentials=credentials,
@@ -145,14 +151,15 @@ class AuthService:
         if refresh_secret is None:
             return
 
-        token_hash = self._token_issuer.hash_refresh_secret(refresh_secret=refresh_secret)
-        token = await self._uow.refresh_token_repository.find_by_hash_for_update(token_hash=token_hash)
-        if token is None or token.is_revoked:
-            return
+        async with self._uow.transaction():
+            token_hash = self._token_issuer.hash_refresh_secret(refresh_secret=refresh_secret)
+            token = await self._uow.refresh_token_repository.find_by_hash_for_update(token_hash=token_hash)
+            if token is None or token.is_revoked:
+                return
 
-        token.revoke()
-        await self._uow.refresh_token_repository.update_refresh_token_by_id(token=token)
-        await self._uow.commit()
+            token.revoke()
+            await self._uow.refresh_token_repository.update_refresh_token_by_id(token=token)
+            await self._uow.commit()
 
     async def refresh(self, refresh_secret: str, client_metadata: ClientMetadata) -> TokenPairResult:
         """
@@ -179,34 +186,35 @@ class AuthService:
         Raises:
             InvalidRefreshTokenError: Секрет не найден / уже revoked / истёк / связанный аккаунт не существует
         """
-        token_hash = self._token_issuer.hash_refresh_secret(refresh_secret=refresh_secret)
-        token = await self._uow.refresh_token_repository.find_by_hash_for_update(token_hash=token_hash)
-        if token is None:
-            raise InvalidRefreshTokenError()
+        async with self._uow.transaction():
+            token_hash = self._token_issuer.hash_refresh_secret(refresh_secret=refresh_secret)
+            token = await self._uow.refresh_token_repository.find_by_hash_for_update(token_hash=token_hash)
+            if token is None:
+                raise InvalidRefreshTokenError()
 
-        if token.is_revoked:
-            await self._uow.refresh_token_repository.revoke_all_active_by_user_id(user_id=token.user_id)
+            if token.is_revoked:
+                await self._uow.refresh_token_repository.revoke_all_active_by_user_id(user_id=token.user_id)
+                await self._uow.commit()
+                raise InvalidRefreshTokenError()
+
+            if token.is_expired:
+                raise InvalidRefreshTokenError()
+
+            credentials = await self._uow.user_credentials_repository.find_user_credentials_by_user_id(
+                user_id=token.user_id,
+            )
+            if credentials is None:
+                raise InvalidRefreshTokenError()
+
+            token.revoke()
+            await self._uow.refresh_token_repository.update_refresh_token_by_id(token=token)
+
+            new_refresh_secret, new_refresh_token = self._token_issuer.issue_refresh_token(
+                user_id=token.user_id,
+                client_metadata=client_metadata,
+            )
+            await self._uow.refresh_token_repository.insert_refresh_token(token=new_refresh_token)
             await self._uow.commit()
-            raise InvalidRefreshTokenError()
-
-        if token.is_expired:
-            raise InvalidRefreshTokenError()
-
-        credentials = await self._uow.user_credentials_repository.find_user_credentials_by_user_id(
-            user_id=token.user_id,
-        )
-        if credentials is None:
-            raise InvalidRefreshTokenError()
-
-        token.revoke()
-        await self._uow.refresh_token_repository.update_refresh_token_by_id(token=token)
-
-        new_refresh_secret, new_refresh_token = self._token_issuer.issue_refresh_token(
-            user_id=token.user_id,
-            client_metadata=client_metadata,
-        )
-        await self._uow.refresh_token_repository.insert_refresh_token(token=new_refresh_token)
-        await self._uow.commit()
 
         return self._token_issuer.build_token_pair(
             credentials=credentials,

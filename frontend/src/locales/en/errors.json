@@ -16,5 +16,6 @@
   },
   "validation_error": "Please check the entered data and try again",
   "network": "Network error. Please try again.",
+  "invalid_response": "Unexpected server response. Please try again.",
   "fallback": "Something went wrong. Please try again."
 }

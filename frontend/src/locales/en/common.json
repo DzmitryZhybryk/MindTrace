@@ -14,5 +14,9 @@
   "greeting": "Hello, {{name}}",
   "language": {
     "label": "Language"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "reload": "Reload page"
   }
 }

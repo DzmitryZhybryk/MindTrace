@@ -35,6 +35,25 @@ for _key, _value in _TEST_ENV_DEFAULTS.items():
     os.environ.setdefault(_key, _value)
 
 
+# Импорты app/tests.fakes — строго ПОСЛЕ env-bootstrap: ``app`` на импорте строит
+# синглтон ``settings``, которому нужны заполненные env-поля (E402 осознанно).
+from app.auth.application.settings import EmailVerificationSettings  # noqa: E402
+from app.shared.infra.crypto import Sha256DeterministicHasher  # noqa: E402
+from tests.fakes import (  # noqa: E402
+    FakeAuthUnitOfWork,
+    FakeChallengeRepository,
+    FakeRefreshTokenRepository,
+    FakeSaltedHasher,
+    FakeTaskBus,
+    FakeUserCredentialsRepository,
+    FakeUsersClient,
+)
+
+_EMAIL_VERIFICATION_TTL_MINUTES = 15
+_EMAIL_VERIFICATION_MAX_ATTEMPTS = 5
+_EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = 60
+
+
 # Оси маркеров, выводимые из пути файла: tests/<level>/<domain>/...
 # При добавлении нового уровня/домена обнови и эти кортежи, и список ``markers`` в
 # pyproject.toml (``--strict-markers`` запрещает незарегистрированные маркеры).
@@ -70,3 +89,69 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         for marker_name in known_markers:
             if marker_name in path_segments:
                 item.add_marker(getattr(pytest.mark, marker_name))
+
+
+# Фикстуры, переиспользуемые между УРОВНЯМИ (unit + api). Каталоги нарезаны
+# уровень→домен, поэтому единственный общий предок ``tests/unit/auth`` и
+# ``tests/api/auth`` — этот корневой conftest; иначе фейки дублировались бы в обоих.
+# Доменно-специфичную проводку сервисов (``auth_service`` и т.п.) держат per-domain conftest'ы.
+
+
+@pytest.fixture
+def fake_user_credentials_repository() -> FakeUserCredentialsRepository:
+    return FakeUserCredentialsRepository()
+
+
+@pytest.fixture
+def fake_refresh_token_repository() -> FakeRefreshTokenRepository:
+    return FakeRefreshTokenRepository()
+
+
+@pytest.fixture
+def fake_challenge_repository() -> FakeChallengeRepository:
+    return FakeChallengeRepository()
+
+
+@pytest.fixture
+def fake_uow(
+    fake_user_credentials_repository: FakeUserCredentialsRepository,
+    fake_refresh_token_repository: FakeRefreshTokenRepository,
+    fake_challenge_repository: FakeChallengeRepository,
+) -> FakeAuthUnitOfWork:
+    # Репозитории — отдельные фикстуры тех же инстансов: тест сидит/ассертит их состояние
+    # по конкретному типу (на uow они под port-типом, без .by_user_id/.challenges).
+    return FakeAuthUnitOfWork(
+        user_credentials_repository=fake_user_credentials_repository,
+        refresh_token_repository=fake_refresh_token_repository,
+        challenge_repository=fake_challenge_repository,
+    )
+
+
+@pytest.fixture
+def fake_users_client() -> FakeUsersClient:
+    return FakeUsersClient()
+
+
+@pytest.fixture
+def fake_salted_hasher() -> FakeSaltedHasher:
+    return FakeSaltedHasher()
+
+
+@pytest.fixture
+def fake_task_bus() -> FakeTaskBus:
+    return FakeTaskBus()
+
+
+@pytest.fixture
+def deterministic_hasher() -> Sha256DeterministicHasher:
+    """Реальный sha256-hasher для сидинга ``token_hash`` (тот же, что у боевого token_issuer)."""
+    return Sha256DeterministicHasher()
+
+
+@pytest.fixture
+def email_verification_settings() -> EmailVerificationSettings:
+    return EmailVerificationSettings(
+        email_verification_ttl_minutes=_EMAIL_VERIFICATION_TTL_MINUTES,
+        email_verification_max_attempts=_EMAIL_VERIFICATION_MAX_ATTEMPTS,
+        email_verification_resend_cooldown_seconds=_EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS,
+    )

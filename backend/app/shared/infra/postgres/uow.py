@@ -1,32 +1,50 @@
-from typing import Self
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class BaseUnitOfWork:
     """
-    Базовый Unit Of Work поверх SA-сессии.
+    Базовый Unit Of Work поверх SA-сессии — тонкий транзакционный фасад.
 
-    Async context manager: ``__aenter__`` открывает транзакцию (``session.begin()``),
-    ``__aexit__`` rollback'ит на exception и закрывает сессию. Commit явный —
-    caller вызывает ``await uow.commit()`` сам (например, после успешного
-    atomic defer procrastinate-таски через ``TaskBusPort.bind_to(uow.session)``).
+    Жизненным циклом сессии владеет ``db_session_dependency``
+    (``async with sessionmaker() as session``): он открывает сессию на запрос и
+    закрывает её на выходе. UoW сессию НЕ открывает и НЕ закрывает — он лишь
+    группирует репозитории и задаёт транзакционную область.
 
-    Доменные UoW наследуются и добавляют репозитории как ``@property`` lazy-init.
+    Транзакционная модель (Option A): один use-case = одна область
+    ``async with uow.transaction():`` во владении входной точки use-case'а
+    (например, ``AuthService.register``). Внутри области явный ``await uow.commit()``
+    фиксирует изменения; cross-domain участники (``UserService.create_user``) не
+    коммитят — их записи фиксируются тем же единственным commit'ом атомарно.
+
+    Два уровня явности границы транзакции:
+      * ``transaction()`` — ОБЛАСТЬ (видна по ``async with``-блоку и отступу).
+        Выход без commit'а ИЛИ исключение → rollback всего незакоммиченного.
+      * ``commit()`` — ДЕЙСТВИЕ (явная фиксация «транзакция завершена»).
+
+    Доменные UoW наследуются и инициализируют репозитории в ``__init__``.
     """
 
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def __aenter__(self) -> Self:
-        await self._session.begin()
-        return self
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator[None]:
+        """
+        Явная транзакционная область поверх request-scoped сессии.
 
-    async def __aexit__(self, exc_type: type, exc_val: BaseException, exc_tb: BaseException) -> None:
-        if exc_type:
+        Внутри блока вызывается ``await uow.commit()`` — явная фиксация. Выход из
+        блока без commit'а ИЛИ исключение → ``rollback`` (всё незакоммиченное
+        откатывается); после успешного commit'а ``rollback`` на выходе — no-op
+        (зафиксированное уже не отменить). Сессию НЕ создаёт и НЕ закрывает —
+        её lifecycle за ``db_session_dependency``.
+        """
+        try:
+            yield
+        finally:
             await self._session.rollback()
-
-        await self._session.close()
 
     @property
     def session(self) -> AsyncSession:
@@ -39,9 +57,6 @@ class BaseUnitOfWork:
         идти через репозитории.
         """
         return self._session
-
-    async def rollback(self) -> None:
-        await self._session.rollback()
 
     async def commit(self) -> None:
         await self._session.commit()

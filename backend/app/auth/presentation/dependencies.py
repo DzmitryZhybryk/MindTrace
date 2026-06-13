@@ -26,7 +26,7 @@ from app.shared.infra.procrastinate import ProcrastinateTaskBus, TaskBusPort
 from app.shared.schemas.base import BFastAPI
 from app.shared.settings import settings
 from app.users.application.services import UserService
-from app.users.infra.user_uow import UserUnitOfWork
+from app.users.presentation.dependencies import user_service_dependency
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -45,10 +45,9 @@ def auth_uow_dependency(
 
 
 def users_client_dependency(
-    session: Annotated[AsyncSession, Depends(db_session_dependency)],
+    user_service: Annotated[UserService, Depends(user_service_dependency)],
 ) -> InternalUsersClient:
-    uow = UserUnitOfWork(session=session)
-    return InternalUsersClient(user_service=UserService(uow=uow))
+    return InternalUsersClient(user_service=user_service)
 
 
 def jwt_service_dependency() -> JWTService:

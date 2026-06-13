@@ -17,6 +17,7 @@
 """
 
 import datetime as dt
+from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 from uuid import UUID
 
@@ -72,11 +73,12 @@ class AuthUnitOfWorkPort(Protocol):
     """
     Контракт транзакционной границы auth, на который опираются сервисы.
 
-    Объединяет доступ к репозиториям (через их порты), ручной ``commit`` и
-    «сырую» сессию для atomic-defer'а procrastinate-таски в текущей транзакции
-    (``task_bus.bind_to(uow.session)``). ``session`` типизирована ``AsyncSession``
-    осознанно: этот шов уже заложен в ``BaseUnitOfWork`` ради atomic defer и
-    инкапсулировать его глубже без передизайна механизма нельзя.
+    Объединяет доступ к репозиториям (через их порты), транзакционную область
+    ``transaction()`` + явный ``commit`` и «сырую» сессию для atomic-defer'а
+    procrastinate-таски в текущей транзакции (``task_bus.bind_to(uow.session)``).
+    ``session`` типизирована ``AsyncSession`` осознанно: этот шов уже заложен в
+    ``BaseUnitOfWork`` ради atomic defer и инкапсулировать его глубже без
+    передизайна механизма нельзя.
     """
 
     user_credentials_repository: UserCredentialsRepositoryPort
@@ -85,6 +87,8 @@ class AuthUnitOfWorkPort(Protocol):
 
     @property
     def session(self) -> AsyncSession: ...
+
+    def transaction(self) -> AbstractAsyncContextManager[None]: ...
 
     async def commit(self) -> None: ...
 

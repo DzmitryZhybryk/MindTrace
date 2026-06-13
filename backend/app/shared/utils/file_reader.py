@@ -1,12 +1,10 @@
 import tomllib
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, ClassVar, TypeVar
+from typing import Any, ClassVar
 
 from app.shared.types import DictStrAny
 from app.shared.utils.utils_exceptions import UnsupportedFileTypeError
-
-T = TypeVar("T")
 
 
 class BaseFileReader[T](ABC):

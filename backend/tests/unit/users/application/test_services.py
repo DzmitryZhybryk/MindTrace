@@ -28,11 +28,11 @@ async def test_create_user_inserts_mapped_entity(
     assert stored.terms_accepted_at == command.terms_accepted_at
 
 
-async def test_create_user_commits_once(
+async def test_create_user_does_not_commit(
     user_service: UserService,
     fake_user_uow: FakeUserUnitOfWork,
 ) -> None:
-    """`create_user` фиксирует транзакцию ровно один раз."""
+    """`create_user` НЕ коммитит — фиксацией владеет вызывающий use-case (Option A)."""
     command = CreateUserCommand(
         user_id=uuid4(),
         username="alice",
@@ -43,4 +43,4 @@ async def test_create_user_commits_once(
 
     await user_service.create_user(user=command)
 
-    fake_user_uow.commit_mock.assert_awaited_once()
+    fake_user_uow.commit_mock.assert_not_awaited()

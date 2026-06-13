@@ -16,7 +16,7 @@ _ROOT_DIR: Final[Path] = _APP_DIR.parent.parent
 _PYPROJECT_DATA: Final[DictStrAny] = read_file(_ROOT_DIR / "pyproject.toml")
 
 
-class PostgressSettings(BaseModel):
+class PostgresSettings(BaseModel):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
@@ -106,12 +106,12 @@ class EmailVerificationSettings(BaseModel):
     EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
 
 
-class ProcrastinateSettings(PostgressSettings):
+class ProcrastinateSettings(PostgresSettings):
     """
     Procrastinate шарит БД с приложением — наследует PG-конфиг для DSN.
 
     Procrastinate-специфичны только пул и concurrency; connection info
-    приходит через ``procrastinate_dsn`` из ``PostgressSettings``.
+    приходит через ``procrastinate_dsn`` из ``PostgresSettings``.
     """
 
     PROCRASTINATE_POOL_MIN_SIZE: int = 2

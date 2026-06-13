@@ -1,22 +1,11 @@
-import {
-  Anchor,
-  Box,
-  Button,
-  Center,
-  Checkbox,
-  Paper,
-  PasswordInput,
-  Stack,
-  Text,
-  TextInput,
-  Title,
-} from "@mantine/core";
+import { Anchor, Button, Checkbox, PasswordInput, Stack, Text, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { AuthHeader } from "../components/AuthHeader";
-import { AuthGlobe } from "../components/AuthGlobe";
+import { AuthCard } from "../components/AuthCard";
+import { AuthLayout } from "../components/AuthLayout";
 import { register } from "../api/auth";
 import { applyApiError } from "../api/errors";
 import { useAuth } from "../auth/useAuth";
@@ -84,143 +73,96 @@ export function SignUpPage() {
   };
 
   return (
-    <Box
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        background:
-          "radial-gradient(ellipse 50% 75% at 25% 50%, #f5f8fc 0%, #dbe5f3 55%, #b8c8e0 100%)",
-      }}
+    <AuthLayout
+      header={
+        <AuthHeader
+          hint={t("signup.headerHint")}
+          actionLabel={t("signup.headerAction")}
+          actionHref="/login"
+        />
+      }
     >
-      <Box
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          minWidth: 0,
-          position: "relative",
-        }}
-      >
-        <Box style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 1 }}>
-          <AuthHeader
-            hint={t("signup.headerHint")}
-            actionLabel={t("signup.headerAction")}
-            actionHref="/login"
-          />
-        </Box>
+      <AuthCard title={t("signup.title")} subtitle={t("signup.subtitle")}>
+        {formError && (
+          <Text size="sm" c="red" fw={500}>
+            {formError}
+          </Text>
+        )}
 
-        <Center style={{ flex: 1, padding: "24px", width: "100%" }}>
-          <Paper
-            radius="lg"
-            p={40}
-            withBorder
-            style={{
-              width: "100%",
-              maxWidth: 420,
-              borderColor: "#dbe2ec",
-              backgroundColor: "#ffffff",
-              boxShadow: "0 12px 32px rgba(15, 30, 80, 0.10)",
-            }}
-          >
-            <Stack gap="lg">
-              <Stack gap={4}>
-                <Title order={2} size="h3" c="slate.8">
-                  {t("signup.title")}
-                </Title>
-                <Box c="dimmed" fz="sm">
-                  {t("signup.subtitle")}
-                </Box>
-              </Stack>
+        <form onSubmit={form.onSubmit(handleSubmit)}>
+          <Stack gap="md">
+            <TextInput
+              label={t("signup.usernameLabel")}
+              placeholder={t("signup.usernamePlaceholder")}
+              size="md"
+              radius="md"
+              autoComplete="username"
+              key={form.key("username")}
+              {...form.getInputProps("username")}
+            />
 
-              {formError && (
-                <Text size="sm" c="red" fw={500}>
-                  {formError}
-                </Text>
-              )}
+            <TextInput
+              label={t("signup.emailLabel")}
+              placeholder={t("signup.emailPlaceholder")}
+              size="md"
+              radius="md"
+              autoComplete="email"
+              key={form.key("email")}
+              {...form.getInputProps("email")}
+            />
 
-              <form onSubmit={form.onSubmit(handleSubmit)}>
-                <Stack gap="md">
-                  <TextInput
-                    label={t("signup.usernameLabel")}
-                    placeholder={t("signup.usernamePlaceholder")}
-                    size="md"
-                    radius="md"
-                    autoComplete="username"
-                    key={form.key("username")}
-                    {...form.getInputProps("username")}
-                  />
+            <PasswordInput
+              label={t("signup.passwordLabel")}
+              placeholder={t("signup.passwordPlaceholder")}
+              size="md"
+              radius="md"
+              autoComplete="new-password"
+              key={form.key("password")}
+              {...form.getInputProps("password")}
+            />
 
-                  <TextInput
-                    label={t("signup.emailLabel")}
-                    placeholder={t("signup.emailPlaceholder")}
-                    size="md"
-                    radius="md"
-                    autoComplete="email"
-                    key={form.key("email")}
-                    {...form.getInputProps("email")}
-                  />
+            <Checkbox
+              size="sm"
+              color="var(--brand-ink)"
+              key={form.key("termsAccepted")}
+              {...form.getInputProps("termsAccepted", { type: "checkbox" })}
+              label={
+                <Trans
+                  t={t}
+                  i18nKey="signup.terms"
+                  components={{
+                    tos: <Anchor href="/terms" target="_blank" rel="noopener noreferrer" />,
+                    privacy: (
+                      <Anchor href="/privacy" target="_blank" rel="noopener noreferrer" />
+                    ),
+                  }}
+                />
+              }
+            />
 
-                  <PasswordInput
-                    label={t("signup.passwordLabel")}
-                    placeholder={t("signup.passwordPlaceholder")}
-                    size="md"
-                    radius="md"
-                    autoComplete="new-password"
-                    key={form.key("password")}
-                    {...form.getInputProps("password")}
-                  />
+            <Checkbox
+              size="sm"
+              color="var(--brand-ink)"
+              label={t("signup.marketing")}
+              key={form.key("marketingEmailsConsent")}
+              {...form.getInputProps("marketingEmailsConsent", { type: "checkbox" })}
+            />
 
-                  <Checkbox
-                    size="sm"
-                    color="#0a1230"
-                    key={form.key("termsAccepted")}
-                    {...form.getInputProps("termsAccepted", { type: "checkbox" })}
-                    label={
-                      <Trans
-                        t={t}
-                        i18nKey="signup.terms"
-                        components={{
-                          tos: <Anchor href="/terms" target="_blank" rel="noopener noreferrer" />,
-                          privacy: (
-                            <Anchor href="/privacy" target="_blank" rel="noopener noreferrer" />
-                          ),
-                        }}
-                      />
-                    }
-                  />
-
-                  <Checkbox
-                    size="sm"
-                    color="#0a1230"
-                    label={t("signup.marketing")}
-                    key={form.key("marketingEmailsConsent")}
-                    {...form.getInputProps("marketingEmailsConsent", { type: "checkbox" })}
-                  />
-
-                  <Button
-                    type="submit"
-                    size="md"
-                    radius="md"
-                    fullWidth
-                    mt="xs"
-                    color="#0a1230"
-                    disabled={!termsAccepted}
-                    loading={submitting}
-                  >
-                    {t("signup.submit")}
-                  </Button>
-                </Stack>
-              </form>
-            </Stack>
-          </Paper>
-        </Center>
-      </Box>
-
-      <Box visibleFrom="md" style={{ flex: 1, padding: 16, display: "flex" }}>
-        <Box style={{ flex: 1, borderRadius: 24, overflow: "hidden" }}>
-          <AuthGlobe />
-        </Box>
-      </Box>
-    </Box>
+            <Button
+              type="submit"
+              size="md"
+              radius="md"
+              fullWidth
+              mt="xs"
+              color="var(--brand-ink)"
+              disabled={!termsAccepted}
+              loading={submitting}
+            >
+              {t("signup.submit")}
+            </Button>
+          </Stack>
+        </form>
+      </AuthCard>
+    </AuthLayout>
   );
 }

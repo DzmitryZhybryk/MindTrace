@@ -88,7 +88,17 @@ async function parseSuccess<T>(response: Response): Promise<T> {
     return undefined as T;
   }
 
-  return JSON.parse(rawBody) as T;
+  // Тело непустое, но может быть битым JSON (прокси отдал HTML-ошибку под 2xx,
+  // обрезанный ответ и т.п.). Не даём JSON.parse выбросить голый SyntaxError —
+  // заворачиваем в ApiError с машинным кодом, который UI отрендерит через messageForCode.
+  try {
+    return JSON.parse(rawBody) as T;
+  } catch {
+    throw new ApiError(response.status, {
+      code: "invalid_response",
+      message: "Malformed JSON in a successful response",
+    });
+  }
 }
 
 async function parseErrorBody(response: Response): Promise<ApiErrorBody> {

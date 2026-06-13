@@ -21,9 +21,6 @@ from tests.fakes import (
     FakeUsersClient,
 )
 
-_PAST = dt.datetime(2000, 1, 1, tzinfo=dt.UTC)
-
-
 # --- register ---------------------------------------------------------------
 
 
@@ -314,10 +311,11 @@ async def test_refresh_revoked_token_returns_401(
     client: AsyncClient,
     fake_refresh_token_repository: FakeRefreshTokenRepository,
     deterministic_hasher: Sha256DeterministicHasher,
+    past: dt.datetime,
 ) -> None:
     """refresh уже отозванным токеном → 401 auth.invalid_refresh_token (reuse detection)."""
     secret = "revoked-refresh-secret"
-    token = make_refresh_token(token_hash=deterministic_hasher.digest(secret=secret), revoked_at=_PAST)
+    token = make_refresh_token(token_hash=deterministic_hasher.digest(secret=secret), revoked_at=past)
     fake_refresh_token_repository.by_hash[token.token_hash] = token
 
     response = await client.post("/v1/auth/refresh/", headers={"Cookie": f"refresh_token={secret}"})
@@ -330,10 +328,11 @@ async def test_refresh_expired_token_returns_401(
     client: AsyncClient,
     fake_refresh_token_repository: FakeRefreshTokenRepository,
     deterministic_hasher: Sha256DeterministicHasher,
+    past: dt.datetime,
 ) -> None:
     """refresh истёкшим токеном → 401 auth.invalid_refresh_token."""
     secret = "expired-refresh-secret"
-    token = make_refresh_token(token_hash=deterministic_hasher.digest(secret=secret), expires_at=_PAST)
+    token = make_refresh_token(token_hash=deterministic_hasher.digest(secret=secret), expires_at=past)
     fake_refresh_token_repository.by_hash[token.token_hash] = token
 
     response = await client.post("/v1/auth/refresh/", headers={"Cookie": f"refresh_token={secret}"})
