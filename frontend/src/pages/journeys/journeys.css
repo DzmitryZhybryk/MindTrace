@@ -1,0 +1,93 @@
+/* ---- Каркас экрана -------------------------------------------------------- */
+.journeys-shell {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--app-page-bg);
+}
+
+/* ---- Карта во всю ширину + плавающая панель ------------------------------ */
+.journeys-stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/*
+ * Карта отступает сверху, оставляя навигации чистую «полосу неба» — разделение
+ * делается воздухом, а не сменой фона общей шапки. Океан в SVG прозрачен, так
+ * что карта мягко растворяется в том же градиенте, что и на главной.
+ */
+.journeys-map {
+  position: absolute;
+  inset: 0;
+  padding: 44px 48px 52px;
+  /* Лёгкий сдвиг вправо, чтобы Аляска не залезала под панель: размер карты не
+     меняем — просто двигаем, пустой океан справа уходит за край stage. */
+  transform: translateX(72px);
+}
+
+.journeys-panel {
+  position: absolute;
+  top: 28px;
+  left: 32px;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(219, 226, 236, 0.9);
+  box-shadow: 0 12px 32px rgba(15, 30, 80, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.journeys-panel__label {
+  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.journeys-panel__stats {
+  margin: 0;
+  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+/* ---- Легенда ------------------------------------------------------------- */
+.journeys-legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.journeys-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 400 13px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  color: #475569;
+}
+
+.journeys-legend__swatch {
+  width: 16px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid;
+}
+
+.journeys-legend__dot {
+  width: 8px;
+  height: 8px;
+  margin: 0 4px;
+  border-radius: 50%;
+}

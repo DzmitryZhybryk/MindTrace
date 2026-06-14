@@ -5,6 +5,8 @@
   /* Бренд / auth-экраны: единые токены вместо magic-hex по компонентам. */
   --brand-ink: #0a1230;
   --auth-page-bg: radial-gradient(ellipse 50% 75% at 25% 50%, #f5f8fc 0%, #dbe5f3 55%, #b8c8e0 100%);
+  /* Внутренние экраны (Home, Journeys, …): тот же холодный градиент, шире и выше по центру. */
+  --app-page-bg: radial-gradient(ellipse 60% 80% at 50% 42%, #f5f8fc 0%, #dbe5f3 55%, #b8c8e0 100%);
   --auth-card-bg: #ffffff;
   --auth-card-border: #dbe2ec;
   --auth-card-shadow: 0 12px 32px rgba(15, 30, 80, 0.1);
