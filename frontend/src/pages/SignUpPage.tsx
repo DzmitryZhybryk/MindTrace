@@ -97,6 +97,7 @@ export function SignUpPage() {
               size="md"
               radius="md"
               autoComplete="username"
+              name="username"
               key={form.key("username")}
               {...form.getInputProps("username")}
             />
@@ -107,6 +108,7 @@ export function SignUpPage() {
               size="md"
               radius="md"
               autoComplete="email"
+              name="email"
               key={form.key("email")}
               {...form.getInputProps("email")}
             />
@@ -117,6 +119,7 @@ export function SignUpPage() {
               size="md"
               radius="md"
               autoComplete="new-password"
+              name="password"
               key={form.key("password")}
               {...form.getInputProps("password")}
             />

@@ -1,6 +1,6 @@
 {
   "nav": {
-    "journey": "Journey",
+    "journeys": "Journeys",
     "mind": "Mind",
     "ariaPrimary": "Primary sections"
   },
@@ -10,6 +10,11 @@
     "profile": "Profile",
     "verifyEmail": "Verify email",
     "logout": "Logout"
+  },
+  "map": {
+    "aria": "World map highlighting visited countries",
+    "notVisited": "Not visited yet",
+    "wishlist": "On your wishlist"
   },
   "greeting": "Hello, {{name}}",
   "language": {

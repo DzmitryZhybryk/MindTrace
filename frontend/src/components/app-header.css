@@ -1,0 +1,80 @@
+/*
+ * Общая шапка приложения: бренд + первичная навигация + язык + меню профиля.
+ * Раньше разметка жила инлайном в HomePage; вынесена сюда, чтобы Home / Journeys
+ * (и будущий Mind) делили одну шапку 1-в-1. Класс-нейминг app-* вместо home-*.
+ */
+.app-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 20px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: transparent;
+}
+
+.app-header__brand {
+  justify-self: start;
+}
+
+.app-tabs {
+  display: flex;
+  gap: 56px;
+  justify-self: center;
+}
+
+.app-tab {
+  position: relative;
+  padding: 10px 6px;
+  font: 500 22px/1 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  letter-spacing: -0.015em;
+  color: #1e293b;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.app-tab:hover {
+  color: #0f172a;
+}
+
+.app-tab::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: #0f172a;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.18s ease;
+}
+
+.app-tab:hover::after {
+  transform: scaleX(0.5);
+}
+
+/* Активный таб: подчёркивание держится постоянно (а не только на hover). */
+.app-tab--active {
+  color: #0f172a;
+}
+
+.app-tab--active::after {
+  transform: scaleX(1);
+}
+
+.app-header__user {
+  justify-self: end;
+}
+
+.app-avatar-button {
+  border-radius: 999px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-avatar-button:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 0 4px rgba(74, 179, 255, 0.18);
+}

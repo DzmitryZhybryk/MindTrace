@@ -1,0 +1,181 @@
+/* ---- Плавающие карточки раздела ------------------------------------------ */
+/* Общий «стеклянный» слой панели и легенды: фон, рамка, тень, blur. */
+.journeys-card {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(219, 226, 236, 0.9);
+  box-shadow: var(--auth-card-shadow);
+  backdrop-filter: blur(10px);
+}
+
+/* ---- Карта во всю ширину + плавающая панель ------------------------------ */
+.journeys-stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/*
+ * Карта отступает сверху, оставляя навигации чистую «полосу неба» — разделение
+ * делается воздухом, а не сменой фона общей шапки. Океан в SVG прозрачен, так
+ * что карта мягко растворяется в том же градиенте, что и на главной.
+ */
+.journeys-map {
+  position: absolute;
+  inset: 0;
+  /* Карта — фоновый слой; панель и легенда лежат поверх (у них z-index выше). */
+  z-index: 1;
+  /* padding-bottom = bottom легенды (24px): низ Антарктиды (она почти у нижнего
+     края viewBox) доходит до нижней границы карточки легенды, не «висит». */
+  padding: var(--content-offset-top) 48px 24px;
+  /* Лёгкий сдвиг вправо, чтобы Аляска не залезала под панель: размер карты не
+     меняем — просто двигаем, пустой океан справа уходит за край stage. */
+  transform: translateX(72px);
+}
+
+.journeys-panel {
+  position: absolute;
+  /* Единый отступ под шапкой (тот же токен у padding-top карты) — верх меню на
+     одной линии с верхней границей области карты. */
+  top: var(--content-offset-top);
+  left: 32px;
+  z-index: 2;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+}
+
+.journeys-panel__label {
+  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+/* ---- Под-навигация раздела (Карта / Все / Добавить) --------------------- */
+.journeys-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.journeys-nav__item {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font: 500 14px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  color: #475569;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.journeys-nav__item:hover {
+  background: rgba(148, 163, 184, 0.14);
+  color: #0f172a;
+}
+
+.journeys-nav__item--active {
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  font-weight: 600;
+}
+
+/* «Добавить» — действие, выделено заливкой (slate). */
+.journeys-nav__add {
+  display: block;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #334155;
+  color: #f8fafc;
+  font: 600 14px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  text-align: center;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.journeys-nav__add:hover {
+  background: #1e293b;
+}
+
+.journeys-nav__add--active {
+  background: #0f172a;
+}
+
+/* ---- Легенда карты — сворачиваемый блок в нижнем-правом углу ------------- */
+.journeys-legend-card {
+  position: absolute;
+  /* Правый-нижний угол занимает Новая Зеландия, поэтому легенду опускаем к
+     самому краю — она ложится на Антарктиду (фон), а не перекрывает НЗ. */
+  bottom: 24px;
+  right: 32px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.journeys-legend-card__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+/* CSS-шеврон (без icon-зависимостей): вниз = свёрнуто, вверх = развёрнуто. */
+.journeys-legend-card__chevron {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #94a3b8;
+  transition: transform 0.18s ease;
+}
+
+.journeys-legend-card__chevron--open {
+  transform: rotate(180deg);
+}
+
+/* ---- Легенда ------------------------------------------------------------- */
+.journeys-legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.journeys-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 400 13px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  color: #475569;
+}
+
+.journeys-legend__swatch {
+  width: 16px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid;
+}
+
+.journeys-legend__dot {
+  width: 8px;
+  height: 8px;
+  margin: 0 4px;
+  border-radius: 50%;
+}

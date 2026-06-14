@@ -69,6 +69,7 @@ export function LoginPage() {
               size="md"
               radius="md"
               autoComplete="username"
+              name="username"
               key={form.key("login")}
               {...form.getInputProps("login")}
             />
@@ -79,6 +80,7 @@ export function LoginPage() {
               size="md"
               radius="md"
               autoComplete="current-password"
+              name="password"
               key={form.key("password")}
               {...form.getInputProps("password")}
             />

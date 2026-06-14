@@ -1,18 +1,7 @@
-import { Avatar, Group, Indicator, Menu, UnstyledButton } from "@mantine/core";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
 
-import { logout } from "../api/auth";
-import { useAuth } from "../auth/useAuth";
-import { BrandMark } from "../components/BrandMark";
-import { EmailVerificationBanner } from "../components/EmailVerificationBanner";
-import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { AppHeader } from "../components/AppHeader";
 import "./home.css";
-
-const TABS = [
-  { key: "journey", to: "/journey" },
-  { key: "mind", to: "/mind" },
-] as const;
 
 const STATS = [
   { name: "Countries", meta: "12 visited" },
@@ -45,70 +34,10 @@ const AURA_WORD = "atmosphere · still";
 
 export function HomePage() {
   const { t } = useTranslation("common");
-  const navigate = useNavigate();
-  const { emailVerified, clearSession, openVerifyDialog } = useAuth();
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch {
-      // Logout идемпотентен на бэке (204 даже без cookie); сетевая ошибка
-      // не должна оставить пользователя залогиненным локально.
-    } finally {
-      clearSession();
-      navigate("/login");
-    }
-  };
 
   return (
-    <div className="home-shell">
-      <header className="home-header">
-        <div className="home-header__brand">
-          <BrandMark />
-        </div>
-
-        <nav className="home-tabs" aria-label={t("nav.ariaPrimary")}>
-          {TABS.map((tab) => (
-            <Link key={tab.key} to={tab.to} className="home-tab">
-              {t(`nav.${tab.key}`)}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="home-header__user">
-          <Group gap="xs" align="center">
-            <LanguageSwitcher />
-            <Menu position="bottom-end" withArrow shadow="md" radius="md" width={200}>
-              <Menu.Target>
-                <UnstyledButton aria-label={t("profile.menuButton")} className="home-avatar-button">
-                  <Indicator
-                    disabled={emailVerified}
-                    color="yellow"
-                    size={10}
-                    offset={4}
-                    withBorder
-                  >
-                    <Avatar radius="xl" size="md" color="slate" name="Dzmitry Zhybryk" />
-                  </Indicator>
-                </UnstyledButton>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>{t("profile.account")}</Menu.Label>
-                <Menu.Item>{t("profile.profile")}</Menu.Item>
-                {!emailVerified && (
-                  <Menu.Item onClick={openVerifyDialog}>{t("profile.verifyEmail")}</Menu.Item>
-                )}
-                <Menu.Divider />
-                <Menu.Item color="red" onClick={handleLogout}>
-                  {t("profile.logout")}
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-        </div>
-      </header>
-
-      {!emailVerified && <EmailVerificationBanner onVerifyClick={openVerifyDialog} />}
+    <div className="app-shell">
+      <AppHeader />
 
       <main className="home-main">
         <div className="home-greeting">

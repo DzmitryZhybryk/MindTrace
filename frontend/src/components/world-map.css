@@ -1,0 +1,94 @@
+.world-map-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Заполняем высоту области, ширину обрезаем — карта всегда height-constrained,
+   поэтому верх/низ прижаты к padding независимо от пропорций окна. */
+.world-map-canvas {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.world-map {
+  display: block;
+  height: 100%;
+  width: auto;
+  flex: none;
+}
+
+.world-map__country {
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+/*
+ * Подсветка страны под курсором — затемнение через filter. Нейтрально к
+ * статусу: одинаково читается на сером, зелёном и жёлтом и не подменяет смысл
+ * цвета (в отличие от смены fill). Затемняется именно заливка, её не
+ * перекрывают соседние страны, поэтому эффект виден надёжно.
+ */
+.world-map__country:hover {
+  filter: brightness(0.9);
+}
+
+/* Точки городов не перехватывают мышь — hover всегда попадает в страну под ними. */
+.world-map__cities {
+  pointer-events: none;
+}
+
+.world-map__tooltip {
+  position: absolute;
+  z-index: 5;
+  /* Сдвиг от курсора и флип у краёв экрана задаются инлайн в WorldMap.tsx. */
+  pointer-events: none;
+  min-width: 124px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.92);
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.28);
+  backdrop-filter: blur(6px);
+}
+
+.world-map__tooltip-title {
+  display: block;
+  font: 600 13px/1.2 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  letter-spacing: -0.01em;
+  color: #f8fafc;
+}
+
+.world-map__tooltip-muted {
+  display: block;
+  margin-top: 3px;
+  font: 400 11px/1.3 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  color: #94a3b8;
+}
+
+.world-map__tooltip-cities {
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.world-map__tooltip-cities li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font: 400 12px/1.3 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+}
+
+.world-map__tooltip-city {
+  color: #e2e8f0;
+}
+
+.world-map__tooltip-years {
+  color: #34d399;
+  font-variant-numeric: tabular-nums;
+}
