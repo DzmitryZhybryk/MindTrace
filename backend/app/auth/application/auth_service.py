@@ -57,6 +57,11 @@ class AuthService:
                 password=password,
             )
             await self._uow.user_credentials_repository.insert_user_credentials(credentials=credentials_entity)
+            # Материализуем родителя до зависимого refresh_token: INSERT user_credentials
+            # должен уйти в БД раньше INSERT refresh_tokens (FK refresh_tokens.user_id →
+            # user_credentials.user_id). Порядок INSERT'ов между мапперами в одном flush на
+            # commit'е не гарантирован, поэтому фиксируем его явным flush'ем здесь.
+            await self._uow.flush()
             await self._users_client.create_user(
                 user_id=credentials_entity.user_id,
                 username=registration.username,

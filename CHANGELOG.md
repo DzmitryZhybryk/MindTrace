@@ -11,7 +11,33 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-06-14
+
+### Backend 0.9.10
+
+- **Фикс: `register` падал 500 на реальном Postgres (FK-ordering).** `AuthService.register` кладёт `user_credentials` и зависимый `refresh_token` в одну транзакцию и рассчитывает, что unit-of-work вставит родителя раньше ребёнка. Но в моделях был только голый `ForeignKey`-столбец без `relationship()` — SQLAlchemy не строила зависимость между мапперами, слала `INSERT refresh_tokens` первым и ловила `ForeignKeyViolation` на `commit()`. Каждый `register` (и зависящие от него `login`/`logout`/`session`/email-баннер e2e) отвечал 500. Добавлен `relationship()` `RefreshToken`/`Challenge` → `UserCredentials` (навигацией не используется, только ради ordering'а вставок; в `vulture_whitelist`)
+- **Закрыта дыра в тест-пирамиде.** Баг не ловился ничем: unit/api — на фейках (нет реального ordering'а), integration сидил `user_credentials` отдельным закоммиченным шагом. Добавлен integration-регресс (`test_uow`): `user_credentials` + зависимый `refresh_token` в одном commit'е против реального Postgres — падал до фикса, зелёный после
+- HTTP-контракт и машинные коды ошибок (`code`) не менялись — bump патчевый
+
+### Project
+
+- **Корневой `Makefile`-оркестратор.** Делегирует в самодостаточные `backend/` и `frontend/` через `make -C` (CWD меняется до запуска — `uv`/`npm` получают свою директорию), под-Makefile'ы не трогаются и по-прежнему запускаются из своих папок. Снимает постоянное переключение директорий: `be-%`/`fe-%` проксируют любой таргет под-Makefile (`make be-lint`, `make fe-lint`); агрегаты `lint`/`typecheck`/`check` гоняют обе стороны разом. Тесты нарезаны по зависимости от инфры: быстрые без Docker — `test-back` (backend `unit`+`api`), `test-front` (frontend `unit`+`component`), `test` (обе стороны, дейли-драйвер); тяжёлые с внешней инфрой — `test-integration` (testcontainers), `test-e2e` (Playwright + поднятый стек) и комбо `test-infra`. `.NOTPARALLEL` держит делегирование сериализованным (параллелизм — внутри pytest/vitest)
+
 ## 2026-06-13
+
+### Backend 0.9.9
+
+- **Integration-слой тестов с нуля.** Поднят харнесс на `testcontainers[postgres]` (реальный Postgres в контейнере на сессию, схема из `BaseDBModel.metadata` — миграция отражает её 1:1, изоляция per-test через `TRUNCATE`) + 22 теста того, что нельзя проверить на фейках: 3 auth-репозитория (round-trip entity↔БД, bulk-revoke, реальные `FOR UPDATE` row-локи через `NOWAIT`, unique/partial-unique констрейнты → `IntegrityError`), транзакционная модель UoW (`commit()` виден из новой сессии; выход без commit / исключение → rollback), lifecycle `SqlAlchemyComponent` + `db_session_dependency`
+- **Unit shared-инфры.** 33 теста: `BaseHTTPClient` (маппинг success/timeout/network/5xx-апстрим → temporary, 4xx/500/429 → persistent — через `httpx.MockTransport`, без сети), `ResendClient`/`ResendComponent`, procrastinate-шина (real `App` + `InMemoryConnector`), `ComponentRegistry`, logging config/context/events, json-сериализатор
+- **Api.** `HTTPLoggingMiddleware` — уровень лога по классу исхода (2xx→info / 4xx→warning / 5xx→error / необработанное исключение→error+reraise), снят через `structlog.testing.capture_logs`
+- **Тулинг.** Цели `make test-integration` / `test-all` сами выводят `DOCKER_HOST` из активного docker-контекста + ставят `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock` (Ryuk) — integration-тесты заводятся и в CI, и на Docker Desktop с нестандартным путём сокета, без ручной настройки
+- Всего 126 → **186 тестов**, покрытие 82% → **95%**. HTTP-контракт и машинные коды ошибок (`code`) не менялись — bump патчевый
+
+### Frontend 0.10.5
+
+- **Закрыты дыры покрытия после рефакторинга DEV-30.** Component-тесты на новые файлы: `ErrorBoundary` (перехват throw в рендере → fallback), `RootErrorFallback` (тексты + `window.location.reload`), `AuthCard`, `AuthLayout` (с моком тяжёлого `AuthGlobe`) — все четыре доведены до 100%
+- **Логика.** `useAuth` бросает вне `<AuthProvider>` (80→100%); ветка `client.ts` `invalid_response` (битый JSON под 2xx больше не уходит без теста); max-length валидации `SignUpPage` (branch 68→87.5%)
+- Всего 85 → **94 теста**, branch-покрытие фронта 77.8% → **81%**. Внешнего контракта у SPA нет — bump патчевый
 
 ### Backend 0.9.8
 

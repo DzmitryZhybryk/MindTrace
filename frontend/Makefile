@@ -1,4 +1,4 @@
-.PHONY: help install dev build typecheck lint lint-fix test test-unit test-component coverage check test-e2e
+.PHONY: help typecheck lint lint-fix test test-unit test-component coverage check test-e2e
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -17,17 +17,6 @@ endif
 help: ## Show this help message
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${AZURE}%-15s${RESET} %s\n", $$1, $$2}'
-
-install: ## Install dependencies (npm install)
-	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}npm install${AZURE}'${RESET}"
-	@npm install
-
-dev: ## Start Vite dev server
-	@npm run dev
-
-build: ## Type-check and build production bundle
-	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}tsc + vite build${AZURE}'${RESET}"
-	@npm run build
 
 typecheck: ## Type-check sources with tsc
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}tsc${AZURE}' typecheck${RESET}"

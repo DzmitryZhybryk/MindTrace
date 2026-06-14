@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MindTrace is a FastAPI service (Python 3.14+, async) using Domain-Driven Design. Package manager is **uv**. Database is PostgreSQL via SQLAlchemy async + SQLModel. Runs in Docker with a Loki/Promtail/Grafana logging stack.
+MindTrace is a FastAPI service (Python 3.14+, async) using Domain-Driven Design. Package manager is **uv**. Database is PostgreSQL via SQLAlchemy 2.0 async (typed ORM: `DeclarativeBase` + `Mapped`/`mapped_column`). Runs in Docker with a Loki/Promtail/Grafana logging stack.
 
 ## Repository layout
 
@@ -21,6 +21,14 @@ MindTrace is a FastAPI service (Python 3.14+, async) using Domain-Driven Design.
 docker network create mindtrace-network   # один раз, перед первым up
 docker compose up -d                       # app + worker + postgres + frontend + logging
 
+# Root Makefile-оркестратор — из корня (делегирует в backend/ и frontend/ через make -C,
+# под-Makefile'ы не дублируются; удобно не переключать директории)
+make be-<target>                           # любой backend-таргет (make be-lint, be-format)
+make fe-<target>                           # любой frontend-таргет (make fe-lint, fe-check)
+make check                                 # полный гейт обеих сторон (lint + typecheck + тесты unit+api/component)
+make test                                  # быстрые тесты обеих сторон (test-back + test-front, без Docker)
+make test-infra                            # тяжёлые: backend integration + frontend e2e (нужен поднятый стек)
+
 # Backend dev — из backend/ (самодостаточный uv-проект)
 cd backend
 uv sync                                    # установить зависимости в backend/.venv
@@ -28,14 +36,16 @@ uv run python -m app                       # запустить приложен
 make format                                # ruff: автофиксы + формат
 make lint                                  # ruff: lint
 make typecheck                             # ty: тайпчек
-uv run pytest                              # все тесты (asyncio_mode=auto)
+make test                                  # быстрые тесты: unit + api (без Docker)
+make coverage                              # те же тесты + покрытие (term-missing)
+make test-integration                      # integration (нужен Docker, testcontainers)
 uv run pytest tests/path/test_file.py      # один тест-файл
 uv run pytest -k "test_name"               # один тест по имени
 
-# Frontend dev — из frontend/ (Makefile зеркалит backend-нейминг, обёртка над npm-скриптами)
+# Frontend dev — из frontend/ (Makefile зеркалит backend-нейминг для quality/test-таргетов)
 cd frontend
-make install                               # npm install
-make dev                                   # Vite dev-сервер
+npm install                                # установить зависимости (node_modules)
+npm run dev                                # Vite dev-сервер
 make lint                                  # oxlint
 make lint-fix                              # oxlint --fix (форматтера/prettier в проекте нет)
 make typecheck                             # tsc -b
@@ -56,7 +66,7 @@ The project follows DDD with **domain-based** module organization. Each domain (
 
 - **domain/** -- Pure business logic: entities, value objects. No infrastructure imports.
 - **application/** -- Use cases/services, DTOs, and **outbound ports** (`ports.py`): the `Protocol`s (repositories, UnitOfWork, external clients) the services depend on.
-- **infra/** -- SQLModel DB models plus the **implementations** of those application ports (repositories, UnitOfWork, clients). By DIP `infra` imports the port from `application` and implements it — never the reverse.
+- **infra/** -- SQLAlchemy DB models plus the **implementations** of those application ports (repositories, UnitOfWork, clients). By DIP `infra` imports the port from `application` and implements it — never the reverse.
 - **presentation/** -- FastAPI routes, HTTP request/response schemas, dependencies.
 
 Presentation schemas are separate from application DTOs to prevent abstraction leakage. Conversion happens in the presentation layer.

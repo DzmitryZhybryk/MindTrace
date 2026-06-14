@@ -62,6 +62,21 @@ describe("SignUpPage", () => {
     expect(authValue.setAccessToken).not.toHaveBeenCalled();
   });
 
+  it("слишком длинные поля дают max-length ошибки и не отправляют запрос", async () => {
+    const { user, authValue } = renderSignup();
+
+    await user.click(screen.getByRole("checkbox", termsCheckbox));
+    await user.type(screen.getByLabelText("Username"), "a".repeat(51));
+    await user.type(screen.getByLabelText("Email"), `${"a".repeat(250)}@example.com`);
+    await user.type(screen.getByLabelText("Password"), "a".repeat(51));
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+
+    expect(await screen.findByText("Username must be at most 50 characters")).toBeInTheDocument();
+    expect(screen.getByText("Email is too long")).toBeInTheDocument();
+    expect(screen.getByText("Password must be at most 50 characters")).toBeInTheDocument();
+    expect(authValue.setAccessToken).not.toHaveBeenCalled();
+  });
+
   it("конфликт email (409) показывает ошибку под полем Email", async () => {
     server.use(
       http.post("/v1/auth/register/", () =>
