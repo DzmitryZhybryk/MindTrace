@@ -4,10 +4,21 @@
   height: 100%;
 }
 
-.world-map {
-  display: block;
+/* Заполняем высоту области, ширину обрезаем — карта всегда height-constrained,
+   поэтому верх/низ прижаты к padding независимо от пропорций окна. */
+.world-map-canvas {
   width: 100%;
   height: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.world-map {
+  display: block;
+  height: 100%;
+  width: auto;
+  flex: none;
 }
 
 .world-map__country {
@@ -33,7 +44,7 @@
 .world-map__tooltip {
   position: absolute;
   z-index: 5;
-  transform: translate(14px, 14px);
+  /* Сдвиг от курсора и флип у краёв экрана задаются инлайн в WorldMap.tsx. */
   pointer-events: none;
   min-width: 124px;
   padding: 10px 12px;

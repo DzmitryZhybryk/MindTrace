@@ -1,0 +1,18 @@
+{
+  "title": "Journeys",
+  "controls": "Journeys controls",
+  "legendLabel": "Map legend",
+  "nav": {
+    "map": "Journeys map",
+    "movements": "Movements map",
+    "all": "All journeys",
+    "wishlist": "Wishlist",
+    "add": "+ Add journey"
+  },
+  "legend": {
+    "visited": "Visited",
+    "wishlist": "Wishlist",
+    "notVisited": "Not visited",
+    "city": "City"
+  }
+}

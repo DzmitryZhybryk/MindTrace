@@ -1,4 +1,5 @@
-import { useCallback, useId, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 import worldData from "../data/world-countries.geo.json";
 import "./world-map.css";
@@ -8,7 +9,7 @@ import "./world-map.css";
  * заливка зависит от статуса (посещена / в планах / не была), города —
  * маленькие точки по координатам. Под курсором страна затемняется, а тултип
  * показывает её название и — для посещённых — список городов с годами визитов.
- * Это черновой движок под дизайн: контракт пропсов (страны по ISO-3166 alpha-3
+ * Это черновой движок под дизайн: контракт пропсов (страны по ISO-3166 alpha-2
  * + города с годами) совпадёт с будущим ответом API.
  */
 
@@ -69,9 +70,6 @@ interface WorldCollection {
 // рвём путь, иначе через всю карту тянется горизонтальная клякса.
 const ANTIMERIDIAN_JUMP = 180;
 
-// Антарктиду не рисуем — для карты путешествий это лишний шум внизу.
-const EXCLUDED_COUNTRIES = new Set(["ATA"]);
-
 function ringToPath(ring: LinearRing): string {
   const segments: string[] = [];
   let prevLng: number | null = null;
@@ -100,13 +98,13 @@ interface CountryShape {
   path: string;
 }
 
-const COUNTRY_SHAPES: readonly CountryShape[] = (worldData as unknown as WorldCollection).features
-  .filter((feature) => !EXCLUDED_COUNTRIES.has(feature.id))
-  .map((feature) => ({
-    id: feature.id,
-    name: feature.properties.name,
-    path: geometryToPath(feature.geometry),
-  }));
+const COUNTRY_SHAPES: readonly CountryShape[] = (
+  worldData as unknown as WorldCollection
+).features.map((feature) => ({
+  id: feature.id,
+  name: feature.properties.name,
+  path: geometryToPath(feature.geometry),
+}));
 
 const COUNTRY_NAMES: ReadonlyMap<string, string> = new Map(
   COUNTRY_SHAPES.map((shape) => [shape.id, shape.name]),
@@ -147,24 +145,66 @@ interface WorldMapProps {
   className?: string;
 }
 
+// Отступ тултипа от курсора и запасные размеры (до первого замера ref'а).
+const TOOLTIP_OFFSET = 14;
+const TOOLTIP_FALLBACK_WIDTH = 160;
+const TOOLTIP_FALLBACK_HEIGHT = 80;
+
 export function WorldMap({ countries, tone, className }: WorldMapProps) {
+  const { t, i18n } = useTranslation("common");
   const wrapRef = useRef<HTMLDivElement>(null);
-  const titleId = useId();
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  // Геометрию контейнера кешируем на входе курсора, а не дёргаем
+  // getBoundingClientRect (форсит reflow) на каждое движение мыши.
+  const rectRef = useRef<DOMRect | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [pointer, setPointer] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [flip, setFlip] = useState<{ x: boolean; y: boolean }>({ x: false, y: false });
 
   const byId = useMemo(
     () => new Map(countries.map((country) => [country.id, country])),
     [countries],
   );
 
+  // Имя страны резолвим из ISO-кода через CLDR по активному языку; безкодовые
+  // территории (id=имя) и неизвестные коды → fallback на имя из geojson.
+  const countryNames = useMemo(
+    () => new Intl.DisplayNames([i18n.language], { type: "region", fallback: "none" }),
+    [i18n.language],
+  );
+  const resolveCountryName = useCallback(
+    (id: string): string => {
+      if (/^[A-Z]{2}$/u.test(id)) {
+        const localized = countryNames.of(id);
+        if (localized && localized !== id) return localized;
+      }
+
+      return COUNTRY_NAMES.get(id) ?? id;
+    },
+    [countryNames],
+  );
+
+  const cacheRect = useCallback(() => {
+    rectRef.current = wrapRef.current?.getBoundingClientRect() ?? null;
+  }, []);
+
   const handleMouseMove = useCallback((event: MouseEvent<HTMLDivElement>) => {
-    const rect = wrapRef.current?.getBoundingClientRect();
+    const rect = rectRef.current;
     if (!rect) {
       return;
     }
 
     setPointer({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+    // Флип у края экрана: если справа/снизу тултип не помещается — рисуем его
+    // слева/сверху от курсора. Меряем по viewport (clientX/Y), чтобы не вылезти
+    // за экран; размеры берём с прошлого кадра (меняются только при смене страны).
+    const tooltip = tooltipRef.current;
+    const width = tooltip?.offsetWidth ?? TOOLTIP_FALLBACK_WIDTH;
+    const height = tooltip?.offsetHeight ?? TOOLTIP_FALLBACK_HEIGHT;
+    setFlip({
+      x: event.clientX + TOOLTIP_OFFSET + width > window.innerWidth,
+      y: event.clientY + TOOLTIP_OFFSET + height > window.innerHeight,
+    });
   }, []);
 
   // Страны и точки городов не зависят от hover/позиции курсора (подсветка —
@@ -224,29 +264,45 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
   }, [byId, countries, tone]);
 
   const hovered = hoveredId ? byId.get(hoveredId) : undefined;
-  const hoveredName = hoveredId ? (COUNTRY_NAMES.get(hoveredId) ?? hoveredId) : "";
+  const hoveredName = hoveredId ? resolveCountryName(hoveredId) : "";
 
   return (
     <div
       ref={wrapRef}
       className={className ? `world-map-wrap ${className}` : "world-map-wrap"}
+      onMouseEnter={cacheRect}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setHoveredId(null)}
     >
-      <svg
-        className="world-map"
-        viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
-        aria-labelledby={titleId}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        {/* Нативное доступное имя SVG: <title> вместо role="img"+aria-label
-            (последнее ловит jsx-a11y/prefer-tag-over-role и хуже переносится по AT). */}
-        <title id={titleId}>World map highlighting visited countries</title>
-        {shapes}
-      </svg>
+      {/* Карта всегда заполняет высоту (height:100%/width:auto в CSS), выступ по
+          ширине обрезается canvas'ом — верх/низ карты прижаты к padding и не
+          зависят от пропорций окна. Тултип лежит вне canvas, чтобы не обрезаться. */}
+      <div className="world-map-canvas">
+        {/* Доступное имя через aria-label, НЕ <title>: <title> браузер рисует как
+            нативный tooltip, который налезает на наш кастомный (role="img" тут
+            ловит jsx-a11y/prefer-tag-over-role, поэтому просто aria-label). */}
+        <svg
+          className="world-map"
+          viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+          aria-label={t("map.aria")}
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {shapes}
+        </svg>
+      </div>
 
       {hoveredId && (
-        <div className="world-map__tooltip" style={{ left: pointer.x, top: pointer.y }}>
+        <div
+          ref={tooltipRef}
+          className="world-map__tooltip"
+          style={{
+            left: pointer.x,
+            top: pointer.y,
+            transform: `translate(${
+              flip.x ? `calc(-100% - ${TOOLTIP_OFFSET}px)` : `${TOOLTIP_OFFSET}px`
+            }, ${flip.y ? `calc(-100% - ${TOOLTIP_OFFSET}px)` : `${TOOLTIP_OFFSET}px`})`,
+          }}
+        >
           <span className="world-map__tooltip-title">{hoveredName}</span>
           {hovered?.status === "visited" && hovered.cities.length > 0 ? (
             <ul className="world-map__tooltip-cities">
@@ -259,7 +315,7 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
             </ul>
           ) : (
             <span className="world-map__tooltip-muted">
-              {hovered?.status === "wishlist" ? "On your wishlist" : "Not visited yet"}
+              {hovered?.status === "wishlist" ? t("map.wishlist") : t("map.notVisited")}
             </span>
           )}
         </div>

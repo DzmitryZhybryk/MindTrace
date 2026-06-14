@@ -36,7 +36,7 @@ export function HomePage() {
   const { t } = useTranslation("common");
 
   return (
-    <div className="home-shell">
+    <div className="app-shell">
       <AppHeader />
 
       <main className="home-main">

@@ -14,6 +14,10 @@ const TABS = [
   { key: "mind", to: "/mind" },
 ] as const;
 
+// Имя профиля захардкожено: бэк пока не отдаёт профиль (в JWT только sub / exp /
+// email_verified). Заменить на данные пользователя, когда появится эндпоинт /me.
+const PLACEHOLDER_PROFILE_NAME = "Dzmitry Zhybryk";
+
 /**
  * Шапка приложения, общая для всех внутренних экранов (Home, Journeys, ...).
  * Держит бренд, первичную навигацию с подсветкой активного раздела, выбор
@@ -74,7 +78,7 @@ export function AppHeader() {
                     offset={4}
                     withBorder
                   >
-                    <Avatar radius="xl" size="md" color="slate" name="Dzmitry Zhybryk" />
+                    <Avatar radius="xl" size="md" color="slate" name={PLACEHOLDER_PROFILE_NAME} />
                   </Indicator>
                 </UnstyledButton>
               </Menu.Target>

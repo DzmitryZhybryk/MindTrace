@@ -20,21 +20,23 @@ interface RawCountry {
 
 /*
  * Черновые данные путешествий. Контракт нарочно совпадает с будущим ответом
- * API: страны по ISO-3166 alpha-3, у посещённых — города с годами визитов
- * (один город можно посетить несколько раз → несколько лет). Wishlist-страны
- * («хочу/мечтаю») идут без городов.
+ * API: страны по ISO-3166 alpha-2 (имя страны фронт резолвит из кода через
+ * Intl.DisplayNames — в БД и API хранится только код, см. docs/architecture.md).
+ * У посещённых — города с годами визитов (один город можно посетить несколько
+ * раз → несколько лет). Wishlist-страны идут без городов. Имена городов пока
+ * на английском, как введёт пользователь; их локализация — задача бэка.
  */
 const RAW_COUNTRIES: RawCountry[] = [
-  { id: "BLR", status: "visited", cities: [{ name: "Minsk", years: [2021, 2024] }] },
-  { id: "DEU", status: "visited", cities: [{ name: "Berlin", years: [2018, 2022] }] },
-  { id: "FRA", status: "visited", cities: [{ name: "Paris", years: [2019] }] },
-  { id: "ESP", status: "visited", cities: [{ name: "Madrid", years: [2023] }] },
-  { id: "PRT", status: "visited", cities: [{ name: "Lisbon", years: [2025] }] },
-  { id: "JPN", status: "visited", cities: [{ name: "Tokyo", years: [2019, 2023] }] },
-  { id: "THA", status: "visited", cities: [{ name: "Bangkok", years: [2022] }] },
-  { id: "NOR", status: "wishlist" },
-  { id: "VNM", status: "wishlist" },
-  { id: "PER", status: "wishlist" },
+  { id: "BY", status: "visited", cities: [{ name: "Minsk", years: [2021, 2024] }] },
+  { id: "DE", status: "visited", cities: [{ name: "Berlin", years: [2018, 2022] }] },
+  { id: "FR", status: "visited", cities: [{ name: "Paris", years: [2019] }] },
+  { id: "ES", status: "visited", cities: [{ name: "Madrid", years: [2023] }] },
+  { id: "PT", status: "visited", cities: [{ name: "Lisbon", years: [2025] }] },
+  { id: "JP", status: "visited", cities: [{ name: "Tokyo", years: [2019, 2023] }] },
+  { id: "TH", status: "visited", cities: [{ name: "Bangkok", years: [2022] }] },
+  { id: "NO", status: "wishlist" },
+  { id: "VN", status: "wishlist" },
+  { id: "PE", status: "wishlist" },
 ];
 
 export const JOURNEYS_COUNTRIES: readonly MapCountry[] = RAW_COUNTRIES.map((country) => ({
@@ -45,11 +47,6 @@ export const JOURNEYS_COUNTRIES: readonly MapCountry[] = RAW_COUNTRIES.map((coun
     return coords ? [{ name: visit.name, years: visit.years, ...coords }] : [];
   }),
 }));
-
-export const JOURNEYS_STATS = {
-  countries: JOURNEYS_COUNTRIES.filter((country) => country.status === "visited").length,
-  cities: JOURNEYS_COUNTRIES.reduce((total, country) => total + country.cities.length, 0),
-} as const;
 
 /*
  * Палитра трёх статусов на холодном сером базисе (в тон slate-главной).
