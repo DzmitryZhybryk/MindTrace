@@ -20,10 +20,12 @@ class FakeAuthUnitOfWork(AuthUnitOfWorkPort):
     In-memory UoW.
 
     Репозитории передаются снаружи (фикстуры держат те же инстансы, чтобы тест
-    мог проверять их состояние), ``commit`` — ``AsyncMock`` (``commit_mock``) для
-    проверки факта фиксации, ``transaction`` — no-op область (rollback реальной
-    сессии проверяется в integration), ``session`` — sentinel: фейк-bus её не
-    использует, но тест сверяет, что atomic-defer сделан именно в этой сессии.
+    мог проверять их состояние), ``commit``/``flush`` — ``AsyncMock``
+    (``commit_mock``/``flush_mock``) для проверки факта фиксации/сброса,
+    ``transaction`` — no-op область (rollback реальной сессии проверяется в
+    integration), ``session`` — sentinel: фейк-bus её не использует, но тест
+    сверяет, что atomic-defer сделан именно в этой сессии. Порядок INSERT'ов на
+    ``flush`` (FK-зависимости) проверяется только на реальном Postgres в integration.
     """
 
     def __init__(
@@ -37,6 +39,7 @@ class FakeAuthUnitOfWork(AuthUnitOfWorkPort):
         self.refresh_token_repository = refresh_token_repository
         self.challenge_repository = challenge_repository
         self.commit_mock = AsyncMock()
+        self.flush_mock = AsyncMock()
         self._session = cast(AsyncSession, object())
 
     @property
@@ -46,6 +49,9 @@ class FakeAuthUnitOfWork(AuthUnitOfWorkPort):
     @asynccontextmanager
     async def transaction(self) -> AsyncIterator[None]:
         yield
+
+    async def flush(self) -> None:
+        await self.flush_mock()
 
     async def commit(self) -> None:
         await self.commit_mock()

@@ -68,6 +68,16 @@ describe("apiFetch", () => {
     expect(await apiFetch("/v1/x/", { method: "POST" })).toBeUndefined();
   });
 
+  it("на успешный ответ с битым JSON-телом бросает invalid_response", async () => {
+    // 2xx с непустым, но не-JSON телом (прокси отдал HTML под 200, обрезанный ответ):
+    // parseSuccess не даёт JSON.parse выбросить голый SyntaxError — заворачивает в ApiError.
+    fetchMock.mockResolvedValueOnce(
+      new Response("{ broken json", { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+
+    await expect(apiFetch("/v1/x/")).rejects.toMatchObject({ status: 200, code: "invalid_response" });
+  });
+
   it("подставляет Authorization, credentials include и Content-Type для json", async () => {
     setAccessToken("my-token");
     fetchMock.mockResolvedValueOnce(jsonResponse(200, {}));

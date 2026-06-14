@@ -39,8 +39,8 @@ backend/tests/
 Markers are **auto-applied from the path** by a `pytest_collection_modifyitems` hook in
 `tests/conftest.py` — never hand-tag tests. Two axes: **level** (`unit`/`integration`/`api`) and
 **domain** (`auth`/`users`/`shared`), both derived from `tests/<level>/<domain>/...`. They compose:
-`-m unit`, `-m users`, `-m "unit and users"` (or `make test-unit` / `make test-users` /
-`make test-m M="unit and users"`). A new level/domain must be registered in `pyproject.toml`
+`-m unit`, `-m users`, `-m "unit and users"` (or `make test-unit` / `make test-users`; for
+axis **intersections** run `uv run pytest -m "unit and users"` directly). A new level/domain must be registered in `pyproject.toml`
 `markers` **and** added to the conftest tuples (`--strict-markers` rejects unregistered ones).
 
 ## Philosophy: classicist + hand-written fakes
@@ -192,5 +192,8 @@ chase 100% on infra/presentation in the unit phase.
 
 - **Now (dev group):** `pytest-cov`; optionally `time-machine` (point use).
 - **Later (integration phase):** `testcontainers[postgres]` (or reuse the compose Postgres).
-- `pytest` + `pytest-asyncio` are already present. `make test-all` exists; add `make test-unit`
-  (`uv run pytest -m unit`) when the unit suite lands.
+- `pytest` + `pytest-asyncio` are already present. Make targets: `make test` (unit+api, fast, no
+  Docker) and `make coverage` (same + cov); `make test-unit` / `test-api` / `test-integration` by
+  level, `make test-auth` / `test-users` / `test-shared` by domain. Integration needs Docker
+  (testcontainers) and is deliberately **not** in `make check` — run it via `make test-integration`
+  or the root `make test-infra`.

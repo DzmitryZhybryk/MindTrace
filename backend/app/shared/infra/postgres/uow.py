@@ -58,5 +58,19 @@ class BaseUnitOfWork:
         """
         return self._session
 
+    async def flush(self) -> None:
+        """
+        Материализует pending-изменения в БД в рамках текущей транзакции, без commit'а.
+
+        Нужен, когда в одной транзакции дочерняя запись ссылается по FK на родителя,
+        добавленного ранее в той же транзакции: явный ``flush()`` после вставки
+        родителя отправляет его INSERT в БД до зависимой строки и исключает
+        ``ForeignKeyViolation``. Порядок INSERT'ов между разными мапперами в одном
+        flush SQLAlchemy не гарантирует, а relationship между ними ради ordering'а
+        мы намеренно не заводим. Изменения остаются невидимыми другим транзакциям
+        до ``commit()``.
+        """
+        await self._session.flush()
+
     async def commit(self) -> None:
         await self._session.commit()

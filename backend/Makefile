@@ -1,4 +1,4 @@
-.PHONY: help format lint typecheck dead-code audit arch check test-all test-unit test-integration test-api test-auth test-users test-shared test-m migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
+.PHONY: help format lint typecheck dead-code audit arch check test coverage test-unit test-integration test-api test-auth test-users test-shared migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -26,6 +26,16 @@ endif
 
 # Sources to check
 RUFF_SOURCES := app migrations tests
+
+# Docker-окружение для testcontainers (integration-уровень). Применяется к таргету
+# test-integration — единственному, который запускает integration-тесты.
+#   DOCKER_HOST — куда стучится Python-клиент docker (на нём testcontainers). Берём из
+#     активного docker-контекста, если не задан явно: Docker Desktop держит сокет не в
+#     /var/run/docker.sock. В CI контекст вернёт дефолтный сокет — работает и там, и локально.
+#   SOCKET_OVERRIDE — источник bind-маунта сокета в контейнер-уборщик Ryuk. По умолчанию
+#     testcontainers берёт его из DOCKER_HOST (хостовый путь Desktop), а его демон в VM
+#     примонтировать не может. Канонический /var/run/docker.sock Desktop маунтит спец-обработкой.
+DOCKER_TC_ENV = DOCKER_HOST="$${DOCKER_HOST:-$$(docker context inspect --format '{{.Endpoints.docker.Host}}' 2>/dev/null)}" TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 
 help: ## Show this help message
 	@echo "Available targets:"
@@ -56,11 +66,15 @@ arch: ## Enforce DDD layer/import boundaries (tach)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}tach${AZURE}' boundary check${RESET}"
 	@uv run --no-sync tach check
 
-check: format lint typecheck arch dead-code audit test-all ## Run format + lint + typecheck + arch + dead-code + audit + tests
+check: format lint typecheck arch dead-code audit test ## Run format + lint + typecheck + arch + dead-code + audit + fast tests (unit+api; integration → test-integration)
 
-test-all: ## Run all tests in the tests/ directory with coverage
-	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' tests with coverage${RESET}"
-	@uv run --no-sync pytest tests --cov=app --cov-report=term-missing
+test: ## Run fast tests — unit + api (no Docker; integration → make test-integration)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' unit + api tests${RESET}"
+	@uv run --no-sync pytest -m "unit or api"
+
+coverage: ## Run unit + api tests with coverage report
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' coverage (unit + api)${RESET}"
+	@uv run --no-sync pytest -m "unit or api" --cov=app --cov-report=term-missing
 
 # Запуск тестов по осям маркеров (авто-маркировка по пути — см. tests/conftest.py).
 # `|| [ $$? -eq 5 ]` — не считать "тесты не найдены" (exit 5) ошибкой: пустые группы
@@ -68,8 +82,8 @@ test-all: ## Run all tests in the tests/ directory with coverage
 test-unit: ## Run unit-level tests (-m unit)
 	@uv run --no-sync pytest -m unit || [ $$? -eq 5 ]
 
-test-integration: ## Run integration-level tests (-m integration)
-	@uv run --no-sync pytest -m integration || [ $$? -eq 5 ]
+test-integration: ## Run integration-level tests (-m integration; нужен Docker для testcontainers)
+	@$(DOCKER_TC_ENV) uv run --no-sync pytest -m integration || [ $$? -eq 5 ]
 
 test-api: ## Run api-level tests (-m api)
 	@uv run --no-sync pytest -m api || [ $$? -eq 5 ]
@@ -82,9 +96,6 @@ test-users: ## Run users-domain tests, any level (-m users)
 
 test-shared: ## Run shared-infra tests, any level (-m shared)
 	@uv run --no-sync pytest -m shared || [ $$? -eq 5 ]
-
-test-m: ## Run tests by marker expression (usage: make test-m M="unit and users")
-	@uv run --no-sync pytest -m "$(M)" || [ $$? -eq 5 ]
 
 migrate-create: ## Create a new migration (usage: make migrate-create "description")
 	@ARGS="$(filter-out $@,$(MAKECMDGOALS))"; \

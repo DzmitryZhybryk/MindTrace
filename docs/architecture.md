@@ -11,7 +11,7 @@
 Каждый домен самодостаточен и делится на четыре слоя:
 
 1. **domain/** — чистая бизнес-логика: entities, value objects. Без инфраструктурных импортов.
-2. **infra/** — SQLModel-модели БД, репозитории, UnitOfWork, внешние клиенты.
+2. **infra/** — SQLAlchemy-модели БД, репозитории, UnitOfWork, внешние клиенты.
 3. **application/** — use cases (`*Service`), входы `*Command`, результаты `*Result`.
 4. **presentation/** — HTTP-схемы (`*Request` / `*Response`), роуты, dependencies.
 
