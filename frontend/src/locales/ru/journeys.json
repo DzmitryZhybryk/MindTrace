@@ -14,5 +14,37 @@
     "wishlist": "Хочу посетить",
     "notVisited": "Не посещено",
     "city": "Город"
+  },
+  "addJourney": {
+    "title": "Новое путешествие",
+    "subtitle": "Откуда, куда и когда вы ездили?",
+    "origin": { "label": "Откуда", "placeholder": "Город отправления" },
+    "destination": { "label": "Куда", "placeholder": "Город назначения" },
+    "cityComingSoon": "Пока свободный ввод",
+    "transport": {
+      "label": "Транспорт",
+      "placeholder": "Выберите транспорт",
+      "land": "🚗 Наземный",
+      "air": "✈️ Воздушный",
+      "water": "🚢 Водный"
+    },
+    "date": {
+      "legend": "Когда это было?",
+      "yearPlaceholder": "Выберите год",
+      "addMonth": "Указать месяц",
+      "addDay": "Указать день",
+      "monthPlaceholder": "Выберите месяц",
+      "dayPlaceholder": "Выберите день"
+    },
+    "submit": "Добавить путешествие",
+    "validation": {
+      "originRequired": "Выберите город отправления",
+      "destinationRequired": "Выберите город назначения",
+      "sameCity": "Города отправления и назначения должны отличаться",
+      "transportRequired": "Выберите тип транспорта",
+      "yearRequired": "Выберите год",
+      "monthRequired": "Выберите месяц",
+      "dayRequired": "Выберите день"
+    }
   }
 }
