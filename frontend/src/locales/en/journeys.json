@@ -14,5 +14,37 @@
     "wishlist": "Wishlist",
     "notVisited": "Not visited",
     "city": "City"
+  },
+  "addJourney": {
+    "title": "New journey",
+    "subtitle": "Where and when did you travel?",
+    "origin": { "label": "From", "placeholder": "City of departure" },
+    "destination": { "label": "To", "placeholder": "Destination city" },
+    "cityComingSoon": "Free text for now",
+    "transport": {
+      "label": "Transport",
+      "placeholder": "Choose transport",
+      "land": "🚗 Land",
+      "air": "✈️ Air",
+      "water": "🚢 Water"
+    },
+    "date": {
+      "legend": "When was it?",
+      "yearPlaceholder": "Select year",
+      "addMonth": "Specify month",
+      "addDay": "Specify day",
+      "monthPlaceholder": "Select month",
+      "dayPlaceholder": "Select day"
+    },
+    "submit": "Add journey",
+    "validation": {
+      "originRequired": "Choose the departure city",
+      "destinationRequired": "Choose the destination city",
+      "sameCity": "Departure and destination must differ",
+      "transportRequired": "Choose a transport type",
+      "yearRequired": "Choose a year",
+      "monthRequired": "Choose a month",
+      "dayRequired": "Choose a day"
+    }
   }
 }

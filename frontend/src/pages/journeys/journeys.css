@@ -44,15 +44,15 @@
   width: 260px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 20px;
+  gap: 14px;
+  /* Тот же padding, что у карточки формы → заголовки панели и формы на одной линии. */
+  padding: 24px;
 }
 
+/* Заголовок панели — тот же стиль, что у заголовка формы (.add-journey__title). */
 .journeys-panel__label {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #64748b;
+  font: 600 16px/1.2 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  color: #0f172a;
 }
 
 /* ---- Под-навигация раздела (Карта / Все / Добавить) --------------------- */
@@ -67,7 +67,7 @@
   padding: 9px 12px;
   border-radius: 10px;
   font: 500 14px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #475569;
+  color: #334155;
   text-decoration: none;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -178,4 +178,51 @@
   height: 8px;
   margin: 0 4px;
   border-radius: 50%;
+}
+
+/* ---- Экран добавления путешествия (split: форма + глобус-герой) ---------- */
+.add-journey {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  /* Верх формы — на одной линии с верхом левой панели (тот же content-offset-top). */
+  align-items: flex-start;
+  gap: 24px;
+  padding: var(--content-offset-top) 32px 24px;
+}
+
+/* Колонка формы отодвинута от плавающей левой панели (left:32 + width:260). */
+.add-journey__form-col {
+  flex: 0 0 420px;
+  max-width: 420px;
+  margin-left: 276px;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+/* Глобус занимает остаток ширины и всю высоту stage. */
+.add-journey__globe-col {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0;
+  position: relative;
+}
+
+.add-journey__card {
+  width: 100%;
+  padding: 24px;
+}
+
+/* Тот же стиль, что у заголовка панели (.journeys-panel__label) — единый вид. */
+.add-journey__title {
+  margin: 0 0 2px;
+  font: 600 16px/1.2 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  color: #0f172a;
+}
+
+.add-journey__subtitle {
+  margin: 0 0 14px;
+  font: 400 13px/1.4 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  color: #64748b;
 }
