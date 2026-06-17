@@ -2,31 +2,23 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 
 import type { CitySuggestion, TransportType } from "../api/journeys";
+import carIcon from "../assets/emoji/car.svg";
+import planeIcon from "../assets/emoji/plane.svg";
+import shipIcon from "../assets/emoji/ship.svg";
 import "./journey-globe.css";
 
 const GLOBE_TEXTURE_URL = "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg";
 const GLOBE_BUMP_URL = "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png";
 
-// Демо-маршрут, пока автокомплит не отдаёт реальные координаты: Лондон → Нью-Йорк.
-// Подписи берутся из ввода формы; координаты станут реальными, как только город
-// выбран в автокомплите (geonameId > 0).
-const DEMO_ORIGIN = { lat: 51.5074, lng: -0.1278 };
-const DEMO_DESTINATION = { lat: 40.7128, lng: -74.006 };
+// Вид камеры по умолчанию, пока ни один город не выбран (нейтральный, без демо-маршрута).
+const DEFAULT_VIEW = { lat: 20, lng: 0 };
 
-// Нативная ориентация (проверено рендером): самолёт — top-down, нос ВВЕРХ (его
-// крутим полным курсом); корабль и машина — вид СБОКУ (нос влево / перёд вправо),
-// их нельзя крутить (перевернутся), только зеркалить по ходу движения.
-// Источники: самолёт — Material Symbols `flight` (Google, Apache 2.0); парусник и
-// машина — game-icons.net (Delapouite, CC BY 3.0). У game-icons снят чёрный фон-квадрат.
-const PLANE_SVG =
-  '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
-const SHIP_SVG =
-  '<svg viewBox="0 0 512 512"><path fill="currentColor" d="M199.256 74.5v285H27.744l25.998 78H380.255l104-78h-267v-285h-18zm18 18c36.787 88.85 64.94 216 0 250h208c22-34-11.905-164.76-208-250zm-36 0c-33.046 69.333-50 200-144 250h144v-250z"/></svg>';
-const CAR_SVG =
-  '<svg viewBox="0 0 512 512"><path fill="currentColor" d="M188.287 169.428c-28.644-.076-60.908 2.228-98.457 8.01-4.432.62-47.132 24.977-58.644 41.788-11.512 16.812-15.45 48.813-15.45 48.813-3.108 13.105-1.22 34.766-.353 36.872 1.17 4.56 7.78 8.387 19.133 11.154C35.84 295.008 53.29 278.6 74.39 278.574c22.092 0 40 17.91 40 40-.014 1.764-.145 3.525-.392 5.272.59.008 1.26.024 1.82.03l239.266 1.99c-.453-2.405-.685-4.845-.693-7.292 0-22.09 17.91-40 40-40 22.092 0 40 17.91 40 40 0 2.668-.266 5.33-.796 7.944l62.186.517c1.318-22.812 6.86-46.77-7.024-66.72-5.456-7.84-31.93-22.038-99.03-32.66-34.668-17.41-68.503-37.15-105.35-48.462-28.41-5.635-59.26-9.668-96.09-9.765zm-17.197 11.984c5.998.044 11.5.29 16.014.81l7.287 48.352c-41.43-5.093-83.647-9.663-105.964-27.5.35-5.5 7.96-13.462 16.506-16.506 4.84-1.724 40.167-5.346 66.158-5.156zm34.625.348c25.012.264 62.032 2.69 87.502 13.94 12.202 5.65 35.174 18.874 50.537 30.55l-6.35 10.535c-41.706-1.88-97.288-4.203-120.1-6.78l-11.59-48.245zM74.39 294.574a24 24 0 0 0-24 24 24 24 0 0 0 24 24 24 24 0 0 0 24-24 24 24 0 0 0-24-24zm320 0a24 24 0 0 0-24 24 24 24 0 0 0 24 24 24 24 0 0 0 24-24 24 24 0 0 0-24-24z"/></svg>';
-
-// orient: "rotate" — top-down иконка крутится на полный курс; "flip" — боковая иконка
-// держится вертикально и зеркалится. nativeFacesRight — куда смотрит боковая иконка в SVG.
+// Иконка транспорта на глобусе = та же Noto-эмодзи, что в селекте формы (src/assets/emoji).
+// Нативная ориентация (проверено рендером): машина — вид сбоку, нос ВПРАВО; корабль —
+// вид сбоку, нос ВЛЕВО (их нельзя крутить — перевернутся, только зеркалим по ходу);
+// самолёт — диагональ, нос в ВЕРХ-ВПРАВО (~45°), его крутим на курс с офсетом 45°.
+// orient: "rotate" — иконку крутим на экранный курс; "flip" — держим вертикально и
+// зеркалим. nativeFacesRight — куда смотрит боковая иконка в SVG (для flip).
 type TransportVisual = {
   icon: string;
   altitude: number;
@@ -38,22 +30,32 @@ type TransportVisual = {
 // Радиус траектории объёмный только у воздуха; земля и вода — одинаково минимальный.
 const ARC_ALTITUDE_GROUND = 0.12;
 const TRANSPORT_VISUAL: Record<TransportType, TransportVisual> = {
-  land: { icon: CAR_SVG, altitude: ARC_ALTITUDE_GROUND, durationMs: 5200, orient: "flip", nativeFacesRight: true },
-  air: { icon: PLANE_SVG, altitude: 0.44, durationMs: 3600, orient: "rotate", nativeFacesRight: true },
-  water: { icon: SHIP_SVG, altitude: ARC_ALTITUDE_GROUND, durationMs: 6000, orient: "flip", nativeFacesRight: false },
+  land: { icon: carIcon, altitude: ARC_ALTITUDE_GROUND, durationMs: 5200, orient: "flip", nativeFacesRight: true },
+  air: { icon: planeIcon, altitude: 0.44, durationMs: 3600, orient: "rotate", nativeFacesRight: true },
+  water: { icon: shipIcon, altitude: ARC_ALTITUDE_GROUND, durationMs: 6000, orient: "flip", nativeFacesRight: false },
 };
 
 // Ярко-красный «флайт-трекер» — общий для следа и иконки транспорта (тот же hex
 // продублирован в .journey-vehicle__icon). Яркий, чтобы читался на тёмном океане.
 const TRAIL_COLOR = "#ff3b30";
 const TRAIL_SAMPLES = 96;
-// SVG-иконки смотрят «вверх» (−Y); поворот к экранному курсу = atan2(dy,dx) + 90°.
-const ICON_ROTATION_OFFSET_DEG = 90;
+// Noto-самолёт нативно смотрит в верх-вправо (~45°); поворот к экранному курсу =
+// atan2(dy,dx) + 45° (для иконки «нос вверх» офсет был бы 90°).
+const ICON_ROTATION_OFFSET_DEG = 45;
 
 const DEG = Math.PI / 180;
 const RAD = 180 / Math.PI;
 
-type HtmlDatum = { type: "pin" | "vehicle"; lat: number; lng: number; alt: number; name?: string; icon?: string };
+type LabelSide = "left" | "right";
+type HtmlDatum = {
+  type: "pin" | "vehicle";
+  lat: number;
+  lng: number;
+  alt: number;
+  name?: string;
+  icon?: string;
+  side?: LabelSide;
+};
 type TrailPoint = { lat: number; lng: number; alt: number };
 type ScreenGlobe = { getScreenCoords?: (lat: number, lng: number, altitude?: number) => { x: number; y: number } };
 
@@ -113,9 +115,10 @@ function buildTrail(
   return points;
 }
 
-function createPinElement(name: string): HTMLElement {
+function createPinElement(name: string, side: LabelSide): HTMLElement {
   const wrapper = document.createElement("div");
-  wrapper.className = "journey-pin";
+  // Подпись кладём на сторону, противоположную маршруту (side), чтобы не перекрывать дугу.
+  wrapper.className = side === "left" ? "journey-pin journey-pin--left" : "journey-pin";
 
   const dot = document.createElement("span");
   dot.className = "journey-pin__dot";
@@ -126,6 +129,11 @@ function createPinElement(name: string): HTMLElement {
 
   wrapper.append(dot, label);
   return wrapper;
+}
+
+/** Город «реальный» (выбран из автокомплита), если у него есть координаты. */
+function isRealCity(city: CitySuggestion | null): city is CitySuggestion {
+  return city !== null && (city.latitude !== 0 || city.longitude !== 0);
 }
 
 interface JourneyGlobeProps {
@@ -139,8 +147,9 @@ interface JourneyGlobeProps {
 /**
  * Глобус-герой страницы добавления поездки: иконка транспорта летит/едет/плывёт по
  * great-circle траектории, оставляя за собой растущий красный пунктирный след;
- * иконка повёрнута по направлению движения, камера кадрирует маршрут. Пока транспорт
- * не выбран — только два пина (без линии). Демо Лондон → Нью-Йорк до автокомплита.
+ * иконка повёрнута по направлению движения, камера кадрирует маршрут. Пины и подписи
+ * появляются только для реально выбранных городов; маршрут (дуга + транспорт) — когда
+ * выбраны оба города и среда передвижения. На пустой форме глобус чистый.
  */
 export function JourneyGlobe({ origin, destination, transportType, originLabel, destinationLabel }: JourneyGlobeProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
@@ -155,27 +164,50 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
     () => typeof window !== "undefined" && (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false),
   );
 
-  const hasRealRoute =
-    !!origin &&
-    !!destination &&
-    (origin.latitude !== 0 || origin.longitude !== 0) &&
-    (destination.latitude !== 0 || destination.longitude !== 0);
+  // Пины и маршрут показываем только для реально выбранных городов — на пустой
+  // форме глобус чистый (без демо-маршрута и подписей «Откуда»/«Куда»).
+  const originReal = isRealCity(origin);
+  const destinationReal = isRealCity(destination);
+  const bothReal = originReal && destinationReal;
+  // Маршрут (дуга + транспорт) — только когда выбраны оба города И среда передвижения.
+  const showRoute = bothReal && !!transportType;
 
-  const startLat = hasRealRoute ? origin.latitude : DEMO_ORIGIN.lat;
-  const startLng = hasRealRoute ? origin.longitude : DEMO_ORIGIN.lng;
-  const endLat = hasRealRoute ? destination.latitude : DEMO_DESTINATION.lat;
-  const endLng = hasRealRoute ? destination.longitude : DEMO_DESTINATION.lng;
+  const startLat = origin?.latitude ?? 0;
+  const startLng = origin?.longitude ?? 0;
+  const endLat = destination?.latitude ?? 0;
+  const endLng = destination?.longitude ?? 0;
   const apex = transportType ? TRANSPORT_VISUAL[transportType].altitude : 0;
+
+  // Подпись каждого пина — на сторону, противоположную второму концу, чтобы текст не
+  // ложился на дугу. Восточнее (бо́льшая долгота) ≈ правее на экране (камера на середине).
+  const originSide: LabelSide = endLng > startLng ? "left" : "right";
+  const destinationSide: LabelSide = startLng > endLng ? "left" : "right";
 
   // Метки концов: стабильная identity в пределах координат/подписи (на смену ввода
   // three-globe пересоберёт DOM с новым текстом), внутри анимации DOM переиспользуется.
-  const pins = useMemo<HtmlDatum[]>(
-    () => [
-      { type: "pin", lat: startLat, lng: startLng, alt: 0.01, name: originLabel },
-      { type: "pin", lat: endLat, lng: endLng, alt: 0.01, name: destinationLabel },
-    ],
-    [startLat, startLng, endLat, endLng, originLabel, destinationLabel],
-  );
+  const pins = useMemo<HtmlDatum[]>(() => {
+    const result: HtmlDatum[] = [];
+    if (originReal) {
+      result.push({ type: "pin", lat: startLat, lng: startLng, alt: 0.01, name: originLabel, side: originSide });
+    }
+
+    if (destinationReal) {
+      result.push({ type: "pin", lat: endLat, lng: endLng, alt: 0.01, name: destinationLabel, side: destinationSide });
+    }
+
+    return result;
+  }, [
+    originReal,
+    destinationReal,
+    startLat,
+    startLng,
+    endLat,
+    endLng,
+    originLabel,
+    destinationLabel,
+    originSide,
+    destinationSide,
+  ]);
 
   // Транспорт: identity завязана на иконку (смена среды → новый DOM с новым SVG).
   // Координаты — изменяемые поля, их покадрово мутирует rAF.
@@ -218,15 +250,25 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
     controls.autoRotate = false;
     controls.enableZoom = false;
 
-    const mid = greatCirclePoint(startLat, startLng, endLat, endLng, 0.5);
+    // Камера: середина маршрута (оба города), либо единственный выбранный город,
+    // либо нейтральный вид по умолчанию, пока ничего не выбрано.
+    let target = DEFAULT_VIEW;
+    if (bothReal) {
+      target = greatCirclePoint(startLat, startLng, endLat, endLng, 0.5);
+    } else if (originReal) {
+      target = { lat: startLat, lng: startLng };
+    } else if (destinationReal) {
+      target = { lat: endLat, lng: endLng };
+    }
+
     // Меньшая altitude = крупнее сфера: вертикальный размах глобуса совпадает с формой,
     // и он читается как пара к ней, а не как маленький «висящий» шар по центру сцены.
-    globe.pointOfView({ lat: mid.lat * 0.6, lng: mid.lng, altitude: 1.7 }, 1200);
-  }, [startLat, startLng, endLat, endLng, size.width, size.height]);
+    globe.pointOfView({ lat: target.lat * 0.6, lng: target.lng, altitude: 1.7 }, 1200);
+  }, [bothReal, originReal, destinationReal, startLat, startLng, endLat, endLng, size.width, size.height]);
 
   // Движение транспорта + поворот иконки по экранному курсу.
   useEffect(() => {
-    if (!transportType) {
+    if (!showRoute || !transportType) {
       progressRef.current = 0;
       return;
     }
@@ -289,12 +331,12 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [transportType, vehicle, apex, startLat, startLng, endLat, endLng, reducedMotion]);
+  }, [showRoute, transportType, vehicle, apex, startLat, startLng, endLat, endLng, reducedMotion]);
 
   // Новый массив на каждый ре-рендер (его триггерит setFrame): pins/vehicle —
   // стабильные объекты, three-globe переиспользует их DOM, меняются лишь координаты.
-  const htmlData: HtmlDatum[] = transportType ? [pins[0], pins[1], vehicle] : pins;
-  const pathsData = transportType
+  const htmlData: HtmlDatum[] = showRoute ? [...pins, vehicle] : pins;
+  const pathsData = showRoute
     ? [{ coords: buildTrail(startLat, startLng, endLat, endLng, apex, progressRef.current) }]
     : [];
 
@@ -328,15 +370,18 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
           htmlElement={(d: object) => {
             const item = d as HtmlDatum;
             if (item.type !== "vehicle") {
-              return createPinElement(item.name ?? "");
+              return createPinElement(item.name ?? "", item.side ?? "right");
             }
 
             const wrapper = document.createElement("div");
             wrapper.className = "journey-vehicle";
             const icon = document.createElement("div");
             icon.className = "journey-vehicle__icon";
-            // Доверенный константный SVG (не пользовательский ввод) — XSS невозможен.
-            icon.innerHTML = item.icon ?? "";
+            // Та же Noto-эмодзи, что в селекте — как <img> (поворот/зеркало вешаем на icon-div).
+            const img = document.createElement("img");
+            img.src = item.icon ?? "";
+            img.alt = "";
+            icon.appendChild(img);
             wrapper.appendChild(icon);
             vehicleIconElRef.current = icon;
             return wrapper;

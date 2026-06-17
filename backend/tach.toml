@@ -30,6 +30,22 @@ path = "app.auth.presentation"
 depends_on = ["app.auth.application", "app.shared", "app.auth.infra", "app.users.application", "app.users.infra"]
 
 [[modules]]
+path = "app.geo.domain"
+depends_on = ["app.shared"]
+
+[[modules]]
+path = "app.geo.application"
+depends_on = ["app.geo.domain", "app.shared"]
+
+[[modules]]
+path = "app.geo.infra"
+depends_on = ["app.geo.domain", "app.geo.application", "app.shared"]
+
+[[modules]]
+path = "app.geo.presentation"
+depends_on = ["app.geo.application", "app.geo.infra", "app.geo.domain", "app.shared", "app.auth.presentation"]
+
+[[modules]]
 path = "app.users.domain"
 depends_on = ["app.shared"]
 

@@ -4,6 +4,7 @@ from typing import Any
 
 from app.auth import auth_router
 from app.auth.infra import auth_blueprint
+from app.geo import geo_router
 
 # Настраиваем логирование в самом начале, до всех остальных импортов
 # Это гарантирует, что handlers создаются с правильным форматтером
@@ -87,5 +88,6 @@ def create_app() -> BFastAPI:
     register_exception_handlers(app)
 
     app.include_router(auth_router, prefix="/v1/auth", tags=["v1.auth"])
+    app.include_router(geo_router, prefix="/v1/geo", tags=["v1.geo"])
 
     return app

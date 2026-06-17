@@ -45,6 +45,12 @@
   backdrop-filter: blur(4px);
 }
 
+/* Подпись слева от точки (когда маршрут уходит вправо) — чтобы не накрывать дугу. */
+.journey-pin--left .journey-pin__name {
+  left: auto;
+  right: 12px;
+}
+
 /* ---- Транспорт, бегущий по маршруту ------------------------------------- */
 /* Внешний контейнер позиционирует three-globe (translate в экранные координаты),
    поворот по курсу применяется к вложенной иконке — чтобы не конфликтовать. */
@@ -56,15 +62,13 @@
 .journey-vehicle__icon {
   width: 28px;
   height: 28px;
-  /* Тот же ярко-красный, что и след (TRAIL_COLOR в JourneyGlobe.tsx). */
-  color: #ff3b30;
   transform-origin: center;
   will-change: transform;
-  /* Белый ореол отделяет красный силуэт от тёмного океана + лёгкая тень для объёма. */
+  /* Белый ореол отделяет цветную иконку от тёмного океана + лёгкая тень для объёма. */
   filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.95)) drop-shadow(0 1px 3px rgba(2, 6, 23, 0.5));
 }
 
-.journey-vehicle__icon svg {
+.journey-vehicle__icon img {
   display: block;
   width: 100%;
   height: 100%;

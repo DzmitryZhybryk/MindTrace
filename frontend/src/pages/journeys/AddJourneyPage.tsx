@@ -62,8 +62,8 @@ export function AddJourneyPage() {
           origin={values.origin}
           destination={values.destination}
           transportType={values.transport}
-          originLabel={values.origin?.name?.trim() || t("addJourney.origin.label")}
-          destinationLabel={values.destination?.name?.trim() || t("addJourney.destination.label")}
+          originLabel={values.origin?.name?.trim() ?? ""}
+          destinationLabel={values.destination?.name?.trim() ?? ""}
         />
       </div>
     </div>

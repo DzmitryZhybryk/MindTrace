@@ -1,4 +1,4 @@
-import { Button, Select, Stack, Text } from "@mantine/core";
+import { Button, Group, Select, Stack, Text } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,10 +6,23 @@ import { useNavigate } from "react-router-dom";
 
 import { applyApiError } from "../../api/errors";
 import { createJourney, type CitySuggestion, type TransportType } from "../../api/journeys";
+import carIcon from "../../assets/emoji/car.svg";
+import planeIcon from "../../assets/emoji/plane.svg";
+import shipIcon from "../../assets/emoji/ship.svg";
 import { CityAutocomplete } from "../../components/CityAutocomplete";
 import { JourneyDateField } from "./JourneyDateField";
 
 const TRANSPORT_TYPES: readonly TransportType[] = ["land", "air", "water"];
+
+// Иконка среды передвижения для select транспорта (метка — из i18n, картинка — Noto-эмодзи SVG).
+const TRANSPORT_ICONS: Record<TransportType, string> = {
+  land: carIcon,
+  air: planeIcon,
+  water: shipIcon,
+};
+
+// Размер эмодзи-иконки транспорта в селекте (px).
+const TRANSPORT_ICON_SIZE = 22;
 
 export type JourneyFormValues = {
   origin: CitySuggestion | null;
@@ -66,6 +79,7 @@ export function JourneyForm({ form }: JourneyFormProps) {
   };
 
   const values = form.getValues();
+  const selectedTransportIcon = values.transport ? TRANSPORT_ICONS[values.transport] : null;
 
   return (
     <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -73,9 +87,8 @@ export function JourneyForm({ form }: JourneyFormProps) {
         <CityAutocomplete
           label={t("addJourney.origin.label")}
           placeholder={t("addJourney.origin.placeholder")}
-          description={t("addJourney.cityComingSoon")}
           value={values.origin}
-          onChange={(city) => form.setFieldValue("origin", city)}
+          onChange={(place) => form.setFieldValue("origin", place)}
           error={form.errors.origin}
         />
 
@@ -83,7 +96,7 @@ export function JourneyForm({ form }: JourneyFormProps) {
           label={t("addJourney.destination.label")}
           placeholder={t("addJourney.destination.placeholder")}
           value={values.destination}
-          onChange={(city) => form.setFieldValue("destination", city)}
+          onChange={(place) => form.setFieldValue("destination", place)}
           error={form.errors.destination}
         />
 
@@ -98,6 +111,22 @@ export function JourneyForm({ form }: JourneyFormProps) {
             form.setFieldValue("transport", value as TransportType | null);
             form.clearFieldError("transport");
           }}
+          leftSection={
+            selectedTransportIcon ? (
+              <img src={selectedTransportIcon} width={TRANSPORT_ICON_SIZE} height={TRANSPORT_ICON_SIZE} alt="" />
+            ) : null
+          }
+          renderOption={({ option }) => (
+            <Group gap="xs" wrap="nowrap">
+              <img
+                src={TRANSPORT_ICONS[option.value as TransportType]}
+                width={TRANSPORT_ICON_SIZE}
+                height={TRANSPORT_ICON_SIZE}
+                alt=""
+              />
+              <span>{option.label}</span>
+            </Group>
+          )}
           error={form.errors.transport}
         />
 

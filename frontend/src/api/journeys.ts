@@ -1,3 +1,4 @@
+import type { LanguageCode } from "../i18n";
 import { apiFetch } from "./client";
 
 /**
@@ -16,7 +17,6 @@ export type CitySuggestion = {
   countryCode: string;
   latitude: number;
   longitude: number;
-  admin1?: string;
   population: number;
 };
 
@@ -33,6 +33,56 @@ export type CreateJourneyPayload = {
   traveledMonth: number | null;
   traveledDay: number | null;
 };
+
+/** Параметры поиска города под автокомплит. */
+export type SearchCitiesParams = {
+  searchText: string;
+  language: LanguageCode;
+  limit?: number;
+  signal?: AbortSignal;
+};
+
+/** Сырой кандидат из ответа `/v1/geo/cities/search` (snake_case бэка). */
+type CityResponseBody = {
+  geoname_id: number;
+  name: string;
+  country_code: string;
+  latitude: number;
+  longitude: number;
+  population: number;
+};
+
+type CitySearchResponseBody = {
+  items: CityResponseBody[];
+};
+
+/**
+ * Ищет города по префиксу имени для автокомплита поездки.
+ *
+ * Имена в ответе уже резолвнуты под `language`; порядок — по убыванию населения.
+ * `signal` нужен, чтобы отменять устаревшие запросы при быстром наборе.
+ */
+export async function searchCities({
+  searchText,
+  language,
+  limit = 10,
+  signal,
+}: SearchCitiesParams): Promise<CitySuggestion[]> {
+  const params = new URLSearchParams({
+    search_text: searchText,
+    language,
+    limit: String(limit),
+  });
+  const response = await apiFetch<CitySearchResponseBody>(`/v1/geo/cities/search/?${params.toString()}`, { signal });
+  return response.items.map((item) => ({
+    geonameId: item.geoname_id,
+    name: item.name,
+    countryCode: item.country_code,
+    latitude: item.latitude,
+    longitude: item.longitude,
+    population: item.population,
+  }));
+}
 
 export function createJourney(payload: CreateJourneyPayload): Promise<void> {
   return apiFetch<void>("/v1/journeys/", {

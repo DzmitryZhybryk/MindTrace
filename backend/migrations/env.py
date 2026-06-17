@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 # Импорт базового класса моделей и явная загрузка модулей с моделями,
 # чтобы все таблицы регистрировались в BaseDBModel.metadata для autogenerate.
 from app.auth.infra import models as _auth_models  # noqa: F401
+from app.geo.infra import models as _geo_models  # noqa: F401
 from app.shared.models import BaseDBModel
 from app.shared.settings import settings
 from app.users.infra import models as _users_models  # noqa: F401
