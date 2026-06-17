@@ -13,6 +13,22 @@ const GLOBE_BUMP_URL = "https://cdn.jsdelivr.net/npm/three-globe/example/img/ear
 // Вид камеры по умолчанию, пока ни один город не выбран (нейтральный, без демо-маршрута).
 const DEFAULT_VIEW = { lat: 20, lng: 0 };
 
+// --- Камера: авто-зум по близости городов ----------------------------------
+// Чем ближе города, тем сильнее зум: altitude подбираем так, чтобы маршрут занимал
+// ~ROUTE_VIEWPORT_SPAN долю обзора, в пределах [MIN, MAX]. Порог «когда зум включается» —
+// та дистанция, на которой формула опускается ниже MAX (дальше держим дальний вид).
+// MIN — граница максимального приближения (ближе города уже не приближаем).
+const CAMERA_FOV_DEG = 50; // поле зрения камеры three.js в globe.gl
+// Целевая доля обзора под маршрут (больше → ближе зум). 0.10: Минск–Москву (~675 км)
+// слегка приближает (altitude ~1.2), маршруты длиннее ~1000 км остаются в широком виде,
+// близкие города приближаются заметно сильнее. Тюнится «на глаз».
+const ROUTE_VIEWPORT_SPAN = 0.1;
+const CAMERA_MAX_ALTITUDE = 1.7; // дальний предел: города далеко / выбран один (текущий вид)
+const CAMERA_MIN_ALTITUDE = 0.12; // ближний предел: ближе города не приближаем
+// Высота дуги нормируется на этот угловой размер: у дальних маршрутов дуга «полная»,
+// у близких масштабируется вниз, иначе при зуме превратится в вертикальный шпиль.
+const ARC_REFERENCE_SEPARATION_RAD = (50 * Math.PI) / 180;
+
 // Иконка транспорта на глобусе = та же Noto-эмодзи, что в селекте формы (src/assets/emoji).
 // Нативная ориентация (проверено рендером): машина — вид сбоку, нос ВПРАВО; корабль —
 // вид сбоку, нос ВЛЕВО (их нельзя крутить — перевернутся, только зеркалим по ходу);
@@ -27,11 +43,13 @@ type TransportVisual = {
   nativeFacesRight: boolean;
 };
 
-// Радиус траектории объёмный только у воздуха; земля и вода — одинаково минимальный.
-const ARC_ALTITUDE_GROUND = 0.12;
+// Высота дуги (apex): у самолёта заметная, у машины/корабля вдвое меньше — трасса более
+// плоская. Камеру под маршрут НЕ доворачиваем (спрямление давало неожиданные ракурсы).
+const ARC_ALTITUDE_AIR = 0.14;
+const ARC_ALTITUDE_GROUND = ARC_ALTITUDE_AIR / 2;
 const TRANSPORT_VISUAL: Record<TransportType, TransportVisual> = {
   land: { icon: carIcon, altitude: ARC_ALTITUDE_GROUND, durationMs: 5200, orient: "flip", nativeFacesRight: true },
-  air: { icon: planeIcon, altitude: 0.44, durationMs: 3600, orient: "rotate", nativeFacesRight: true },
+  air: { icon: planeIcon, altitude: ARC_ALTITUDE_AIR, durationMs: 3600, orient: "rotate", nativeFacesRight: true },
   water: { icon: shipIcon, altitude: ARC_ALTITUDE_GROUND, durationMs: 6000, orient: "flip", nativeFacesRight: false },
 };
 
@@ -90,6 +108,36 @@ function greatCirclePoint(
 /** Высота над поверхностью в точке маршрута: 0 на концах, апекс в середине. */
 function arcAltitude(t: number, apex: number): number {
   return Math.sin(Math.PI * t) * apex;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+/** Угловое расстояние (радианы) между двумя точками — central angle (haversine). */
+function angularDistance(startLat: number, startLng: number, endLat: number, endLng: number): number {
+  const phi1 = startLat * DEG;
+  const phi2 = endLat * DEG;
+  const dPhi = (endLat - startLat) * DEG;
+  const dLam = (endLng - startLng) * DEG;
+  const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLam / 2) ** 2;
+  return 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Высота камеры (globe.gl altitude) под угловой размер маршрута: ближе города → меньше
+ * altitude (сильнее зум). Геометрия — камера на расстоянии d от центра видит концы
+ * маршрута под углом targetHalfAngle; результат зажат в [MIN, MAX].
+ */
+function altitudeForSeparation(separationRad: number): number {
+  if (separationRad <= 0) {
+    return CAMERA_MAX_ALTITUDE;
+  }
+
+  const targetHalfAngle = (ROUTE_VIEWPORT_SPAN * CAMERA_FOV_DEG * DEG) / 2;
+  const half = separationRad / 2;
+  const cameraDistance = Math.cos(half) + Math.sin(half) / Math.tan(targetHalfAngle);
+  return clamp(cameraDistance - 1, CAMERA_MIN_ALTITUDE, CAMERA_MAX_ALTITUDE);
 }
 
 function buildTrail(
@@ -176,7 +224,13 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
   const startLng = origin?.longitude ?? 0;
   const endLat = destination?.latitude ?? 0;
   const endLng = destination?.longitude ?? 0;
-  const apex = transportType ? TRANSPORT_VISUAL[transportType].altitude : 0;
+
+  // Угловое расстояние между городами — вход и для авто-зума камеры, и для высоты дуги.
+  const separation = bothReal ? angularDistance(startLat, startLng, endLat, endLng) : 0;
+  // Высоту дуги масштабируем по длине маршрута (sqrt — чтобы средние маршруты не были
+  // слишком плоскими), иначе у близких городов при зуме дуга станет вертикальным шпилем.
+  const apexBase = transportType ? TRANSPORT_VISUAL[transportType].altitude : 0;
+  const apex = apexBase * Math.sqrt(Math.min(1, separation / ARC_REFERENCE_SEPARATION_RAD));
 
   // Подпись каждого пина — на сторону, противоположную второму концу, чтобы текст не
   // ложился на дугу. Восточнее (бо́льшая долгота) ≈ правее на экране (камера на середине).
@@ -253,18 +307,23 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
     // Камера: середина маршрута (оба города), либо единственный выбранный город,
     // либо нейтральный вид по умолчанию, пока ничего не выбрано.
     let target = DEFAULT_VIEW;
+    let altitude = CAMERA_MAX_ALTITUDE;
     if (bothReal) {
       target = greatCirclePoint(startLat, startLng, endLat, endLng, 0.5);
+      // Чем ближе города — тем сильнее зум (altitude падает к CAMERA_MIN_ALTITUDE).
+      altitude = altitudeForSeparation(separation);
     } else if (originReal) {
       target = { lat: startLat, lng: startLng };
     } else if (destinationReal) {
       target = { lat: endLat, lng: endLng };
     }
 
-    // Меньшая altitude = крупнее сфера: вертикальный размах глобуса совпадает с формой,
-    // и он читается как пара к ней, а не как маленький «висящий» шар по центру сцены.
-    globe.pointOfView({ lat: target.lat * 0.6, lng: target.lng, altitude: 1.7 }, 1200);
-  }, [bothReal, originReal, destinationReal, startLat, startLng, endLat, endLng, size.width, size.height]);
+    // На дальнем зуме чуть смещаем центр к экватору (вид «парой к форме»); на ближнем —
+    // центрируем ровно на маршруте, иначе зум уведёт города из кадра.
+    const zoomT = (altitude - CAMERA_MIN_ALTITUDE) / (CAMERA_MAX_ALTITUDE - CAMERA_MIN_ALTITUDE);
+    const latFactor = 1 - 0.4 * zoomT;
+    globe.pointOfView({ lat: target.lat * latFactor, lng: target.lng, altitude }, 1200);
+  }, [bothReal, originReal, destinationReal, startLat, startLng, endLat, endLng, separation, size.width, size.height]);
 
   // Движение транспорта + поворот иконки по экранному курсу.
   useEffect(() => {

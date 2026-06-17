@@ -128,6 +128,13 @@ export function CityAutocomplete({ label, placeholder, value, onChange, error }:
             onChange={(event) => handleInputChange(event.currentTarget.value)}
             onFocus={() => combobox.openDropdown()}
             onBlur={() => combobox.closeDropdown()}
+            // Tab (как и Enter) применяет первую подсказку; без preventDefault фокус
+            // уходит на следующее поле. Через capture, т.к. onKeyDown перехватывает Mantine.
+            onKeyDownCapture={(event) => {
+              if (event.key === "Tab" && combobox.dropdownOpened && options.length > 0) {
+                handleOptionSubmit(String(options[0].geonameId));
+              }
+            }}
             rightSection={loading ? <Loader size="xs" /> : null}
             rightSectionPointerEvents="none"
             error={error}
