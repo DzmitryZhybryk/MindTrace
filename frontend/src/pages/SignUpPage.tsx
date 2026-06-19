@@ -62,8 +62,8 @@ export function SignUpPage() {
     setFormError(null);
     setSubmitting(true);
     try {
-      const { access_token } = await register(values);
-      setAccessToken(access_token);
+      const { accessToken } = await register(values);
+      setAccessToken(accessToken);
       navigate("/");
     } catch (err) {
       setFormError(applyApiError(err, form));

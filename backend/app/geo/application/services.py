@@ -1,21 +1,21 @@
-from app.geo.application.ports import CityRepositoryPort
-from app.geo.application.schemas import CitySearchItem, CitySearchResult, SearchCitiesCommand
-from app.geo.domain.entities import City
+from app.geo.application.ports import PlaceRepositoryPort
+from app.geo.application.schemas import PlaceSearchItem, PlaceSearchResult, SearchPlacesCommand
+from app.geo.domain.entities import Place
 from app.geo.domain.enums import Language
 from app.shared.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-class CityService:
-    """Поиск городов по газеттиру для автокомплита поездки (read-only)."""
+class PlaceService:
+    """Поиск мест по газеттиру для автокомплита поездки (read-only)."""
 
-    def __init__(self, *, repository: CityRepositoryPort) -> None:
+    def __init__(self, *, repository: PlaceRepositoryPort) -> None:
         self._repository = repository
 
-    async def search_cities(self, command: SearchCitiesCommand) -> CitySearchResult:
+    async def search_places(self, command: SearchPlacesCommand) -> PlaceSearchResult:
         """
-        Ищет города под автокомплит по префиксу имени и резолвит их имена под язык запроса.
+        Ищет места под автокомплит по префиксу имени и резолвит их имена под язык запроса.
 
         Args:
             command: Запрос автокомплита (текст, язык, лимит)
@@ -26,42 +26,42 @@ class CityService:
         # Убираем пробелы по краям, чтобы не сбить LIKE-паттерн префиксного матча.
         search_text = command.search_text.strip()
         if not search_text:
-            return CitySearchResult(items=())
+            return PlaceSearchResult(items=())
 
-        cities = await self._repository.search(search_text=search_text, limit=command.limit)
-        items = tuple(self._build_item(city=city, language=command.language) for city in cities)
-        return CitySearchResult(items=items)
+        places = await self._repository.search_places_by_name(search_text=search_text, limit=command.limit)
+        items = tuple(self._build_item(place=place, language=command.language) for place in places)
+        return PlaceSearchResult(items=items)
 
-    def _build_item(self, *, city: City, language: Language) -> CitySearchItem:
+    def _build_item(self, *, place: Place, language: Language) -> PlaceSearchItem:
         """
         Собирает кандидата выдачи и фиксирует сигнал отсутствующего перевода.
 
         Args:
-            city: Найденный город
+            place: Найденное место
             language: Язык, под который резолвится отображаемое имя
 
         Returns:
             Кандидат автокомплита с именем, резолвнутым под язык запроса
         """
-        name = city.display_name(language=language)
-        if city.localized_name(language=language) is None:
-            # Сигнал качества данных: город без перевода на язык запроса (отдаём фоллбэк
-            # name_en). Фильтр в Grafana/Loki: event="geo.city_name_missing"; топ
-            # кандидатов на ручной бэкфилл = count by geoname_id, приоритет по population.
+        name = place.display_name(language=language)
+        if place.localized_name(language=language) is None:
+            # Сигнал качества данных: место без перевода на язык запроса (отдаём фоллбэк
+            # name_en). Фильтр в Grafana/Loki: event="geo.place_name_missing"; топ
+            # кандидатов на ручной бэкфилл = count by place_id, приоритет по population.
             logger.info(
-                "geo.city_name_missing",
+                "geo.place_name_missing",
                 language=language,
-                geoname_id=city.geoname_id,
+                place_id=place.place_id,
                 name=name,
-                country_code=city.country_code,
-                population=city.population,
+                country_code=place.country_code,
+                population=place.population,
             )
 
-        return CitySearchItem(
-            geoname_id=city.geoname_id,
+        return PlaceSearchItem(
+            place_id=place.place_id,
             name=name,
-            country_code=city.country_code,
-            latitude=city.latitude,
-            longitude=city.longitude,
-            population=city.population,
+            country_code=place.country_code,
+            latitude=place.latitude,
+            longitude=place.longitude,
+            population=place.population,
         )

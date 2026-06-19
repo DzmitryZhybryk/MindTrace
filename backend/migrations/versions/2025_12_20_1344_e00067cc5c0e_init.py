@@ -1,5 +1,5 @@
 """
-Migration name: initial schema — users, user_credentials, refresh_tokens, challenges, geonames_cities
+Migration name: initial schema — users, user_credentials, refresh_tokens, challenges, geo_places, journeys
 
 Revision ID: e00067cc5c0e
 Revises: None
@@ -92,42 +92,73 @@ def upgrade() -> None:
         postgresql_where=sa.text("used_at IS NULL"),
     )
 
-    # Газеттир GeoNames — read-only справочник ГОРОДОВ (feature_class='P', население ≥ 5000)
-    # для автокомплита поездки. Наполняется офлайн bulk-загрузкой данных GeoNames.
+    # Газеттир мест — read-only справочник-кэш для автокомплита поездки (наполняется офлайн
+    # bulk-загрузкой; газеттир cities-only). id — суррогатный UUID (вендор-нейтральный, наружу);
+    # external_id — вендорский ключ источника ("GeoNames:524901" → завтра "Google:..."), внутренний.
     op.create_table(
-        "geonames_cities",
-        # geoname_id — натуральный ключ из дампа GeoNames, НЕ автоинкремент.
-        sa.Column("geoname_id", sa.BigInteger(), autoincrement=False, nullable=False),
+        "geo_places",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("external_id", sa.String(length=255), nullable=False),
+        sa.Column("kind", sa.String(length=20), nullable=False),
         sa.Column("name_en", sa.String(length=200), nullable=False),
         sa.Column("name_ru", sa.String(length=200), nullable=True),
         sa.Column("country_code", sa.String(length=2), nullable=False),
         sa.Column("latitude", sa.REAL(), nullable=False),
         sa.Column("longitude", sa.REAL(), nullable=False),
         sa.Column("population", sa.Integer(), nullable=False, server_default="0"),
-        sa.PrimaryKeyConstraint("geoname_id"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("external_id", name="uq_geo_places_external_id"),
     )
     # Префиксный автокомплит lower(name) LIKE 'q%' — btree text_pattern_ops по lower(name_*)
     # берётся range-scan'ом для запроса любой длины (даже 1 символ).
     op.create_index(
-        "ix_geonames_cities_name_en_prefix",
-        "geonames_cities",
+        "ix_geo_places_name_en_prefix",
+        "geo_places",
         [sa.text("lower(name_en) text_pattern_ops")],
     )
     op.create_index(
-        "ix_geonames_cities_name_ru_prefix",
-        "geonames_cities",
+        "ix_geo_places_name_ru_prefix",
+        "geo_places",
         [sa.text("lower(name_ru) text_pattern_ops")],
     )
     # btree по country_code — фильтр/сужение выдачи автокомплита по стране.
-    op.create_index("ix_geonames_cities_country_code", "geonames_cities", ["country_code"])
+    op.create_index("ix_geo_places_country_code", "geo_places", ["country_code"])
+
+    # Поездка пользователя — плоский снапшот маршрута (без JSONB, без ссылки на справочник):
+    # origin/destination денормализованы колонками (имя/страна/координаты), идентичность места
+    # = координаты. user_id — без FK (другой домен), проиндексирован под выборки поездок юзера.
+    op.create_table(
+        "journeys",
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("user_id", sa.Uuid(), nullable=False),
+        sa.Column("origin_name", sa.String(length=200), nullable=False),
+        sa.Column("origin_country_code", sa.String(length=2), nullable=False),
+        sa.Column("origin_latitude", sa.REAL(), nullable=False),
+        sa.Column("origin_longitude", sa.REAL(), nullable=False),
+        sa.Column("destination_name", sa.String(length=200), nullable=False),
+        sa.Column("destination_country_code", sa.String(length=2), nullable=False),
+        sa.Column("destination_latitude", sa.REAL(), nullable=False),
+        sa.Column("destination_longitude", sa.REAL(), nullable=False),
+        sa.Column("transport_type", sa.String(length=20), nullable=False),
+        sa.Column("distance_km", sa.REAL(), nullable=False),
+        sa.Column("traveled_on", sa.Date(), nullable=False),
+        sa.Column("traveled_on_precision", sa.String(length=5), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index("ix_journeys_user_id", "journeys", ["user_id"])
 
 
 def downgrade() -> None:
-    # geonames_cities создаётся последней в upgrade — дропается первой.
-    op.drop_index("ix_geonames_cities_country_code", table_name="geonames_cities")
-    op.drop_index("ix_geonames_cities_name_ru_prefix", table_name="geonames_cities")
-    op.drop_index("ix_geonames_cities_name_en_prefix", table_name="geonames_cities")
-    op.drop_table("geonames_cities")
+    # journeys и geo_places создаются последними в upgrade — дропаются первыми.
+    op.drop_index("ix_journeys_user_id", table_name="journeys")
+    op.drop_table("journeys")
+    op.drop_index("ix_geo_places_country_code", table_name="geo_places")
+    op.drop_index("ix_geo_places_name_ru_prefix", table_name="geo_places")
+    op.drop_index("ix_geo_places_name_en_prefix", table_name="geo_places")
+    op.drop_table("geo_places")
     op.drop_index(
         "ix_challenges_active_user_id_type",
         table_name="challenges",

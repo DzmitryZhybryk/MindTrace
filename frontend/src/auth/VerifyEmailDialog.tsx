@@ -181,8 +181,8 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
  */
 async function syncVerifiedClaim(): Promise<void> {
   try {
-    const { access_token } = await refresh();
-    setAccessToken(access_token);
+    const { accessToken } = await refresh();
+    setAccessToken(accessToken);
   } catch {
     // Refresh может упасть, если refresh-cookie истёк; UI всё равно
     // получит актуальное состояние при следующем логине.

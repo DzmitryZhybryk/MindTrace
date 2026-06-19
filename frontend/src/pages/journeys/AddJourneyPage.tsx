@@ -31,9 +31,9 @@ export function AddJourneyPage() {
         if (!value) {
           return t("addJourney.validation.destinationRequired");
         }
-        // geonameId > 0 — только реальный выбор из автокомплита; провизорный
-        // свободный ввод (sentinel 0) на этом шаге «тем же городом» не считаем.
-        if (values.origin && value.geonameId > 0 && values.origin.geonameId === value.geonameId) {
+        // Идентичность места — placeId справочника: предвалидируем тот же город ещё на
+        // фронте (бэк всё равно проверит по координатам). placeId на create не уходит.
+        if (values.origin && values.origin.placeId === value.placeId) {
           return t("addJourney.validation.sameCity");
         }
         return null;

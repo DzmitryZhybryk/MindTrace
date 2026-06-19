@@ -3,10 +3,10 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { searchCities, type CitySuggestion } from "../api/journeys";
+import { searchPlaces, type PlaceSuggestion } from "../api/journeys";
 import pinIcon from "../assets/emoji/pin.svg";
 
-// Размер эмодзи-пина в строке подсказки города (px).
+// Размер эмодзи-пина в строке подсказки места (px).
 const PIN_ICON_SIZE = 20;
 
 // Префиксный поиск (btree) отрабатывает и на 1 символе, но порог 2 режет флуд запросов.
@@ -16,29 +16,29 @@ const RESULT_LIMIT = 20;
 // Высота списка ограничена — длинная выдача скроллится внутри дропдауна, а не тянет страницу.
 const DROPDOWN_MAX_HEIGHT = 320;
 
-interface CityAutocompleteProps {
+interface PlaceAutocompleteProps {
   label: string;
   placeholder: string;
-  value: CitySuggestion | null;
-  onChange: (city: CitySuggestion | null) => void;
+  value: PlaceSuggestion | null;
+  onChange: (place: PlaceSuggestion | null) => void;
   error?: ReactNode;
 }
 
 /**
- * Поле выбора города с автокомплитом по газеттиру GeoNames (`/v1/geo/cities/search`).
+ * Поле выбора места с автокомплитом по газеттиру (`/v1/geo/places/search`).
  *
  * Набор → debounce → запрос (устаревшие отменяются `AbortController`) → выпадающий
- * список кандидатов; выбор кладёт реальный `CitySuggestion` с `geonameId` в `value`.
- * Пока город не выбран, `value` держится `null` (форма требует выбранный кандидат).
- * При пустой выдаче подсказка ведёт пользователя попробовать другое написание/английское
- * имя (страховка от дырявого `name_ru`).
+ * список кандидатов; выбор кладёт `PlaceSuggestion` (с `placeId`) в `value`. Пока место
+ * не выбрано, `value` держится `null` (форма требует выбранный кандидат). При пустой
+ * выдаче подсказка ведёт пользователя попробовать другое написание/английское имя
+ * (страховка от дырявого `name_ru`).
  */
-export function CityAutocomplete({ label, placeholder, value, onChange, error }: CityAutocompleteProps) {
+export function PlaceAutocomplete({ label, placeholder, value, onChange, error }: PlaceAutocompleteProps) {
   const { t, i18n } = useTranslation("journeys");
   const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() });
 
   const [search, setSearch] = useState(value?.name ?? "");
-  const [options, setOptions] = useState<CitySuggestion[]>([]);
+  const [options, setOptions] = useState<PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [debouncedSearch] = useDebouncedValue(search, DEBOUNCE_MS);
   // Подпись уже выбранного кандидата: пока текст ей равен — повторно не ищем (иначе
@@ -64,9 +64,9 @@ export function CityAutocomplete({ label, placeholder, value, onChange, error }:
 
     const controller = new AbortController();
     setLoading(true);
-    searchCities({ searchText: trimmed, language, limit: RESULT_LIMIT, signal: controller.signal })
-      .then((cities) => {
-        setOptions(cities);
+    searchPlaces({ searchText: trimmed, language, limit: RESULT_LIMIT, signal: controller.signal })
+      .then((places) => {
+        setOptions(places);
         setLoading(false);
       })
       .catch((err: unknown) => {
@@ -92,7 +92,7 @@ export function CityAutocomplete({ label, placeholder, value, onChange, error }:
 
   const handleInputChange = (text: string) => {
     setSearch(text);
-    // Редактирование сбрасывает выбранный город: пока не выбран новый кандидат, value пуст.
+    // Редактирование сбрасывает выбранное место: пока не выбран новый кандидат, value пуст.
     selectedNameRef.current = null;
     if (value !== null) {
       onChange(null);
@@ -102,7 +102,7 @@ export function CityAutocomplete({ label, placeholder, value, onChange, error }:
   };
 
   const handleOptionSubmit = (optionValue: string) => {
-    const picked = options.find((city) => String(city.geonameId) === optionValue);
+    const picked = options.find((place) => place.placeId === optionValue);
     if (picked !== undefined) {
       selectedNameRef.current = picked.name;
       onChange(picked);
@@ -132,7 +132,7 @@ export function CityAutocomplete({ label, placeholder, value, onChange, error }:
             // уходит на следующее поле. Через capture, т.к. onKeyDown перехватывает Mantine.
             onKeyDownCapture={(event) => {
               if (event.key === "Tab" && combobox.dropdownOpened && options.length > 0) {
-                handleOptionSubmit(String(options[0].geonameId));
+                handleOptionSubmit(options[0].placeId);
               }
             }}
             rightSection={loading ? <Loader size="xs" /> : null}
@@ -144,14 +144,14 @@ export function CityAutocomplete({ label, placeholder, value, onChange, error }:
         <Combobox.Dropdown hidden={options.length === 0}>
           <Combobox.Options>
             <ScrollArea.Autosize mah={DROPDOWN_MAX_HEIGHT} type="scroll">
-              {options.map((city) => {
-                const country = countryNames.of(city.countryCode) ?? city.countryCode;
+              {options.map((place) => {
+                const country = countryNames.of(place.countryCode) ?? place.countryCode;
                 return (
-                  <Combobox.Option value={String(city.geonameId)} key={city.geonameId}>
+                  <Combobox.Option value={place.placeId} key={place.placeId}>
                     <Group gap="xs" wrap="nowrap">
                       <img src={pinIcon} width={PIN_ICON_SIZE} height={PIN_ICON_SIZE} alt="" />
                       <div>
-                        <Text size="sm">{city.name}</Text>
+                        <Text size="sm">{place.name}</Text>
                         <Text size="xs" c="dimmed">
                           {country}
                         </Text>
@@ -167,7 +167,7 @@ export function CityAutocomplete({ label, placeholder, value, onChange, error }:
 
       {isEmpty && (
         <Text size="sm" c="dimmed">
-          {t("addJourney.city.hintEmpty")}
+          {t("addJourney.place.hintEmpty")}
         </Text>
       )}
     </Stack>

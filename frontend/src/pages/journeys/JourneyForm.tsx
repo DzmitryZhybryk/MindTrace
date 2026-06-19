@@ -5,14 +5,12 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { applyApiError } from "../../api/errors";
-import { createJourney, type CitySuggestion, type TransportType } from "../../api/journeys";
+import { createJourney, TRANSPORT_TYPES, type PlaceSuggestion, type TransportType } from "../../api/journeys";
 import carIcon from "../../assets/emoji/car.svg";
 import planeIcon from "../../assets/emoji/plane.svg";
 import shipIcon from "../../assets/emoji/ship.svg";
-import { CityAutocomplete } from "../../components/CityAutocomplete";
+import { PlaceAutocomplete } from "../../components/PlaceAutocomplete";
 import { JourneyDateField } from "./JourneyDateField";
-
-const TRANSPORT_TYPES: readonly TransportType[] = ["land", "air", "water"];
 
 // Иконка среды передвижения для select транспорта (метка — из i18n, картинка — Noto-эмодзи SVG).
 const TRANSPORT_ICONS: Record<TransportType, string> = {
@@ -25,8 +23,8 @@ const TRANSPORT_ICONS: Record<TransportType, string> = {
 const TRANSPORT_ICON_SIZE = 22;
 
 export type JourneyFormValues = {
-  origin: CitySuggestion | null;
-  destination: CitySuggestion | null;
+  origin: PlaceSuggestion | null;
+  destination: PlaceSuggestion | null;
   transport: TransportType | null;
   year: string | null;
   month: string | null;
@@ -42,7 +40,8 @@ interface JourneyFormProps {
 /**
  * Форма добавления поездки: откуда/куда (автокомплит), транспорт и приблизительная
  * дата. `form` поднят в AddJourneyPage, чтобы глобус-герой реагировал на ввод
- * вживую. Города и реальный сабмит к `/v1/journeys` подключаются следующими шагами.
+ * вживую. Сабмит строит payload из выбранных мест/транспорта/даты, шлёт POST
+ * `/v1/journeys` (`createJourney`) и при успехе ведёт на `/journeys`.
  */
 export function JourneyForm({ form }: JourneyFormProps) {
   const { t } = useTranslation("journeys");
@@ -59,8 +58,18 @@ export function JourneyForm({ form }: JourneyFormProps) {
     setSubmitting(true);
     try {
       await createJourney({
-        originGeonameId: values.origin.geonameId,
-        destinationGeonameId: values.destination.geonameId,
+        origin: {
+          name: values.origin.name,
+          countryCode: values.origin.countryCode,
+          latitude: values.origin.latitude,
+          longitude: values.origin.longitude,
+        },
+        destination: {
+          name: values.destination.name,
+          countryCode: values.destination.countryCode,
+          latitude: values.destination.latitude,
+          longitude: values.destination.longitude,
+        },
         transportType: values.transport,
         traveledYear: Number(values.year),
         traveledMonth: values.hasMonth && values.month ? Number(values.month) : null,
@@ -84,7 +93,7 @@ export function JourneyForm({ form }: JourneyFormProps) {
   return (
     <form onSubmit={form.onSubmit(handleSubmit)}>
       <Stack gap="md">
-        <CityAutocomplete
+        <PlaceAutocomplete
           label={t("addJourney.origin.label")}
           placeholder={t("addJourney.origin.placeholder")}
           value={values.origin}
@@ -92,7 +101,7 @@ export function JourneyForm({ form }: JourneyFormProps) {
           error={form.errors.origin}
         />
 
-        <CityAutocomplete
+        <PlaceAutocomplete
           label={t("addJourney.destination.label")}
           placeholder={t("addJourney.destination.placeholder")}
           value={values.destination}

@@ -23,12 +23,14 @@ import { clearAccessToken } from "../auth/tokenStore";
 import enAuth from "../locales/en/auth.json";
 import enCommon from "../locales/en/common.json";
 import enErrors from "../locales/en/errors.json";
+import enJourneys from "../locales/en/journeys.json";
 import { i18n } from "../i18n";
 import { server } from "./handlers";
 
 i18n.addResourceBundle("en", "common", enCommon, true, true);
 i18n.addResourceBundle("en", "auth", enAuth, true, true);
 i18n.addResourceBundle("en", "errors", enErrors, true, true);
+i18n.addResourceBundle("en", "journeys", enJourneys, true, true);
 
 void i18n.changeLanguage("en");
 
@@ -58,6 +60,10 @@ class ResizeObserverStub {
 }
 
 globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+
+// scrollIntoView: нет в jsdom; Mantine Combobox (selectFirstOption/навигация стрелками)
+// вызывает его на активной опции.
+Element.prototype.scrollIntoView = () => {};
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 

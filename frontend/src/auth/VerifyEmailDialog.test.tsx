@@ -86,7 +86,7 @@ describe("VerifyEmailDialog", () => {
         HttpResponse.json({ code: "auth.email_already_verified", message: "ru" }, { status: 409 }),
       ),
       http.post("/v1/auth/refresh/", () =>
-        HttpResponse.json({ access_token: refreshedToken, token_type: "bearer" }),
+        HttpResponse.json({ accessToken: refreshedToken, tokenType: "bearer" }),
       ),
     );
     const { user, onClose, onVerified } = renderDialog();
@@ -149,7 +149,7 @@ describe("VerifyEmailDialog", () => {
     const refreshedToken = makeAccessToken({ email_verified: true });
     server.use(
       http.post("/v1/auth/refresh/", () =>
-        HttpResponse.json({ access_token: refreshedToken, token_type: "bearer" }),
+        HttpResponse.json({ accessToken: refreshedToken, tokenType: "bearer" }),
       ),
     );
     const { user, onClose, onVerified } = renderDialog();

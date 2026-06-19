@@ -127,7 +127,7 @@ describe("apiFetch", () => {
   it("на прочий 401 делает один refresh, повторяет запрос и возвращает результат", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(401, { code: "auth.invalid_access_token", message: "x" }))
-      .mockResolvedValueOnce(jsonResponse(200, { access_token: "new-token" }))
+      .mockResolvedValueOnce(jsonResponse(200, { accessToken: "new-token" }))
       .mockResolvedValueOnce(jsonResponse(200, { ok: true }));
 
     const result = await apiFetch("/v1/protected/", { method: "POST" });
@@ -140,7 +140,7 @@ describe("apiFetch", () => {
   it("если повтор после refresh упал — бросает ошибку повтора", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(401, { code: "auth.invalid_access_token", message: "x" }))
-      .mockResolvedValueOnce(jsonResponse(200, { access_token: "new-token" }))
+      .mockResolvedValueOnce(jsonResponse(200, { accessToken: "new-token" }))
       .mockResolvedValueOnce(jsonResponse(500, { code: "internal_error", message: "x" }));
 
     await expect(apiFetch("/v1/protected/")).rejects.toMatchObject({ status: 500, code: "internal_error" });
@@ -193,7 +193,7 @@ describe("ensureRefreshed", () => {
 
     const first = ensureRefreshed();
     const second = ensureRefreshed();
-    inFlight.resolve(jsonResponse(200, { access_token: "shared" }));
+    inFlight.resolve(jsonResponse(200, { accessToken: "shared" }));
     const [firstResult, secondResult] = await Promise.all([first, second]);
 
     expect(firstResult).toBe(true);
@@ -203,7 +203,7 @@ describe("ensureRefreshed", () => {
   });
 
   it("возвращает true и пишет токен при успешном refresh", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(200, { access_token: "fresh" }));
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { accessToken: "fresh" }));
 
     expect(await ensureRefreshed()).toBe(true);
     expect(getAccessToken()).toBe("fresh");

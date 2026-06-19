@@ -53,14 +53,14 @@ class FakeRefreshTokenRepository(RefreshTokenRepositoryPort):
     async def insert_refresh_token(self, token: RefreshTokenEntity) -> None:
         self.by_hash[token.token_hash] = token
 
-    async def find_by_hash_for_update(self, token_hash: str) -> RefreshTokenEntity | None:
+    async def find_refresh_token_by_hash_for_update(self, token_hash: str) -> RefreshTokenEntity | None:
         return self.by_hash.get(token_hash)
 
     async def update_refresh_token_by_id(self, token: RefreshTokenEntity) -> None:
         # Сущность мутируется на месте; стор держит ту же ссылку — переписываем для явности.
         self.by_hash[token.token_hash] = token
 
-    async def revoke_all_active_by_user_id(self, user_id: UUID) -> None:
+    async def revoke_all_active_refresh_tokens_by_user_id(self, user_id: UUID) -> None:
         for token in self.by_hash.values():
             if token.user_id == user_id and not token.is_revoked:
                 token.revoke()

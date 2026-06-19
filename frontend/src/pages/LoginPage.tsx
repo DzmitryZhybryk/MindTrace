@@ -36,8 +36,8 @@ export function LoginPage() {
   const handleSubmit = async (values: LoginFormValues) => {
     setSubmitting(true);
     try {
-      const { access_token } = await login(values);
-      setAccessToken(access_token);
+      const { accessToken } = await login(values);
+      setAccessToken(accessToken);
       navigate("/");
     } catch (err) {
       // Общие ошибки логина (неверные креды, сеть) показываем под полем password.

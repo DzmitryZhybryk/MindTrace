@@ -58,5 +58,27 @@ path = "app.users.infra"
 depends_on = ["app.shared", "app.users.application", "app.users.domain"]
 
 [[modules]]
+path = "app.journeys.domain"
+depends_on = ["app.shared"]
+
+[[modules]]
+path = "app.journeys.application"
+depends_on = ["app.journeys.domain", "app.shared"]
+
+[[modules]]
+path = "app.journeys.infra"
+depends_on = ["app.journeys.domain", "app.journeys.application", "app.shared"]
+
+[[modules]]
+path = "app.journeys.presentation"
+depends_on = [
+    "app.journeys.application",
+    "app.journeys.infra",
+    "app.journeys.domain",
+    "app.shared",
+    "app.auth.presentation",
+]
+
+[[modules]]
 path = "app.shared"
 depends_on = []

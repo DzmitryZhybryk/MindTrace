@@ -1,4 +1,4 @@
-.PHONY: help format lint typecheck dead-code audit arch check test coverage test-unit test-integration test-api test-auth test-users test-shared migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
+.PHONY: help format lint typecheck dead-code audit arch check test coverage test-unit test-integration test-api test-auth test-users test-shared test-journeys test-geo migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -96,6 +96,12 @@ test-users: ## Run users-domain tests, any level (-m users)
 
 test-shared: ## Run shared-infra tests, any level (-m shared)
 	@uv run --no-sync pytest -m shared || [ $$? -eq 5 ]
+
+test-journeys: ## Run journeys-domain tests, any level (-m journeys)
+	@uv run --no-sync pytest -m journeys || [ $$? -eq 5 ]
+
+test-geo: ## Run geo-domain tests, any level (-m geo)
+	@uv run --no-sync pytest -m geo || [ $$? -eq 5 ]
 
 migrate-create: ## Create a new migration (usage: make migrate-create "description")
 	@ARGS="$(filter-out $@,$(MAKECMDGOALS))"; \

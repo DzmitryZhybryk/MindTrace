@@ -152,6 +152,41 @@ Application и infra-слои оперируют разными типами т�
 
 Двусмысленности нет, потому что путь импорта однозначно указывает роль (`from app.auth.presentation.schemas import RegisterRequest` vs `from app.auth.infra.clients.internal_users_client import CreateUserRequest`).
 
+### Именование методов репозиториев
+
+**Имя метода репозитория (и парного метода в `*RepositoryPort` и в фейке) всегда содержит сущность/агрегат, над которым работает.** Имя самодостаточно и грепается по имени сущности. Паттерн:
+
+> `<verb>_<entity>[_<qualifier>]`
+
+- **verb** — операция: `insert` / `find` / `update` / `revoke` / `search` / `delete` …
+- **entity** — доменное существительное, которым владеет репозиторий (`challenge`, `refresh_token`, `user_credentials`, `place`); **множественное число для bulk-операций** над многими строками (`revoke_all_active_refresh_tokens_by_user_id`).
+- **qualifier** (опционально) — уточнение выборки/состояния/блокировки: `by_id`, `by_hash`, `by_user_id`, `by_email_or_username`, `active`, `for_update`.
+
+Правильно (эталон — `ChallengeRepository`):
+
+```python
+insert_challenge(challenge)
+find_active_challenge_for_update(user_id, challenge_type)
+update_challenge_by_id(challenge)
+find_refresh_token_by_hash_for_update(token_hash)
+revoke_all_active_refresh_tokens_by_user_id(user_id)
+find_user_credentials_by_user_id(user_id)
+search_places_by_name(search_text, limit)
+```
+
+Антипаттерн — сущность пропущена, по имени непонятно, что именно ищем/меняем, и нельзя грепнуть по сущности:
+
+```python
+find_by_hash_for_update(token_hash)      # что find'им по хэшу?
+revoke_all_active_by_user_id(user_id)    # что revoke'аем?
+```
+
+Зачем так:
+
+1. **Грепаемость** — `grep find_refresh_token_by_hash_for_update` или просто по `refresh_token` находит все вызовы метода/сущности разом.
+2. **Различимость Protocol'ов** — имя с сущностью гарантированно уникально между близкими репозиториями, что снимает риск structural-typing-подмены реализаций (см. memory `feedback_protocol_method_names`).
+3. **Само-документируемость на call-site** — `uow.refresh_token_repository.find_refresh_token_by_hash_for_update(...)` читается целиком; кажущаяся избыточность с именем атрибута намеренная и дешёвая.
+
 ### Cводная таблица именования по слоям
 
 | Слой | Вход | Выход |

@@ -131,8 +131,8 @@ export function ensureRefreshed(): Promise<boolean> {
         return false;
       }
 
-      const body = (await response.json()) as { access_token: string };
-      setAccessToken(body.access_token);
+      const body = (await response.json()) as { accessToken: string };
+      setAccessToken(body.accessToken);
       return true;
     } catch {
       return false;

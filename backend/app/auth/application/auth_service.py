@@ -158,7 +158,9 @@ class AuthService:
 
         async with self._uow.transaction():
             token_hash = self._token_issuer.hash_refresh_secret(refresh_secret=refresh_secret)
-            token = await self._uow.refresh_token_repository.find_by_hash_for_update(token_hash=token_hash)
+            token = await self._uow.refresh_token_repository.find_refresh_token_by_hash_for_update(
+                token_hash=token_hash,
+            )
             if token is None or token.is_revoked:
                 return
 
@@ -193,12 +195,16 @@ class AuthService:
         """
         async with self._uow.transaction():
             token_hash = self._token_issuer.hash_refresh_secret(refresh_secret=refresh_secret)
-            token = await self._uow.refresh_token_repository.find_by_hash_for_update(token_hash=token_hash)
+            token = await self._uow.refresh_token_repository.find_refresh_token_by_hash_for_update(
+                token_hash=token_hash,
+            )
             if token is None:
                 raise InvalidRefreshTokenError()
 
             if token.is_revoked:
-                await self._uow.refresh_token_repository.revoke_all_active_by_user_id(user_id=token.user_id)
+                await self._uow.refresh_token_repository.revoke_all_active_refresh_tokens_by_user_id(
+                    user_id=token.user_id,
+                )
                 await self._uow.commit()
                 raise InvalidRefreshTokenError()
 

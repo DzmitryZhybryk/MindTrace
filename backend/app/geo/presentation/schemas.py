@@ -1,20 +1,29 @@
 from typing import Annotated
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.shared.schemas import CamelModel
 
 
-class CityResponse(BaseModel):
-    """Кандидат автокомплита для фронта."""
+class PlaceResponse(CamelModel):
+    """
+    Кандидат автокомплита для фронта.
 
-    geoname_id: int
-    name: Annotated[str, Field(description="Имя города, резолвнутое под язык запроса (параметр lang).")]
+    ``place_id`` (наружу ``placeId``) — суррогатный id справочника, стабильный ключ
+    кандидата для выбора/рендера; вендорский ключ источника наружу не отдаётся. На create
+    он НЕ уходит — поездка снапшотит данные места (имя/координаты), не ссылку.
+    """
+
+    place_id: UUID
+    name: Annotated[str, Field(description="Имя места, резолвнутое под язык запроса (параметр language).")]
     country_code: str
     latitude: float
     longitude: float
     population: int
 
 
-class CitySearchResponse(BaseModel):
+class PlaceSearchResponse(CamelModel):
     """Ответ автокомплита — упорядоченная выдача кандидатов (по убыванию населения)."""
 
-    items: list[CityResponse]
+    items: list[PlaceResponse]

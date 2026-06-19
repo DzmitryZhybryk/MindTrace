@@ -3,16 +3,21 @@ import { apiFetch } from "./client";
 
 /**
  * Среда передвижения, а не конкретный вид транспорта: наземный/воздушный/водный.
- * String-literal union, зеркалит backend `TransportType` (StrEnum).
+ * Рантайм-список — единый источник: тип выводится из него, форма строит по нему опции.
+ * Значения зеркалят backend `TransportType` (StrEnum); контракт пиннится с обеих сторон —
+ * бэк `backend/tests/api/journeys/test_transport_type_contract.py`, фронт `journeys.test.ts`.
  */
-export type TransportType = "land" | "air" | "water";
+export const TRANSPORT_TYPES = ["land", "air", "water"] as const;
+
+export type TransportType = (typeof TRANSPORT_TYPES)[number];
 
 /**
- * Кандидат города из автокомплита (газеттир GeoNames). Идентичность — `geonameId`;
- * остальные поля денормализованы для подписи кандидата и снапшота поездки на бэке.
+ * Кандидат места из автокомплита (`/v1/geo/places/search`). `placeId` — суррогатный id
+ * справочника (стабильный ключ выбора/рендера); вендорский ключ источника наружу не
+ * отдаётся. На create `placeId` НЕ уходит — поездка снапшотит данные места, не ссылку.
  */
-export type CitySuggestion = {
-  geonameId: number;
+export type PlaceSuggestion = {
+  placeId: string;
   name: string;
   countryCode: string;
   latitude: number;
@@ -20,80 +25,60 @@ export type CitySuggestion = {
   population: number;
 };
 
+/** Снапшот места для тела создания поездки (payload-on-create): без id, только данные. */
+export type JourneyPlace = {
+  name: string;
+  countryCode: string;
+  latitude: number;
+  longitude: number;
+};
+
 /**
- * Контракт создания поездки. Дата приблизительная: год обязателен, месяц и день
- * опциональны (точность бэк выводит из заполненности). Города уходят как
- * `geonameId` — снапшот координат/имени/страны делает бэк.
+ * Контракт создания поездки. Места уходят снапшотом (имя/страна/координаты) — бэк их не
+ * резолвит. Дата приблизительная: год обязателен, месяц и день опциональны (точность бэк
+ * выводит из заполненности).
  */
 export type CreateJourneyPayload = {
-  originGeonameId: number;
-  destinationGeonameId: number;
+  origin: JourneyPlace;
+  destination: JourneyPlace;
   transportType: TransportType;
   traveledYear: number;
   traveledMonth: number | null;
   traveledDay: number | null;
 };
 
-/** Параметры поиска города под автокомплит. */
-export type SearchCitiesParams = {
+/** Параметры поиска места под автокомплит. */
+export type SearchPlacesParams = {
   searchText: string;
   language: LanguageCode;
   limit?: number;
   signal?: AbortSignal;
 };
 
-/** Сырой кандидат из ответа `/v1/geo/cities/search` (snake_case бэка). */
-type CityResponseBody = {
-  geoname_id: number;
-  name: string;
-  country_code: string;
-  latitude: number;
-  longitude: number;
-  population: number;
-};
-
-type CitySearchResponseBody = {
-  items: CityResponseBody[];
-};
-
 /**
- * Ищет города по префиксу имени для автокомплита поездки.
+ * Ищет места по префиксу имени для автокомплита поездки.
  *
- * Имена в ответе уже резолвнуты под `language`; порядок — по убыванию населения.
- * `signal` нужен, чтобы отменять устаревшие запросы при быстром наборе.
+ * Имена в ответе уже резолвнуты под `language`; порядок — по убыванию населения. Провод
+ * camelCase 1:1 с `PlaceSuggestion` — маппинга нет. `signal` нужен, чтобы отменять
+ * устаревшие запросы при быстром наборе.
  */
-export async function searchCities({
+export async function searchPlaces({
   searchText,
   language,
   limit = 10,
   signal,
-}: SearchCitiesParams): Promise<CitySuggestion[]> {
+}: SearchPlacesParams): Promise<PlaceSuggestion[]> {
   const params = new URLSearchParams({
-    search_text: searchText,
+    searchText,
     language,
     limit: String(limit),
   });
-  const response = await apiFetch<CitySearchResponseBody>(`/v1/geo/cities/search/?${params.toString()}`, { signal });
-  return response.items.map((item) => ({
-    geonameId: item.geoname_id,
-    name: item.name,
-    countryCode: item.country_code,
-    latitude: item.latitude,
-    longitude: item.longitude,
-    population: item.population,
-  }));
+  const response = await apiFetch<{ items: PlaceSuggestion[] }>(`/v1/geo/places/search/?${params.toString()}`, {
+    signal,
+  });
+  return response.items;
 }
 
 export function createJourney(payload: CreateJourneyPayload): Promise<void> {
-  return apiFetch<void>("/v1/journeys/", {
-    method: "POST",
-    json: {
-      origin_geoname_id: payload.originGeonameId,
-      destination_geoname_id: payload.destinationGeonameId,
-      transport_type: payload.transportType,
-      traveled_year: payload.traveledYear,
-      traveled_month: payload.traveledMonth,
-      traveled_day: payload.traveledDay,
-    },
-  });
+  return apiFetch<void>("/v1/journeys/", { method: "POST", json: payload });
 }

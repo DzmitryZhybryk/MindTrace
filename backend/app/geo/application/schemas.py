@@ -1,14 +1,15 @@
 from dataclasses import dataclass
+from uuid import UUID
 
 from app.geo.domain.enums import Language
 
-__all__ = ["CitySearchItem", "CitySearchResult", "SearchCitiesCommand"]
+__all__ = ["PlaceSearchItem", "PlaceSearchResult", "SearchPlacesCommand"]
 
 
 @dataclass(frozen=True, slots=True)
-class SearchCitiesCommand:
+class SearchPlacesCommand:
     """
-    Намерение «найти города по префиксу имени» — вход ``CityService.search_cities``.
+    Намерение «найти места по префиксу имени» — вход ``PlaceService.search_places``.
 
     Транспортный объект без валидации/семантических типов → dataclass (см. DTO
     conventions).
@@ -20,10 +21,16 @@ class SearchCitiesCommand:
 
 
 @dataclass(frozen=True, slots=True)
-class CitySearchItem:
-    """Один кандидат автокомплита — имя уже резолвнуто под язык запроса."""
+class PlaceSearchItem:
+    """
+    Один кандидат автокомплита — имя уже резолвнуто под язык запроса.
 
-    geoname_id: int
+    ``place_id`` — суррогатный id справочника (UUID), стабильный ключ кандидата для фронта
+    (выбор/React-key); вендорский ключ источника наружу не отдаётся. На create этот id НЕ
+    уходит — поездка снапшотит данные места (имя/координаты), не ссылку на справочник.
+    """
+
+    place_id: UUID
     name: str
     country_code: str
     latitude: float
@@ -32,7 +39,7 @@ class CitySearchItem:
 
 
 @dataclass(frozen=True, slots=True)
-class CitySearchResult:
+class PlaceSearchResult:
     """Результат поиска — упорядоченная выдача кандидатов."""
 
-    items: tuple[CitySearchItem, ...]
+    items: tuple[PlaceSearchItem, ...]

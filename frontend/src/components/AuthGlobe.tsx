@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 
 import { CAPITALS, type Capital } from "../data/capitals";
+import { GLOBE_ATMOSPHERE_COLOR, GLOBE_BUMP_URL, GLOBE_TEXTURE_URL } from "./globe/constants";
+import { centralAngleRad, toDeg } from "./globe/geo";
 import "./auth-globe.css";
-
-const GLOBE_TEXTURE_URL = "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg";
-const GLOBE_BUMP_URL = "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png";
 
 // Столицы выбираются среди тех, что в пределах этого угла от точки наведения камеры.
 // За время жизни метки (4с) глобус повернётся на ~10° (autoRotateSpeed=0.4 → ~2.4°/с),
@@ -15,16 +14,6 @@ const CAPITAL_LIFETIME_MS = 4000;
 const CAPITAL_INTERVAL_MS = 3000;
 
 type ActiveCapital = { id: number; capital: Capital };
-
-function angularDistanceDeg(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const phi1 = toRad(lat1);
-  const phi2 = toRad(lat2);
-  const dLng = toRad(lng2 - lng1);
-  const cosD = Math.sin(phi1) * Math.sin(phi2) + Math.cos(phi1) * Math.cos(phi2) * Math.cos(dLng);
-  const clamped = Math.max(-1, Math.min(1, cosD));
-  return (Math.acos(clamped) * 180) / Math.PI;
-}
 
 function createCapitalElement(d: object): HTMLElement {
   const item = d as ActiveCapital;
@@ -111,7 +100,7 @@ export function AuthGlobe() {
     const spawn = () => {
       const view = globe.pointOfView();
       const candidates = CAPITALS.filter(
-        (c) => angularDistanceDeg(view.lat, view.lng, c.lat, c.lng) <= VISIBILITY_ANGLE_DEG,
+        (c) => toDeg(centralAngleRad(view.lat, view.lng, c.lat, c.lng)) <= VISIBILITY_ANGLE_DEG,
       );
       if (candidates.length === 0) return;
 
@@ -158,7 +147,7 @@ export function AuthGlobe() {
           globeImageUrl={GLOBE_TEXTURE_URL}
           bumpImageUrl={GLOBE_BUMP_URL}
           showAtmosphere
-          atmosphereColor="#4ab3ff"
+          atmosphereColor={GLOBE_ATMOSPHERE_COLOR}
           atmosphereAltitude={0.22}
           htmlElementsData={activeCapitals as unknown as object[]}
           htmlLat={(d: object) => (d as ActiveCapital).capital.lat}

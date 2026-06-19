@@ -43,8 +43,8 @@ async def test_register_valid_body_returns_201_with_token_and_cookie(
 
     assert response.status_code == 201
     body = response.json()
-    assert body["access_token"]
-    assert body["token_type"] == "bearer"
+    assert body["accessToken"]
+    assert body["tokenType"] == "bearer"
     assert len(fake_users_client.created) == 1
 
     set_cookie = find_set_cookie(response, "refresh_token")
@@ -180,8 +180,8 @@ async def test_login_valid_credentials_returns_200_with_token_and_cookie(
 
     assert response.status_code == 200
     body = response.json()
-    assert body["access_token"]
-    assert body["token_type"] == "bearer"
+    assert body["accessToken"]
+    assert body["tokenType"] == "bearer"
     assert find_set_cookie(response, "refresh_token") is not None
 
 
@@ -280,7 +280,7 @@ async def test_refresh_rotates_token_and_sets_new_cookie(
     response = await client.post("/v1/auth/refresh/", headers={"Cookie": f"refresh_token={secret}"})
 
     assert response.status_code == 200
-    assert response.json()["access_token"]
+    assert response.json()["accessToken"]
     assert token.is_revoked
     assert len(fake_refresh_token_repository.by_hash) == 2
 

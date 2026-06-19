@@ -3,18 +3,18 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.geo.application.services import CityService
-from app.geo.infra.repositories import CityRepository
+from app.geo.application.services import PlaceService
+from app.geo.infra.repositories import PlaceRepository
 from app.shared.infra.postgres.dependency import db_session_dependency
 
 
-def city_repository_dependency(
+def place_repository_dependency(
     session: Annotated[AsyncSession, Depends(db_session_dependency)],
-) -> CityRepository:
-    return CityRepository(session=session)
+) -> PlaceRepository:
+    return PlaceRepository(session=session)
 
 
-def city_service_dependency(
-    repository: Annotated[CityRepository, Depends(city_repository_dependency)],
-) -> CityService:
-    return CityService(repository=repository)
+def place_service_dependency(
+    repository: Annotated[PlaceRepository, Depends(place_repository_dependency)],
+) -> PlaceService:
+    return PlaceService(repository=repository)

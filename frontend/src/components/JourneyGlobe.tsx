@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 
-import type { CitySuggestion, TransportType } from "../api/journeys";
+import type { PlaceSuggestion, TransportType } from "../api/journeys";
 import carIcon from "../assets/emoji/car.svg";
 import planeIcon from "../assets/emoji/plane.svg";
 import shipIcon from "../assets/emoji/ship.svg";
+import { GLOBE_ATMOSPHERE_COLOR, GLOBE_BUMP_URL, GLOBE_TEXTURE_URL } from "./globe/constants";
+import { centralAngleRad } from "./globe/geo";
 import "./journey-globe.css";
-
-const GLOBE_TEXTURE_URL = "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg";
-const GLOBE_BUMP_URL = "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png";
 
 // Вид камеры по умолчанию, пока ни один город не выбран (нейтральный, без демо-маршрута).
 const DEFAULT_VIEW = { lat: 20, lng: 0 };
@@ -114,16 +113,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-/** Угловое расстояние (радианы) между двумя точками — central angle (haversine). */
-function angularDistance(startLat: number, startLng: number, endLat: number, endLng: number): number {
-  const phi1 = startLat * DEG;
-  const phi2 = endLat * DEG;
-  const dPhi = (endLat - startLat) * DEG;
-  const dLam = (endLng - startLng) * DEG;
-  const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLam / 2) ** 2;
-  return 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 /**
  * Высота камеры (globe.gl altitude) под угловой размер маршрута: ближе города → меньше
  * altitude (сильнее зум). Геометрия — камера на расстоянии d от центра видит концы
@@ -179,14 +168,14 @@ function createPinElement(name: string, side: LabelSide): HTMLElement {
   return wrapper;
 }
 
-/** Город «реальный» (выбран из автокомплита), если у него есть координаты. */
-function isRealCity(city: CitySuggestion | null): city is CitySuggestion {
-  return city !== null && (city.latitude !== 0 || city.longitude !== 0);
+/** Место «реальное» (выбрано из автокомплита), если у него есть координаты. */
+function isRealPlace(place: PlaceSuggestion | null): place is PlaceSuggestion {
+  return place !== null && (place.latitude !== 0 || place.longitude !== 0);
 }
 
 interface JourneyGlobeProps {
-  origin: CitySuggestion | null;
-  destination: CitySuggestion | null;
+  origin: PlaceSuggestion | null;
+  destination: PlaceSuggestion | null;
   transportType: TransportType | null;
   originLabel: string;
   destinationLabel: string;
@@ -214,8 +203,8 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
 
   // Пины и маршрут показываем только для реально выбранных городов — на пустой
   // форме глобус чистый (без демо-маршрута и подписей «Откуда»/«Куда»).
-  const originReal = isRealCity(origin);
-  const destinationReal = isRealCity(destination);
+  const originReal = isRealPlace(origin);
+  const destinationReal = isRealPlace(destination);
   const bothReal = originReal && destinationReal;
   // Маршрут (дуга + транспорт) — только когда выбраны оба города И среда передвижения.
   const showRoute = bothReal && !!transportType;
@@ -226,7 +215,7 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
   const endLng = destination?.longitude ?? 0;
 
   // Угловое расстояние между городами — вход и для авто-зума камеры, и для высоты дуги.
-  const separation = bothReal ? angularDistance(startLat, startLng, endLat, endLng) : 0;
+  const separation = bothReal ? centralAngleRad(startLat, startLng, endLat, endLng) : 0;
   // Высоту дуги масштабируем по длине маршрута (sqrt — чтобы средние маршруты не были
   // слишком плоскими), иначе у близких городов при зуме дуга станет вертикальным шпилем.
   const apexBase = transportType ? TRANSPORT_VISUAL[transportType].altitude : 0;
@@ -410,7 +399,7 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
           globeImageUrl={GLOBE_TEXTURE_URL}
           bumpImageUrl={GLOBE_BUMP_URL}
           showAtmosphere
-          atmosphereColor="#4ab3ff"
+          atmosphereColor={GLOBE_ATMOSPHERE_COLOR}
           atmosphereAltitude={0.2}
           pathsData={pathsData}
           pathPoints={(d: object) => (d as { coords: TrailPoint[] }).coords}

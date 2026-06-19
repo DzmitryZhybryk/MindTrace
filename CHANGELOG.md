@@ -11,6 +11,24 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-06-18
+
+### Backend 0.10.0
+
+- **Домен `geo` — автокомплит мест.** `GET /v1/geo/places/search` по газеттиру городов (`geo_places`, read-only справочник-кэш): префиксный матч `lower(name) LIKE 'q%'` (btree `text_pattern_ops`), ранжирование по населению, имена резолвятся под язык запроса (фоллбэк `name_en` + лог-сигнал отсутствующего перевода). Страны — ISO alpha-2
+- **Домен `journeys` — создание поездки.** `POST /v1/journeys/` payload-on-create: место снапшотится из тела (имя/страна/координаты), к справочнику бэк не ходит; great-circle расстояние (haversine) считает домен; приблизительная дата `ApproximateDate` (год обяз., месяц/день опц., нормализация + валидация). Транспорт — `TransportType` StrEnum (`land`/`air`/`water`). Новые машинные коды ошибок `journeys.same_origin_destination` / `journeys.date_in_future` / `journeys.invalid_date` (400; date-ошибки несут `details.field='year'` — routing-хинт на поле формы)
+- **camelCase на HTTP-границе.** Общий `CamelModel`; presentation-схемы всех доменов на camelCase (вкл. auth `accessToken`/`tokenType`, register `termsAccepted`/`marketingEmailsConsent`). Меняет прежний snake_case-контракт auth — фронт релизится вместе
+- **Миграция `e00067cc5c0e`** — таблицы `geo_places` (UUID-суррогат + `external_id` провенанс, вендор-нейтральный) и `journeys` (плоский снапшот маршрута, без JSONB и без FK на справочник)
+- Новые эндпоинты + смена контракта → bump минорный (pre-1.0)
+
+### Frontend 0.13.0
+
+- **Реальный автокомплит места** — `PlaceAutocomplete` (debounce + AbortController) против `GET /v1/geo/places/search`, тип `PlaceSuggestion`; пришёл на смену прежней активной заглушке `CityAutocomplete`/`CitySuggestion` (0.12.0)
+- **Создание поездки замкнуто end-to-end** — `JourneyForm` → `createJourney` → `POST /v1/journeys` (payload-on-create) → переход на `/journeys`
+- **camelCase-провод** — снят snake↔camel маппинг (auth `accessToken`, journeys `traveledYear`/`traveledMonth`/`traveledDay`)
+- **Локализованные ошибки journeys** — namespace `journeys` в `errors.json` (EN/RU); доменные ошибки даты рендерятся под полем года, а не теряются
+- Фича-релиз → bump минорный (внешнего контракта у SPA нет)
+
 ## 2026-06-15
 
 ### Frontend 0.12.0

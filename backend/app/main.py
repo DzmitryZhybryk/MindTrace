@@ -5,6 +5,7 @@ from typing import Any
 from app.auth import auth_router
 from app.auth.infra import auth_blueprint
 from app.geo import geo_router
+from app.journeys import journey_router
 
 # Настраиваем логирование в самом начале, до всех остальных импортов
 # Это гарантирует, что handlers создаются с правильным форматтером
@@ -89,5 +90,6 @@ def create_app() -> BFastAPI:
 
     app.include_router(auth_router, prefix="/v1/auth", tags=["v1.auth"])
     app.include_router(geo_router, prefix="/v1/geo", tags=["v1.geo"])
+    app.include_router(journey_router, prefix="/v1/journeys", tags=["v1.journeys"])
 
     return app
