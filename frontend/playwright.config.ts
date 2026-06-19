@@ -3,13 +3,16 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * Playwright e2e-конфиг.
  *
- * Тесты гоняются против поднятого стека (`docker compose up -d` из корня репозитория):
- * frontend на :5173 проксирует `/v1` на backend. Поэтому здесь НЕТ `webServer` —
- * стек внешний, его жизненный цикл не на Playwright.
+ * Тесты гоняются против ОТДЕЛЬНОГО одноразового стека (`docker-compose.e2e.yaml`), который
+ * поднимает корневой `make test-e2e`: frontend на :5273 проксирует `/v1` на backend, Postgres
+ * живёт в tmpfs и сносится после прогона — дев-база (`docker compose up -d`, :5173) не трогается.
+ * Поэтому здесь НЕТ `webServer` — жизненный цикл стека на Makefile, а не на Playwright.
  *
- * baseURL переопределяется через E2E_BASE_URL (напр. для CI против другого хоста).
+ * Дефолтный baseURL — порт одноразового стека (:5273), а не дев-фронта (:5173): голый `npm run e2e`
+ * не должен случайно бить в дев-стек и засорять его БД. Переопределяется через E2E_BASE_URL
+ * (`make test-e2e` его и проставляет; напр. для CI против другого хоста).
  */
-const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:5173";
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:5273";
 
 export default defineConfig({
   testDir: "./e2e",

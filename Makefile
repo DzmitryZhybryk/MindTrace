@@ -1,4 +1,4 @@
-.PHONY: help check test test-back test-front test-integration test-e2e test-infra
+.PHONY: help check test test-back test-front test-integration test-e2e e2e-clean test-infra
 
 .DEFAULT_GOAL := help
 
@@ -51,14 +51,40 @@ test-front: ## Frontend unit+component (jsdom)
 
 test: test-back test-front ## Все быстрые тесты обеих сторон (на каждый коммит)
 
-# --- Tests (heavy): перед мержем/релизом, нужна внешняя инфра ---
+# --- Tests (heavy): перед мержем/релизом. Самодостаточны: каждый поднимает свою одноразовую инфру ---
+# Один проект (mindtrace_e2e) = фиксированные имена → ресурсы переиспользуются, а не плодятся по
+# прогонам. `down -v --remove-orphans` сносит контейнеры + проектную сеть + тома (вкл. node_modules;
+# данные PG — в tmpfs/RAM, диска не касаются). Что переживает: собранные образы (4 шт., bounded,
+# переиспользуются) и глобальный build-cache — это НЕ per-run мусор; глубокая зачистка — `make e2e-clean`.
+COMPOSE_E2E := docker compose -f docker-compose.e2e.yaml
+
 test-integration: ## Backend integration (testcontainers → Docker-демон)
 	@$(MAKE) -C backend test-integration
 
-test-e2e: ## Frontend e2e (Playwright; нужен поднятый стек: docker compose up -d)
-	@$(MAKE) -C frontend test-e2e
+# Поднимает одноразовый e2e-стек (tmpfs-Postgres, дев-база не трогается), гоняет Playwright и сносит
+# всё начисто. Защитный `down` ПЕРЕД `up` подчищает хвосты прерванного прошлого прогона (Ctrl-C до
+# teardown'а). Финальный `down` выполняется всегда (даже при падении тестов), exit-код — от тестов.
+# `--wait frontend` (а не голый `--wait`) ждёт healthcheck фронта по цепочке и не спотыкается о
+# штатный выход one-shot'а migrate.
+test-e2e: ## Frontend e2e (Playwright; сам поднимает одноразовый стек и полностью сносит его после — docker compose up НЕ нужен)
+	@echo "${GREEN}INFO :  ${AZURE}Up ephemeral e2e stack (${PURPLE}docker-compose.e2e.yaml${AZURE})${RESET}"
+	@$(COMPOSE_E2E) down -v --remove-orphans 2>/dev/null || true
+	@{ $(COMPOSE_E2E) up -d --wait frontend && \
+	   E2E_BASE_URL=http://localhost:5273 $(MAKE) -C frontend test-e2e; }; \
+	status=$$?; \
+	if [ $$status -ne 0 ]; then \
+		echo "${GREEN}INFO :  ${AZURE}e2e failed (exit $$status) — tail логов frontend/app перед сносом${RESET}"; \
+		$(COMPOSE_E2E) logs --tail=30 frontend app 2>/dev/null || true; \
+	fi; \
+	echo "${GREEN}INFO :  ${AZURE}Tearing down ephemeral e2e stack (containers + network + volumes)${RESET}"; \
+	$(COMPOSE_E2E) down -v --remove-orphans; \
+	exit $$status
 
-test-infra: ## Тяжёлый прогон: backend integration + frontend e2e (стек должен быть поднят)
-	@echo "${GREEN}INFO :  ${AZURE}Heavy suite — стек должен быть поднят (${PURPLE}docker compose up -d${AZURE})${RESET}"
+e2e-clean: ## Глубокая зачистка e2e-стека: контейнеры + сеть + тома + собранные образы (--rmi local)
+	@echo "${GREEN}INFO :  ${AZURE}Deep clean ephemeral e2e stack (incl. built images)${RESET}"
+	@$(COMPOSE_E2E) down -v --remove-orphans --rmi local 2>/dev/null || true
+
+test-infra: ## Тяжёлый прогон: backend integration + frontend e2e (оба самодостаточны, внешний стек не нужен)
+	@echo "${GREEN}INFO :  ${AZURE}Heavy suite — обе стороны поднимают свою одноразовую инфру (Docker-демон должен быть запущен)${RESET}"
 	@$(MAKE) test-integration
 	@$(MAKE) test-e2e

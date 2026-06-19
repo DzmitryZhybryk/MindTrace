@@ -27,7 +27,8 @@ make be-<target>                           # любой backend-таргет (ma
 make fe-<target>                           # любой frontend-таргет (make fe-lint, fe-check)
 make check                                 # полный гейт обеих сторон (lint + typecheck + тесты unit+api/component)
 make test                                  # быстрые тесты обеих сторон (test-back + test-front, без Docker)
-make test-infra                            # тяжёлые: backend integration + frontend e2e (нужен поднятый стек)
+make test-infra                            # тяжёлые: backend integration + frontend e2e (оба самодостаточны — поднимают свою одноразовую инфру; нужен только Docker-демон)
+make test-e2e                              # frontend e2e: сам поднимает одноразовый стек (docker-compose.e2e.yaml), гоняет Playwright, сносит с -v; дев-база не трогается
 
 # Backend dev — из backend/ (самодостаточный uv-проект)
 cd backend

@@ -11,6 +11,14 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-06-19
+
+### Project
+
+- **Изолированный одноразовый стек для фронтовых e2e** (`docker-compose.e2e.yaml`). Раньше Playwright-e2e гонялись против дев-стека и копили тестовых юзеров в персистентной `mindtrace_pg` (`pg_data`) навсегда. Теперь `make test-e2e` поднимает отдельный проект (`mindtrace_e2e`) с Postgres в **tmpfs** (БД в RAM, без named-тома → исчезает на `down -v`), гоняет тесты и сносит стек — дев-база не трогается. Подход backend-testcontainers (одноразовая БД на прогон) перенесён на уровень стека
+- **Без правок бэка.** Схему procrastinate в e2e-стеке штатно накатывает `worker` на старте (как в деве), app-схему — one-shot `migrate` существующей командой `alembic upgrade head`; письма заглушены оверрайдом `RESEND_BASE_URL` (реальный Resend не дёргается). Готовность детерминирована healthcheck'ами (`worker` healthy = схема `procrastinate_jobs` готова → нет гонки на первом `register`)
+- `make test-infra` теперь самодостаточен с обеих сторон (backend integration — testcontainers, frontend e2e — свой стек): предварительный `docker compose up -d` больше не нужен, только запущенный Docker-демон
+
 ## 2026-06-18
 
 ### Backend 0.10.0
