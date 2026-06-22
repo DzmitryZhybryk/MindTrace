@@ -129,6 +129,7 @@ export function AuthGlobe() {
   return (
     <div
       ref={containerRef}
+      className="auth-globe"
       style={{
         position: "relative",
         width: "100%",

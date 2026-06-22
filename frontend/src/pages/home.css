@@ -1,3 +1,17 @@
+/*
+ * Десктоп (фланговый режим, >1280px): Home — экран фиксированной высоты без прокрутки.
+ * height:100vh + overflow:hidden убирают полосу скролла (иначе прозрачная sticky-шапка
+ * просвечивает наезжающим баннером); в пару к ограничению размера стейджа ниже это
+ * гарантирует, что приветствие/глобус/aura и фланговые колонки помещаются в один экран.
+ * На ≤1280px (стек) правило не действует — там Home нормально скроллится.
+ */
+@media (min-width: 1281px) {
+  .home-shell {
+    height: 100vh;
+    overflow: hidden;
+  }
+}
+
 .home-main {
   flex: 1;
   display: flex;
@@ -38,7 +52,11 @@
 
 .home-stage {
   position: relative;
-  width: min(70vmin, 700px);
+  /* Размер привязан и к высоте окна (calc(100vh - чроме)), чтобы Home помещался в
+     экран без вертикальной прокрутки и НИЧЕГО не подрезалось: ~300px — это шапка +
+     email-баннер + приветствие + aura + отступы над/под глобусом, с запасом. На узких
+     экранах (стек) бьёт 70vmin, не calc. */
+  width: min(70vmin, 700px, calc(100vh - 300px));
   aspect-ratio: 1 / 1;
   border-radius: 50%;
   background: radial-gradient(circle at 32% 30%, #0a1230 0%, #02040a 62%, #000 100%);
@@ -62,14 +80,6 @@
   );
   z-index: -1;
   pointer-events: none;
-}
-
-.home-stage__hint {
-  color: #cfe6ff;
-  font: 500 12px/1.4 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.55;
 }
 
 .home-recommend {
@@ -298,4 +308,41 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #64748b;
+}
+
+/*
+ * ---- Узкие экраны: фланговые absolute-колонки → вертикальный поток --------
+ * На десктопе «you might like» (слева) и achievements/recent (справа) висят
+ * по бокам глобуса через position:absolute. Ниже ~1280px глобус (vmin) начинает
+ * с ними пересекаться, поэтому возвращаем колонки в нормальный поток: greeting →
+ * глобус → aura → рекомендации → статистика, одной колонкой, без наезжаний.
+ */
+@media (max-width: 1280px) {
+  .home-main {
+    justify-content: flex-start;
+    gap: 28px;
+    padding: 16px 20px 48px;
+  }
+
+  .home-recommend,
+  .home-right {
+    position: static;
+    transform: none;
+    inset: auto;
+    width: 100%;
+    max-width: 420px;
+    align-items: flex-start;
+  }
+
+  /* Правая колонка на десктопе выровнена вправо — в потоке выравниваем влево. */
+  .home-right,
+  .home-stats,
+  .home-stats__list,
+  .home-stat,
+  .home-recent,
+  .home-recent__list,
+  .home-recent__item {
+    align-items: flex-start;
+    text-align: left;
+  }
 }
