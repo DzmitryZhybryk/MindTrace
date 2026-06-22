@@ -11,7 +11,7 @@ import "./journeys.css";
  */
 export function JourneysLayout() {
   return (
-    <div className="app-shell">
+    <div className="app-shell journeys-shell">
       <AppHeader />
 
       <main className="journeys-stage">

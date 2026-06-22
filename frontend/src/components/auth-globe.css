@@ -1,3 +1,9 @@
+/* Тонировка глобуса под палитру — общий токен --globe-tint (см. index.css).
+   Фильтр только на <canvas>; HTML-метки столиц лежат отдельным слоем. */
+.auth-globe canvas {
+  filter: var(--globe-tint);
+}
+
 .capital-label {
   position: relative;
   width: 0;

@@ -1,4 +1,5 @@
-import { Avatar, Group, Indicator, Menu, UnstyledButton } from "@mantine/core";
+import { Avatar, Burger, Drawer, Group, Indicator, Menu, Stack, UnstyledButton } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
@@ -23,12 +24,16 @@ const PLACEHOLDER_PROFILE_NAME = "Dzmitry Zhybryk";
  * Держит бренд, первичную навигацию с подсветкой активного раздела, выбор
  * языка и меню профиля (logout идемпотентен на бэке). Под шапкой рендерит
  * баннер верификации email — единая точка, чтобы он не дублировался по страницам.
+ *
+ * На узких экранах (<sm) первичная навигация уезжает в бургер-Drawer, чтобы шапка
+ * не переполнялась; язык и профиль остаются в шапке.
  */
 export function AppHeader() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { emailVerified, clearSession, openVerifyDialog } = useAuth();
+  const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false);
 
   const handleLogout = async () => {
     try {
@@ -42,6 +47,8 @@ export function AppHeader() {
     }
   };
 
+  const isTabActive = (to: string) => pathname === to || pathname.startsWith(`${to}/`);
+
   return (
     <>
       <header className="app-header">
@@ -50,23 +57,20 @@ export function AppHeader() {
         </div>
 
         <nav className="app-tabs" aria-label={t("nav.ariaPrimary")}>
-          {TABS.map((tab) => {
-            const isActive = pathname === tab.to || pathname.startsWith(`${tab.to}/`);
-            return (
-              <Link
-                key={tab.key}
-                to={tab.to}
-                className={isActive ? "app-tab app-tab--active" : "app-tab"}
-                aria-current={isActive ? "page" : undefined}
-              >
-                {t(`nav.${tab.key}`)}
-              </Link>
-            );
-          })}
+          {TABS.map((tab) => (
+            <Link
+              key={tab.key}
+              to={tab.to}
+              className={isTabActive(tab.to) ? "app-tab app-tab--active" : "app-tab"}
+              aria-current={isTabActive(tab.to) ? "page" : undefined}
+            >
+              {t(`nav.${tab.key}`)}
+            </Link>
+          ))}
         </nav>
 
         <div className="app-header__user">
-          <Group gap="xs" align="center">
+          <Group gap="xs" align="center" wrap="nowrap">
             <LanguageSwitcher />
             <Menu position="bottom-end" withArrow shadow="md" radius="md" width={200}>
               <Menu.Target>
@@ -94,9 +98,35 @@ export function AppHeader() {
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>
+
+            <Burger
+              opened={drawerOpened}
+              onClick={openDrawer}
+              hiddenFrom="md"
+              size="sm"
+              aria-label={t("nav.ariaPrimary")}
+            />
           </Group>
         </div>
       </header>
+
+      <Drawer opened={drawerOpened} onClose={closeDrawer} position="right" size="78%" padding="lg">
+        <Stack gap="xs">
+          {TABS.map((tab) => (
+            <Link
+              key={tab.key}
+              to={tab.to}
+              onClick={closeDrawer}
+              className={
+                isTabActive(tab.to) ? "app-drawer-link app-drawer-link--active" : "app-drawer-link"
+              }
+              aria-current={isTabActive(tab.to) ? "page" : undefined}
+            >
+              {t(`nav.${tab.key}`)}
+            </Link>
+          ))}
+        </Stack>
+      </Drawer>
 
       {!emailVerified && <EmailVerificationBanner onVerifyClick={openVerifyDialog} />}
     </>

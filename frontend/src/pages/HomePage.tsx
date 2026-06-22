@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 
 import { AppHeader } from "../components/AppHeader";
+import { ErrorBoundary } from "../components/ErrorBoundary";
+import { HomeGlobe } from "../components/HomeGlobe";
 import "./home.css";
 
 const STATS = [
@@ -36,7 +38,7 @@ export function HomePage() {
   const { t } = useTranslation("common");
 
   return (
-    <div className="app-shell">
+    <div className="app-shell home-shell">
       <AppHeader />
 
       <main className="home-main">
@@ -46,7 +48,10 @@ export function HomePage() {
         </div>
 
         <div className="home-stage">
-          <span className="home-stage__hint">globe goes here</span>
+          {/* WebGL-сбой не должен ронять Home — fallback оставит тёмный диск стейджа со свечением. */}
+          <ErrorBoundary fallback={null}>
+            <HomeGlobe />
+          </ErrorBoundary>
         </div>
 
         <p className="home-aura">{AURA_WORD}</p>

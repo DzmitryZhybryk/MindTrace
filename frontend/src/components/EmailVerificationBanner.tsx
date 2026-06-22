@@ -29,30 +29,37 @@ export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBann
         width: "100%",
         backgroundColor: "rgba(255, 244, 214, 0.92)",
         borderBottom: "1px solid rgba(217, 175, 78, 0.35)",
-        padding: "10px 32px",
+        // Правый паддинг 48px резервирует гаттер под × — центрируемый кластер в него не заезжает.
+        padding: "10px 48px",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
       }}
     >
-      {/* Сообщение + Verify now — единым кластером по центру полосы. */}
-      <Group gap="md" align="center" wrap="nowrap">
-        <Text size="sm" c="slate.8">
+      {/* Сообщение + Verify now — кластер по центру. wrap:на узких кнопка переносится
+          под текст (а не режется краем), flexShrink:0 — лейбл кнопки не сжимается. */}
+      <Group gap="sm" align="center" justify="center" wrap="wrap" style={{ rowGap: 8 }}>
+        <Text size="sm" c="slate.8" ta="center">
           {t("verificationBanner.message")}
         </Text>
-        <Button size="xs" variant="filled" color="slate" onClick={onVerifyClick}>
+        <Button
+          size="xs"
+          variant="filled"
+          color="slate"
+          onClick={onVerifyClick}
+          style={{ flexShrink: 0 }}
+        >
           {t("verificationBanner.action")}
         </Button>
       </Group>
-      {/* × — dismiss в правом углу (right:32px = гаттер хедера, под аватаром).
-          Вне потока, чтобы не сбивать центрирование кластера. */}
+      {/* × — dismiss в правом гаттере (в reserved-паддинге, не наезжает на кластер). */}
       <ActionIcon
         variant="subtle"
         color="gray"
         size="sm"
         aria-label={t("verificationBanner.dismissLabel")}
         onClick={handleDismiss}
-        style={{ position: "absolute", right: 32, top: "50%", transform: "translateY(-50%)" }}
+        style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)" }}
       >
         ×
       </ActionIcon>

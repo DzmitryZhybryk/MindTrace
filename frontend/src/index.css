@@ -11,6 +11,10 @@
   --auth-card-border: #dbe2ec;
   --auth-card-shadow: 0 12px 32px rgba(15, 30, 80, 0.1);
   --globe-bg: radial-gradient(ellipse at center, var(--brand-ink) 0%, #02040a 60%, #000 100%);
+  /* Тонировка 3D-глобусов под пастельную палитру (Phase 6): мягче и прохладнее,
+     чтобы фотореализм не спорил с лавандовым UI. Применяется к <canvas> globe.gl
+     (HTML-слои меток/транспорта не затрагиваются). Один источник на все глобусы. */
+  --globe-tint: saturate(0.72) brightness(1.06) contrast(0.97) hue-rotate(8deg);
 
   /* Единый отступ контента под шапкой для экранов с контентом «от верха»
      (Journeys и будущие рабочие экраны). Home — центрированный hero, к нему

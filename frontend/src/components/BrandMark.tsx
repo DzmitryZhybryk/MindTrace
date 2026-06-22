@@ -1,8 +1,6 @@
 import { Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 
-import { GLOBE_TEXTURE_URL } from "./globe/constants";
-
 export function BrandMark() {
   return (
     <Text
@@ -20,19 +18,21 @@ export function BrandMark() {
       }}
     >
       MyJ
-      <span
+      {/*
+        Глобус-«o» — вектор-глиф (graticule: контур + меридиан + экватор), чёткий на
+        любом размере. Заменил фото-текстуру (мутнела мелко) и заодно убрал CDN-зависимость
+        для логотипа. Цвет контура — brand-ink (#0a1230), заливка — светлый перивинкл под
+        палитру auth/app-фона; марк всегда на светлом фоне (шапки auth и app).
+      */}
+      <svg
         aria-hidden
-        style={{
-          display: "inline-block",
-          width: "0.85em",
-          height: "0.85em",
-          borderRadius: "50%",
-          backgroundImage: `url(${GLOBE_TEXTURE_URL})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          boxShadow: "0 0 4px rgba(74, 179, 255, 0.6), inset 0 0 6px rgba(0, 0, 0, 0.35)",
-        }}
-      />
+        viewBox="0 0 100 100"
+        style={{ width: "0.85em", height: "0.85em", display: "inline-block" }}
+      >
+        <circle cx="50" cy="50" r="46" fill="#dbe7fb" stroke="#0a1230" strokeWidth="6" />
+        <ellipse cx="50" cy="50" rx="18" ry="46" fill="none" stroke="#0a1230" strokeWidth="4" />
+        <line x1="6" y1="50" x2="94" y2="50" stroke="#0a1230" strokeWidth="4" />
+      </svg>
       urney
     </Text>
   );

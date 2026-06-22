@@ -8,6 +8,20 @@
   backdrop-filter: blur(10px);
 }
 
+/*
+ * Десктоп: раздел Journeys — экран фиксированной высоты без прокрутки (карта-фон +
+ * плавающие панель/легенда). height:100vh + overflow:hidden убирают любой остаточный
+ * скролл (иначе прозрачная sticky-шапка просвечивает наезжающим баннером при скролле),
+ * а stage (flex:1) сам ужимается под доступную высоту, и карта вписывается целиком.
+ * На мобиле (<md) правило не действует — там шелл стекается и нормально скроллится.
+ */
+@media (min-width: 62em) {
+  .journeys-shell {
+    height: 100vh;
+    overflow: hidden;
+  }
+}
+
 /* ---- Карта во всю ширину + плавающая панель ------------------------------ */
 .journeys-stage {
   position: relative;
@@ -284,4 +298,74 @@
   border-color: var(--mantine-color-gray-2);
   color: var(--mantine-color-gray-4);
   box-shadow: 0 0 0 4px #fff;
+}
+
+/*
+ * ---- Узкие экраны: плавающие absolute-слои → вертикальный поток -----------
+ * Десктоп держит карту/форму на весь stage, а панель и легенду — плавающими
+ * поверх. На узких это переполняется и режет форму, поэтому раскладываем stage
+ * в колонку и возвращаем слои в нормальный поток. Граница <md (61.99em) совпадает
+ * с бургером шапки и оставляет десктопный split add-journey только там, где он
+ * помещается (≥992px форма 420 + margin 276 + глобус без переполнения).
+ */
+@media (max-width: 61.99em) {
+  .journeys-stage {
+    flex-direction: column;
+    overflow: visible;
+    gap: 14px;
+    padding: 14px 16px 24px;
+  }
+
+  /* Панель из плавающей — блок в потоке сверху. */
+  .journeys-panel {
+    position: static;
+    top: auto;
+    left: auto;
+    width: 100%;
+    padding: 16px 18px;
+  }
+
+  /* Карта из absolute-заливки — блок фиксированной высоты в потоке
+     (SVG height-constrained, лишнее по ширине центр-кропится). */
+  .journeys-map {
+    position: relative;
+    inset: auto;
+    transform: none;
+    padding: 0;
+    width: 100%;
+    height: 58vh;
+    min-height: 340px;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  /* Легенда из углового overlay — обычный блок под картой у правого края. */
+  .journeys-legend-card {
+    position: static;
+    bottom: auto;
+    right: auto;
+    align-self: flex-end;
+  }
+
+  /* Добавление поездки: форма во всю ширину, декоративный глобус скрыт (как в auth). */
+  .add-journey {
+    position: static;
+    inset: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 0;
+  }
+
+  .add-journey__form-col {
+    flex: 1 1 auto;
+    max-width: 100%;
+    margin-left: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .add-journey__globe-col {
+    display: none;
+  }
 }
