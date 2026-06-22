@@ -25,23 +25,26 @@ export function AddJourneyPage() {
       hasMonth: false,
       hasDay: false,
     },
+    // Валидаторы возвращают i18n-ТОКЕН (`journeys:addJourney.validation.*`), а не
+    // готовый текст: резолв в строку — при рендере (`resolveErrorToken`), чтобы
+    // ошибка переключалась на новый язык вместе с интерфейсом.
     validate: {
-      origin: (value) => (value ? null : t("addJourney.validation.originRequired")),
+      origin: (value) => (value ? null : "journeys:addJourney.validation.originRequired"),
       destination: (value, values) => {
         if (!value) {
-          return t("addJourney.validation.destinationRequired");
+          return "journeys:addJourney.validation.destinationRequired";
         }
-        // geonameId > 0 — только реальный выбор из автокомплита; провизорный
-        // свободный ввод (sentinel 0) на этом шаге «тем же городом» не считаем.
-        if (values.origin && value.geonameId > 0 && values.origin.geonameId === value.geonameId) {
-          return t("addJourney.validation.sameCity");
+        // Идентичность места — placeId справочника: предвалидируем тот же город ещё на
+        // фронте (бэк всё равно проверит по координатам). placeId на create не уходит.
+        if (values.origin && values.origin.placeId === value.placeId) {
+          return "journeys:addJourney.validation.sameCity";
         }
         return null;
       },
-      transport: (value) => (value ? null : t("addJourney.validation.transportRequired")),
-      year: (value) => (value ? null : t("addJourney.validation.yearRequired")),
-      month: (value, values) => (values.hasMonth && !value ? t("addJourney.validation.monthRequired") : null),
-      day: (value, values) => (values.hasDay && !value ? t("addJourney.validation.dayRequired") : null),
+      transport: (value) => (value ? null : "journeys:addJourney.validation.transportRequired"),
+      year: (value) => (value ? null : "journeys:addJourney.validation.yearRequired"),
+      month: (value, values) => (values.hasMonth && !value ? "journeys:addJourney.validation.monthRequired" : null),
+      day: (value, values) => (values.hasDay && !value ? "journeys:addJourney.validation.dayRequired" : null),
     },
   });
 
@@ -62,8 +65,8 @@ export function AddJourneyPage() {
           origin={values.origin}
           destination={values.destination}
           transportType={values.transport}
-          originLabel={values.origin?.name?.trim() || t("addJourney.origin.label")}
-          destinationLabel={values.destination?.name?.trim() || t("addJourney.destination.label")}
+          originLabel={values.origin?.name?.trim() ?? ""}
+          destinationLabel={values.destination?.name?.trim() ?? ""}
         />
       </div>
     </div>

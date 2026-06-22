@@ -1,19 +1,55 @@
-import { Button, Select, Stack, Text } from "@mantine/core";
+import { Button, Group, Select, Stack, Text } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { applyApiError } from "../../api/errors";
-import { createJourney, type CitySuggestion, type TransportType } from "../../api/journeys";
-import { CityAutocomplete } from "../../components/CityAutocomplete";
+import { applyApiError, resolveErrorToken } from "../../api/errors";
+import { createJourney, TRANSPORT_TYPES, type PlaceSuggestion, type TransportType } from "../../api/journeys";
+import carIcon from "../../assets/emoji/car.svg";
+import planeIcon from "../../assets/emoji/plane.svg";
+import shipIcon from "../../assets/emoji/ship.svg";
+import { PlaceAutocomplete } from "../../components/PlaceAutocomplete";
 import { JourneyDateField } from "./JourneyDateField";
 
-const TRANSPORT_TYPES: readonly TransportType[] = ["land", "air", "water"];
+// Иконка среды передвижения для select транспорта (метка — из i18n, картинка — Noto-эмодзи SVG).
+const TRANSPORT_ICONS: Record<TransportType, string> = {
+  land: carIcon,
+  air: planeIcon,
+  water: shipIcon,
+};
+
+// Размер эмодзи-иконки транспорта в селекте (px).
+const TRANSPORT_ICON_SIZE = 22;
+
+/**
+ * Inline-иконка «поменять местами»: вертикальные стрелки вверх/вниз. SVG, а не Noto-эмодзи,
+ * т.к. это UI-контрол — рисуем штрихом по `currentColor`, чтобы тематизировался под кнопку.
+ */
+function SwapVerticalIcon() {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M7 4v15" />
+      <path d="M4 7l3 -3l3 3" />
+      <path d="M17 20v-15" />
+      <path d="M14 17l3 3l3 -3" />
+    </svg>
+  );
+}
 
 export type JourneyFormValues = {
-  origin: CitySuggestion | null;
-  destination: CitySuggestion | null;
+  origin: PlaceSuggestion | null;
+  destination: PlaceSuggestion | null;
   transport: TransportType | null;
   year: string | null;
   month: string | null;
@@ -29,13 +65,24 @@ interface JourneyFormProps {
 /**
  * Форма добавления поездки: откуда/куда (автокомплит), транспорт и приблизительная
  * дата. `form` поднят в AddJourneyPage, чтобы глобус-герой реагировал на ввод
- * вживую. Города и реальный сабмит к `/v1/journeys` подключаются следующими шагами.
+ * вживую. Сабмит строит payload из выбранных мест/транспорта/даты, шлёт POST
+ * `/v1/journeys` (`createJourney`) и при успехе ведёт на `/journeys`.
  */
 export function JourneyForm({ form }: JourneyFormProps) {
   const { t } = useTranslation("journeys");
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Меняем «откуда»/«куда» местами. Глобус развернёт маршрут и иконку транспорта сам —
+  // его анимация завязана на порядок origin→destination. Ошибки полей сбрасываем, чтобы
+  // старая валидация (например, «выберите город») не висела на перенесённом значении.
+  const handleSwap = () => {
+    const { origin, destination } = form.getValues();
+    form.setValues({ origin: destination, destination: origin });
+    form.clearFieldError("origin");
+    form.clearFieldError("destination");
+  };
 
   const handleSubmit = async (values: JourneyFormValues) => {
     if (!values.origin || !values.destination || !values.transport || !values.year) {
@@ -46,8 +93,18 @@ export function JourneyForm({ form }: JourneyFormProps) {
     setSubmitting(true);
     try {
       await createJourney({
-        originGeonameId: values.origin.geonameId,
-        destinationGeonameId: values.destination.geonameId,
+        origin: {
+          name: values.origin.name,
+          countryCode: values.origin.countryCode,
+          latitude: values.origin.latitude,
+          longitude: values.origin.longitude,
+        },
+        destination: {
+          name: values.destination.name,
+          countryCode: values.destination.countryCode,
+          latitude: values.destination.latitude,
+          longitude: values.destination.longitude,
+        },
         transportType: values.transport,
         traveledYear: Number(values.year),
         traveledMonth: values.hasMonth && values.month ? Number(values.month) : null,
@@ -66,26 +123,42 @@ export function JourneyForm({ form }: JourneyFormProps) {
   };
 
   const values = form.getValues();
+  const selectedTransportIcon = values.transport ? TRANSPORT_ICONS[values.transport] : null;
 
   return (
     <form onSubmit={form.onSubmit(handleSubmit)}>
       <Stack gap="md">
-        <CityAutocomplete
-          label={t("addJourney.origin.label")}
-          placeholder={t("addJourney.origin.placeholder")}
-          description={t("addJourney.cityComingSoon")}
-          value={values.origin}
-          onChange={(city) => form.setFieldValue("origin", city)}
-          error={form.errors.origin}
-        />
+        {/* Кнопка обмена лежит в DOM ПОСЛЕ обоих полей (визуально — поверх зазора между
+            ними), чтобы Tab шёл «откуда → куда», не цепляя кнопку. */}
+        <div className="add-journey__route">
+          <Stack gap="md">
+            <PlaceAutocomplete
+              label={t("addJourney.origin.label")}
+              placeholder={t("addJourney.origin.placeholder")}
+              value={values.origin}
+              onChange={(place) => form.setFieldValue("origin", place)}
+              error={resolveErrorToken(form.errors.origin)}
+            />
 
-        <CityAutocomplete
-          label={t("addJourney.destination.label")}
-          placeholder={t("addJourney.destination.placeholder")}
-          value={values.destination}
-          onChange={(city) => form.setFieldValue("destination", city)}
-          error={form.errors.destination}
-        />
+            <PlaceAutocomplete
+              label={t("addJourney.destination.label")}
+              placeholder={t("addJourney.destination.placeholder")}
+              value={values.destination}
+              onChange={(place) => form.setFieldValue("destination", place)}
+              error={resolveErrorToken(form.errors.destination)}
+            />
+          </Stack>
+
+          <button
+            type="button"
+            className="add-journey__swap"
+            aria-label={t("addJourney.swap")}
+            onClick={handleSwap}
+            disabled={!values.origin && !values.destination}
+          >
+            <SwapVerticalIcon />
+          </button>
+        </div>
 
         <Select
           label={t("addJourney.transport.label")}
@@ -98,14 +171,30 @@ export function JourneyForm({ form }: JourneyFormProps) {
             form.setFieldValue("transport", value as TransportType | null);
             form.clearFieldError("transport");
           }}
-          error={form.errors.transport}
+          leftSection={
+            selectedTransportIcon ? (
+              <img src={selectedTransportIcon} width={TRANSPORT_ICON_SIZE} height={TRANSPORT_ICON_SIZE} alt="" />
+            ) : null
+          }
+          renderOption={({ option }) => (
+            <Group gap="xs" wrap="nowrap">
+              <img
+                src={TRANSPORT_ICONS[option.value as TransportType]}
+                width={TRANSPORT_ICON_SIZE}
+                height={TRANSPORT_ICON_SIZE}
+                alt=""
+              />
+              <span>{option.label}</span>
+            </Group>
+          )}
+          error={resolveErrorToken(form.errors.transport)}
         />
 
         <JourneyDateField form={form} />
 
         {formError && (
           <Text size="sm" c="red" fw={500}>
-            {formError}
+            {resolveErrorToken(formError)}
           </Text>
         )}
 

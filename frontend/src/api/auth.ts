@@ -1,8 +1,8 @@
 import { apiFetch } from "./client";
 
 export type TokenResponse = {
-  access_token: string;
-  token_type: string;
+  accessToken: string;
+  tokenType: string;
 };
 
 export type RegisterPayload = {
@@ -29,8 +29,8 @@ export function register(payload: RegisterPayload): Promise<TokenResponse> {
       username: payload.username,
       email: payload.email,
       password: payload.password,
-      terms_accepted: payload.termsAccepted,
-      marketing_emails_consent: payload.marketingEmailsConsent,
+      termsAccepted: payload.termsAccepted,
+      marketingEmailsConsent: payload.marketingEmailsConsent,
     },
   });
 }

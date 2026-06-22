@@ -20,13 +20,16 @@
     "subtitle": "Where and when did you travel?",
     "origin": { "label": "From", "placeholder": "City of departure" },
     "destination": { "label": "To", "placeholder": "Destination city" },
-    "cityComingSoon": "Free text for now",
+    "swap": "Swap origin and destination",
+    "place": {
+      "hintEmpty": "Nothing found — try another spelling or the English name."
+    },
     "transport": {
       "label": "Transport",
       "placeholder": "Choose transport",
-      "land": "🚗 Land",
-      "air": "✈️ Air",
-      "water": "🚢 Water"
+      "land": "Land",
+      "air": "Air",
+      "water": "Water"
     },
     "date": {
       "legend": "When was it?",

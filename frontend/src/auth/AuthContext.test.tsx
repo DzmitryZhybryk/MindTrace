@@ -39,7 +39,7 @@ describe("AuthProvider", () => {
     server.use(
       http.post("/v1/auth/refresh/", () =>
         HttpResponse.json(
-          { access_token: makeAccessToken({ email_verified: true }) },
+          { accessToken: makeAccessToken({ email_verified: true }) },
           { status: 200 },
         ),
       ),
@@ -64,7 +64,7 @@ describe("AuthProvider", () => {
   it("событие auth-required сбрасывает сессию", async () => {
     server.use(
       http.post("/v1/auth/refresh/", () =>
-        HttpResponse.json({ access_token: makeAccessToken() }, { status: 200 }),
+        HttpResponse.json({ accessToken: makeAccessToken() }, { status: 200 }),
       ),
     );
     renderAuth();

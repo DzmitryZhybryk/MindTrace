@@ -14,7 +14,7 @@ Two orthogonal axes: **test type** (speed + dependencies) and **module/feature**
 |---|---|---|---|
 | **unit** | No (pure logic) | `api/` helpers, `auth/` token/jwt/events logic, zod schemas, pure utils | every commit, fast |
 | **component** | Simulated DOM (jsdom) | a React component: render → interact → assert what the user sees | pre-merge / CI |
-| **e2e** | Real browser + stack | full flows in Chromium/Firefox/WebKit against `docker compose` | nightly / pre-release |
+| **e2e** | Real browser + stack | full flows in Chromium/Firefox/WebKit against an ephemeral throwaway stack (`docker-compose.e2e.yaml`, `make test-e2e`) | nightly / pre-release |
 
 The **bulk of value is in `unit`** (the `api`/`auth` logic modules). Keep component thin (forms,
 dialogs, the banner) and e2e thinnest (the critical happy paths from `.claude/.test-plan.md`).

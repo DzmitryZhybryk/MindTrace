@@ -13,6 +13,19 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
+import type { PlaceSuggestion } from "../api/journeys";
+
+/**
+ * Минимальный газеттир для component-тестов автокомплита (`/v1/geo/places/search`).
+ * Имена уже «резолвнуты» (бэк отдаёт их под язык) — хендлер фильтрует по префиксу, как
+ * боевой поиск. Тест переопределяет выдачу через `server.use(...)` для пустого/ошибочного кейса.
+ */
+export const GEO_PLACES: readonly PlaceSuggestion[] = [
+  { placeId: "place-moscow", name: "Moscow", countryCode: "RU", latitude: 55.75, longitude: 37.62, population: 10_000_000 },
+  { placeId: "place-london", name: "London", countryCode: "GB", latitude: 51.5, longitude: -0.12, population: 9_000_000 },
+  { placeId: "place-paris", name: "Paris", countryCode: "FR", latitude: 48.85, longitude: 2.35, population: 2_000_000 },
+];
+
 /** base64url-кодирование payload-сегмента JWT (`+/` → `-_`, без паддинга). */
 function base64Url(value: string): string {
   return btoa(value)
@@ -46,7 +59,7 @@ export function makeAccessToken(claims: TokenClaims = {}): string {
 /** Токен по умолчанию для успешных login/register-ответов. */
 export const TEST_ACCESS_TOKEN = makeAccessToken();
 
-const successTokenBody = { access_token: TEST_ACCESS_TOKEN, token_type: "bearer" };
+const successTokenBody = { accessToken: TEST_ACCESS_TOKEN, tokenType: "bearer" };
 
 export const handlers = [
   http.post("/v1/auth/register/", () => HttpResponse.json(successTokenBody, { status: 201 })),
@@ -64,6 +77,14 @@ export const handlers = [
   // (Response(status_code=202)); parseSuccess устойчив к пустому телу любого 2xx.
   http.post("/v1/auth/email/send-verification/", () => new HttpResponse(null, { status: 202 })),
   http.post("/v1/auth/email/verify/", () => new HttpResponse(null, { status: 204 })),
+  // Geo-автокомплит: префиксная фильтрация фикстуры по searchText (зеркало боевого поиска).
+  http.get("/v1/geo/places/search/", ({ request }) => {
+    const query = (new URL(request.url).searchParams.get("searchText") ?? "").trim().toLowerCase();
+    const items = GEO_PLACES.filter((place) => place.name.toLowerCase().startsWith(query));
+    return HttpResponse.json({ items });
+  }),
+  // Создание поездки: payload-on-create → 201 без тела (как отдаёт backend).
+  http.post("/v1/journeys/", () => new HttpResponse(null, { status: 201 })),
 ];
 
 export const server = setupServer(...handlers);

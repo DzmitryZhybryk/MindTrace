@@ -68,7 +68,7 @@ describe("LoginPage", () => {
     server.use(
       http.post("/v1/auth/login/", async () => {
         await delay("infinite");
-        return HttpResponse.json({ access_token: makeAccessToken(), token_type: "bearer" });
+        return HttpResponse.json({ accessToken: makeAccessToken(), tokenType: "bearer" });
       }),
     );
     const { user } = renderLogin();

@@ -2,7 +2,7 @@
 Интеграционные тесты ``RefreshTokenRepository`` против реального Postgres.
 
 Покрывают то, что нельзя проверить на фейках: round-trip entity↔БД, bulk-UPDATE
-``revoke_all_active`` и реальный row-лок ``SELECT ... FOR UPDATE`` (основа
+``revoke_all_active_refresh_tokens`` и реальный row-лок ``SELECT ... FOR UPDATE`` (основа
 reuse-detection refresh-флоу).
 """
 
@@ -24,11 +24,11 @@ _REVOKED_AT = dt.datetime(2026, 6, 1, tzinfo=dt.UTC)
 _ALREADY_REVOKED_AT = dt.datetime(2020, 1, 1, tzinfo=dt.UTC)
 
 
-async def test_insert_then_find_by_hash_roundtrip(
+async def test_insert_then_find_refresh_token_by_hash_roundtrip(
     session_factory: async_sessionmaker[AsyncSession],
     seed_user_credentials: Callable[..., Awaitable[None]],
 ) -> None:
-    """insert + commit → ``find_by_hash_for_update`` из новой сессии возвращает ту же сущность."""
+    """insert + commit → ``find_refresh_token_by_hash_for_update`` из новой сессии возвращает ту же сущность."""
     user_id = uuid4()
     await seed_user_credentials(user_id=user_id, email="rt-roundtrip@example.com", username="rt_roundtrip")
     token = make_refresh_token(user_id=user_id, token_hash="roundtrip-hash", expires_at=_EXPIRES_AT)
@@ -37,7 +37,9 @@ async def test_insert_then_find_by_hash_roundtrip(
         await writer.commit()
 
     async with session_factory() as reader:
-        found = await RefreshTokenRepository(session=reader).find_by_hash_for_update(token_hash="roundtrip-hash")
+        found = await RefreshTokenRepository(session=reader).find_refresh_token_by_hash_for_update(
+            token_hash="roundtrip-hash",
+        )
 
     assert found is not None
     assert found.token_id == token.token_id
@@ -47,9 +49,11 @@ async def test_insert_then_find_by_hash_roundtrip(
     assert found.revoked_at is None
 
 
-async def test_find_by_hash_missing_returns_none(db_session: AsyncSession) -> None:
+async def test_find_refresh_token_by_hash_missing_returns_none(db_session: AsyncSession) -> None:
     """Поиск по несуществующему hash'у возвращает ``None``, а не падает."""
-    found = await RefreshTokenRepository(session=db_session).find_by_hash_for_update(token_hash="missing-hash")
+    found = await RefreshTokenRepository(session=db_session).find_refresh_token_by_hash_for_update(
+        token_hash="missing-hash",
+    )
 
     assert found is None
 
@@ -79,17 +83,19 @@ async def test_update_refresh_token_persists_revoked_at(
         await writer.commit()
 
     async with session_factory() as reader:
-        found = await RefreshTokenRepository(session=reader).find_by_hash_for_update(token_hash="update-hash")
+        found = await RefreshTokenRepository(session=reader).find_refresh_token_by_hash_for_update(
+            token_hash="update-hash",
+        )
 
     assert found is not None
     assert found.revoked_at == _REVOKED_AT
 
 
-async def test_revoke_all_active_revokes_only_active(
+async def test_revoke_all_active_refresh_tokens_revokes_only_active(
     session_factory: async_sessionmaker[AsyncSession],
     seed_user_credentials: Callable[..., Awaitable[None]],
 ) -> None:
-    """``revoke_all_active_by_user_id`` отзывает только активные; уже отозванный не перезаписывается."""
+    """``revoke_all_active_refresh_tokens_by_user_id`` отзывает только активные; уже отозванный не перезаписывается."""
     user_id = uuid4()
     await seed_user_credentials(user_id=user_id, email="rt-revoke@example.com", username="rt_revoke")
     active_one = make_refresh_token(user_id=user_id, token_hash="active-1", expires_at=_EXPIRES_AT)
@@ -108,14 +114,14 @@ async def test_revoke_all_active_revokes_only_active(
         await writer.commit()
 
     async with session_factory() as actor:
-        await RefreshTokenRepository(session=actor).revoke_all_active_by_user_id(user_id=user_id)
+        await RefreshTokenRepository(session=actor).revoke_all_active_refresh_tokens_by_user_id(user_id=user_id)
         await actor.commit()
 
     async with session_factory() as reader:
         repository = RefreshTokenRepository(session=reader)
-        found_active_one = await repository.find_by_hash_for_update(token_hash="active-1")
-        found_active_two = await repository.find_by_hash_for_update(token_hash="active-2")
-        found_already_revoked = await repository.find_by_hash_for_update(token_hash="revoked-1")
+        found_active_one = await repository.find_refresh_token_by_hash_for_update(token_hash="active-1")
+        found_active_two = await repository.find_refresh_token_by_hash_for_update(token_hash="active-2")
+        found_already_revoked = await repository.find_refresh_token_by_hash_for_update(token_hash="revoked-1")
 
     assert found_active_one is not None
     assert found_active_one.revoked_at is not None
@@ -125,11 +131,11 @@ async def test_revoke_all_active_revokes_only_active(
     assert found_already_revoked.revoked_at == _ALREADY_REVOKED_AT
 
 
-async def test_find_by_hash_for_update_locks_row(
+async def test_find_refresh_token_by_hash_for_update_locks_row(
     session_factory: async_sessionmaker[AsyncSession],
     seed_user_credentials: Callable[..., Awaitable[None]],
 ) -> None:
-    """``find_by_hash_for_update`` берёт реальный row-лок: вторая сессия не возьмёт его под ``NOWAIT``."""
+    """``find_refresh_token_by_hash_for_update`` берёт реальный row-лок: вторая сессия не возьмёт его под ``NOWAIT``."""
     user_id = uuid4()
     await seed_user_credentials(user_id=user_id, email="rt-lock@example.com", username="rt_lock")
     token = make_refresh_token(user_id=user_id, token_hash="lock-hash", expires_at=_EXPIRES_AT)
@@ -139,7 +145,9 @@ async def test_find_by_hash_for_update_locks_row(
 
     async with session_factory() as holder, session_factory() as contender:
         # holder берёт row-лок через FOR UPDATE и держит транзакцию открытой
-        locked = await RefreshTokenRepository(session=holder).find_by_hash_for_update(token_hash="lock-hash")
+        locked = await RefreshTokenRepository(session=holder).find_refresh_token_by_hash_for_update(
+            token_hash="lock-hash",
+        )
         assert locked is not None
 
         # тот же row под NOWAIT второй сессии недоступен → LockNotAvailable

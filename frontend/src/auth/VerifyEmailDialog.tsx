@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { refresh, sendEmailVerification, verifyEmail } from "../api/auth";
-import { ApiError, messageForCode } from "../api/errors";
+import { ApiError, errorCodeToken, resolveErrorToken } from "../api/errors";
 import { setAccessToken } from "./tokenStore";
 
 type Stage = "intro" | "code";
@@ -49,9 +49,9 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
           return;
         }
 
-        setError(messageForCode(err.code));
+        setError(errorCodeToken(err.code));
       } else {
-        setError(t("network", { ns: "errors" }));
+        setError(errorCodeToken("network"));
       }
     } finally {
       setSubmitting(false);
@@ -60,7 +60,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
 
   const handleVerify = async () => {
     if (code.length !== CODE_LENGTH) {
-      setError(t("verifyEmail.codeIncomplete"));
+      setError("auth:verifyEmail.codeIncomplete");
       return;
     }
 
@@ -84,13 +84,13 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
         // 410 (expired), 404 (not found), 429 (attempts exceeded) — откатываем
         // на стадию "intro", чтобы пользователь мог запросить новый код.
         const shouldResetToIntro = err.status === 410 || err.status === 404 || err.status === 429;
-        setError(messageForCode(err.code));
+        setError(errorCodeToken(err.code));
         if (shouldResetToIntro) {
           setStage("intro");
           setCode("");
         }
       } else {
-        setError(t("network", { ns: "errors" }));
+        setError(errorCodeToken("network"));
       }
     } finally {
       setSubmitting(false);
@@ -119,7 +119,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
             </Text>
             {error && (
               <Text size="sm" c="red" fw={500}>
-                {error}
+                {resolveErrorToken(error)}
               </Text>
             )}
             <Group justify="flex-end">
@@ -154,7 +154,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
 
             {error && (
               <Text size="sm" c="red" ta="center" fw={500}>
-                {error}
+                {resolveErrorToken(error)}
               </Text>
             )}
 
@@ -181,8 +181,8 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
  */
 async function syncVerifiedClaim(): Promise<void> {
   try {
-    const { access_token } = await refresh();
-    setAccessToken(access_token);
+    const { accessToken } = await refresh();
+    setAccessToken(accessToken);
   } catch {
     // Refresh может упасть, если refresh-cookie истёк; UI всё равно
     // получит актуальное состояние при следующем логине.

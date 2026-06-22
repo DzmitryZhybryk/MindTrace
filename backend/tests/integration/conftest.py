@@ -35,6 +35,8 @@ from testcontainers.postgres import PostgresContainer
 # Импорт моделей регистрирует таблицы в ``BaseDBModel.metadata`` (нужно для create_all).
 from app.auth.infra import models as _auth_models  # noqa: F401
 from app.auth.infra.repositories import UserCredentialsRepository
+from app.geo.infra import models as _geo_models  # noqa: F401
+from app.journeys.infra import models as _journey_models  # noqa: F401
 from app.shared.models import BaseDBModel
 from app.shared.settings import PostgresSettings
 from app.users.domain.entities import UserEntity  # noqa: F401 — гарантирует регистрацию users-модели
@@ -43,7 +45,7 @@ from tests.builders import make_user_credentials
 
 _POSTGRES_IMAGE = "postgres:17-alpine"
 # Порядок не важен: ``TRUNCATE ... CASCADE`` снимает FK-зависимости разом.
-_ALL_TABLES = ("users", "user_credentials", "refresh_tokens", "challenges")
+_ALL_TABLES = ("users", "user_credentials", "refresh_tokens", "challenges", "geo_places", "journeys")
 
 
 @pytest.fixture(scope="session")

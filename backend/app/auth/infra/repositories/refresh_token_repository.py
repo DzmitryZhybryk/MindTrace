@@ -33,7 +33,7 @@ class RefreshTokenRepository(BaseDBRepository[RefreshToken], RefreshTokenReposit
         """
         await self.insert(data=RefreshToken(**self._to_columns(entity=token)))
 
-    async def find_by_hash_for_update(self, token_hash: str) -> RefreshTokenEntity | None:
+    async def find_refresh_token_by_hash_for_update(self, token_hash: str) -> RefreshTokenEntity | None:
         """
         Находит refresh-токен по hash'у и блокирует строку до конца транзакции.
 
@@ -66,7 +66,7 @@ class RefreshTokenRepository(BaseDBRepository[RefreshToken], RefreshTokenReposit
         query = sa.update(RefreshToken).where(RefreshToken.id == token.token_id).values(**values)
         await self._session.execute(query)
 
-    async def revoke_all_active_by_user_id(self, user_id: UUID) -> None:
+    async def revoke_all_active_refresh_tokens_by_user_id(self, user_id: UUID) -> None:
         """
         Bulk-revoke всех активных refresh-токенов пользователя.
 

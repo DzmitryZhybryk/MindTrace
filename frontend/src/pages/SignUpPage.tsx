@@ -7,7 +7,7 @@ import { AuthHeader } from "../components/AuthHeader";
 import { AuthCard } from "../components/AuthCard";
 import { AuthLayout } from "../components/AuthLayout";
 import { register } from "../api/auth";
-import { applyApiError } from "../api/errors";
+import { applyApiError, resolveErrorToken, withLocalizedError } from "../api/errors";
 import { useAuth } from "../auth/useAuth";
 
 type SignUpFormValues = {
@@ -34,24 +34,27 @@ export function SignUpPage() {
       termsAccepted: false,
       marketingEmailsConsent: false,
     },
+    // Валидаторы возвращают i18n-ТОКЕН (`auth:validation.*`), а не готовый текст:
+    // резолв в строку делается при рендере (`withLocalizedError`), поэтому уже
+    // показанная ошибка переключается на новый язык вместе с интерфейсом.
     validate: {
       username: (value) => {
         const trimmed = value.trim();
-        if (trimmed.length < 3) return t("validation.usernameMin");
-        if (trimmed.length > 50) return t("validation.usernameMax");
+        if (trimmed.length < 3) return "auth:validation.usernameMin";
+        if (trimmed.length > 50) return "auth:validation.usernameMax";
         return null;
       },
       email: (value) => {
-        if (!/^\S+@\S+\.\S+$/u.test(value)) return t("validation.emailInvalid");
-        if (value.length > 254) return t("validation.emailTooLong");
+        if (!/^\S+@\S+\.\S+$/u.test(value)) return "auth:validation.emailInvalid";
+        if (value.length > 254) return "auth:validation.emailTooLong";
         return null;
       },
       password: (value) => {
-        if (value.length < 8) return t("validation.passwordMin");
-        if (value.length > 50) return t("validation.passwordMax");
+        if (value.length < 8) return "auth:validation.passwordMin";
+        if (value.length > 50) return "auth:validation.passwordMax";
         return null;
       },
-      termsAccepted: (value) => (value ? null : t("validation.termsRequired")),
+      termsAccepted: (value) => (value ? null : "auth:validation.termsRequired"),
     },
   });
 
@@ -62,8 +65,8 @@ export function SignUpPage() {
     setFormError(null);
     setSubmitting(true);
     try {
-      const { access_token } = await register(values);
-      setAccessToken(access_token);
+      const { accessToken } = await register(values);
+      setAccessToken(accessToken);
       navigate("/");
     } catch (err) {
       setFormError(applyApiError(err, form));
@@ -85,7 +88,7 @@ export function SignUpPage() {
       <AuthCard title={t("signup.title")} subtitle={t("signup.subtitle")}>
         {formError && (
           <Text size="sm" c="red" fw={500}>
-            {formError}
+            {resolveErrorToken(formError)}
           </Text>
         )}
 
@@ -99,7 +102,7 @@ export function SignUpPage() {
               autoComplete="username"
               name="username"
               key={form.key("username")}
-              {...form.getInputProps("username")}
+              {...withLocalizedError(form.getInputProps("username"))}
             />
 
             <TextInput
@@ -110,7 +113,7 @@ export function SignUpPage() {
               autoComplete="email"
               name="email"
               key={form.key("email")}
-              {...form.getInputProps("email")}
+              {...withLocalizedError(form.getInputProps("email"))}
             />
 
             <PasswordInput
@@ -121,14 +124,14 @@ export function SignUpPage() {
               autoComplete="new-password"
               name="password"
               key={form.key("password")}
-              {...form.getInputProps("password")}
+              {...withLocalizedError(form.getInputProps("password"))}
             />
 
             <Checkbox
               size="sm"
               color="var(--brand-ink)"
               key={form.key("termsAccepted")}
-              {...form.getInputProps("termsAccepted", { type: "checkbox" })}
+              {...withLocalizedError(form.getInputProps("termsAccepted", { type: "checkbox" }))}
               label={
                 <Trans
                   t={t}

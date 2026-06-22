@@ -42,6 +42,9 @@ from app.shared.infra.crypto import Sha256DeterministicHasher  # noqa: E402
 from tests.fakes import (  # noqa: E402
     FakeAuthUnitOfWork,
     FakeChallengeRepository,
+    FakeJourneyRepository,
+    FakeJourneyUnitOfWork,
+    FakePlaceRepository,
     FakeRefreshTokenRepository,
     FakeSaltedHasher,
     FakeTaskBus,
@@ -58,7 +61,7 @@ _EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = 60
 # При добавлении нового уровня/домена обнови и эти кортежи, и список ``markers`` в
 # pyproject.toml (``--strict-markers`` запрещает незарегистрированные маркеры).
 _LEVEL_MARKERS = ("unit", "integration", "api")
-_DOMAIN_MARKERS = ("auth", "users", "shared")
+_DOMAIN_MARKERS = ("auth", "users", "shared", "journeys", "geo")
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -146,6 +149,23 @@ def fake_task_bus() -> FakeTaskBus:
 def deterministic_hasher() -> Sha256DeterministicHasher:
     """Реальный sha256-hasher для сидинга ``token_hash`` (тот же, что у боевого token_issuer)."""
     return Sha256DeterministicHasher()
+
+
+@pytest.fixture
+def fake_place_repository() -> FakePlaceRepository:
+    return FakePlaceRepository()
+
+
+@pytest.fixture
+def fake_journey_repository() -> FakeJourneyRepository:
+    return FakeJourneyRepository()
+
+
+@pytest.fixture
+def fake_journey_uow(fake_journey_repository: FakeJourneyRepository) -> FakeJourneyUnitOfWork:
+    # Репозиторий — отдельная фикстура того же инстанса: тест сидит/ассертит его состояние
+    # по конкретному типу (на uow он под port-типом, без .journeys).
+    return FakeJourneyUnitOfWork(journey_repository=fake_journey_repository)
 
 
 @pytest.fixture

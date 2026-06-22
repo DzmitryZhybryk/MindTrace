@@ -48,6 +48,6 @@ coverage: ## Run tests with coverage report
 
 check: lint typecheck test ## Run lint + typecheck + unit/component (fast; e2e is separate — make test-e2e)
 
-test-e2e: ## Run Playwright e2e (requires the stack up: docker compose up -d)
+test-e2e: ## Run Playwright e2e against E2E_BASE_URL (обычно запускается корневым `make test-e2e`, который сам поднимает одноразовый стек)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}playwright test${AZURE}' e2e${RESET}"
 	@npm run e2e

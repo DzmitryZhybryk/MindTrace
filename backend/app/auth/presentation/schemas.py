@@ -1,11 +1,12 @@
 from typing import Annotated, Self
 
-from pydantic import BaseModel, EmailStr, Field, SecretStr, model_validator
+from pydantic import EmailStr, Field, SecretStr, model_validator
 
 from app.auth.exceptions import TermsNotAcceptedError
+from app.shared.schemas import CamelModel
 
 
-class RegisterRequest(BaseModel):
+class RegisterRequest(CamelModel):
     username: Annotated[str, Field(min_length=3, max_length=50)]
     email: Annotated[EmailStr, Field(max_length=254)]
     password: Annotated[SecretStr, Field(min_length=8, max_length=50)]
@@ -40,7 +41,7 @@ class RegisterRequest(BaseModel):
         return self
 
 
-class LoginRequest(BaseModel):
+class LoginRequest(CamelModel):
     # На login пароль/логин на длину/политику не валидируем — проверяем лишь, что
     # они непустые и в пределах max. Иначе юзер со «старым» коротким паролем
     # залочится на входе; неверные креды и так дадут 401, а не 422.
@@ -48,10 +49,10 @@ class LoginRequest(BaseModel):
     password: Annotated[SecretStr, Field(min_length=1, max_length=50)]
 
 
-class TokenResponse(BaseModel):
+class TokenResponse(CamelModel):
     access_token: str
     token_type: str = "bearer"  # noqa: S105
 
 
-class VerifyEmailRequest(BaseModel):
+class VerifyEmailRequest(CamelModel):
     code: Annotated[str, Field(pattern=r"^\d{6}$")]

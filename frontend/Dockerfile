@@ -10,4 +10,6 @@ COPY . .
 
 EXPOSE 5173
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# `npm install` на старте синхронит named volume node_modules с package.json/lock
+# (volume переживает rebuild и иначе устаревает при смене зависимостей).
+CMD ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]

@@ -60,9 +60,20 @@ banner), not transient errors.
     the red `<Text>` right under the control.
   - *Operation-scoped* (the whole action failed, not one field) → at form level,
     next to the primary action (under the submit button / by the dialog actions).
-- **Text source:** always resolve via `messageForCode(code)` from `api/errors.ts`
-  (English, owned by the frontend) — never render the backend `message` (it's in
-  Russian and won't match the UI language).
+- **Text source:** the user-facing text is owned by the frontend (i18n), never the
+  backend `message` (it's in Russian and won't match the UI language).
+- **Resolve at render, store a token (CRITICAL for language switching):** never put
+  *resolved* text into state or `form.errors` — a stored string is frozen in the
+  language it was resolved in, so switching the UI language leaves the old error
+  behind. Instead **store an i18n token** and resolve it during render, where
+  `useTranslation` re-renders on a language change:
+  - Backend error code → `errorCodeToken(code)` (yields `errors:<code>`), resolved by
+    `resolveErrorToken` / `messageForCode`. `applyApiError` already returns/sets tokens.
+  - Frontend validation → the Mantine validator returns the **namespaced i18n key**
+    (`"auth:validation.usernameMin"`, `"journeys:..."`), **not** `t(...)`.
+  - At the render site resolve via `resolveErrorToken(token)` for explicit `error=`
+    props and error state, or `withLocalizedError(form.getInputProps(field))` to
+    localize the `error` carried inside Mantine input props.
 
 ## Input Validation
 

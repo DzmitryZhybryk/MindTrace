@@ -1,5 +1,6 @@
-from app.shared.schemas.base import BFastAPI
+from app.shared.schemas.base import BFastAPI, CamelModel
 
 __all__ = [
     "BFastAPI",
+    "CamelModel",
 ]

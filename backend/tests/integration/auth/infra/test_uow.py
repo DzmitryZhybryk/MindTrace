@@ -111,7 +111,7 @@ async def test_transaction_flush_orders_credentials_before_dependent_refresh_tok
         found_credentials = await UserCredentialsRepository(session=reader).find_user_credentials_by_user_id(
             user_id=user_id,
         )
-        found_token = await RefreshTokenRepository(session=reader).find_by_hash_for_update(
+        found_token = await RefreshTokenRepository(session=reader).find_refresh_token_by_hash_for_update(
             token_hash="uow-fk-order-token-hash",
         )
 
