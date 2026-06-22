@@ -7,7 +7,7 @@ import { AuthHeader } from "../components/AuthHeader";
 import { AuthCard } from "../components/AuthCard";
 import { AuthLayout } from "../components/AuthLayout";
 import { login } from "../api/auth";
-import { applyApiError } from "../api/errors";
+import { applyApiError, withLocalizedError } from "../api/errors";
 import { useAuth } from "../auth/useAuth";
 
 type LoginFormValues = {
@@ -27,9 +27,12 @@ export function LoginPage() {
       login: "",
       password: "",
     },
+    // Валидаторы возвращают i18n-ТОКЕН (`auth:validation.*`), а не готовый текст:
+    // резолв в строку — при рендере (`withLocalizedError`), чтобы ошибка
+    // переключалась на новый язык вместе с интерфейсом.
     validate: {
-      login: (value) => (value.trim().length === 0 ? t("validation.loginRequired") : null),
-      password: (value) => (value.length === 0 ? t("validation.passwordRequired") : null),
+      login: (value) => (value.trim().length === 0 ? "auth:validation.loginRequired" : null),
+      password: (value) => (value.length === 0 ? "auth:validation.passwordRequired" : null),
     },
   });
 
@@ -71,7 +74,7 @@ export function LoginPage() {
               autoComplete="username"
               name="username"
               key={form.key("login")}
-              {...form.getInputProps("login")}
+              {...withLocalizedError(form.getInputProps("login"))}
             />
 
             <PasswordInput
@@ -82,7 +85,7 @@ export function LoginPage() {
               autoComplete="current-password"
               name="password"
               key={form.key("password")}
-              {...form.getInputProps("password")}
+              {...withLocalizedError(form.getInputProps("password"))}
             />
 
             <Anchor

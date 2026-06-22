@@ -20,6 +20,19 @@ describe("PlaceAutocomplete", () => {
     expect(onChange).toHaveBeenCalledWith(GEO_PLACES[0]);
   });
 
+  it("подтягивает видимый текст при внешней смене value (swap городов в форме)", () => {
+    const [moscow, london] = GEO_PLACES;
+    const { rerender } = renderWithProviders(
+      <PlaceAutocomplete label="From" placeholder="City" value={moscow} onChange={vi.fn()} />,
+    );
+    expect(screen.getByLabelText("From")).toHaveValue(moscow.name);
+
+    // Родитель поменял value не нашим onChange — поле обязано показать новое имя.
+    rerender(<PlaceAutocomplete label="From" placeholder="City" value={london} onChange={vi.fn()} />);
+
+    expect(screen.getByLabelText("From")).toHaveValue(london.name);
+  });
+
   it("показывает подсказку о пустой выдаче, когда ничего не найдено", async () => {
     server.use(http.get("/v1/geo/places/search/", () => HttpResponse.json({ items: [] })));
     const onChange = vi.fn();

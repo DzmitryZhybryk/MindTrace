@@ -2,6 +2,7 @@ import { Checkbox, Select, Stack, Text } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import { useTranslation } from "react-i18next";
 
+import { resolveErrorToken } from "../../api/errors";
 import type { JourneyFormValues } from "./JourneyForm";
 
 const YEARS_BACK = 100;
@@ -96,7 +97,7 @@ export function JourneyDateField({ form }: JourneyDateFieldProps) {
         data={yearOptions}
         value={values.year}
         onChange={handleYearChange}
-        error={form.errors.year}
+        error={resolveErrorToken(form.errors.year)}
       />
 
       <Checkbox
@@ -113,7 +114,7 @@ export function JourneyDateField({ form }: JourneyDateFieldProps) {
           data={monthOptions}
           value={values.month}
           onChange={handleMonthChange}
-          error={form.errors.month}
+          error={resolveErrorToken(form.errors.month)}
         />
       )}
 
@@ -137,7 +138,7 @@ export function JourneyDateField({ form }: JourneyDateFieldProps) {
             form.setFieldValue("day", value);
             form.clearFieldError("day");
           }}
-          error={form.errors.day}
+          error={resolveErrorToken(form.errors.day)}
         />
       )}
     </Stack>

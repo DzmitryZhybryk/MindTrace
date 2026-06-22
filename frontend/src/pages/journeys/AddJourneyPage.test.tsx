@@ -79,6 +79,58 @@ describe("AddJourneyPage", () => {
     });
   });
 
+  it("кнопка swap меняет «откуда»/«куда» местами — в полях и в payload", async () => {
+    let body: unknown = null;
+    server.use(
+      http.post("/v1/journeys/", async ({ request }) => {
+        body = await request.json();
+        return new HttpResponse(null, { status: 201 });
+      }),
+    );
+    const { user } = renderAddJourney();
+
+    await pickPlace({ user, label: "From", query: "Mos", option: /Moscow/iu });
+    await pickPlace({ user, label: "To", query: "Lon", option: /London/iu });
+
+    await user.click(screen.getByRole("button", { name: "Swap origin and destination" }));
+
+    // Видимый текст полей подтянулся под перевёрнутые значения формы.
+    expect(screen.getByLabelText("From")).toHaveValue("London");
+    expect(screen.getByLabelText("To")).toHaveValue("Moscow");
+
+    await pickOption({ user, trigger: screen.getByPlaceholderText("Choose transport"), option: "Air" });
+    await pickOption({ user, trigger: screen.getByPlaceholderText("Select year"), option: "2020" });
+    await user.click(screen.getByRole("button", { name: "Add journey" }));
+
+    expect(await screen.findByText("journeys-landing")).toBeInTheDocument();
+    expect(body).toMatchObject({
+      origin: { name: "London", countryCode: "GB" },
+      destination: { name: "Moscow", countryCode: "RU" },
+    });
+  });
+
+  it("Enter по подсказке выбирает город и уводит фокус на поле второго города", async () => {
+    const { user } = renderAddJourney();
+
+    await user.type(screen.getByLabelText("From"), "Mos");
+    await screen.findByRole("option", { name: /Moscow/iu, hidden: true });
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByLabelText("From")).toHaveValue("Moscow");
+    await waitFor(() => expect(screen.getByLabelText("To")).toHaveFocus());
+  });
+
+  it("Tab по открытой подсказке работает как Enter: выбор + фокус на втором городе (не на кнопке)", async () => {
+    const { user } = renderAddJourney();
+
+    await user.type(screen.getByLabelText("From"), "Mos");
+    await screen.findByRole("option", { name: /Moscow/iu, hidden: true });
+    await user.tab();
+
+    expect(screen.getByLabelText("From")).toHaveValue("Moscow");
+    await waitFor(() => expect(screen.getByLabelText("To")).toHaveFocus());
+  });
+
   it("блокирует одинаковые города отправления и назначения, не отправляя запрос", async () => {
     let posted = false;
     server.use(

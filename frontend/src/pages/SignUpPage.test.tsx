@@ -1,6 +1,8 @@
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
+import { i18n } from "../i18n";
+import ruAuth from "../locales/ru/auth.json";
 import { server, TEST_ACCESS_TOKEN } from "../test/handlers";
 import { makeAuthValue, renderRoutes, screen } from "../test/render";
 import { SignUpPage } from "./SignUpPage";
@@ -60,6 +62,28 @@ describe("SignUpPage", () => {
     expect(screen.getByText("Enter a valid email")).toBeInTheDocument();
     expect(screen.getByText("Password must be at least 8 characters")).toBeInTheDocument();
     expect(authValue.setAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("уже показанная ошибка валидации переключается на новый язык", async () => {
+    i18n.addResourceBundle("ru", "auth", ruAuth, true, true);
+    const { user } = renderSignup();
+
+    try {
+      await user.click(screen.getByRole("checkbox", termsCheckbox));
+      await user.type(screen.getByLabelText("Username"), "ab");
+      await user.click(screen.getByRole("button", { name: "Create account" }));
+
+      expect(await screen.findByText("Username must be at least 3 characters")).toBeInTheDocument();
+
+      await i18n.changeLanguage("ru");
+
+      // Ошибка была показана на en, сменили язык — без ре-валидации текст стал ru.
+      expect(
+        await screen.findByText("Имя пользователя должно содержать минимум 3 символа"),
+      ).toBeInTheDocument();
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 
   it("слишком длинные поля дают max-length ошибки и не отправляют запрос", async () => {

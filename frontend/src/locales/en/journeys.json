@@ -20,6 +20,7 @@
     "subtitle": "Where and when did you travel?",
     "origin": { "label": "From", "placeholder": "City of departure" },
     "destination": { "label": "To", "placeholder": "Destination city" },
+    "swap": "Swap origin and destination",
     "place": {
       "hintEmpty": "Nothing found — try another spelling or the English name."
     },

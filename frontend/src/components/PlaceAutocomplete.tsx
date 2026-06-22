@@ -25,6 +25,26 @@ interface PlaceAutocompleteProps {
 }
 
 /**
+ * Переводит фокус на следующий контрол формы (поле/селект) после `current`.
+ *
+ * После выбора места «перекидывает» пользователя на следующий шаг (другой город,
+ * транспорт): Enter/Tab по подсказке не должны оставлять курсор в уже заполненном
+ * поле. Кнопки (в т.ч. «поменять местами») пропускаем — фокус идёт по полям ввода.
+ */
+function focusNextFormControl(current: HTMLElement | null): void {
+  const form = current?.closest("form");
+  if (!current || !form) {
+    return;
+  }
+
+  const controls = Array.from(
+    form.querySelectorAll<HTMLElement>("input:not([type='hidden']), select, textarea"),
+  ).filter((element) => !(element as HTMLInputElement).disabled && element.tabIndex !== -1);
+  const next = controls[controls.indexOf(current) + 1];
+  next?.focus();
+}
+
+/**
  * Поле выбора места с автокомплитом по газеттиру (`/v1/geo/places/search`).
  *
  * Набор → debounce → запрос (устаревшие отменяются `AbortController`) → выпадающий
@@ -36,6 +56,7 @@ interface PlaceAutocompleteProps {
 export function PlaceAutocomplete({ label, placeholder, value, onChange, error }: PlaceAutocompleteProps) {
   const { t, i18n } = useTranslation("journeys");
   const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() });
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState(value?.name ?? "");
   const [options, setOptions] = useState<PlaceSuggestion[]>([]);
@@ -44,6 +65,23 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
   // Подпись уже выбранного кандидата: пока текст ей равен — повторно не ищем (иначе
   // debounce, «догнав» имя после выбора, тут же запустил бы лишний запрос).
   const selectedNameRef = useRef<string | null>(value?.name ?? null);
+  // Последнее значение, которое МЫ САМИ отдали через onChange. Если родитель пришлёт
+  // другой `value` (например, swap «Откуда»/«Куда» в форме), значит смена внешняя —
+  // и видимый текст надо подтянуть под неё (см. эффект ниже).
+  const lastEmittedRef = useRef<PlaceSuggestion | null>(value);
+
+  // Внешняя установка `value` (swap городов в форме) → синхронизируем видимый текст и
+  // «якорь» имени. Свой выбор/правка уже выставили `lastEmittedRef`, поэтому условие
+  // гасит лишний прогон и не затирает то, что пользователь печатает.
+  useEffect(() => {
+    if (value === lastEmittedRef.current) {
+      return;
+    }
+
+    lastEmittedRef.current = value;
+    selectedNameRef.current = value?.name ?? null;
+    setSearch(value?.name ?? "");
+  }, [value]);
 
   const language = i18n.language.startsWith("ru") ? "ru" : "en";
   // Бэк отдаёт ISO alpha-2 (BY/RU), имя страны резолвит фронт через CLDR под язык UI
@@ -95,6 +133,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
     // Редактирование сбрасывает выбранное место: пока не выбран новый кандидат, value пуст.
     selectedNameRef.current = null;
     if (value !== null) {
+      lastEmittedRef.current = null;
       onChange(null);
     }
 
@@ -103,13 +142,18 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
 
   const handleOptionSubmit = (optionValue: string) => {
     const picked = options.find((place) => place.placeId === optionValue);
-    if (picked !== undefined) {
-      selectedNameRef.current = picked.name;
-      onChange(picked);
-      setSearch(picked.name);
+    combobox.closeDropdown();
+    if (picked === undefined) {
+      return;
     }
 
-    combobox.closeDropdown();
+    selectedNameRef.current = picked.name;
+    lastEmittedRef.current = picked;
+    onChange(picked);
+    setSearch(picked.name);
+    // Выбор сделан — уводим фокус на следующее поле (другой город / транспорт), чтобы
+    // курсор не «залипал» на уже заполненном поле после Enter/Tab по подсказке.
+    focusNextFormControl(inputRef.current);
   };
 
   const hasQuery = debouncedSearch.trim().length >= MIN_LENGTH;
@@ -120,6 +164,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
       <Combobox store={combobox} withinPortal onOptionSubmit={handleOptionSubmit}>
         <Combobox.Target>
           <InputBase
+            ref={inputRef}
             label={label}
             placeholder={placeholder}
             size="md"
@@ -128,10 +173,13 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
             onChange={(event) => handleInputChange(event.currentTarget.value)}
             onFocus={() => combobox.openDropdown()}
             onBlur={() => combobox.closeDropdown()}
-            // Tab (как и Enter) применяет первую подсказку; без preventDefault фокус
-            // уходит на следующее поле. Через capture, т.к. onKeyDown перехватывает Mantine.
+            // Tab (как и Enter) применяет первую подсказку. Глушим дефолтный Tab —
+            // фокус на следующее поле переводим сами в handleOptionSubmit (иначе он бы
+            // уехал дальше/на кнопку обмена). Shift+Tab оставляем браузеру (шаг назад).
+            // Через capture, т.к. onKeyDown перехватывает Mantine.
             onKeyDownCapture={(event) => {
-              if (event.key === "Tab" && combobox.dropdownOpened && options.length > 0) {
+              if (event.key === "Tab" && !event.shiftKey && combobox.dropdownOpened && options.length > 0) {
+                event.preventDefault();
                 handleOptionSubmit(options[0].placeId);
               }
             }}

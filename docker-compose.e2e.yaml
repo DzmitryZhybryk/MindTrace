@@ -1,0 +1,138 @@
+# Одноразовый стек для фронтовых Playwright-e2e.
+#
+# Зачем отдельный файл, а не дев-стек: e2e сеют пользователей через POST /v1/auth/register/,
+# и при прогоне против дев-стека (docker-compose.yaml) они копятся в персистентной mindtrace_pg
+# (том pg_data) навсегда. Здесь Postgres живёт в tmpfs (RAM) без named-тома → БД исчезает на
+# `down`, дев-база не трогается. Это перенос подхода backend-testcontainers (одноразовая БД на
+# прогон) на уровень стека — e2e нужно всё приложение, а не голый Postgres.
+#
+# Запуск — корневым `make test-e2e` (up --wait frontend → playwright → down -v). Свой проект
+# (`name`) изолирует контейнеры/тома/сеть от дев-стека: можно держать оба разом. `container_name`
+# нигде не задаём (compose сам префиксует проектом → нет клеша с дев), сеть — дефолтная проектная
+# (`docker network create` не нужен). Имена сервисов mindtrace_pg/app совпадают с хостами в .env и
+# vite.config (API_PROXY_TARGET) → .env переиспользуется как есть, без env-оверрайдов кроме Resend.
+name: mindtrace_e2e
+
+services:
+
+  # Имя сервиса = POSTGRES_HOST из .env. tmpfs → данные в RAM, без named-тома: умирают на `down`.
+  mindtrace_pg:
+    image: postgres:17-alpine
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command: postgres -c log_min_messages=warning
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  # One-shot: накатывает app-схему существующей командой alembic и выходит. Не новый код — дев
+  # делает то же (`docker exec mindtrace_app uv run alembic upgrade head`). app ждёт его завершения.
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    command: sh -c "uv run alembic upgrade head"
+    env_file: .env
+    # dev-образ код внутрь не копирует (см. backend/Dockerfile, target dev) — монтируем как базовый compose.
+    volumes: &backend_mounts
+      - ./backend/app:/src/app
+      - ./backend/migrations:/src/migrations
+      - ./backend/alembic.ini:/src/alembic.ini:ro
+      - ./backend/pyproject.toml:/src/pyproject.toml:ro
+    depends_on:
+      mindtrace_pg:
+        condition: service_healthy
+    restart: "no"
+
+  # Штатный worker: на старте применяет схему procrastinate (_ensure_procrastinate_schema) — именно
+  # так схема попадает в БД и в деве. register делает atomic-defer письма в procrastinate_jobs, без
+  # этой схемы он падает 500 и валит все e2e. RESEND_BASE_URL → мёртвый адрес: письма-джобы упрутся
+  # в connection refused (упадут в throwaway-БД), реальный Resend не дёргается.
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    command: python -m app.worker
+    env_file: .env
+    environment:
+      RESEND_BASE_URL: "http://localhost:9"
+    volumes: *backend_mounts
+    depends_on:
+      mindtrace_pg:
+        condition: service_healthy
+    # healthy = таблица procrastinate_jobs создана → схема готова. Снимает гонку: app стартует
+    # только после этого, поэтому первый register уже видит схему.
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import os,psycopg;c=psycopg.connect(host=os.environ['POSTGRES_HOST'],port=os.environ['POSTGRES_PORT'],dbname=os.environ['POSTGRES_DB'],user=os.environ['POSTGRES_USER'],password=os.environ['POSTGRES_PASSWORD']);v=c.execute(\"select to_regclass('public.procrastinate_jobs')\").fetchone()[0];c.close();exit(0 if v else 1)"
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 3s
+
+  # Имя сервиса = API_PROXY_TARGET host из vite.config. Ждёт обе схемы: app-таблицы (migrate) и
+  # procrastinate (worker healthy). Без хост-порта — фронт ходит к нему по внутренней сети проекта.
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    command: sh -c "uvicorn app.main:create_app --factory --no-use-colors --host 0.0.0.0 --port 8000 --log-level error"
+    env_file: .env
+    volumes: *backend_mounts
+    # 127.0.0.1, а не localhost: uvicorn слушает IPv4 (--host 0.0.0.0), а localhost в alpine/musl
+    # резолвится в IPv6 ::1 первым → connection refused (та же ловушка, что у frontend ниже).
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), timeout=2)"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 3s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      worker:
+        condition: service_healthy
+
+  # Единственный проброшенный наружу порт (5273 ≠ дев-5173). Playwright бьёт сюда (E2E_BASE_URL),
+  # /v1 проксируется на app внутри сети проекта. dev-CMD сам делает npm install (named-volume
+  # node_modules на первом старте пуст — см. frontend/Dockerfile).
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      API_PROXY_TARGET: "http://app:8000"
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5273:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_e2e_node_modules:/app/node_modules
+    # 127.0.0.1, а не localhost: vite слушает IPv4 (--host 0.0.0.0), а busybox-wget резолвит
+    # localhost в IPv6 ::1 → "Connection refused", хотя dev-сервер готов (проверено на живом контейнере).
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:5173"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  frontend_e2e_node_modules:

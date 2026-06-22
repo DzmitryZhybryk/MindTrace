@@ -29,9 +29,9 @@ const CAMERA_MIN_ALTITUDE = 0.12; // ближний предел: ближе г�
 const ARC_REFERENCE_SEPARATION_RAD = (50 * Math.PI) / 180;
 
 // Иконка транспорта на глобусе = та же Noto-эмодзи, что в селекте формы (src/assets/emoji).
-// Нативная ориентация (проверено рендером): машина — вид сбоку, нос ВПРАВО; корабль —
-// вид сбоку, нос ВЛЕВО (их нельзя крутить — перевернутся, только зеркалим по ходу);
-// самолёт — диагональ, нос в ВЕРХ-ВПРАВО (~45°), его крутим на курс с офсетом 45°.
+// Нативная ориентация (проверено рендером): машина и корабль — вид сбоку, нос ВЛЕВО
+// (их нельзя крутить — перевернутся, только зеркалим по ходу); самолёт — диагональ,
+// нос в ВЕРХ-ВПРАВО (~45°), его крутим на курс с офсетом 45°.
 // orient: "rotate" — иконку крутим на экранный курс; "flip" — держим вертикально и
 // зеркалим. nativeFacesRight — куда смотрит боковая иконка в SVG (для flip).
 type TransportVisual = {
@@ -47,7 +47,7 @@ type TransportVisual = {
 const ARC_ALTITUDE_AIR = 0.14;
 const ARC_ALTITUDE_GROUND = ARC_ALTITUDE_AIR / 2;
 const TRANSPORT_VISUAL: Record<TransportType, TransportVisual> = {
-  land: { icon: carIcon, altitude: ARC_ALTITUDE_GROUND, durationMs: 5200, orient: "flip", nativeFacesRight: true },
+  land: { icon: carIcon, altitude: ARC_ALTITUDE_GROUND, durationMs: 5200, orient: "flip", nativeFacesRight: false },
   air: { icon: planeIcon, altitude: ARC_ALTITUDE_AIR, durationMs: 3600, orient: "rotate", nativeFacesRight: true },
   water: { icon: shipIcon, altitude: ARC_ALTITUDE_GROUND, durationMs: 6000, orient: "flip", nativeFacesRight: false },
 };
