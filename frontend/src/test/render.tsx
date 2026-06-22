@@ -48,7 +48,11 @@ function Providers({ children, initialPath, authValue, withAuthProvider }: Provi
   }
 
   return (
-    <MantineProvider theme={theme} defaultColorScheme="light">
+    // env="test" отключает Mantine-transitions и порталы: дропдаун Menu/Modal
+    // монтируется синхронно при открытии, без таймеров анимации. Без этого Menu в
+    // jsdom флапает — открывается и закрывается посреди асинхронной цепочки
+    // userEvent, и `findAllByRole("menuitem")` периодически таймаутит.
+    <MantineProvider theme={theme} defaultColorScheme="light" env="test">
       <MemoryRouter initialEntries={[initialPath]}>{withAuth}</MemoryRouter>
     </MantineProvider>
   );
@@ -142,10 +146,10 @@ export function makeAuthValue(overrides: Partial<AuthContextValue> = {}): AuthCo
 }
 
 /**
- * Возвращает пункт меню Mantine по точному тексту. Меню Mantine в jsdom
- * закрывается быстро, поэтому снимаем все пункты одним `findAllByRole` и матчим
- * по `textContent` — надёжнее, чем `findByRole("menuitem", { name })` на конкретный
- * пункт (тот флапает на закрытии меню).
+ * Возвращает пункт меню Mantine по точному тексту. Снимаем все пункты одним
+ * `findAllByRole` и матчим по `textContent` — надёжнее и нагляднее, чем
+ * `findByRole("menuitem", { name })` на конкретный пункт. Дропдаун рендерится
+ * синхронно благодаря `env="test"` у `MantineProvider` (см. выше).
  */
 export async function findMenuItem(text: string): Promise<HTMLElement> {
   const items = await screen.findAllByRole("menuitem");

@@ -61,7 +61,7 @@ describe("HomePage", () => {
     expect(screen.queryByText(BANNER_MESSAGE)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Open profile menu" }));
-    // Снимаем все пункты разом — меню Mantine в jsdom держится открытым кратко.
+    // Снимаем все пункты разом и проверяем по тексту, что Verify email среди них нет.
     const names = (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
     expect(names).toContain("Logout");
     expect(names).not.toContain("Verify email");
