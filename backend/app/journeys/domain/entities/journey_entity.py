@@ -100,7 +100,7 @@ class JourneyEntity(TimestampedEntityMixin):
             raise SameOriginAndDestinationError()
 
     @staticmethod
-    def _great_circle_km(*, origin: GeoPoint, destination: GeoPoint) -> float:
+    def _great_circle_km(*, origin: GeoPoint, destination: GeoPoint) -> int:
         """
         Считает расстояние по большой окружности (haversine) между точками маршрута, км.
 
@@ -112,11 +112,12 @@ class JourneyEntity(TimestampedEntityMixin):
             destination: Снапшот места назначения
 
         Returns:
-            Расстояние между точками маршрута в километрах
+            Расстояние между точками маршрута в километрах, округлённое до ближайшего целого
         """
         start_phi = math.radians(origin.latitude)
         end_phi = math.radians(destination.latitude)
         delta_phi = math.radians(destination.latitude - origin.latitude)
         delta_lambda = math.radians(destination.longitude - origin.longitude)
         a = math.sin(delta_phi / 2) ** 2 + math.cos(start_phi) * math.cos(end_phi) * math.sin(delta_lambda / 2) ** 2
-        return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(a))
+        distance_km = 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(a))
+        return round(distance_km)

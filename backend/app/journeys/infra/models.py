@@ -1,7 +1,7 @@
 import datetime as dt
 import uuid
 
-from sqlalchemy import REAL, Date, String
+from sqlalchemy import REAL, Date, SmallInteger, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.shared.models import BaseDBModel
@@ -25,15 +25,18 @@ class Journey(DateTimeMixin, BaseDBModel):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(index=True)
+
     origin_name: Mapped[str] = mapped_column(String(200))
     origin_country_code: Mapped[str] = mapped_column(String(2))
     origin_latitude: Mapped[float] = mapped_column(REAL)
     origin_longitude: Mapped[float] = mapped_column(REAL)
+
     destination_name: Mapped[str] = mapped_column(String(200))
     destination_country_code: Mapped[str] = mapped_column(String(2))
     destination_latitude: Mapped[float] = mapped_column(REAL)
     destination_longitude: Mapped[float] = mapped_column(REAL)
+
     transport_type: Mapped[str] = mapped_column(String(20))
-    distance_km: Mapped[float] = mapped_column(REAL)
+    distance_km: Mapped[int] = mapped_column(SmallInteger)
     traveled_on: Mapped[dt.date] = mapped_column(Date)
     traveled_on_precision: Mapped[str] = mapped_column(String(5))
