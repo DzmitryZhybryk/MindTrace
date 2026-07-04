@@ -1,0 +1,156 @@
+name: Prod
+
+# Путь в прод — триггерится ТОЛЬКО на PR -> main и push main (на PR -> dev не запускается вовсе):
+#   • PR -> main: тяжёлый гейт (integration + e2e) перед мержем. build/deploy тут ещё не нужны.
+#   • push main:  integration + e2e -> build-push -> deploy (строгая связка через needs:
+#                 деплой стартует ТОЛЬКО после зелёных тяжёлых тестов и успешной сборки образов).
+# Быстрый гейт (Backend/Frontend gate) живёт в ci.yml; его обязательность для мержа в main
+# обеспечивает branch protection (Required status checks), а не needs между воркфлоу.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# На push main (build+deploy) НЕ отменяем на полпути — новые пуши сериализуются в очередь той же
+# группы (cancel-in-progress: false); устаревшие PR-прогоны отменяем.
+concurrency:
+  group: prod-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  # GHCR требует lowercase-владельца; совпадает с image: в ops/docker-compose.prod.yaml.
+  IMAGE_BASE: ghcr.io/dzmitryzhybryk
+
+jobs:
+  # ── Тяжёлый гейт: и на PR -> main, и на push main (без if — воркфлоу и так триггерится только тут) ──
+  backend-integration:
+    name: Backend integration
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install Python (из backend/.python-version)
+        run: uv python install
+
+      - name: Sync deps (frozen)
+        run: uv sync --frozen
+
+      # testcontainers поднимает одноразовый Postgres через Docker-демон ubuntu-runner.
+      - name: Integration tests (testcontainers)
+        run: make test-integration
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install deps (ci)
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps
+
+      # make test-e2e (из корня) сам поднимает одноразовый стек (ops/docker-compose.e2e.yaml),
+      # гоняет Playwright (config CI-aware: retries=1, workers=2) и сносит стек с -v.
+      - name: E2E (ephemeral stack + Playwright)
+        run: make test-e2e
+
+  # ── Сборка образов: только push main И только после зелёных тяжёлых тестов (строгая связка) ──
+  build-push:
+    name: Build & push (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    needs: [backend-integration, e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - name: backend
+            context: ./backend
+            image: mindtrace-backend
+          - name: frontend
+            context: ./frontend
+            image: mindtrace-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          target: final
+          push: true
+          # :latest — для make prod-pull по умолчанию; :sha — иммутабельный тег для деплоя/отката.
+          tags: |
+            ${{ env.IMAGE_BASE }}/${{ matrix.image }}:latest
+            ${{ env.IMAGE_BASE }}/${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  # ── Деплой на VPS: только после успешной сборки образов ──
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: build-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # github.sha пробрасываем как env и используем внутри script как $GIT_SHA (а не inline-подстановкой)
+    # — best practice против инъекций в run/script.
+    env:
+      GIT_SHA: ${{ github.sha }}
+    steps:
+      - name: Pull images & restart stack over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          envs: GIT_SHA,DEPLOY_PATH
+          # DEPLOY_PATH — путь к склонированному репо на сервере (там же лежит прод .env, не в git).
+          # git pull подтягивает свежие ops/*.yaml и Caddyfile; образы приходят из GHCR по :sha.
+          # Миграции прогоняет one-shot mindtrace_migrate (gate внутри make prod-up).
+          script: |
+            set -e
+            cd "$DEPLOY_PATH"
+            git pull --ff-only
+            IMAGE_TAG="$GIT_SHA" make prod-pull
+            IMAGE_TAG="$GIT_SHA" make prod-up
+            docker system prune -f
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}

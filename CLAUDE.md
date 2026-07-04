@@ -12,14 +12,16 @@ MindTrace is a FastAPI service (Python 3.14+, async) using Domain-Driven Design.
 
 - **`backend/`** — FastAPI-сервис (этот пакет `app`, `migrations`, `tests`, `pyproject.toml`, `uv.lock`, `Dockerfile`, `Makefile`). Самодостаточный uv-проект: backend-команды (`uv`, `make`, `pytest`) запускаются **из `backend/`**, venv живёт в `backend/.venv`.
 - **`frontend/`** — Vite/React SPA (свой `Dockerfile`, build context `./frontend`).
-- **Корень** — оркестрация и инфраструктура: `docker-compose.yaml`, `.env`, конфиги логирования (`loki.yaml`, `promtail-config.yml`), `docs/`. Весь стек поднимается отсюда одной командой.
+- **`ops/`** — оркестрация и инфра-конфиги: `docker-compose.yaml` (dev), `docker-compose.prod.yaml`, `docker-compose.e2e.yaml`, `Caddyfile` (reverse-proxy + авто-TLS), конфиги логирования (`loki.yaml`, `promtail-config.yml`). Compose запускается через `make`-таргеты (`--project-directory .`), поэтому пути внутри относятся к **корню** репо, а не к `ops/`.
+- **Корень** — `.env`/`.env.example`, `Makefile`-оркестратор, `docs/`. Весь стек поднимается одной командой (`make run`).
 
 ## Commands
 
 ```bash
 # Full stack — из корня репозитория
 docker network create mindtrace-network   # один раз, перед первым up
-docker compose up -d                       # app + worker + postgres + frontend + logging
+make run                                    # dev-стек: app + worker + postgres + frontend + logging
+                                            # (обёртка над docker compose -f ops/docker-compose.yaml с --project-directory .)
 
 # Root Makefile-оркестратор — из корня (делегирует в backend/ и frontend/ через make -C,
 # под-Makefile'ы не дублируются; удобно не переключать директории)
@@ -28,7 +30,7 @@ make fe-<target>                           # любой frontend-таргет (m
 make check                                 # полный гейт обеих сторон (lint + typecheck + тесты unit+api/component)
 make test                                  # быстрые тесты обеих сторон (test-back + test-front, без Docker)
 make test-infra                            # тяжёлые: backend integration + frontend e2e (оба самодостаточны — поднимают свою одноразовую инфру; нужен только Docker-демон)
-make test-e2e                              # frontend e2e: сам поднимает одноразовый стек (docker-compose.e2e.yaml), гоняет Playwright, сносит с -v; дев-база не трогается
+make test-e2e                              # frontend e2e: сам поднимает одноразовый стек (ops/docker-compose.e2e.yaml), гоняет Playwright, сносит с -v; дев-база не трогается
 
 # Backend dev — из backend/ (самодостаточный uv-проект)
 cd backend

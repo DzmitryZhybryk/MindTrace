@@ -61,7 +61,7 @@ _EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = 60
 # При добавлении нового уровня/домена обнови и эти кортежи, и список ``markers`` в
 # pyproject.toml (``--strict-markers`` запрещает незарегистрированные маркеры).
 _LEVEL_MARKERS = ("unit", "integration", "api")
-_DOMAIN_MARKERS = ("auth", "users", "shared", "journeys", "geo")
+_DOMAIN_MARKERS = ("auth", "users", "shared", "journeys", "geo", "health")
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

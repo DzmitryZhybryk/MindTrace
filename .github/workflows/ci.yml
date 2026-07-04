@@ -1,0 +1,66 @@
+name: CI
+
+# Быстрый гейт: на каждый PR (dev и main) и push main — lint, typecheck, unit/api/component.
+# Тяжёлые тесты (integration + e2e), сборка образов и деплой вынесены в prod.yml и триггерятся
+# только на пути в прод (PR -> main / push main), поэтому на PR -> dev здесь НЕТ skipped-чеков.
+# Блокировка мержа при красных — через branch protection (Required status checks) в настройках репо.
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [main]
+
+# Отменяем устаревшие прогоны только для PR; на push main гейт не прерываем.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend gate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install Python (из backend/.python-version)
+        run: uv python install
+
+      - name: Sync deps (frozen)
+        run: uv sync --frozen
+
+      - name: Quality gate (format-check, lint, typecheck, arch, dead-code, audit, unit+api)
+        run: make check-ci
+
+  frontend:
+    name: Frontend gate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install deps (ci)
+        run: npm ci
+
+      - name: Quality gate (lint, typecheck, unit+component)
+        run: make check

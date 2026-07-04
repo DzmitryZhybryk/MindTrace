@@ -28,9 +28,7 @@ class FakeJourneyRepository(JourneyRepositoryPort):
 
     async def find_journeys_by_user_id(self, *, user_id: UUID) -> list[JourneyEntity]:
         # Повторяет боевую выборку: только свои неудалённые поездки, по дате поездки (см. SQL-репо).
-        matching = [
-            journey for journey in self.journeys if journey.user_id == user_id and journey.deleted_at is None
-        ]
+        matching = [journey for journey in self.journeys if journey.user_id == user_id and journey.deleted_at is None]
         return sorted(matching, key=lambda journey: journey.traveled_on.value)
 
 

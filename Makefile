@@ -1,4 +1,5 @@
-.PHONY: help check test test-back test-front test-integration test-e2e e2e-clean test-infra
+.PHONY: help check test test-back test-front test-integration test-e2e e2e-clean test-infra \
+        run stop restart logs ps prod-config prod-pull prod-up prod-down
 
 .DEFAULT_GOAL := help
 
@@ -38,6 +39,42 @@ be-%: ## Проксировать backend-таргет: make be-<target> (be-lin
 fe-%: ## Проксировать frontend-таргет: make fe-<target> (fe-dev, fe-build, …)
 	@$(MAKE) -C frontend $*
 
+# --- Оркестрация стека (compose живёт в ops/) ---
+# `--project-directory .` фиксирует project-dir корнем репо, а не папкой compose-файла:
+# относительные пути внутри compose (build-context ./backend, конфиги ./ops/loki.yaml) и
+# единый корневой .env резолвятся от корня независимо от того, что compose лежит в ops/.
+# Поэтому стек поднимается через эти таргеты, а не голым `docker compose up` из ops/.
+COMPOSE      := docker compose --project-directory . -f ops/docker-compose.yaml
+COMPOSE_PROD := docker compose --project-directory . -f ops/docker-compose.prod.yaml
+
+run: ## Поднять dev-стек (app+worker+pg+frontend+логирование)
+	$(COMPOSE) up -d
+
+stop: ## Остановить dev-стек (тома/данные сохраняются)
+	$(COMPOSE) down
+
+restart: ## Перезапустить dev-стек
+	$(COMPOSE) restart
+
+logs: ## Логи dev-стека (follow)
+	$(COMPOSE) logs -f
+
+ps: ## Статус контейнеров dev-стека
+	$(COMPOSE) ps
+
+# --- Prod-стек (образы из GHCR; .env с прод-секретами лежит на сервере) ---
+prod-config: ## Валидация прод-compose (раскрытие anchor + проверка)
+	$(COMPOSE_PROD) config
+
+prod-pull: ## Стянуть свежие образы из GHCR
+	$(COMPOSE_PROD) pull
+
+prod-up: ## Поднять прод-стек (one-shot миграции прогоняются автоматически до app)
+	$(COMPOSE_PROD) up -d
+
+prod-down: ## Остановить прод-стек (тома/данные сохраняются)
+	$(COMPOSE_PROD) down
+
 # --- Quality gate: полный прогон обеих сторон ---
 # Одна сторона — через pass-through (make be-lint, fe-typecheck). Полный гейт — check.
 check: be-check fe-check ## Полный гейт обеих сторон (lint/typecheck/тесты unit+api + arch/audit; integration/e2e отдельно — make test-infra)
@@ -56,7 +93,7 @@ test: test-back test-front ## Все быстрые тесты обеих сто
 # прогонам. `down -v --remove-orphans` сносит контейнеры + проектную сеть + тома (вкл. node_modules;
 # данные PG — в tmpfs/RAM, диска не касаются). Что переживает: собранные образы (4 шт., bounded,
 # переиспользуются) и глобальный build-cache — это НЕ per-run мусор; глубокая зачистка — `make e2e-clean`.
-COMPOSE_E2E := docker compose -f docker-compose.e2e.yaml
+COMPOSE_E2E := docker compose --project-directory . -f ops/docker-compose.e2e.yaml
 
 test-integration: ## Backend integration (testcontainers → Docker-демон)
 	@$(MAKE) -C backend test-integration
@@ -67,7 +104,7 @@ test-integration: ## Backend integration (testcontainers → Docker-демон)
 # `--wait frontend` (а не голый `--wait`) ждёт healthcheck фронта по цепочке и не спотыкается о
 # штатный выход one-shot'а migrate.
 test-e2e: ## Frontend e2e (Playwright; сам поднимает одноразовый стек и полностью сносит его после — docker compose up НЕ нужен)
-	@echo "${GREEN}INFO :  ${AZURE}Up ephemeral e2e stack (${PURPLE}docker-compose.e2e.yaml${AZURE})${RESET}"
+	@echo "${GREEN}INFO :  ${AZURE}Up ephemeral e2e stack (${PURPLE}ops/docker-compose.e2e.yaml${AZURE})${RESET}"
 	@$(COMPOSE_E2E) down -v --remove-orphans 2>/dev/null || true
 	@{ $(COMPOSE_E2E) up -d --wait frontend && \
 	   E2E_BASE_URL=http://localhost:5273 $(MAKE) -C frontend test-e2e; }; \

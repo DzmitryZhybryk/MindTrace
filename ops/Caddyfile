@@ -1,0 +1,24 @@
+# Caddyfile — reverse-proxy + автоматический HTTPS (Let's Encrypt).
+#
+# ВАЖНО перед первым стартом:
+#   1) DOMAIN (из .env) должен указывать A-записью на IP этого VPS.
+#   2) Порты 80 и 443 доступны из интернета — Caddy берёт сертификат по ACME HTTP-01.
+# Для локальной отладки прод-стека без домена задай в .env DOMAIN=localhost
+# (Caddy выдаст самоподписанный внутренний сертификат).
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# API -> backend (единственный origin: CORS не нужен)
+	handle /v1/* {
+		reverse_proxy app:8000
+	}
+
+	# Всё остальное -> статика фронта (nginx). handle-блоки взаимоисключающие.
+	handle {
+		reverse_proxy frontend:80
+	}
+}

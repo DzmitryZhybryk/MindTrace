@@ -1,0 +1,227 @@
+name: mindtrace
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ПРОД-стек. Отличия от docker-compose.yaml (dev):
+#   • образы pull'ятся из GHCR (build оставлен для локальной сборки/отладки);
+#   • НЕТ проброса портов у внутренних сервисов (postgres/loki/grafana/app/frontend) —
+#     наружу торчит только Caddy (80/443). ВАЖНО: docker `ports:` обходит ufw, поэтому
+#     единственная публичная точка входа — Caddy;
+#   • app/worker/frontend на prod-таргете `final` (без volume-mount и --reload);
+#   • one-shot `mindtrace_migrate` (alembic upgrade head) — gate для app/worker.
+#
+# Пути внутри резолвятся от КОРНЯ репо (запуск через `make prod-*` с --project-directory .),
+# поэтому build-context ./backend и конфиги ./ops/... указаны относительно корня, не ops/.
+#
+# Деплой:  make prod-pull && make prod-up
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-backend-image: &backend-image
+  image: ghcr.io/dzmitryzhybryk/mindtrace-backend:${IMAGE_TAG:-latest}
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+    target: final
+
+networks:
+  default:
+    name: mindtrace-network
+    external: true
+
+services:
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: mindtrace_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"        # HTTP/3
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./ops/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # выпущенные TLS-сертификаты — НЕ удалять
+      - caddy_config:/config
+    depends_on:
+      - app
+      - frontend
+    networks:
+      - default
+    logging: *default-logging
+
+  # Одноразовый прогон миграций перед стартом app/worker. Гейт service_completed_successfully
+  # гарантирует, что схема БД накатана до того, как приложение начнёт её использовать.
+  mindtrace_migrate:
+    <<: *backend-image
+    container_name: mindtrace_migrate
+    command: alembic upgrade head
+    env_file: .env
+    depends_on:
+      mindtrace_pg:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - default
+    logging: *default-logging
+
+  app:
+    <<: *backend-image
+    container_name: mindtrace_app
+    command: uvicorn app.main:create_app --factory --no-use-colors --host 0.0.0.0 --port 8000 --log-level error
+    env_file: .env
+    depends_on:
+      mindtrace_pg:
+        condition: service_healthy
+      mindtrace_migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # slim-образ без curl — пробуем /healthz через python; не-200 бросает исключение -> unhealthy.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - default
+    logging: *default-logging
+
+  mindtrace_worker:
+    <<: *backend-image
+    container_name: mindtrace_worker
+    command: python -m app.worker
+    env_file: .env
+    depends_on:
+      mindtrace_pg:
+        condition: service_healthy
+      mindtrace_migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - default
+    logging: *default-logging
+
+  frontend:
+    image: ghcr.io/dzmitryzhybryk/mindtrace-frontend:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: final
+    container_name: mindtrace_frontend
+    restart: unless-stopped
+    networks:
+      - default
+    logging: *default-logging
+
+  mindtrace_pg:
+    image: postgres:17-alpine
+    container_name: mindtrace_pg
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command: postgres -c log_min_messages=warning
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - default
+    logging: *default-logging
+
+  loki:
+    image: grafana/loki:3.6.3
+    container_name: mindtrace_loki
+    command: -config.file=/etc/loki/loki.yaml -log.level=error -target=all
+    volumes:
+      - loki_data:/loki
+      - ./ops/loki.yaml:/etc/loki/loki.yaml:ro
+    restart: unless-stopped
+    networks:
+      - default
+    logging: *default-logging
+
+  promtail:
+    image: grafana/promtail:3.6.3
+    container_name: mindtrace_promtail
+    command:
+      - -config.file=/etc/promtail/config.yml
+      - -log.level=error
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./ops/promtail-config.yml:/etc/promtail/config.yml:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - default
+    logging: *default-logging
+
+  # Grafana наружу НЕ публикуется (нет ports, Caddy её не проксирует). Доступ админа —
+  # по SSH-туннелю к 3000 (см. docs/deployment.md).
+  grafana:
+    image: grafana/grafana:12.3.1
+    container_name: mindtrace_grafana
+    env_file: .env
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_LOG_LEVEL: warn
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - default
+    logging: *default-logging
+
+  # Автоматический бэкап БД: pg_dump по расписанию + ротация (daily/weekly/monthly).
+  # Дампы лежат в volume pg_backups на диске сервера. ВАЖНО: это защита от логической
+  # порчи данных, но не от гибели диска — для настоящей durability копируй pg_backups во
+  # внешнее хранилище (S3/rclone) отдельным cron, плюс тарифные снапшоты сервера
+  # (см. docs/deployment.md → Бэкапы и восстановление). Восстановление: docs/deployment.md.
+  mindtrace_pg_backup:
+    image: prodrigestivill/postgres-backup-local:17
+    container_name: mindtrace_pg_backup
+    environment:
+      POSTGRES_HOST: mindtrace_pg
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SCHEDULE: "@daily"          # ежедневный дамп (cron-алиас образа)
+      BACKUP_KEEP_DAYS: "7"
+      BACKUP_KEEP_WEEKS: "4"
+      BACKUP_KEEP_MONTHS: "6"
+    volumes:
+      - pg_backups:/backups
+    depends_on:
+      mindtrace_pg:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - default
+    logging: *default-logging
+
+volumes:
+  pg_data:
+  pg_backups:
+  loki_data:
+  grafana_data:
+  caddy_data:
+  caddy_config:
