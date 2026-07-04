@@ -85,6 +85,16 @@ export const handlers = [
   }),
   // Создание поездки: payload-on-create → 201 без тела (как отдаёт backend).
   http.post("/v1/journeys/", () => new HttpResponse(null, { status: 201 })),
+  // Карта путешествий: агрегат посещённых стран (кормит WorldMap). Тест переопределяет
+  // на пустой/ошибочный ответ через server.use(...).
+  http.get("/v1/journeys/map", () =>
+    HttpResponse.json({
+      countries: [
+        { countryCode: "RU", cities: [{ name: "Moscow", latitude: 55.75, longitude: 37.62, years: [2020, 2022] }] },
+        { countryCode: "GB", cities: [{ name: "London", latitude: 51.5, longitude: -0.12, years: [2021] }] },
+      ],
+    }),
+  ),
 ];
 
 export const server = setupServer(...handlers);

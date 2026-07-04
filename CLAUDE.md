@@ -299,10 +299,10 @@ Examples:
 
 CHANGELOG — **один** файл в корне. Новые записи группируются по дате с под-секциями `### Backend X.Y.Z` / `### Frontend X.Y.Z` (repo-уровневые изменения — структура, тулинг, CI — идут под `### Project` без номера версии). Разбивать на `backend/CHANGELOG.md` + `frontend/CHANGELOG.md` — только когда каденс релизов реально разъедется.
 
-Правило коммита фичи (по области):
+Правило коммита фичи (по области) — версию и CHANGELOG коммить **тем же коммитом**, что и саму фичу (вместе с её кодом и тестами), отдельный коммит под них не нужен:
 
-- бэк-фича → `backend/pyproject.toml` (+ `backend/uv.lock` при смене зависимостей) + секция Backend в `CHANGELOG.md`, отдельным `docs(DEV-XXX)`-коммитом;
-- фронт-фича → `frontend/package.json` + секция Frontend в `CHANGELOG.md`, отдельным `docs`-коммитом;
+- бэк-фича → `backend/pyproject.toml` (+ `backend/uv.lock` при смене зависимостей) + секция Backend в `CHANGELOG.md`;
+- фронт-фича → `frontend/package.json` + секция Frontend в `CHANGELOG.md`;
 - сквозная → оба файла версий + обе секции.
 
 ## Always-follow rules

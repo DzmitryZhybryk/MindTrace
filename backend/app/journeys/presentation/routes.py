@@ -7,8 +7,12 @@ from app.auth.presentation.dependencies import current_user_id_dependency
 from app.journeys.application.schemas import CreateJourneyCommand, PlaceSnapshot
 from app.journeys.application.services import JourneyService
 from app.journeys.presentation.dependencies import journey_service_dependency
-from app.journeys.presentation.responses import CREATE_JOURNEY_RESPONSES
-from app.journeys.presentation.schemas import CreateJourneyRequest
+from app.journeys.presentation.responses import CREATE_JOURNEY_RESPONSES, JOURNEYS_MAP_RESPONSES
+from app.journeys.presentation.schemas import (
+    CreateJourneyRequest,
+    JourneysMapResponse,
+    MapCountryResponse,
+)
 
 journey_router = APIRouter()
 
@@ -44,3 +48,17 @@ async def create_journey(
     )
     await journey_service.create_journey(command=command)
     return Response(status_code=status.HTTP_201_CREATED)
+
+
+@journey_router.get(
+    "/map",
+    response_model=JourneysMapResponse,
+    responses=JOURNEYS_MAP_RESPONSES,
+)
+async def get_journeys_map(
+    user_id: Annotated[UUID, Depends(current_user_id_dependency)],
+    journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
+) -> JourneysMapResponse:
+    result = await journey_service.get_journeys_map(user_id=user_id)
+    countries = [MapCountryResponse.model_validate(country, from_attributes=True) for country in result.countries]
+    return JourneysMapResponse(countries=countries)

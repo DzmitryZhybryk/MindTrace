@@ -48,6 +48,27 @@
   transform: translateX(72px);
 }
 
+/*
+ * Оверлей состояния карты (загрузка / ошибка) — по центру области карты, поверх неё.
+ * Контейнер прозрачен для кликов (pointer-events:none), чтобы карта под ним оставалась
+ * живой; интерактивные дети (кнопка «повторить») кликабельны (pointer-events:auto).
+ */
+.journeys-map-status {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.journeys-map-status > * {
+  pointer-events: auto;
+}
+
 .journeys-panel {
   position: absolute;
   /* Единый отступ под шапкой (тот же токен у padding-top карты) — верх меню на
