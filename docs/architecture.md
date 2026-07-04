@@ -1,6 +1,6 @@
 # Архитектура проекта
 
-Бэкенд (`backend/app/`) построен по **Domain-Driven Design**: нарезка по доменам (`auth`, `users`), а не по слоям — весь код одной сущности собран в одном месте. Фронтенд (`frontend/`) — отдельный Vite/React SPA; весь стек поднимается из корня одной командой (`docker compose up -d`).
+Бэкенд (`backend/app/`) построен по **Domain-Driven Design**: нарезка по доменам (`auth`, `users`), а не по слоям — весь код одной сущности собран в одном месте. Фронтенд (`frontend/`) — отдельный Vite/React SPA; весь стек поднимается из корня одной командой (`make run`; compose-файлы и инфра-конфиги живут в `ops/`).
 
 > **Детальная структура и конвенции — в [`CLAUDE.md`](../CLAUDE.md)** (секции «Architecture», «Shared infrastructure», «DTO conventions», «Service Result / Command convention», «Cводная таблица именования по слоям», «Versioning & changelog»). Это единый источник истины.
 >

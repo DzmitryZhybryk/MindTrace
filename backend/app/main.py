@@ -5,6 +5,7 @@ from typing import Any
 from app.auth import auth_router
 from app.auth.infra import auth_blueprint
 from app.geo import geo_router
+from app.health import health_router
 from app.journeys import journey_router
 
 # Настраиваем логирование в самом начале, до всех остальных импортов
@@ -19,6 +20,7 @@ from app.shared.infra.procrastinate import ProcrastinateComponent, TaskBusCompon
 from app.shared.logging import HTTPLoggingMiddleware, configure_logging, get_logger
 from app.shared.schemas.base import BFastAPI
 from app.shared.settings import settings
+from app.shared.types import DictStrAny
 
 logger = get_logger(__name__)
 
@@ -70,6 +72,13 @@ def create_default_app(
 def create_app() -> BFastAPI:
     """Создает и настраивает FastAPI приложение."""
     configure_logging(include_debug=settings.ENVIRONMENT in (AppEnvEnum.LOCAL, AppEnvEnum.DEVELOPMENT))
+
+    # В production не публикуем интерактивную документацию и OpenAPI-схему наружу:
+    # это внутренняя поверхность API, её не должно быть видно на публичном домене.
+    docs_kwargs: DictStrAny = {}
+    if settings.ENVIRONMENT is AppEnvEnum.PRODUCTION:
+        docs_kwargs = {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
     app = create_default_app(
         title=settings.SERVICE_NAME,
         version=settings.SERVICE_VERSION,
@@ -80,6 +89,7 @@ def create_app() -> BFastAPI:
             ProcrastinateComponent(settings=settings, blueprints=[auth_blueprint]),
             TaskBusComponent(),
         ],
+        **docs_kwargs,
     )
 
     # Регистрируем unified middleware для логирования HTTP запросов и исключений
@@ -87,6 +97,10 @@ def create_app() -> BFastAPI:
     app.add_middleware(HTTPLoggingMiddleware)
 
     register_exception_handlers(app)
+
+    # Операционный эндпоинт вне версионированного контракта (/v1): путь стабилен для
+    # docker healthcheck и reverse-proxy независимо от версии API.
+    app.include_router(health_router)
 
     app.include_router(auth_router, prefix="/v1/auth", tags=["v1.auth"])
     app.include_router(geo_router, prefix="/v1/geo", tags=["v1.geo"])

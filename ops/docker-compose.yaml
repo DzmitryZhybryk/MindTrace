@@ -1,5 +1,14 @@
 name: mindtrace
 
+# Единый лимит на docker json-file логи для ВСЕХ сервисов: max-size x max-file = кап 30 MB
+# на контейнер. Без него дефолт Docker — без лимита, и при краш-лупе лог за ночь может
+# забить диск. Anchor вместо повтора на каждом сервисе, чтобы новый сервис не забыть.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 networks:
   default:
     name: mindtrace-network
@@ -32,11 +41,7 @@ services:
     restart: unless-stopped
     networks:
       - default
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *default-logging
 
   mindtrace_worker:
     build:
@@ -55,16 +60,13 @@ services:
     restart: unless-stopped
     networks:
       - default
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *default-logging
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: dev
     container_name: mindtrace_frontend
     ports:
       - "5173:5173"
@@ -76,11 +78,7 @@ services:
     restart: unless-stopped
     networks:
       - default
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *default-logging
 
   mindtrace_pg:
     image: postgres:17-alpine
@@ -104,6 +102,7 @@ services:
     restart: unless-stopped
     networks:
       - default
+    logging: *default-logging
 
   loki:
     image: grafana/loki:3.6.3
@@ -113,10 +112,11 @@ services:
       - "3100:3100"
     volumes:
       - loki_data:/loki
-      - ./loki.yaml:/etc/loki/loki.yaml:ro
+      - ./ops/loki.yaml:/etc/loki/loki.yaml:ro
     restart: unless-stopped
     networks:
       - default
+    logging: *default-logging
 
   promtail:
     image: grafana/promtail:3.6.3
@@ -127,12 +127,13 @@ services:
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - ./ops/promtail-config.yml:/etc/promtail/config.yml:ro
     depends_on:
       - loki
     restart: unless-stopped
     networks:
       - default
+    logging: *default-logging
 
   grafana:
     image: grafana/grafana:12.3.1
@@ -151,6 +152,7 @@ services:
     restart: unless-stopped
     networks:
       - default
+    logging: *default-logging
 
 volumes:
   pg_data:

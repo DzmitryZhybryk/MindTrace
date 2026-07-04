@@ -1,6 +1,6 @@
 [project]
 name = "MindTrace"
-version = "0.11.0"
+version = "0.12.0"
 description = "Service for managing mindtrace"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
@@ -51,6 +51,7 @@ markers = [
     "shared: тесты shared-инфраструктуры",
     "journeys: тесты домена journeys",
     "geo: тесты домена geo",
+    "health: тесты домена health",
 ]
 
 [tool.ruff]

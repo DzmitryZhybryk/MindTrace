@@ -13,6 +13,19 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 ## 2026-07-04
 
+### Backend 0.12.0
+
+- **Liveness-эндпоинт `GET /healthz`.** Пустой `200` для контейнерного healthcheck и reverse-proxy; намеренно не трогает БД и внешние сервисы (liveness, не readiness — контейнер не уходит в рестарт из-за временной недоступности зависимостей). Вынесен в отдельный операционный модуль `app/health/` вне версионного префикса `/v1`. Новый HTTP-эндпоинт → minor bump
+- **В `production` не публикуется документация API.** `/docs`, `/redoc` и `/openapi.json` отключаются при `ENVIRONMENT=production` — внутренняя поверхность API не видна на публичном домене.
+
+### Project
+
+- **CI/CD на GitHub Actions.** Единый `ci.yml` (git-flow feature → dev → main): на PR в `dev` быстрые тесты (backend `check-ci` + frontend `check`), на PR в `main` и push в `main` — дополнительно тяжёлые (integration на testcontainers + e2e на Playwright). На push в `main` **после зелёных тестов** (строгая связка через `needs`) собираются образы backend/frontend, пушатся в GHCR и деплоятся на VPS по SSH (`git pull` + `make prod-*`) — красные тесты блокируют деплой.
+- **Прод-стек через docker compose.** `ops/docker-compose.prod.yaml`: образы из GHCR, внутренние сервисы без проброса портов (наружу только Caddy с авто-HTTPS Let's Encrypt), one-shot прогон миграций до старта app. Прод-сборка фронта — nginx + `vite build` (multi-stage).
+- **Оркестрация и инфра-конфиги вынесены в `ops/`.** Все compose-файлы (dev/prod/e2e) + `Caddyfile` + `loki.yaml`/`promtail-config.yml`; запуск через make-обёртки (`make run`, `make prod-*`) с `--project-directory .`.
+- **Логи больше не забивают диск.** json-file лимиты `10m × 3` на всех сервисах compose (закрыты ранее безлимитные postgres/loki/promtail/grafana); Loki retention увеличен до 7 дней.
+- **Автоматический бэкап Postgres.** Sidecar `pg_dump` по расписанию с ротацией (7 дней / 4 недели / 6 месяцев). Полный runbook выкатки — `docs/deployment.md`.
+
 ### Backend 0.11.0
 
 - **Карта путешествий: агрегирующий эндпоинт `GET /v1/journeys/map`.** Отдаёт посещённые страны (ISO alpha-2) с городами и годами визитов, свёрнутые из поездок пользователя: посещённым считается каждый конец маршрута (origin ∪ destination), год визита — год поездки, одноимённые города схлопываются регистронезависимо, годы уникальны и по возрастанию. Имя страны в контракте не несём — фронт резолвит его из кода (`Intl.DisplayNames`). Новый HTTP-контракт → minor bump

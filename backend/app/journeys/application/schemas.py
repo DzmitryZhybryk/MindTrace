@@ -109,5 +109,3 @@ class CityVisitAccumulator:
 
     point: GeoPoint
     years: set[int] = field(default_factory=set)
-
-

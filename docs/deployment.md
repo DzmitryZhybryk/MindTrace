@@ -1,0 +1,262 @@
+# Деплой MindTrace на VPS
+
+Прод-выкатка через docker compose + Caddy (авто-HTTPS) + GitHub Actions (CI/CD).
+Все команды на сервере — из корня склонированного репозитория (compose-файлы живут в `ops/`,
+запускаются через `make prod-*`).
+
+## Архитектура прода
+
+```
+Интернет ──443/80──▶ Caddy (TLS, reverse-proxy) ─┬─ /v1/*  ▶ app:8000  (FastAPI)
+                                                  └─ /*     ▶ frontend:80 (nginx + SPA)
+                     app/worker ▶ mindtrace_pg (Postgres, НЕ виден снаружи)
+                     mindtrace_pg_backup ▶ pg_dump по расписанию
+                     loki/promtail/grafana — логирование (наружу не публикуется)
+```
+
+- **Наружу открыт только Caddy** (80/443). Postgres/Grafana/Loki/app/frontend — без проброса портов,
+  доступны лишь внутри docker-сети `mindtrace-network`.
+- Образы `mindtrace-backend`/`mindtrace-frontend` собирает CI и пушит в **GHCR**; сервер их только `pull`-ит.
+- Миграции БД прогоняет one-shot `mindtrace_migrate` (`alembic upgrade head`) до старта app/worker.
+
+## Предпосылки
+
+- **VPS** (рекомендуется тариф от 6 GB RAM: postgres + app + worker + frontend + loki + grafana + caddy).
+- **Домен** с возможностью править DNS.
+- Аккаунт **Resend** для отправки email (верификация домена-отправителя).
+
+---
+
+## 1. Подготовка сервера
+
+### 1.1. Docker
+
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker "$USER"   # разлогиниться/залогиниться для применения группы
+```
+
+### 1.2. Глобальный лимит логов Docker (предохранитель от переполнения диска)
+
+Дублирует per-service лимиты из compose на уровне демона — на случай контейнеров без явного `logging`.
+Создай `/etc/docker/daemon.json`:
+
+```json
+{
+  "log-driver": "json-file",
+  "log-opts": { "max-size": "10m", "max-file": "3" }
+}
+```
+
+```bash
+sudo systemctl restart docker
+```
+
+### 1.3. Firewall (ufw)
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22/tcp     # SSH (укажи свой порт, если не 22)
+sudo ufw allow 80/tcp     # HTTP (ACME + редирект на HTTPS)
+sudo ufw allow 443/tcp    # HTTPS
+sudo ufw allow 443/udp    # HTTP/3
+sudo ufw enable
+```
+
+> ⚠️ Docker управляет iptables в обход ufw: если пробросить порт через `ports:`, он станет доступен
+> извне **мимо** ufw. Поэтому в `ops/docker-compose.prod.yaml` внутренние сервисы намеренно без
+> `ports:` — наружу торчит только Caddy. Не добавляй `ports:` postgres/grafana на проде.
+
+### 1.4. Docker-сеть
+
+```bash
+docker network create mindtrace-network
+```
+
+### 1.5. Клонирование репозитория и секреты
+
+```bash
+git clone git@github.com:DzmitryZhybryk/MindTrace.git /opt/mindtrace
+cd /opt/mindtrace
+cp .env.example .env
+```
+
+Заполни `.env` **новыми** прод-секретами (не переиспользуй dev-значения):
+
+```bash
+# сгенерировать секреты
+openssl rand -hex 32      # -> JWT_SECRET_KEY
+openssl rand -base64 32   # -> POSTGRES_PASSWORD, GRAFANA_ADMIN_PASSWORD
+```
+
+Обязательно проставь: `ENVIRONMENT=production`, `RELOAD=` (пусто), `POSTGRES_ECHO=false`,
+`POSTGRES_HOST=mindtrace_pg`, `DOMAIN=<твой домен>`, `ACME_EMAIL=<email>`, `RESEND_*`.
+
+### 1.6. Доступ к приватным образам GHCR
+
+По умолчанию GHCR-пакеты приватные. На сервере нужно залогиниться, чтобы `pull` работал:
+
+```bash
+# PAT с правом read:packages (github.com → Settings → Developer settings → Tokens)
+echo "$GHCR_PAT" | docker login ghcr.io -u <github-username> --password-stdin
+```
+
+Альтернатива — сделать пакеты `mindtrace-backend`/`mindtrace-frontend` публичными в настройках GHCR
+(тогда `docker login` на сервере не нужен).
+
+---
+
+## 2. DNS и TLS
+
+Пропиши **A-запись** домена на IP VPS **до первого старта Caddy** — Caddy берёт сертификат
+Let's Encrypt по ACME HTTP-01, для чего домен уже должен резолвиться на сервер, а порты 80/443 быть
+доступны из интернета.
+
+```
+A   @   <IP VPS>
+```
+
+Проверка: `dig +short <домен>` должен вернуть IP сервера.
+
+> Для отладки прод-стека без реального домена задай в `.env` `DOMAIN=localhost` — Caddy выдаст
+> самоподписанный внутренний сертификат.
+
+---
+
+## 3. Resend (email)
+
+Отправка писем (верификация email) требует верифицированного домена-отправителя:
+
+1. В Resend добавь домен и пропиши выданные **SPF/DKIM** DNS-записи.
+2. В `.env`: `RESEND_FROM_EMAIL=no-reply@<твой-домен>`, `RESEND_API_KEY=<ключ>`.
+
+---
+
+## 4. GitHub Secrets (для автодеплоя)
+
+`Settings → Secrets and variables → Actions` в репозитории:
+
+| Secret | Значение |
+|---|---|
+| `SSH_HOST` | IP/хост VPS |
+| `SSH_USER` | пользователь SSH на сервере |
+| `SSH_KEY` | приватный SSH-ключ для деплоя (пару сгенерируй `ssh-keygen`, публичный — в `~/.ssh/authorized_keys` на сервере) |
+| `SSH_PORT` | порт SSH (например `22`) |
+| `DEPLOY_PATH` | путь к репо на сервере (например `/opt/mindtrace`) |
+
+`GITHUB_TOKEN` для пуша образов в GHCR выдаётся автоматически (`packages: write` в workflow).
+
+### CI-гейты и запрет мержа при красных тестах
+
+`ci.yml` гоняет тесты по стратегии git-flow (feature → dev → main):
+
+| Событие | Job'ы | Что проверяется |
+|---|---|---|
+| PR → `dev` | `Backend gate`, `Frontend gate` | быстрые: lint, typecheck, arch, unit, api, component |
+| PR → `main` | + `Backend integration`, `E2E (Playwright)` | + integration (testcontainers) + e2e |
+| push → `main` | все четыре | полный гейт перед деплоем |
+
+Чтобы **красные тесты блокировали мерж**, включи branch protection (нужны admin-права на репо):
+`GitHub → Settings → Branches → Add branch ruleset` для `dev` и `main`:
+
+- ✅ **Require a pull request before merging** (запрет прямого push);
+- ✅ **Require status checks to pass** → добавь для `dev`: `Backend gate`, `Frontend gate`;
+  для `main` — ещё `Backend integration`, `E2E (Playwright)`;
+- ✅ **Require branches to be up to date before merging** (перегон гейта после rebase).
+
+> Без этой настройки CI лишь *показывает* статус, но не мешает мержить красное — branch protection
+> на `dev`/`main` обязателен. Деплой при этом уже связан с тестами жёстко: job'ы `build-push` и
+> `deploy` в `ci.yml` объявлены через `needs: [backend, frontend, backend-integration, e2e]`, поэтому
+> на push в `main` **красные тесты блокируют сборку образов и деплой** (не только мерж).
+
+---
+
+## 5. Первый деплой
+
+```bash
+cd /opt/mindtrace
+make prod-pull    # стянуть образы из GHCR
+make prod-up      # поднять стек (миграции прогонятся автоматически до app)
+```
+
+Проверка:
+
+```bash
+make prod-config                              # раскрытый прод-конфиг
+docker compose --project-directory . -f ops/docker-compose.prod.yaml ps
+curl -I https://<домен>/                      # должен ответить 200/301 через Caddy
+```
+
+Дальнейшие деплои идут **автоматически**: push/merge в `main` → `ci.yml` прогоняет весь гейт → при
+зелёных тестах job'ы `build-push` (образы в GHCR) и `deploy` (SSH: `git pull && make prod-pull &&
+make prod-up`) выкатывают прод. Красные тесты → деплой не запускается.
+
+Ручной деплой (без CI): `make prod-pull && make prod-up` на сервере.
+
+---
+
+## 6. Миграции
+
+- Прогоняются автоматически one-shot сервисом `mindtrace_migrate` (`alembic upgrade head`) — `app`/`worker`
+  стартуют только после его успешного завершения (`service_completed_successfully`).
+- Если миграция упала — app не поднимется (это защита: не запускаем код на несовместимой схеме).
+  Смотри логи: `docker compose ... logs mindtrace_migrate`.
+- **Перед деплоем с рискованной миграцией сделай бэкап** (см. ниже).
+
+---
+
+## 7. Бэкапы и восстановление
+
+Сервис `mindtrace_pg_backup` (`prodrigestivill/postgres-backup-local`) делает `pg_dump` по расписанию
+(`@daily`) с ротацией (7 дней / 4 недели / 6 месяцев) в volume `mindtrace_pg_backups`.
+
+```bash
+# посмотреть дампы
+docker run --rm -v mindtrace_pg_backups:/backups alpine ls -lah /backups/daily
+
+# ручной бэкап прямо сейчас
+docker exec mindtrace_pg_backup /backup.sh
+```
+
+**Восстановление** из дампа:
+
+```bash
+# найти нужный дамп в /backups/{daily,weekly,monthly}, затем:
+docker exec -i mindtrace_pg sh -c \
+  'gunzip | psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backup.sql.gz
+```
+
+> ⚠️ Дампы лежат на диске сервера — это защита от логической порчи, **не от гибели диска**.
+> Для durability: (1) тарифные снапшоты сервера (evps «Backups: Included»), (2) периодически
+> копируй `mindtrace_pg_backups` во внешнее хранилище (S3/rclone) отдельным cron.
+> `pg_data` и `mindtrace_pg_backups` НЕ удаляй командой `down -v` — потеряешь данные.
+
+---
+
+## 8. Логи и мониторинг
+
+- **Loki** хранит логи 7 дней (`ops/loki.yaml`, `retention_period: 168h`).
+- Docker json-file логи ограничены `10m × 3` на контейнер (compose + `daemon.json`).
+- **Grafana** наружу не публикуется. Доступ админа — по SSH-туннелю:
+
+  ```bash
+  ssh -L 3000:localhost:3000 <user>@<VPS>
+  # затем http://localhost:3000 (логин/пароль из GRAFANA_ADMIN_*)
+  ```
+
+---
+
+## 9. Troubleshooting и откат
+
+- **Caddy не берёт сертификат** — проверь, что DNS указывает на сервер (`dig +short <домен>`) и
+  порты 80/443 открыты (ufw + провайдер). Логи: `docker compose ... logs caddy`.
+- **app unhealthy** — `docker compose ... logs app`; проверь `.env` (POSTGRES_HOST=mindtrace_pg, секреты).
+- **Откат на предыдущую версию** — образы тегируются commit-SHA. На сервере:
+
+  ```bash
+  IMAGE_TAG=<предыдущий-sha> make prod-pull
+  IMAGE_TAG=<предыдущий-sha> make prod-up
+  ```
+
+- **Полная остановка** (данные сохраняются): `make prod-down`.

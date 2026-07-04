@@ -1,4 +1,4 @@
-.PHONY: help format lint typecheck dead-code audit arch check test coverage test-unit test-integration test-api test-auth test-users test-shared test-journeys test-geo migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
+.PHONY: help format format-check lint typecheck dead-code audit arch check check-ci test coverage test-unit test-integration test-api test-auth test-users test-shared test-journeys test-geo migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -46,6 +46,10 @@ format: ## Auto-format python source files
 	@uv run --no-sync ruff check --fix --unsafe-fixes $(RUFF_SOURCES)
 	@uv run --no-sync ruff format $(RUFF_SOURCES)
 
+format-check: ## Verify formatting without modifying files (CI-режим format)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}ruff${AZURE}' format --check${RESET}"
+	@uv run --no-sync ruff format --check $(RUFF_SOURCES)
+
 lint: ## Lint python source files with ruff
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}ruff${AZURE}' lint${RESET}"
 	@uv run --no-sync ruff check $(RUFF_SOURCES)
@@ -67,6 +71,8 @@ arch: ## Enforce DDD layer/import boundaries (tach)
 	@uv run --no-sync tach check
 
 check: format lint typecheck arch dead-code audit test ## Run format + lint + typecheck + arch + dead-code + audit + fast tests (unit+api; integration → test-integration)
+
+check-ci: format-check lint typecheck arch dead-code audit test ## CI-гейт: как check, но format в проверочном режиме (не модифицирует файлы)
 
 test: ## Run fast tests — unit + api (no Docker; integration → make test-integration)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' unit + api tests${RESET}"
