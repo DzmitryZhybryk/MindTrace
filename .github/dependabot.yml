@@ -1,0 +1,16 @@
+# Dependabot: держит закреплённые на commit-SHA GitHub Actions в актуальном состоянии.
+# Экшены запинены на SHA (supply-chain hardening) — Dependabot раз в неделю поднимает PR с
+# обновлением SHA до свежих релизов, иначе пины заморозили бы и security-патчи самих экшенов.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      # Один PR на все обновления экшенов вместо N отдельных.
+      github-actions:
+        patterns:
+          - "*"

@@ -35,10 +35,10 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
         with:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
@@ -57,10 +57,10 @@ jobs:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: 22
           cache: npm
@@ -73,6 +73,11 @@ jobs:
       - name: Install Playwright browsers
         working-directory: frontend
         run: npx playwright install --with-deps
+
+      # e2e-стек ждёт корневой .env (env_file: .env в ops/docker-compose.e2e.yaml). В репозитории
+      # .env нет (в .gitignore) — кладём тестовые значения из ops/.env.e2e (не секреты, tmpfs-БД).
+      - name: Provide .env for ephemeral e2e stack (test-only values)
+        run: cp ops/.env.e2e .env
 
       # make test-e2e (из корня) сам поднимает одноразовый стек (ops/docker-compose.e2e.yaml),
       # гоняет Playwright (config CI-aware: retries=1, workers=2) и сносит стек с -v.
@@ -98,20 +103,20 @@ jobs:
             context: ./frontend
             image: mindtrace-frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
         with:
           context: ${{ matrix.context }}
           target: final
@@ -135,7 +140,7 @@ jobs:
       GIT_SHA: ${{ github.sha }}
     steps:
       - name: Pull images & restart stack over SSH
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2  # v1
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
