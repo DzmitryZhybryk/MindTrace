@@ -118,6 +118,21 @@
   font-weight: 600;
 }
 
+/* Неактивный пункт под-навигации (раздел ещё не реализован): приглушён, без
+   hover-фона, с бейджем «Soon» у правого края. */
+.journeys-nav__item--soon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  cursor: default;
+}
+
+.journeys-nav__item--soon:hover {
+  background: none;
+  color: #94a3b8;
+}
+
 /* «Добавить» — действие, выделено заливкой (slate). */
 .journeys-nav__add {
   display: block;
@@ -138,6 +153,31 @@
 
 .journeys-nav__add--active {
   background: #0f172a;
+}
+
+/* «Добавить место» — вторичное действие (ghost), пока не реализовано: disabled,
+   тонкая рамка вместо заливки — визуально ниже основного «Добавить путешествие»,
+   бейдж «Soon» по центру рядом с текстом. */
+.journeys-nav__add-place {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: transparent;
+  color: #94a3b8;
+  font: 600 14px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  text-align: center;
+  cursor: default;
+}
+
+.journeys-nav__add-place:disabled {
+  /* Явно фиксируем вид disabled — браузерный дефолт кнопки не осветляет текст/рамку. */
+  opacity: 1;
 }
 
 /* ---- Легенда карты — сворачиваемый блок в нижнем-правом углу ------------- */

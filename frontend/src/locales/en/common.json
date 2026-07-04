@@ -17,6 +17,10 @@
     "wishlist": "On your wishlist"
   },
   "greeting": "Hello, {{name}}",
+  "badge": {
+    "soon": "Soon",
+    "comingSoon": "Coming soon"
+  },
   "language": {
     "label": "Language"
   },
