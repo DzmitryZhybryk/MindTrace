@@ -149,13 +149,15 @@ A   @   <IP VPS>
 
 ### CI-гейты и запрет мержа при красных тестах
 
-`ci.yml` гоняет тесты по стратегии git-flow (feature → dev → main):
+Тесты гоняют два воркфлоу по стратегии git-flow (feature → dev → main): `ci.yml` — быстрый гейт,
+`prod.yml` — тяжёлый гейт + сборка образов + деплой. На PR → `dev` `prod.yml` не запускается вовсе,
+поэтому там нет skipped-чеков:
 
-| Событие | Job'ы | Что проверяется |
-|---|---|---|
-| PR → `dev` | `Backend gate`, `Frontend gate` | быстрые: lint, typecheck, arch, unit, api, component |
-| PR → `main` | + `Backend integration`, `E2E (Playwright)` | + integration (testcontainers) + e2e |
-| push → `main` | все четыре | полный гейт перед деплоем |
+| Событие | Workflow | Job'ы | Что проверяется |
+|---|---|---|---|
+| PR → `dev` | `ci.yml` | `Backend gate`, `Frontend gate` | быстрые: lint, typecheck, arch, unit, api, component |
+| PR → `main` | `ci.yml` + `prod.yml` | + `Backend integration`, `E2E (Playwright)` | + integration (testcontainers) + e2e |
+| push → `main` | `ci.yml` + `prod.yml` | всё + `Build & push` + `Deploy` | полный гейт → сборка образов → деплой |
 
 Чтобы **красные тесты блокировали мерж**, включи branch protection (нужны admin-права на репо):
 `GitHub → Settings → Branches → Add branch ruleset` для `dev` и `main`:
@@ -166,9 +168,11 @@ A   @   <IP VPS>
 - ✅ **Require branches to be up to date before merging** (перегон гейта после rebase).
 
 > Без этой настройки CI лишь *показывает* статус, но не мешает мержить красное — branch protection
-> на `dev`/`main` обязателен. Деплой при этом уже связан с тестами жёстко: job'ы `build-push` и
-> `deploy` в `ci.yml` объявлены через `needs: [backend, frontend, backend-integration, e2e]`, поэтому
-> на push в `main` **красные тесты блокируют сборку образов и деплой** (не только мерж).
+> на `dev`/`main` обязателен. На push в `main` деплой жёстко связан с тяжёлыми тестами внутри
+> `prod.yml`: `build-push` объявлен через `needs: [backend-integration, e2e]`, а `deploy` — через
+> `needs: build-push`, поэтому **красные integration/e2e блокируют сборку образов и деплой**. Быстрый
+> гейт (`Backend`/`Frontend gate`) живёт в `ci.yml` и гейтит деплой не через `needs`, а через
+> Required status checks (branch protection не даёт смержить красный PR в `main`).
 
 ---
 
@@ -188,8 +192,8 @@ docker compose --project-directory . -f ops/docker-compose.prod.yaml ps
 curl -I https://<домен>/                      # должен ответить 200/301 через Caddy
 ```
 
-Дальнейшие деплои идут **автоматически**: push/merge в `main` → `ci.yml` прогоняет весь гейт → при
-зелёных тестах job'ы `build-push` (образы в GHCR) и `deploy` (SSH: `git pull && make prod-pull &&
+Дальнейшие деплои идут **автоматически**: push/merge в `main` → `prod.yml` прогоняет тяжёлый гейт →
+при зелёных тестах job'ы `build-push` (образы в GHCR) и `deploy` (SSH: `git pull && make prod-pull &&
 make prod-up`) выкатывают прод. Красные тесты → деплой не запускается.
 
 Ручной деплой (без CI): `make prod-pull && make prod-up` на сервере.

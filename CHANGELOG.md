@@ -20,7 +20,7 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 ### Project
 
-- **CI/CD на GitHub Actions.** Единый `ci.yml` (git-flow feature → dev → main): на PR в `dev` быстрые тесты (backend `check-ci` + frontend `check`), на PR в `main` и push в `main` — дополнительно тяжёлые (integration на testcontainers + e2e на Playwright). На push в `main` **после зелёных тестов** (строгая связка через `needs`) собираются образы backend/frontend, пушатся в GHCR и деплоятся на VPS по SSH (`git pull` + `make prod-*`) — красные тесты блокируют деплой.
+- **CI/CD на GitHub Actions** (git-flow feature → dev → main), два воркфлоу: `ci.yml` — быстрый гейт (backend `check-ci` + frontend `check`) на каждый PR (dev и main); `prod.yml` — тяжёлый гейт (integration на testcontainers + e2e на Playwright) на PR в `main` и push в `main`, поэтому на PR в `dev` нет skipped-чеков. На push в `main` **после зелёных тяжёлых тестов** (строгая связка через `needs`) собираются образы backend/frontend, пушатся в GHCR и деплоятся на VPS по SSH (`git pull` + `make prod-*`). Быстрый гейт обязателен для мержа через branch protection.
 - **Прод-стек через docker compose.** `ops/docker-compose.prod.yaml`: образы из GHCR, внутренние сервисы без проброса портов (наружу только Caddy с авто-HTTPS Let's Encrypt), one-shot прогон миграций до старта app. Прод-сборка фронта — nginx + `vite build` (multi-stage).
 - **Оркестрация и инфра-конфиги вынесены в `ops/`.** Все compose-файлы (dev/prod/e2e) + `Caddyfile` + `loki.yaml`/`promtail-config.yml`; запуск через make-обёртки (`make run`, `make prod-*`) с `--project-directory .`.
 - **Логи больше не забивают диск.** json-file лимиты `10m × 3` на всех сервисах compose (закрыты ранее безлимитные postgres/loki/promtail/grafana); Loki retention увеличен до 7 дней.
