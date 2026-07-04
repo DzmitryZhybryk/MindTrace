@@ -15,6 +15,11 @@
     "notVisited": "Not visited",
     "city": "City"
   },
+  "map": {
+    "loading": "Loading your map…",
+    "error": "Couldn't load your journeys",
+    "retry": "Try again"
+  },
   "addJourney": {
     "title": "New journey",
     "subtitle": "Where and when did you travel?",

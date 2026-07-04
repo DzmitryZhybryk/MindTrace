@@ -36,3 +36,31 @@ class CreateJourneyRequest(CamelModel):
     traveled_year: int
     traveled_month: int | None = None
     traveled_day: int | None = None
+
+
+class MapCityResponse(CamelModel):
+    """Город на карте путешествий: точка (координаты) + годы визитов по возрастанию."""
+
+    name: str
+    latitude: float
+    longitude: float
+    years: list[int]
+
+
+class MapCountryResponse(CamelModel):
+    """
+    Посещённая страна на карте: код ISO alpha-2 и список посещённых в ней городов.
+
+    Имя страны не отдаём — фронт резолвит из кода через ``Intl.DisplayNames``. Статуса в
+    контракте нет: эндпоинт по смыслу возвращает только посещённые страны (wishlist
+    запрашивается отдельно), поэтому сам факт прихода из journeys = страна посещена.
+    """
+
+    country_code: str
+    cities: list[MapCityResponse]
+
+
+class JourneysMapResponse(CamelModel):
+    """Ответ карты путешествий: посещённые страны с городами и годами визитов."""
+
+    countries: list[MapCountryResponse]

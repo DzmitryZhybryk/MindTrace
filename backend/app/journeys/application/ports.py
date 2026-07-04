@@ -16,6 +16,7 @@ application-слою, а реализация живёт в ``infra``: репо�
 
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
+from uuid import UUID
 
 from app.journeys.domain.entities import JourneyEntity
 
@@ -24,6 +25,8 @@ class JourneyRepositoryPort(Protocol):
     """Контракт хранилища поездок, на который опирается application-слой."""
 
     async def insert_journey(self, journey: JourneyEntity) -> None: ...
+
+    async def find_journeys_by_user_id(self, *, user_id: UUID) -> list[JourneyEntity]: ...
 
 
 class JourneyUnitOfWorkPort(Protocol):

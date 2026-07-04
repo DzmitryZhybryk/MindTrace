@@ -1,9 +1,10 @@
 """
-api-тесты роута ``POST /v1/journeys/`` на ASGI-приложении.
+api-тесты роутов journeys (``POST /v1/journeys/`` и ``GET /v1/journeys/map``) на ASGI-приложении.
 
 Реальная проводка ``journey_service`` поверх фейк-UoW, реальный декод Bearer-токена
 (``mint_access_token`` подписывает settings-секретом; ``sub`` токена становится ``user_id``
-поездки). Пиннят 201-payload-on-create, 401 без токена, доменные 400-коды и 422 формы.
+поездки). Пиннят 201-payload-on-create, 401 без токена, доменные 400-коды, 422 формы и
+сериализацию агрегата карты (страны/города/годы, camelCase).
 """
 
 import datetime as dt
@@ -15,9 +16,11 @@ import pytest
 from httpx import AsyncClient
 
 from app.journeys.domain.enums import TransportType
+from tests.builders import make_approximate_date, make_geo_point, make_journey
 from tests.fakes import FakeJourneyRepository, FakeJourneyUnitOfWork
 
 _CREATE_PATH = "/v1/journeys/"
+_MAP_PATH = "/v1/journeys/map"
 _MOSCOW = {"name": "Moscow", "countryCode": "RU", "latitude": 55.75, "longitude": 37.62}
 _LONDON = {"name": "London", "countryCode": "GB", "latitude": 51.5, "longitude": -0.12}
 _VALID_BODY: dict[str, Any] = {
@@ -112,3 +115,50 @@ async def test_create_journey_out_of_range_coordinate_returns_422(
 
     assert response.status_code == 422
     assert response.json()["code"] == "validation_error"
+
+
+async def test_get_journeys_map_returns_aggregated_countries(
+    client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """200: агрегат карты сериализуется в camelCase — страны по коду, города с координатами и годами."""
+    user_id = uuid4()
+    fake_journey_repository.journeys.append(
+        make_journey(
+            user_id=user_id,
+            origin=make_geo_point(name="Moscow", country_code="RU", latitude=55.75, longitude=37.62),
+            destination=make_geo_point(name="London", country_code="GB", latitude=51.5, longitude=-0.12),
+            traveled_on=make_approximate_date(year=2020),
+        )
+    )
+
+    response = await client.get(_MAP_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id)}"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [country["countryCode"] for country in body["countries"]] == ["GB", "RU"]
+    london = body["countries"][0]["cities"][0]
+    assert london["name"] == "London"
+    assert london["years"] == [2020]
+    assert london["latitude"] == pytest.approx(51.5)
+    assert london["longitude"] == pytest.approx(-0.12)
+
+
+async def test_get_journeys_map_without_token_returns_401(client: AsyncClient) -> None:
+    """401: запрос карты без Bearer-токена отклоняется доменным кодом auth.invalid_access_token."""
+    response = await client.get(_MAP_PATH)
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "auth.invalid_access_token"
+
+
+async def test_get_journeys_map_without_journeys_returns_empty(
+    client: AsyncClient,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """200: у пользователя без поездок карта отдаёт пустой список стран."""
+    response = await client.get(_MAP_PATH, headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"})
+
+    assert response.status_code == 200
+    assert response.json() == {"countries": []}

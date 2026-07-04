@@ -11,19 +11,27 @@ api-уровне через ``app.dependency_overrides``.
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
+from uuid import UUID
 
 from app.journeys.application.ports import JourneyRepositoryPort, JourneyUnitOfWorkPort
 from app.journeys.domain.entities import JourneyEntity
 
 
 class FakeJourneyRepository(JourneyRepositoryPort):
-    """Фейк хранилища поездок поверх ``list`` — собирает вставленные сущности."""
+    """Фейк хранилища поездок поверх ``list``: собирает вставки, отдаёт чтение как боевой репо."""
 
     def __init__(self) -> None:
         self.journeys: list[JourneyEntity] = []
 
     async def insert_journey(self, journey: JourneyEntity) -> None:
         self.journeys.append(journey)
+
+    async def find_journeys_by_user_id(self, *, user_id: UUID) -> list[JourneyEntity]:
+        # Повторяет боевую выборку: только свои неудалённые поездки, по дате поездки (см. SQL-репо).
+        matching = [
+            journey for journey in self.journeys if journey.user_id == user_id and journey.deleted_at is None
+        ]
+        return sorted(matching, key=lambda journey: journey.traveled_on.value)
 
 
 class FakeJourneyUnitOfWork(JourneyUnitOfWorkPort):

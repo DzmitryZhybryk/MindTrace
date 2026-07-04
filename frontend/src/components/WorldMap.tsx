@@ -189,11 +189,16 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
   }, []);
 
   const handleMouseMove = useCallback((event: MouseEvent<HTMLDivElement>) => {
-    const rect = rectRef.current;
+    // Обычно геометрия закеширована на onMouseEnter, но он не срабатывает, если
+    // курсор уже был над картой в момент её появления (клиентская навигация после
+    // добавления поездки). Тогда меряем лениво здесь — иначе rect=null, ранний
+    // выход, и тултип залипает в левом верхнем углу (pointer остаётся {0,0}).
+    const rect = rectRef.current ?? wrapRef.current?.getBoundingClientRect() ?? null;
     if (!rect) {
       return;
     }
 
+    rectRef.current = rect;
     setPointer({ x: event.clientX - rect.left, y: event.clientY - rect.top });
     // Флип у края экрана: если справа/снизу тултип не помещается — рисуем его
     // слева/сверху от курсора. Меряем по viewport (clientX/Y), чтобы не вылезти

@@ -1,3 +1,6 @@
+import { z } from "zod";
+
+import type { MapCountry } from "../components/WorldMap";
 import type { LanguageCode } from "../i18n";
 import { apiFetch } from "./client";
 
@@ -81,4 +84,51 @@ export async function searchPlaces({
 
 export function createJourney(payload: CreateJourneyPayload): Promise<void> {
   return apiFetch<void>("/v1/journeys/", { method: "POST", json: payload });
+}
+
+/*
+ * Zod-схема ответа карты путешествий — валидация на HTTP-границе (untrusted input).
+ * Контракт зеркалит backend `JourneysMapResponse`: страны по ISO alpha-2, города с
+ * координатами и годами визитов. Статуса в проводе нет — эндпоинт по смыслу отдаёт только
+ * посещённые страны, статус проставляем в адаптере.
+ */
+const journeysMapResponseSchema = z.object({
+  countries: z.array(
+    z.object({
+      countryCode: z.string(),
+      cities: z.array(
+        z.object({
+          name: z.string(),
+          latitude: z.number(),
+          longitude: z.number(),
+          years: z.array(z.number()),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
+ * Загружает агрегат карты путешествий пользователя и адаптирует под `WorldMap`.
+ *
+ * Бэк отдаёт только посещённые страны (wishlist — отдельный запрос), поэтому статус
+ * проставляем здесь: всё, что пришло из journeys, — `visited`. Координаты переименовываем
+ * в форму карты (`latitude/longitude` → `lat/lng`); имя страны фронт резолвит из кода
+ * (`Intl.DisplayNames`), бэк его не шлёт. Невалидный ответ → исключение (fail fast).
+ */
+export async function getJourneysMap(signal?: AbortSignal): Promise<MapCountry[]> {
+  const response = await apiFetch<unknown>("/v1/journeys/map", { signal });
+  const { countries } = journeysMapResponseSchema.parse(response);
+  return countries.map(
+    (country): MapCountry => ({
+      id: country.countryCode,
+      status: "visited",
+      cities: country.cities.map((city) => ({
+        name: city.name,
+        lat: city.latitude,
+        lng: city.longitude,
+        years: city.years,
+      })),
+    }),
+  );
 }
