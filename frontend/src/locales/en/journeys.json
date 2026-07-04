@@ -7,7 +7,8 @@
     "movements": "Movements map",
     "all": "All journeys",
     "wishlist": "Wishlist",
-    "add": "+ Add journey"
+    "add": "+ Add journey",
+    "addPlace": "+ Add place"
   },
   "legend": {
     "visited": "Visited",

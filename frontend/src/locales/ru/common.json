@@ -17,6 +17,10 @@
     "wishlist": "В списке желаний"
   },
   "greeting": "Привет, {{name}}",
+  "badge": {
+    "soon": "Скоро",
+    "comingSoon": "Скоро будет"
+  },
   "language": {
     "label": "Язык"
   },

@@ -8,11 +8,14 @@ import { useAuth } from "../auth/useAuth";
 import { BrandMark } from "./BrandMark";
 import { EmailVerificationBanner } from "./EmailVerificationBanner";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { SoonBadge } from "./SoonBadge";
 import "./app-header.css";
 
+// `soon: true` — раздел ещё не реализован: таб рендерится неактивным (не ссылка)
+// с бейджем «Soon». Так пункт остаётся видимым как анонс, но не ведёт в никуда.
 const TABS = [
-  { key: "journeys", to: "/journeys" },
-  { key: "mind", to: "/mind" },
+  { key: "journeys", to: "/journeys", soon: false },
+  { key: "mind", to: "/mind", soon: true },
 ] as const;
 
 // Имя профиля захардкожено: бэк пока не отдаёт профиль (в JWT только sub / exp /
@@ -57,16 +60,28 @@ export function AppHeader() {
         </div>
 
         <nav className="app-tabs" aria-label={t("nav.ariaPrimary")}>
-          {TABS.map((tab) => (
-            <Link
-              key={tab.key}
-              to={tab.to}
-              className={isTabActive(tab.to) ? "app-tab app-tab--active" : "app-tab"}
-              aria-current={isTabActive(tab.to) ? "page" : undefined}
-            >
-              {t(`nav.${tab.key}`)}
-            </Link>
-          ))}
+          {TABS.map((tab) =>
+            tab.soon ? (
+              <span
+                key={tab.key}
+                className="app-tab app-tab--soon"
+                aria-disabled="true"
+                title={t("badge.comingSoon")}
+              >
+                {t(`nav.${tab.key}`)}
+                <SoonBadge />
+              </span>
+            ) : (
+              <Link
+                key={tab.key}
+                to={tab.to}
+                className={isTabActive(tab.to) ? "app-tab app-tab--active" : "app-tab"}
+                aria-current={isTabActive(tab.to) ? "page" : undefined}
+              >
+                {t(`nav.${tab.key}`)}
+              </Link>
+            ),
+          )}
         </nav>
 
         <div className="app-header__user">
@@ -112,19 +127,30 @@ export function AppHeader() {
 
       <Drawer opened={drawerOpened} onClose={closeDrawer} position="right" size="78%" padding="lg">
         <Stack gap="xs">
-          {TABS.map((tab) => (
-            <Link
-              key={tab.key}
-              to={tab.to}
-              onClick={closeDrawer}
-              className={
-                isTabActive(tab.to) ? "app-drawer-link app-drawer-link--active" : "app-drawer-link"
-              }
-              aria-current={isTabActive(tab.to) ? "page" : undefined}
-            >
-              {t(`nav.${tab.key}`)}
-            </Link>
-          ))}
+          {TABS.map((tab) =>
+            tab.soon ? (
+              <span
+                key={tab.key}
+                className="app-drawer-link app-drawer-link--soon"
+                aria-disabled="true"
+              >
+                {t(`nav.${tab.key}`)}
+                <SoonBadge />
+              </span>
+            ) : (
+              <Link
+                key={tab.key}
+                to={tab.to}
+                onClick={closeDrawer}
+                className={
+                  isTabActive(tab.to) ? "app-drawer-link app-drawer-link--active" : "app-drawer-link"
+                }
+                aria-current={isTabActive(tab.to) ? "page" : undefined}
+              >
+                {t(`nav.${tab.key}`)}
+              </Link>
+            ),
+          )}
         </Stack>
       </Drawer>
 

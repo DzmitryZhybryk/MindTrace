@@ -65,6 +65,24 @@
   transform: scaleX(1);
 }
 
+/* Неактивный таб (раздел ещё не реализован): приглушён, без hover-подчёркивания,
+   курсор default. inline-flex — держит текст и бейдж «Soon» на одной линии. */
+.app-tab--soon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  cursor: default;
+}
+
+.app-tab--soon:hover {
+  color: #94a3b8;
+}
+
+.app-tab--soon::after {
+  display: none;
+}
+
 .app-header__user {
   justify-self: end;
 }
@@ -100,6 +118,20 @@
   background: rgba(15, 23, 42, 0.06);
   color: #0f172a;
   font-weight: 600;
+}
+
+/* Неактивный пункт в мобильном Drawer: приглушён, без hover-фона, с бейджем «Soon». */
+.app-drawer-link--soon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  cursor: default;
+}
+
+.app-drawer-link--soon:hover {
+  background: none;
+  color: #94a3b8;
 }
 
 /* ---- Узкие экраны (<md): tabs уезжают в бургер, шапка сжимается ----------
