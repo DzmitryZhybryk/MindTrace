@@ -114,6 +114,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      # target: dev — Vite dev-сервер (:5173). Без target собралась бы последняя стадия
+      # `final` (nginx :80): фронт вставал nginx'ом, healthcheck на :5173 не проходил → unhealthy.
+      target: dev
     environment:
       API_PROXY_TARGET: "http://app:8000"
       CHOKIDAR_USEPOLLING: "true"
