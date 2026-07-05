@@ -110,8 +110,8 @@ test-e2e: ## Frontend e2e (Playwright; сам поднимает однораз�
 	   E2E_BASE_URL=http://localhost:5273 $(MAKE) -C frontend test-e2e; }; \
 	status=$$?; \
 	if [ $$status -ne 0 ]; then \
-		echo "${GREEN}INFO :  ${AZURE}e2e failed (exit $$status) — tail логов frontend/app перед сносом${RESET}"; \
-		$(COMPOSE_E2E) logs --tail=30 frontend app 2>/dev/null || true; \
+		echo "${GREEN}INFO :  ${AZURE}e2e failed (exit $$status) — tail логов сервисов перед сносом${RESET}"; \
+		$(COMPOSE_E2E) logs --tail=50 migrate worker app frontend 2>/dev/null || true; \
 	fi; \
 	echo "${GREEN}INFO :  ${AZURE}Tearing down ephemeral e2e stack (containers + network + volumes)${RESET}"; \
 	$(COMPOSE_E2E) down -v --remove-orphans; \
