@@ -34,4 +34,23 @@ describe("JourneysPanel", () => {
     expect(addPlace).toHaveTextContent("Soon");
     expect(screen.queryByRole("link", { name: /Add place/u })).toBeNull();
   });
+
+  it("на маршруте /journeys подсвечивает «Journeys map» активным (aria-current)", () => {
+    renderWithProviders(<JourneysPanel />, { route: "/journeys" });
+
+    const active = screen.getByRole("link", { name: "Journeys map" });
+    expect(active).toHaveClass("journeys-nav__item--active");
+    expect(active).toHaveAttribute("aria-current", "page");
+  });
+
+  it("на маршруте /journeys/add подсвечивает «+ Add journey», «Journeys map» (end) не активен", () => {
+    renderWithProviders(<JourneysPanel />, { route: "/journeys/add" });
+
+    const active = screen.getByRole("link", { name: /Add journey/u });
+    expect(active).toHaveClass("journeys-nav__add--active");
+    expect(active).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Journeys map" })).not.toHaveClass(
+      "journeys-nav__item--active",
+    );
+  });
 });

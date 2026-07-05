@@ -19,7 +19,6 @@ const TRANSPORT_ICONS: Record<TransportType, string> = {
   water: shipIcon,
 };
 
-// Размер эмодзи-иконки транспорта в селекте (px).
 const TRANSPORT_ICON_SIZE = 22;
 
 /**

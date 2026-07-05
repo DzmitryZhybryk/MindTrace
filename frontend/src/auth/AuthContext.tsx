@@ -13,9 +13,9 @@ import { AuthContext, type AuthContextValue } from "./useAuth";
 import { resetVerifyBannerDismissed } from "./verifyBannerStorage";
 import { VerifyEmailDialog } from "./VerifyEmailDialog";
 
-type AuthProviderProps = {
+interface AuthProviderProps {
   children: ReactNode;
-};
+}
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [accessToken, setAccessTokenState] = useState<string | null>(() => getAccessToken());
@@ -77,9 +77,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const clearSession = useCallback(() => clearAccessToken(), []);
   const openVerifyDialog = useCallback(() => setVerifyDialogOpen(true), []);
   const closeVerifyDialog = useCallback(() => setVerifyDialogOpen(false), []);
-  const handleVerified = useCallback(() => {
-    // Токен уже обновлён внутри диалога через refresh(); subscribe обновит state.
-  }, []);
 
   const value: AuthContextValue = {
     accessToken,
@@ -95,11 +92,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   return (
     <AuthContext.Provider value={value}>
       {children}
-      <VerifyEmailDialog
-        opened={verifyDialogOpen}
-        onClose={closeVerifyDialog}
-        onVerified={handleVerified}
-      />
+      <VerifyEmailDialog opened={verifyDialogOpen} onClose={closeVerifyDialog} />
     </AuthContext.Provider>
   );
 }

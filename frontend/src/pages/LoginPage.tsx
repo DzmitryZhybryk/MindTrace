@@ -1,4 +1,4 @@
-import { Anchor, Button, PasswordInput, Stack, TextInput } from "@mantine/core";
+import { Anchor, Button, PasswordInput, Stack, Text, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,7 +7,7 @@ import { AuthHeader } from "../components/AuthHeader";
 import { AuthCard } from "../components/AuthCard";
 import { AuthLayout } from "../components/AuthLayout";
 import { login } from "../api/auth";
-import { applyApiError, withLocalizedError } from "../api/errors";
+import { applyApiError, resolveErrorToken, withLocalizedError } from "../api/errors";
 import { useAuth } from "../auth/useAuth";
 
 type LoginFormValues = {
@@ -20,6 +20,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { setAccessToken } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<LoginFormValues>({
     mode: "uncontrolled",
@@ -37,16 +38,18 @@ export function LoginPage() {
   });
 
   const handleSubmit = async (values: LoginFormValues) => {
+    setFormError(null);
     setSubmitting(true);
     try {
       const { accessToken } = await login(values);
       setAccessToken(accessToken);
       navigate("/");
     } catch (err) {
-      // Общие ошибки логина (неверные креды, сеть) показываем под полем password.
+      // Ошибка операции (неверные креды, сеть) — на уровне формы, у кнопки сабмита;
+      // field-bound ошибки applyApiError сам вешает на поля.
       const message = applyApiError(err, form);
       if (message) {
-        form.setFieldError("password", message);
+        setFormError(message);
       }
     } finally {
       setSubmitting(false);
@@ -97,6 +100,12 @@ export function LoginPage() {
             >
               {t("login.forgotPassword")}
             </Anchor>
+
+            {formError && (
+              <Text size="sm" c="red" fw={500}>
+                {resolveErrorToken(formError)}
+              </Text>
+            )}
 
             <Button type="submit" size="md" radius="md" fullWidth mt="xs" loading={submitting}>
               {t("login.submit")}

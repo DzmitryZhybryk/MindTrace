@@ -336,6 +336,17 @@
     border-color 0.18s ease;
 }
 
+/* Тач-таргет ≥44px без увеличения видимого кружка (34px): невидимая расширенная зона клика. */
+.add-journey__swap::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+}
+
 /* Ховер: приподнимаем тенью и доворачиваем стрелки на 180° — жест «обмена». */
 .add-journey__swap:hover:not(:disabled) {
   border-color: var(--mantine-color-gray-5);

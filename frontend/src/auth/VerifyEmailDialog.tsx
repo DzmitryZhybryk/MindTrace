@@ -8,11 +8,11 @@ import { setAccessToken } from "./tokenStore";
 
 type Stage = "intro" | "code";
 
-type VerifyEmailDialogProps = {
+interface VerifyEmailDialogProps {
   opened: boolean;
   onClose: () => void;
-  onVerified: () => void;
-};
+  onVerified?: () => void;
+}
 
 const CODE_LENGTH = 6;
 
@@ -44,7 +44,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
         if (err.status === 409) {
           // Email уже подтверждён в другой сессии/вкладке — синхронизируем токен.
           await syncVerifiedClaim();
-          onVerified();
+          onVerified?.();
           handleClose();
           return;
         }
@@ -69,14 +69,14 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
     try {
       await verifyEmail({ code });
       await syncVerifiedClaim();
-      onVerified();
+      onVerified?.();
       handleClose();
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {
           // Email уже подтверждён — закрываем и синкаем.
           await syncVerifiedClaim();
-          onVerified();
+          onVerified?.();
           handleClose();
           return;
         }

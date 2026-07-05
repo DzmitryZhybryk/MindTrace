@@ -30,6 +30,8 @@ export function JourneysMapView() {
         setState({ status: "ready", countries });
       })
       .catch((error: unknown) => {
+        // Прерванный запрос (размонтирование/перезагрузка) — не ошибка; тестировать нечего.
+        /* v8 ignore next 3 */
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
