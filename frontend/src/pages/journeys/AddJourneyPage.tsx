@@ -1,8 +1,12 @@
 import { useForm } from "@mantine/form";
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 
-import { JourneyGlobe } from "../../components/JourneyGlobe";
 import { JourneyForm, type JourneyFormValues } from "./JourneyForm";
+
+// Глобус-герой (three/react-globe.gl) — отдельный chunk, грузится лениво: форма слева
+// интерактивна сразу, глобус справа подтягивается следом.
+const JourneyGlobe = lazy(() => import("../../components/JourneyGlobe").then((m) => ({ default: m.JourneyGlobe })));
 
 /**
  * Под-вкладка «Добавить путешествие» — маршрут /journeys/add. Двухпанельный экран:
@@ -61,13 +65,15 @@ export function AddJourneyPage() {
       </div>
 
       <div className="add-journey__globe-col">
-        <JourneyGlobe
-          origin={values.origin}
-          destination={values.destination}
-          transportType={values.transport}
-          originLabel={values.origin?.name?.trim() ?? ""}
-          destinationLabel={values.destination?.name?.trim() ?? ""}
-        />
+        <Suspense fallback={null}>
+          <JourneyGlobe
+            origin={values.origin}
+            destination={values.destination}
+            transportType={values.transport}
+            originLabel={values.origin?.name?.trim() ?? ""}
+            destinationLabel={values.destination?.name?.trim() ?? ""}
+          />
+        </Suspense>
       </div>
     </div>
   );

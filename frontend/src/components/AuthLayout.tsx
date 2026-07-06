@@ -1,8 +1,15 @@
 import { Box, Center } from "@mantine/core";
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 
-import { AuthGlobe } from "./AuthGlobe";
 import { ErrorBoundary } from "./ErrorBoundary";
+
+// Глобус (three/react-globe.gl) — отдельный chunk, грузится лениво ПОСЛЕ рендера формы,
+// чтобы тяжёлый WebGL не блокировал критический путь auth-экрана.
+const AuthGlobe = lazy(() => import("./AuthGlobe").then((m) => ({ default: m.AuthGlobe })));
+
+// Тёмная панель-заглушка на месте глобуса: и пока грузится его chunk (Suspense), и если
+// WebGL/three упал (ErrorBoundary) — тот же размерный блок, без сдвига layout (CLS).
+const globeFallback = <div style={{ width: "100%", height: "100%", background: "var(--globe-bg)" }} />;
 
 interface AuthLayoutProps {
   header: ReactNode;
@@ -33,12 +40,10 @@ export function AuthLayout({ header, children }: AuthLayoutProps) {
 
       <Box visibleFrom="md" style={{ flex: 1, padding: 16, display: "flex" }}>
         <Box style={{ flex: 1, borderRadius: 24, overflow: "hidden" }}>
-          <ErrorBoundary
-            fallback={
-              <div style={{ width: "100%", height: "100%", background: "var(--globe-bg)" }} />
-            }
-          >
-            <AuthGlobe />
+          <ErrorBoundary fallback={globeFallback}>
+            <Suspense fallback={globeFallback}>
+              <AuthGlobe />
+            </Suspense>
           </ErrorBoundary>
         </Box>
       </Box>

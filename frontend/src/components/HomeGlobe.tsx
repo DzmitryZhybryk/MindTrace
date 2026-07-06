@@ -14,6 +14,10 @@ export function HomeGlobe() {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  // prefers-reduced-motion → глобус без автовращения (вестибулярная чувствительность).
+  const [reducedMotion] = useState(
+    () => typeof window !== "undefined" && (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false),
+  );
 
   // Глобус рисуем только после ненулевого замера контейнера (как в Auth/Journey-глобусах).
   useEffect(() => {
@@ -35,11 +39,11 @@ export function HomeGlobe() {
     if (!globe || size.width === 0 || size.height === 0) return;
 
     const controls = globe.controls();
-    controls.autoRotate = true;
+    controls.autoRotate = !reducedMotion;
     controls.autoRotateSpeed = 0.4;
     controls.enableZoom = false;
     globe.pointOfView({ lat: 25, lng: 20, altitude: 2.4 }, 0);
-  }, [size.width, size.height]);
+  }, [size.width, size.height, reducedMotion]);
 
   // Декоративный глобус не должен зумиться скроллом — гасим колесо/пинч на контейнере.
   useEffect(() => {

@@ -78,9 +78,9 @@ test: ## Run fast tests — unit + api (no Docker; integration → make test-int
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' unit + api tests${RESET}"
 	@uv run --no-sync pytest -m "unit or api"
 
-coverage: ## Run unit + api tests with coverage report
+coverage: ## Run unit + api tests with coverage report (мерж-гейт: >= 90%)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' coverage (unit + api)${RESET}"
-	@uv run --no-sync pytest -m "unit or api" --cov=app --cov-report=term-missing
+	@uv run --no-sync pytest -m "unit or api" --cov=app --cov-report=term-missing --cov-fail-under=90
 
 # Запуск тестов по осям маркеров (авто-маркировка по пути — см. tests/conftest.py).
 # `|| [ $$? -eq 5 ]` — не считать "тесты не найдены" (exit 5) ошибкой: пустые группы

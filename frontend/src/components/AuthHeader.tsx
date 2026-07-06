@@ -3,11 +3,11 @@ import { Link } from "react-router-dom";
 import { BrandMark } from "./BrandMark";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
-type AuthHeaderProps = {
+interface AuthHeaderProps {
   hint: string;
   actionLabel: string;
   actionHref: string;
-};
+}
 
 export function AuthHeader({ hint, actionLabel, actionHref }: AuthHeaderProps) {
   return (

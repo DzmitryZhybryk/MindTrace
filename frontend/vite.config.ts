@@ -44,10 +44,31 @@ export default defineConfig({
     include: resolveVitestInclude(),
     coverage: {
       provider: "v8",
-      // Покрытие пока без порога (как pytest-cov без --cov-fail-under до набора baseline).
       reporter: ["text", "html"],
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.{ts,tsx}", "src/test/**", "src/main.tsx", "src/**/*.d.ts"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/test/**",
+        "src/main.tsx",
+        "src/**/*.d.ts",
+        // Императивный three/WebGL-рендер глобусов: в jsdom не исполняется, тестировать
+        // нечего. Вся чистая математика вынесена в src/components/globe/{geo,route}.ts
+        // и покрыта unit-тестами (geo.test.ts, route.test.ts) — эти файлы под покрытием.
+        "src/components/AuthGlobe.tsx",
+        "src/components/HomeGlobe.tsx",
+        "src/components/JourneyGlobe.tsx",
+        // Декларативная композиция без логики: таблица маршрутов и layout-каркас с <Outlet/>.
+        // Ветвлений нет, покрывается e2e-навигацией, а не unit/component.
+        "src/App.tsx",
+        "src/pages/journeys/JourneysLayout.tsx",
+      ],
+      // Мерж-гейт: покрытие >= 90% (форсится pre-push hook'ом, не CI — см. CLAUDE.md).
+      thresholds: {
+        statements: 90,
+        branches: 90,
+        functions: 90,
+        lines: 90,
+      },
     },
   },
 });

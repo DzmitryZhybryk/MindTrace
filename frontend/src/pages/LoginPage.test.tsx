@@ -44,7 +44,7 @@ describe("LoginPage", () => {
     expect(screen.queryByText("home-landing")).not.toBeInTheDocument();
   });
 
-  it("неверные креды (401) показывают сообщение под полем password", async () => {
+  it("неверные креды (401) показывают общую ошибку на уровне формы", async () => {
     server.use(
       http.post("/v1/auth/login/", () =>
         HttpResponse.json(

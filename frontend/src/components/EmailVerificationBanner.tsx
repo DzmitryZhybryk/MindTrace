@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 
 import { dismissVerifyBanner, isVerifyBannerDismissed } from "../auth/verifyBannerStorage";
 
-type EmailVerificationBannerProps = {
+interface EmailVerificationBannerProps {
   onVerifyClick: () => void;
-};
+}
 
 export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBannerProps) {
   const { t } = useTranslation("auth");
@@ -56,10 +56,11 @@ export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBann
       <ActionIcon
         variant="subtle"
         color="gray"
-        size="sm"
+        // 44px — минимальный тач-таргет (web/performance.md); умещается в 48px-гаттер (right:2).
+        size={44}
         aria-label={t("verificationBanner.dismissLabel")}
         onClick={handleDismiss}
-        style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)" }}
+        style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", fontSize: 22 }}
       >
         ×
       </ActionIcon>

@@ -38,6 +38,10 @@ export function AuthGlobe() {
   const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [activeCapitals, setActiveCapitals] = useState<ActiveCapital[]>([]);
   const [hasSize, setHasSize] = useState(false);
+  // prefers-reduced-motion → без автовращения и без спавна пульсирующих меток столиц.
+  const [reducedMotion] = useState(
+    () => typeof window !== "undefined" && (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false),
+  );
 
   useEffect(() => {
     const el = containerRef.current;
@@ -67,12 +71,12 @@ export function AuthGlobe() {
     if (size.width === 0 || size.height === 0) return;
 
     const controls = globe.controls();
-    controls.autoRotate = true;
+    controls.autoRotate = !reducedMotion;
     controls.autoRotateSpeed = 0.4;
     controls.enableZoom = false;
 
     globe.pointOfView({ lat: 25, lng: 20, altitude: 2.4 }, 0);
-  }, [size.width, size.height]);
+  }, [size.width, size.height, reducedMotion]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -90,7 +94,8 @@ export function AuthGlobe() {
   // Спавн столиц: каждые 4с добавляем новую (5с лайфтайм с CSS fade-in/hold/fade-out),
   // чтобы fade-out предыдущей и fade-in следующей перекрывались на 1с.
   useEffect(() => {
-    if (!hasSize) return;
+    // При reduced-motion не спавним пульсирующие метки столиц (вестибулярный триггер).
+    if (!hasSize || reducedMotion) return;
     const globe = globeRef.current;
     if (!globe) return;
 
@@ -124,7 +129,7 @@ export function AuthGlobe() {
       window.clearInterval(interval);
       removalTimers.forEach((t) => window.clearTimeout(t));
     };
-  }, [hasSize]);
+  }, [hasSize, reducedMotion]);
 
   return (
     <div

@@ -1,9 +1,12 @@
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AppHeader } from "../components/AppHeader";
 import { ErrorBoundary } from "../components/ErrorBoundary";
-import { HomeGlobe } from "../components/HomeGlobe";
 import "./home.css";
+
+// Декоративный 3D-глобус — отдельный chunk, грузится лениво после рендера страницы.
+const HomeGlobe = lazy(() => import("../components/HomeGlobe").then((m) => ({ default: m.HomeGlobe })));
 
 const STATS = [
   { name: "Countries", meta: "12 visited" },
@@ -50,7 +53,9 @@ export function HomePage() {
         <div className="home-stage">
           {/* WebGL-сбой не должен ронять Home — fallback оставит тёмный диск стейджа со свечением. */}
           <ErrorBoundary fallback={null}>
-            <HomeGlobe />
+            <Suspense fallback={null}>
+              <HomeGlobe />
+            </Suspense>
           </ErrorBoundary>
         </div>
 

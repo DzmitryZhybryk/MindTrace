@@ -3,9 +3,9 @@ import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../auth/useAuth";
 
-type ProtectedRouteProps = {
+interface ProtectedRouteProps {
   children: ReactNode;
-};
+}
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isBootstrapping } = useAuth();

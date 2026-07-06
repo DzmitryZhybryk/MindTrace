@@ -1,4 +1,4 @@
-.PHONY: help check test test-back test-front test-integration test-e2e e2e-clean test-infra \
+.PHONY: help hooks check test test-back test-front test-integration test-e2e e2e-clean test-infra \
         run stop restart logs ps prod-config prod-pull prod-up prod-down
 
 .DEFAULT_GOAL := help
@@ -74,6 +74,12 @@ prod-up: ## Поднять прод-стек (one-shot миграции прог
 
 prod-down: ## Остановить прод-стек (тома/данные сохраняются)
 	$(COMPOSE_PROD) down
+
+# --- Git hooks: мерж-гейт покрытия без CI ---
+# Разовая активация pre-push hook'а (.githooks/pre-push): блокирует push при покрытии < 90%.
+hooks: ## Активировать git-хуки репозитория (pre-push coverage-гейт, core.hooksPath=.githooks)
+	@git config core.hooksPath .githooks
+	@echo "${GREEN}INFO :  ${AZURE}git hooks активированы: ${PURPLE}core.hooksPath=.githooks${RESET}"
 
 # --- Quality gate: полный прогон обеих сторон ---
 # Одна сторона — через pass-through (make be-lint, fe-typecheck). Полный гейт — check.

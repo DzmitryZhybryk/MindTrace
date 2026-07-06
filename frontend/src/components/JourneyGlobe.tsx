@@ -7,26 +7,21 @@ import planeIcon from "../assets/emoji/plane.svg";
 import shipIcon from "../assets/emoji/ship.svg";
 import { GLOBE_ATMOSPHERE_COLOR, GLOBE_BUMP_URL, GLOBE_TEXTURE_URL } from "./globe/constants";
 import { centralAngleRad } from "./globe/geo";
+import {
+  altitudeForSeparation,
+  apexScale,
+  arcAltitude,
+  buildTrail,
+  CAMERA_MAX_ALTITUDE,
+  CAMERA_MIN_ALTITUDE,
+  greatCirclePoint,
+  isRealPlace,
+  type TrailPoint,
+} from "./globe/route";
 import "./journey-globe.css";
 
 // Вид камеры по умолчанию, пока ни один город не выбран (нейтральный, без демо-маршрута).
 const DEFAULT_VIEW = { lat: 20, lng: 0 };
-
-// --- Камера: авто-зум по близости городов ----------------------------------
-// Чем ближе города, тем сильнее зум: altitude подбираем так, чтобы маршрут занимал
-// ~ROUTE_VIEWPORT_SPAN долю обзора, в пределах [MIN, MAX]. Порог «когда зум включается» —
-// та дистанция, на которой формула опускается ниже MAX (дальше держим дальний вид).
-// MIN — граница максимального приближения (ближе города уже не приближаем).
-const CAMERA_FOV_DEG = 50; // поле зрения камеры three.js в globe.gl
-// Целевая доля обзора под маршрут (больше → ближе зум). 0.10: Минск–Москву (~675 км)
-// слегка приближает (altitude ~1.2), маршруты длиннее ~1000 км остаются в широком виде,
-// близкие города приближаются заметно сильнее. Тюнится «на глаз».
-const ROUTE_VIEWPORT_SPAN = 0.1;
-const CAMERA_MAX_ALTITUDE = 1.7; // дальний предел: города далеко / выбран один (текущий вид)
-const CAMERA_MIN_ALTITUDE = 0.12; // ближний предел: ближе города не приближаем
-// Высота дуги нормируется на этот угловой размер: у дальних маршрутов дуга «полная»,
-// у близких масштабируется вниз, иначе при зуме превратится в вертикальный шпиль.
-const ARC_REFERENCE_SEPARATION_RAD = (50 * Math.PI) / 180;
 
 // Иконка транспорта на глобусе = та же Noto-эмодзи, что в селекте формы (src/assets/emoji).
 // Нативная ориентация (проверено рендером): машина и корабль — вид сбоку, нос ВЛЕВО
@@ -55,12 +50,10 @@ const TRANSPORT_VISUAL: Record<TransportType, TransportVisual> = {
 // Ярко-красный «флайт-трекер» — общий для следа и иконки транспорта (тот же hex
 // продублирован в .journey-vehicle__icon). Яркий, чтобы читался на тёмном океане.
 const TRAIL_COLOR = "#ff3b30";
-const TRAIL_SAMPLES = 96;
 // Noto-самолёт нативно смотрит в верх-вправо (~45°); поворот к экранному курсу =
 // atan2(dy,dx) + 45° (для иконки «нос вверх» офсет был бы 90°).
 const ICON_ROTATION_OFFSET_DEG = 45;
 
-const DEG = Math.PI / 180;
 const RAD = 180 / Math.PI;
 
 type LabelSide = "left" | "right";
@@ -73,84 +66,7 @@ type HtmlDatum = {
   icon?: string;
   side?: LabelSide;
 };
-type TrailPoint = { lat: number; lng: number; alt: number };
 type ScreenGlobe = { getScreenCoords?: (lat: number, lng: number, altitude?: number) => { x: number; y: number } };
-
-/** Точка на большом круге между двумя координатами при параметре t ∈ [0, 1] (slerp). */
-function greatCirclePoint(
-  startLat: number,
-  startLng: number,
-  endLat: number,
-  endLng: number,
-  t: number,
-): { lat: number; lng: number } {
-  const phi1 = startLat * DEG;
-  const lam1 = startLng * DEG;
-  const phi2 = endLat * DEG;
-  const lam2 = endLng * DEG;
-
-  const a = Math.sin((phi2 - phi1) / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin((lam2 - lam1) / 2) ** 2;
-  const delta = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  if (delta < 1e-6) {
-    return { lat: startLat, lng: startLng };
-  }
-
-  const ka = Math.sin((1 - t) * delta) / Math.sin(delta);
-  const kb = Math.sin(t * delta) / Math.sin(delta);
-  const x = ka * Math.cos(phi1) * Math.cos(lam1) + kb * Math.cos(phi2) * Math.cos(lam2);
-  const y = ka * Math.cos(phi1) * Math.sin(lam1) + kb * Math.cos(phi2) * Math.sin(lam2);
-  const z = ka * Math.sin(phi1) + kb * Math.sin(phi2);
-
-  return { lat: Math.atan2(z, Math.hypot(x, y)) * RAD, lng: Math.atan2(y, x) * RAD };
-}
-
-/** Высота над поверхностью в точке маршрута: 0 на концах, апекс в середине. */
-function arcAltitude(t: number, apex: number): number {
-  return Math.sin(Math.PI * t) * apex;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-/**
- * Высота камеры (globe.gl altitude) под угловой размер маршрута: ближе города → меньше
- * altitude (сильнее зум). Геометрия — камера на расстоянии d от центра видит концы
- * маршрута под углом targetHalfAngle; результат зажат в [MIN, MAX].
- */
-function altitudeForSeparation(separationRad: number): number {
-  if (separationRad <= 0) {
-    return CAMERA_MAX_ALTITUDE;
-  }
-
-  const targetHalfAngle = (ROUTE_VIEWPORT_SPAN * CAMERA_FOV_DEG * DEG) / 2;
-  const half = separationRad / 2;
-  const cameraDistance = Math.cos(half) + Math.sin(half) / Math.tan(targetHalfAngle);
-  return clamp(cameraDistance - 1, CAMERA_MIN_ALTITUDE, CAMERA_MAX_ALTITUDE);
-}
-
-function buildTrail(
-  startLat: number,
-  startLng: number,
-  endLat: number,
-  endLng: number,
-  apex: number,
-  progress: number,
-): TrailPoint[] {
-  const points: TrailPoint[] = [];
-  for (let i = 0; i <= TRAIL_SAMPLES; i += 1) {
-    const tau = i / TRAIL_SAMPLES;
-    if (tau > progress) break;
-
-    const point = greatCirclePoint(startLat, startLng, endLat, endLng, tau);
-    points.push({ lat: point.lat, lng: point.lng, alt: arcAltitude(tau, apex) });
-  }
-
-  // Голову следа фиксируем ровно под иконкой (точный progress, а не ближайший сэмпл).
-  const head = greatCirclePoint(startLat, startLng, endLat, endLng, progress);
-  points.push({ lat: head.lat, lng: head.lng, alt: arcAltitude(progress, apex) });
-  return points;
-}
 
 function createPinElement(name: string, side: LabelSide): HTMLElement {
   const wrapper = document.createElement("div");
@@ -168,11 +84,6 @@ function createPinElement(name: string, side: LabelSide): HTMLElement {
   return wrapper;
 }
 
-/** Место «реальное» (выбрано из автокомплита), если у него есть координаты. */
-function isRealPlace(place: PlaceSuggestion | null): place is PlaceSuggestion {
-  return place !== null && (place.latitude !== 0 || place.longitude !== 0);
-}
-
 interface JourneyGlobeProps {
   origin: PlaceSuggestion | null;
   destination: PlaceSuggestion | null;
@@ -187,6 +98,9 @@ interface JourneyGlobeProps {
  * иконка повёрнута по направлению движения, камера кадрирует маршрут. Пины и подписи
  * появляются только для реально выбранных городов; маршрут (дуга + транспорт) — когда
  * выбраны оба города и среда передвижения. На пустой форме глобус чистый.
+ *
+ * Чистая геометрия маршрута вынесена в globe/route.ts (покрыта unit-тестами); здесь —
+ * только three/WebGL-императив (камера, анимация, DOM пинов/транспорта).
  */
 export function JourneyGlobe({ origin, destination, transportType, originLabel, destinationLabel }: JourneyGlobeProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
@@ -216,10 +130,10 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
 
   // Угловое расстояние между городами — вход и для авто-зума камеры, и для высоты дуги.
   const separation = bothReal ? centralAngleRad(startLat, startLng, endLat, endLng) : 0;
-  // Высоту дуги масштабируем по длине маршрута (sqrt — чтобы средние маршруты не были
-  // слишком плоскими), иначе у близких городов при зуме дуга станет вертикальным шпилем.
+  // Высоту дуги масштабируем по длине маршрута, иначе у близких городов при зуме дуга
+  // станет вертикальным шпилем.
   const apexBase = transportType ? TRANSPORT_VISUAL[transportType].altitude : 0;
-  const apex = apexBase * Math.sqrt(Math.min(1, separation / ARC_REFERENCE_SEPARATION_RAD));
+  const apex = apexBase * apexScale(separation);
 
   // Подпись каждого пина — на сторону, противоположную второму концу, чтобы текст не
   // ложился на дугу. Восточнее (бо́льшая долгота) ≈ правее на экране (камера на середине).

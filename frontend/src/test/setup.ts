@@ -73,6 +73,9 @@ afterEach(() => {
   server.resetHandlers();
   clearAccessToken();
   sessionStorage.clear();
+  // Persist-состояние (флаг легенды, дисмисс баннера, язык i18next) живёт в
+  // localStorage — чистим, чтобы оно не протекало в соседние тесты.
+  localStorage.clear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
