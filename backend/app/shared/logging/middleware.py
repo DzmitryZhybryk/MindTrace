@@ -33,20 +33,15 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Any) -> Response:
         """Обрабатывает запрос, логирует его и перехватывает исключения."""
-        # Засекаем время начала обработки
         start_time = time.perf_counter()
 
-        # Извлекаем базовый контекст из запроса
         request_context = extract_request_context(request)
 
         try:
-            # Выполняем запрос
             response = await call_next(request)
         except Exception as exc:
-            # Вычисляем время обработки
             process_time = time.perf_counter() - start_time
 
-            # Формируем контекст для логирования ошибки
             log_context, _, include_traceback = build_error_log_context(
                 request=request,
                 exc=exc,
@@ -54,13 +49,10 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
                 context=request_context,
             )
 
-            # Определяем уровень логирования по типу исключения
             log_level = get_log_level_for_exception(exc)
 
-            # Получаем семантическое название события
             event = get_event_name(request)
 
-            # Логируем с соответствующим уровнем
             if log_level == logging.ERROR:
                 logger.exception(
                     event=event,
@@ -72,13 +64,10 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
             else:
                 logger.info(event=event, **log_context)
 
-            # Пробрасываем исключение дальше для обработки FastAPI
             raise
         else:
-            # Вычисляем время обработки
             process_time = time.perf_counter() - start_time
 
-            # Формируем полный контекст для логирования
             log_context = build_log_context(
                 request=request,
                 status_code=response.status_code,
@@ -86,7 +75,6 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
                 context=request_context,
             )
 
-            # Получаем семантическое название события
             event = get_event_name(request)
 
             # Уровень лога зависит от статуса: 5xx -> error, 4xx -> warning, иначе info.

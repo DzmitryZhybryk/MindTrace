@@ -19,20 +19,15 @@ def extract_request_context(request: Request) -> DictStrAny:
     """
     context: DictStrAny = {}
 
-    # Извлекаем IP клиента
     if request.client:
         context["client_ip"] = request.client.host
 
-    # Добавляем query параметры если есть
     if request.url.query:
         context["query_params"] = request.url.query
 
-    # Пытаемся извлечь user_id из request.state (если установлен в других middleware/dependencies)
     if hasattr(request.state, "user_id"):
         context["user_id"] = str(request.state.user_id)
 
-    # Можно добавить другие данные из request.state
-    # Например, request_id, если он установлен
     if hasattr(request.state, "request_id"):
         context["request_id"] = str(request.state.request_id)
 
@@ -64,7 +59,6 @@ def build_log_context(
         "process_time": round(process_time, 4),
     }
 
-    # Добавляем базовый контекст из request
     if context:
         log_context.update(context)
     else:
@@ -93,10 +87,8 @@ def build_error_log_context(
     """
     status_code = get_status_code_from_exception(exc)
 
-    # Формируем базовый контекст
     log_context = build_log_context(request, status_code, process_time, context)
 
-    # Добавляем информацию об ошибке
     log_context["error_type"] = type(exc).__name__
 
     if isinstance(exc, BaseDomainError):
