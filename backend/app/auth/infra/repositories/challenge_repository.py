@@ -21,7 +21,7 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
         """
         super().__init__(session=session, model=Challenge)
 
-    async def insert_challenge(self, challenge: ChallengeEntity) -> None:
+    async def insert_challenge(self, challenge_entity: ChallengeEntity) -> None:
         """
         Добавляет challenge в сессию без коммита.
 
@@ -33,9 +33,9 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
         на flush.
 
         Args:
-            challenge: Доменная сущность challenge'а
+            challenge_entity: Доменная сущность challenge'а
         """
-        await self.insert(data=Challenge(**self._to_columns(entity=challenge)))
+        await self.insert(data=Challenge(**self._to_columns(challenge_entity=challenge_entity)))
 
     async def find_active_challenge_for_update(
         self,
@@ -65,70 +65,70 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
             )
             .with_for_update()
         )
-        model = await self._fetch_one(query=query)
-        return self._to_entity(model=model) if model else None
+        challenge_model = await self._fetch_one(query=query)
+        return self._to_entity(challenge_model=challenge_model) if challenge_model else None
 
-    async def update_challenge_by_id(self, challenge: ChallengeEntity) -> None:
+    async def update_challenge_by_id(self, challenge_entity: ChallengeEntity) -> None:
         """
         Персистит изменённое состояние challenge'а через atomic UPDATE по PK.
 
-        Все non-PK-поля переписываются текущим состоянием entity. Под ранее взятым
+        Все non-PK-поля переписываются текущим состоянием challenge. Под ранее взятым
         ``FOR UPDATE``-локом параллельные апдейты сериализованы.
 
         Args:
-            challenge: Доменная сущность с уже обновлённым состоянием
+            challenge_entity: Доменная сущность с уже обновлённым состоянием
         """
-        values = self._to_columns(entity=challenge)
+        values = self._to_columns(challenge_entity=challenge_entity)
         del values["id"]  # PK не входит в SET
-        query = sa.update(Challenge).where(Challenge.id == challenge.challenge_id).values(**values)
+        query = sa.update(Challenge).where(Challenge.id == challenge_entity.challenge_id).values(**values)
         await self._session.execute(query)
 
-    def _to_columns(self, entity: ChallengeEntity) -> DictStrAny:
+    def _to_columns(self, challenge_entity: ChallengeEntity) -> DictStrAny:
         """
-        Единый маппинг entity → колонки ORM-модели (включая PK ``id``).
+        Единый маппинг challenge → колонки ORM-модели (включая PK ``id``).
 
         Источник истины для обоих путей записи: INSERT (``Challenge(**columns)``)
         и UPDATE (те же колонки минус PK). Новое поле добавляется здесь один раз —
         и попадает и в INSERT, и в UPDATE, рассинхрон между ними невозможен.
 
         Args:
-            entity: Доменная сущность challenge'а
+            challenge_entity: Доменная сущность challenge'а
 
         Returns:
             Словарь ``column -> value`` со всеми колонками, включая PK
         """
         return {
-            "id": entity.challenge_id,
-            "user_id": entity.user_id,
-            "challenge_type": entity.challenge_type.value,
-            "code_hash": entity.code_hash,
-            "expires_at": entity.expires_at,
-            "attempts": entity.attempts,
-            "used_at": entity.used_at,
-            "created_at": entity.created_at,
-            "updated_at": entity.updated_at,
-            "deleted_at": entity.deleted_at,
+            "id": challenge_entity.challenge_id,
+            "user_id": challenge_entity.user_id,
+            "challenge_type": challenge_entity.challenge_type.value,
+            "code_hash": challenge_entity.code_hash,
+            "expires_at": challenge_entity.expires_at,
+            "attempts": challenge_entity.attempts,
+            "used_at": challenge_entity.used_at,
+            "created_at": challenge_entity.created_at,
+            "updated_at": challenge_entity.updated_at,
+            "deleted_at": challenge_entity.deleted_at,
         }
 
-    def _to_entity(self, model: Challenge) -> ChallengeEntity:
+    def _to_entity(self, challenge_model: Challenge) -> ChallengeEntity:
         """
         Конвертирует ORM-модель в доменную сущность.
 
         Args:
-            model: ORM-модель из БД
+            challenge_model: ORM-модель из БД
 
         Returns:
             Доменная сущность challenge'а
         """
         return ChallengeEntity(
-            challenge_id=model.id,
-            user_id=model.user_id,
-            challenge_type=ChallengeType(model.challenge_type),
-            code_hash=model.code_hash,
-            expires_at=model.expires_at,
-            attempts=model.attempts,
-            used_at=model.used_at,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-            deleted_at=model.deleted_at,
+            challenge_id=challenge_model.id,
+            user_id=challenge_model.user_id,
+            challenge_type=ChallengeType(challenge_model.challenge_type),
+            code_hash=challenge_model.code_hash,
+            expires_at=challenge_model.expires_at,
+            attempts=challenge_model.attempts,
+            used_at=challenge_model.used_at,
+            created_at=challenge_model.created_at,
+            updated_at=challenge_model.updated_at,
+            deleted_at=challenge_model.deleted_at,
         )

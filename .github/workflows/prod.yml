@@ -134,6 +134,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-push
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Деплой ходит только по SSH — GITHUB_TOKEN не нужен вовсе. Явный пустой набор прав
+    # вместо унаследованного contents: read (принцип наименьших привилегий).
+    permissions: {}
     # github.sha пробрасываем как env и используем внутри script как $GIT_SHA (а не inline-подстановкой)
     # — best practice против инъекций в run/script.
     env:

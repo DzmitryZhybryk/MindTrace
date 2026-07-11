@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 from app.auth.domain.entities import ChallengeEntity, RefreshTokenEntity, UserCredentialsEntity
 from app.auth.domain.enums import ChallengeType, UserRole
 from app.auth.domain.value_objects import Password
-from app.geo.domain.entities import Place
+from app.geo.domain.entities import PlaceEntity
 from app.geo.domain.value_objects import PlaceNames
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
@@ -175,8 +175,8 @@ def make_place(
     latitude: float = _MOSCOW_LAT,
     longitude: float = _MOSCOW_LNG,
     population: int = 10_000_000,
-) -> Place:
-    return Place(
+) -> PlaceEntity:
+    return PlaceEntity(
         place_id=place_id or uuid4(),
         names=PlaceNames(en=en, ru=ru),
         country_code=country_code,

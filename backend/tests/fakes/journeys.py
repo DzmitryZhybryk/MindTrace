@@ -23,13 +23,17 @@ class FakeJourneyRepository(JourneyRepositoryPort):
     def __init__(self) -> None:
         self.journeys: list[JourneyEntity] = []
 
-    async def insert_journey(self, journey: JourneyEntity) -> None:
-        self.journeys.append(journey)
+    async def insert_journey(self, journey_entity: JourneyEntity) -> None:
+        self.journeys.append(journey_entity)
 
     async def find_journeys_by_user_id(self, *, user_id: UUID) -> list[JourneyEntity]:
         # Повторяет боевую выборку: только свои неудалённые поездки, по дате поездки (см. SQL-репо).
-        matching = [journey for journey in self.journeys if journey.user_id == user_id and journey.deleted_at is None]
-        return sorted(matching, key=lambda journey: journey.traveled_on.value)
+        matching = [
+            journey_entity
+            for journey_entity in self.journeys
+            if journey_entity.user_id == user_id and journey_entity.deleted_at is None
+        ]
+        return sorted(matching, key=lambda journey_entity: journey_entity.traveled_on.value)
 
 
 class FakeJourneyUnitOfWork(JourneyUnitOfWorkPort):

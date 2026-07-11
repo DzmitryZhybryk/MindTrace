@@ -11,13 +11,13 @@ application-слою, а ``infra`` его **реализует** (``infra`` им
 
 from typing import Protocol
 
-from app.geo.domain.entities import Place
+from app.geo.domain.entities import PlaceEntity
 
 
 class PlaceRepositoryPort(Protocol):
     """Контракт read-only поиска мест по газеттиру, на который опирается application-слой."""
 
-    async def search_places_by_name(self, *, search_text: str, limit: int) -> list[Place]:
+    async def search_places_by_name(self, *, search_text: str, limit: int) -> list[PlaceEntity]:
         """
         Ищет места по имени (en/ru), отсортированные по убыванию населения.
 

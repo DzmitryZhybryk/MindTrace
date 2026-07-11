@@ -67,41 +67,41 @@ class TokenIssuer:
             Кортеж ``(plaintext-секрет, RefreshTokenEntity готовый к insert'у)``
         """
         plaintext = secrets.token_urlsafe(_REFRESH_TOKEN_SECRET_BYTES)
-        token = RefreshTokenEntity.create_refresh_token_entity(
+        refresh_token_entity = RefreshTokenEntity.create(
             user_id=user_id,
             token_hash=self._deterministic_hasher.digest(secret=plaintext),
             ttl_days=self._refresh_token_ttl_days,
             ip_address=client_metadata.ip_address,
             user_agent=client_metadata.user_agent,
         )
-        return plaintext, token
+        return plaintext, refresh_token_entity
 
     def build_token_pair(
         self,
-        credentials: UserCredentialsEntity,
+        user_credentials_entity: UserCredentialsEntity,
         refresh_secret: str,
-        refresh_token: RefreshTokenEntity,
+        refresh_token_entity: RefreshTokenEntity,
     ) -> TokenPairResult:
         """
         Собирает ``TokenPairResult`` из credentials и пары plaintext/entity.
 
         Args:
-            credentials: Доменная сущность учётных данных (нужна для role + email_verified в JWT)
+            user_credentials_entity: Доменная сущность учётных данных (нужна для role + email_verified в JWT)
             refresh_secret: Plaintext-секрет refresh-токена
-            refresh_token: Доменная сущность refresh-токена (источник ``expires_at``)
+            refresh_token_entity: Доменная сущность refresh-токена (источник ``expires_at``)
 
         Returns:
             Готовый к отдаче через presentation-слой результат
         """
         access_token = self._jwt_service.create_access_token(
-            user_id=credentials.user_id,
-            role=credentials.role.value,
-            email_verified=credentials.is_email_verified,
+            user_id=user_credentials_entity.user_id,
+            role=user_credentials_entity.role.value,
+            email_verified=user_credentials_entity.is_email_verified,
         )
         return TokenPairResult(
             access_token=SecretStr(access_token),
             refresh_token=IssuedRefreshToken(
                 secret=SecretStr(refresh_secret),
-                expires_at=refresh_token.expires_at,
+                expires_at=refresh_token_entity.expires_at,
             ),
         )

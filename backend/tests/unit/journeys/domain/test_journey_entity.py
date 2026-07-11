@@ -12,7 +12,7 @@ from tests.builders import make_approximate_date, make_geo_point
 
 def test_create_computes_great_circle_distance() -> None:
     """create: расстояние выводится из координат (Moscow→London ≈ 2500 км)."""
-    journey = JourneyEntity.create(
+    journey_entity = JourneyEntity.create(
         user_id=uuid4(),
         origin=make_geo_point(name="Moscow", latitude=55.75, longitude=37.62),
         destination=make_geo_point(name="London", country_code="GB", latitude=51.5, longitude=-0.12),
@@ -20,12 +20,12 @@ def test_create_computes_great_circle_distance() -> None:
         traveled_on=make_approximate_date(),
     )
 
-    assert journey.distance_km == pytest.approx(2500, abs=60)
+    assert journey_entity.distance_km == pytest.approx(2500, abs=60)
 
 
 def test_create_distance_for_one_degree_of_latitude() -> None:
     """create: 1° широты по тому же меридиану ≈ 111 км (опорная проверка haversine)."""
-    journey = JourneyEntity.create(
+    journey_entity = JourneyEntity.create(
         user_id=uuid4(),
         origin=make_geo_point(name="A", latitude=0.0, longitude=0.0),
         destination=make_geo_point(name="B", latitude=1.0, longitude=0.0),
@@ -33,7 +33,7 @@ def test_create_distance_for_one_degree_of_latitude() -> None:
         traveled_on=make_approximate_date(),
     )
 
-    assert journey.distance_km == pytest.approx(111.2, abs=0.5)
+    assert journey_entity.distance_km == pytest.approx(111.2, abs=0.5)
 
 
 def test_create_assigns_fields_and_mints_id() -> None:
@@ -42,7 +42,7 @@ def test_create_assigns_fields_and_mints_id() -> None:
     origin = make_geo_point(name="Moscow", latitude=55.75, longitude=37.62)
     destination = make_geo_point(name="London", country_code="GB", latitude=51.5, longitude=-0.12)
 
-    journey = JourneyEntity.create(
+    journey_entity = JourneyEntity.create(
         user_id=user_id,
         origin=origin,
         destination=destination,
@@ -50,11 +50,11 @@ def test_create_assigns_fields_and_mints_id() -> None:
         traveled_on=make_approximate_date(year=2019, month=3),
     )
 
-    assert journey.journey_id is not None
-    assert journey.user_id == user_id
-    assert journey.origin is origin
-    assert journey.destination is destination
-    assert journey.transport_type is TransportType.WATER
+    assert journey_entity.journey_id is not None
+    assert journey_entity.user_id == user_id
+    assert journey_entity.origin is origin
+    assert journey_entity.destination is destination
+    assert journey_entity.transport_type is TransportType.WATER
 
 
 def test_create_mints_distinct_ids_per_call() -> None:
@@ -91,7 +91,7 @@ def test_create_same_coordinates_raises() -> None:
 
 def test_create_same_name_distinct_coordinates_is_allowed() -> None:
     """create: одинаковое имя, но разные координаты — разные места, инвариант не нарушен."""
-    journey = JourneyEntity.create(
+    journey_entity = JourneyEntity.create(
         user_id=uuid4(),
         origin=make_geo_point(name="Springfield", country_code="US", latitude=39.8, longitude=-89.6),
         destination=make_geo_point(name="Springfield", country_code="US", latitude=42.1, longitude=-72.6),
@@ -99,4 +99,4 @@ def test_create_same_name_distinct_coordinates_is_allowed() -> None:
         traveled_on=make_approximate_date(),
     )
 
-    assert journey.distance_km > 0
+    assert journey_entity.distance_km > 0

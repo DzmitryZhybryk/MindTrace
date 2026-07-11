@@ -168,9 +168,9 @@ Application и infra-слои оперируют разными типами т�
 Правильно (эталон — `ChallengeRepository`):
 
 ```python
-insert_challenge(challenge)
+insert_challenge(challenge_entity)
 find_active_challenge_for_update(user_id, challenge_type)
-update_challenge_by_id(challenge)
+update_challenge_by_id(challenge_entity)
 find_refresh_token_by_hash_for_update(token_hash)
 revoke_all_active_refresh_tokens_by_user_id(user_id)
 find_user_credentials_by_user_id(user_id)
@@ -190,6 +190,19 @@ revoke_all_active_by_user_id(user_id)    # что revoke'аем?
 2. **Различимость Protocol'ов** — имя с сущностью гарантированно уникально между близкими репозиториями, что снимает риск structural-typing-подмены реализаций (см. memory `feedback_protocol_method_names`).
 3. **Само-документируемость на call-site** — `uow.refresh_token_repository.find_refresh_token_by_hash_for_update(...)` читается целиком; кажущаяся избыточность с именем атрибута намеренная и дешёвая.
 
+### Именование методов entity
+
+Симметрично репозиториям, но **правило обратное** — и это не противоречие: граница проходит по **получателю метода**.
+
+> **Имя сущности попадает в имя метода только если получатель метода — НЕ эта сущность.**
+
+- **Метод на самой entity** (получатель `self`/`cls` — это уже *и есть* сущность) → **голое имя**, получателя не повторяем: `refresh_token_entity.revoke()`, `challenge_entity.mark_used()`, `user_credentials_entity.ensure_not_verified()`, фабрика `UserEntity.create()` (а НЕ `create_user_entity` / `create_new_user_entity`).
+- **Метод на репозитории** (отдельный gateway *над* сущностями; UoW агрегирует несколько репо) → **с именем сущности** (см. секцию выше): `insert_refresh_token(...)`.
+
+Тест одной фразой: «получатель метода — сама сущность?» → да ⇒ голо; нет (репо/коллаборатор над сущностями) ⇒ с именем сущности.
+
+Зачем так: на entity `self`/`cls` уже *и есть* сущность — имя в методе даёт 0 бит (стандартное «не заикаться типом получателя»: `list.append()`, а не `list.append_to_list()`). У репозитория различать есть что — один UoW держит несколько репо, `_refresh_token` vs `_user_credentials` реально различает. Маркер «это доменная операция над entity» переносится не в имя метода, а в **имя переменной** (см. ниже) — там он объявляется один раз и виден на каждом call-site.
+
 ### Cводная таблица именования по слоям
 
 | Слой | Вход | Выход |
@@ -198,6 +211,18 @@ revoke_all_active_by_user_id(user_id)    # что revoke'аем?
 | `application/schemas.py` (use case'ы) | `*Command` (или `*Metadata`/`*Context` для ambient) | `*Result` |
 | `infra/clients/*.py` (исходящие вызовы внешних сервисов) | `*Request` | `*Response` |
 | `domain/entities/*.py`, `domain/value_objects.py` | без суффиксов | без суффиксов |
+
+### Именование переменных, держащих доменные типы (layer-суффикс)
+
+В DDD один концепт сосуществует несколькими типами по слоям (`UserEntity` domain / ORM-`User` infra / `CreateUserCommand` app), часто в одной функции-маппере. Чтобы на call-site было видно, *какое представление* в руках — и чтобы доменные/фабричные методы читались как доменные (`refresh_token_entity.revoke()`) — переменная/параметр, держащие доменный тип, несут **суффикс слоя**:
+
+- **domain entity** → `<concept>_entity`: `user_entity`, `refresh_token_entity`, `user_credentials_entity`, `challenge_entity`, `journey_entity`.
+- **ORM-модель (SQLAlchemy)** → `<concept>_model`: `user_model`, `refresh_token_model` (парно к `_entity`; ценнее всего в мапперах, где оба типа рядом).
+- **DTO/схемы** обычно однозначны по контексту (тип несёт `*Command`/`*Result`/`*Request`); суффикс на переменной — только при коллизии с другим представлением.
+
+Распространяется на **локальные переменные И параметры** (в т.ч. параметры репо-методов, `*RepositoryPort`, фейков и мапперов): `insert_refresh_token(refresh_token_entity=...)`, маппер `_to_entity(*, <concept>_model=...)`.
+
+Оговорка: это маркер **слоя доменного концепта**, а не «тип в имени вообще» — не `count_int` / `name_str`. Для не-доменных примитивов имя остаётся смысловым без суффикса типа.
 
 ## Code Style
 

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.14-slim-bookworm AS base
-COPY --from=ghcr.io/astral-sh/uv:0.9.9 /uv /uvx /bin/
+FROM python:3.14-slim-bookworm@sha256:4ff4b92a68355dbdb52584ab3391dff8d371a61d4e063468bfd0130e3189c6d9 AS base
+COPY --from=ghcr.io/astral-sh/uv:0.9.9@sha256:f6e3549ed287fee0ddde2460a2a74a2d74366f84b04aaa34c1f19fec40da8652 /uv /uvx /bin/
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONFAULTHANDLER=1 \

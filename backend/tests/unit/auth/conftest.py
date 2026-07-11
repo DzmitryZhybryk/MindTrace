@@ -11,7 +11,7 @@ import pytest
 
 from app.auth.application.auth_service import AuthService
 from app.auth.application.email_verification_service import EmailVerificationService
-from app.auth.application.settings import EmailVerificationSettings
+from app.auth.application.settings import EmailVerificationConfig
 from app.auth.application.token_issuer import TokenIssuer
 from app.shared.infra.crypto import Sha256DeterministicHasher
 from app.shared.infra.jwt import JWTService
@@ -62,7 +62,7 @@ def email_verification_service(
     fake_uow: FakeAuthUnitOfWork,
     fake_salted_hasher: FakeSaltedHasher,
     fake_task_bus: FakeTaskBus,
-    email_verification_settings: EmailVerificationSettings,
+    email_verification_settings: EmailVerificationConfig,
 ) -> EmailVerificationService:
     return EmailVerificationService(
         uow=fake_uow,

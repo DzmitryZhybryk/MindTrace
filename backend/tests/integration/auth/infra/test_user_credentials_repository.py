@@ -24,9 +24,13 @@ async def test_insert_then_find_by_user_id_roundtrip(
 ) -> None:
     """insert + commit → ``find_user_credentials_by_user_id`` возвращает ту же сущность."""
     user_id = uuid4()
-    credentials = make_user_credentials(user_id=user_id, email="uc-roundtrip@example.com", username="uc_roundtrip")
+    user_credentials_entity = make_user_credentials(
+        user_id=user_id, email="uc-roundtrip@example.com", username="uc_roundtrip"
+    )
     async with session_factory() as writer:
-        await UserCredentialsRepository(session=writer).insert_user_credentials(credentials=credentials)
+        await UserCredentialsRepository(session=writer).insert_user_credentials(
+            user_credentials_entity=user_credentials_entity
+        )
         await writer.commit()
 
     async with session_factory() as reader:
@@ -36,7 +40,7 @@ async def test_insert_then_find_by_user_id_roundtrip(
     assert found.user_id == user_id
     assert found.email == "uc-roundtrip@example.com"
     assert found.username == "uc_roundtrip"
-    assert found.password.hash == credentials.password.hash
+    assert found.password.hash == user_credentials_entity.password.hash
     assert found.role is UserRole.FREE
     assert found.email_verified_at is None
 
@@ -51,8 +55,8 @@ async def test_find_by_email_or_username_returns_matching_rows(
     credentials_two = make_user_credentials(user_id=user_two, email="second@example.com", username="second_user")
     async with session_factory() as writer:
         repository = UserCredentialsRepository(session=writer)
-        await repository.insert_user_credentials(credentials=credentials_one)
-        await repository.insert_user_credentials(credentials=credentials_two)
+        await repository.insert_user_credentials(user_credentials_entity=credentials_one)
+        await repository.insert_user_credentials(user_credentials_entity=credentials_two)
         await writer.commit()
 
     async with session_factory() as reader:
@@ -82,12 +86,12 @@ async def test_insert_duplicate_email_raises_integrity_error(
     """Повторный email нарушает unique-констрейнт — ``IntegrityError`` на commit."""
     existing = make_user_credentials(email="dup@example.com", username="original_user")
     async with session_factory() as writer:
-        await UserCredentialsRepository(session=writer).insert_user_credentials(credentials=existing)
+        await UserCredentialsRepository(session=writer).insert_user_credentials(user_credentials_entity=existing)
         await writer.commit()
 
     duplicate = make_user_credentials(email="dup@example.com", username="another_user")
     async with session_factory() as writer:
-        await UserCredentialsRepository(session=writer).insert_user_credentials(credentials=duplicate)
+        await UserCredentialsRepository(session=writer).insert_user_credentials(user_credentials_entity=duplicate)
         with pytest.raises(IntegrityError):
             await writer.commit()
 
@@ -98,12 +102,12 @@ async def test_insert_duplicate_username_raises_integrity_error(
     """Повторный username нарушает unique-констрейнт — ``IntegrityError`` на commit."""
     existing = make_user_credentials(email="original@example.com", username="dup_user")
     async with session_factory() as writer:
-        await UserCredentialsRepository(session=writer).insert_user_credentials(credentials=existing)
+        await UserCredentialsRepository(session=writer).insert_user_credentials(user_credentials_entity=existing)
         await writer.commit()
 
     duplicate = make_user_credentials(email="another@example.com", username="dup_user")
     async with session_factory() as writer:
-        await UserCredentialsRepository(session=writer).insert_user_credentials(credentials=duplicate)
+        await UserCredentialsRepository(session=writer).insert_user_credentials(user_credentials_entity=duplicate)
         with pytest.raises(IntegrityError):
             await writer.commit()
 
@@ -113,9 +117,13 @@ async def test_update_persists_email_verified_at(
 ) -> None:
     """``update_user_credentials_by_user_id`` персистит ``email_verified_at`` (виден из новой сессии)."""
     user_id = uuid4()
-    credentials = make_user_credentials(user_id=user_id, email="uc-update@example.com", username="uc_update")
+    user_credentials_entity = make_user_credentials(
+        user_id=user_id, email="uc-update@example.com", username="uc_update"
+    )
     async with session_factory() as writer:
-        await UserCredentialsRepository(session=writer).insert_user_credentials(credentials=credentials)
+        await UserCredentialsRepository(session=writer).insert_user_credentials(
+            user_credentials_entity=user_credentials_entity
+        )
         await writer.commit()
 
     verified = make_user_credentials(
@@ -125,7 +133,9 @@ async def test_update_persists_email_verified_at(
         email_verified_at=_VERIFIED_AT,
     )
     async with session_factory() as writer:
-        await UserCredentialsRepository(session=writer).update_user_credentials_by_user_id(credentials=verified)
+        await UserCredentialsRepository(session=writer).update_user_credentials_by_user_id(
+            user_credentials_entity=verified
+        )
         await writer.commit()
 
     async with session_factory() as reader:

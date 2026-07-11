@@ -7,9 +7,6 @@ from app.auth.infra import auth_blueprint
 from app.geo import geo_router
 from app.health import health_router
 from app.journeys import journey_router
-
-# Настраиваем логирование в самом начале, до всех остальных импортов
-# Это гарантирует, что handlers создаются с правильным форматтером
 from app.shared.enums import AppEnvEnum
 from app.shared.exceptions import register_exception_handlers
 from app.shared.infra.di.base import BaseComponent

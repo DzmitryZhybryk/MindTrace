@@ -1,3 +1,3 @@
-from app.geo.domain.entities.place_entity import Place
+from app.geo.domain.entities.place_entity import PlaceEntity
 
-__all__ = ["Place"]
+__all__ = ["PlaceEntity"]

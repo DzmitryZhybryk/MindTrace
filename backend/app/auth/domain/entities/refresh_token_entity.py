@@ -27,7 +27,7 @@ class RefreshTokenEntity(TimestampedEntityMixin):
         self.user_agent = user_agent
 
     @classmethod
-    def create_refresh_token_entity(
+    def create(
         cls,
         user_id: UUID,
         token_hash: str,

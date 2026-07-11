@@ -1,6 +1,6 @@
 from app.geo.application.ports import PlaceRepositoryPort
 from app.geo.application.schemas import PlaceSearchItem, PlaceSearchResult, SearchPlacesCommand
-from app.geo.domain.entities import Place
+from app.geo.domain.entities import PlaceEntity
 from app.geo.domain.enums import Language
 from app.shared.logging import get_logger
 
@@ -29,39 +29,39 @@ class PlaceService:
             return PlaceSearchResult(items=())
 
         places = await self._repository.search_places_by_name(search_text=search_text, limit=command.limit)
-        items = tuple(self._build_item(place=place, language=command.language) for place in places)
+        items = tuple(self._build_item(place_entity=place_entity, language=command.language) for place_entity in places)
         return PlaceSearchResult(items=items)
 
-    def _build_item(self, *, place: Place, language: Language) -> PlaceSearchItem:
+    def _build_item(self, *, place_entity: PlaceEntity, language: Language) -> PlaceSearchItem:
         """
         Собирает кандидата выдачи и фиксирует сигнал отсутствующего перевода.
 
         Args:
-            place: Найденное место
+            place_entity: Найденное место
             language: Язык, под который резолвится отображаемое имя
 
         Returns:
             Кандидат автокомплита с именем, резолвнутым под язык запроса
         """
-        name = place.display_name(language=language)
-        if place.localized_name(language=language) is None:
+        name = place_entity.display_name(language=language)
+        if place_entity.localized_name(language=language) is None:
             # Сигнал качества данных: место без перевода на язык запроса (отдаём фоллбэк
             # name_en). Фильтр в Grafana/Loki: event="geo.place_name_missing"; топ
             # кандидатов на ручной бэкфилл = count by place_id, приоритет по population.
             logger.info(
                 "geo.place_name_missing",
                 language=language,
-                place_id=place.place_id,
+                place_id=place_entity.place_id,
                 name=name,
-                country_code=place.country_code,
-                population=place.population,
+                country_code=place_entity.country_code,
+                population=place_entity.population,
             )
 
         return PlaceSearchItem(
-            place_id=place.place_id,
+            place_id=place_entity.place_id,
             name=name,
-            country_code=place.country_code,
-            latitude=place.latitude,
-            longitude=place.longitude,
-            population=place.population,
+            country_code=place_entity.country_code,
+            latitude=place_entity.latitude,
+            longitude=place_entity.longitude,
+            population=place_entity.population,
         )

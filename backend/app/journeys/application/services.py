@@ -39,7 +39,7 @@ class JourneyService:
             month=command.traveled_month,
             day=command.traveled_day,
         )
-        journey = JourneyEntity.create(
+        journey_entity = JourneyEntity.create(
             user_id=command.user_id,
             origin=self._to_geo_point(point=command.origin),
             destination=self._to_geo_point(point=command.destination),
@@ -47,7 +47,7 @@ class JourneyService:
             traveled_on=traveled_on,
         )
         async with self._uow.transaction():
-            await self._uow.journey_repository.insert_journey(journey=journey)
+            await self._uow.journey_repository.insert_journey(journey_entity=journey_entity)
             await self._uow.commit()
 
     async def get_journeys_map(self, *, user_id: UUID) -> JourneysMapResult:
@@ -67,9 +67,9 @@ class JourneyService:
         journeys = await self._uow.journey_repository.find_journeys_by_user_id(user_id=user_id)
 
         visits_by_country: VisitsByCountry = defaultdict(dict)
-        for journey in journeys:
-            year = journey.traveled_on.value.year
-            for point in (journey.origin, journey.destination):
+        for journey_entity in journeys:
+            year = journey_entity.traveled_on.value.year
+            for point in (journey_entity.origin, journey_entity.destination):
                 cities = visits_by_country[point.country_code]
                 folded_name = point.name.casefold()
                 visit = cities.get(folded_name)

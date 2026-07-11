@@ -27,11 +27,11 @@ class FakeUserCredentialsRepository(UserCredentialsRepositoryPort):
     def __init__(self) -> None:
         self.by_user_id: dict[UUID, UserCredentialsEntity] = {}
 
-    async def insert_user_credentials(self, credentials: UserCredentialsEntity) -> None:
-        self.by_user_id[credentials.user_id] = credentials
+    async def insert_user_credentials(self, user_credentials_entity: UserCredentialsEntity) -> None:
+        self.by_user_id[user_credentials_entity.user_id] = user_credentials_entity
 
-    async def update_user_credentials_by_user_id(self, credentials: UserCredentialsEntity) -> None:
-        self.by_user_id[credentials.user_id] = credentials
+    async def update_user_credentials_by_user_id(self, user_credentials_entity: UserCredentialsEntity) -> None:
+        self.by_user_id[user_credentials_entity.user_id] = user_credentials_entity
 
     async def find_user_credentials_by_user_id(self, user_id: UUID) -> UserCredentialsEntity | None:
         return self.by_user_id.get(user_id)
@@ -50,20 +50,20 @@ class FakeRefreshTokenRepository(RefreshTokenRepositoryPort):
     def __init__(self) -> None:
         self.by_hash: dict[str, RefreshTokenEntity] = {}
 
-    async def insert_refresh_token(self, token: RefreshTokenEntity) -> None:
-        self.by_hash[token.token_hash] = token
+    async def insert_refresh_token(self, refresh_token_entity: RefreshTokenEntity) -> None:
+        self.by_hash[refresh_token_entity.token_hash] = refresh_token_entity
 
     async def find_refresh_token_by_hash_for_update(self, token_hash: str) -> RefreshTokenEntity | None:
         return self.by_hash.get(token_hash)
 
-    async def update_refresh_token_by_id(self, token: RefreshTokenEntity) -> None:
+    async def update_refresh_token_by_id(self, refresh_token_entity: RefreshTokenEntity) -> None:
         # Сущность мутируется на месте; стор держит ту же ссылку — переписываем для явности.
-        self.by_hash[token.token_hash] = token
+        self.by_hash[refresh_token_entity.token_hash] = refresh_token_entity
 
     async def revoke_all_active_refresh_tokens_by_user_id(self, user_id: UUID) -> None:
-        for token in self.by_hash.values():
-            if token.user_id == user_id and not token.is_revoked:
-                token.revoke()
+        for refresh_token_entity in self.by_hash.values():
+            if refresh_token_entity.user_id == user_id and not refresh_token_entity.is_revoked:
+                refresh_token_entity.revoke()
 
 
 class FakeChallengeRepository(ChallengeRepositoryPort):
@@ -72,8 +72,8 @@ class FakeChallengeRepository(ChallengeRepositoryPort):
     def __init__(self) -> None:
         self.challenges: list[ChallengeEntity] = []
 
-    async def insert_challenge(self, challenge: ChallengeEntity) -> None:
-        self.challenges.append(challenge)
+    async def insert_challenge(self, challenge_entity: ChallengeEntity) -> None:
+        self.challenges.append(challenge_entity)
 
     async def find_active_challenge_for_update(
         self,
@@ -89,5 +89,5 @@ class FakeChallengeRepository(ChallengeRepositoryPort):
             None,
         )
 
-    async def update_challenge_by_id(self, challenge: ChallengeEntity) -> None:
+    async def update_challenge_by_id(self, challenge_entity: ChallengeEntity) -> None:
         """No-op: сущность мутируется на месте, список держит ту же ссылку."""
