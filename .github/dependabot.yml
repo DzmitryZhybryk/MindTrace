@@ -23,9 +23,14 @@ updates:
     commit-message:
       prefix: chore
     groups:
-      npm:
+      # minor/patch — одним тихим PR; мажоры выпадают из группы и приходят отдельными PR
+      # как сигнал к осознанному апгрейду (React/Vite/Mantine major и т.п. — своя задача).
+      npm-minor-patch:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Базовые Docker-образы запинены по digest (supply-chain) — Dependabot поднимает PR при
   # выходе нового digest тега, иначе пины заморозили бы и security-патчи самих образов.
