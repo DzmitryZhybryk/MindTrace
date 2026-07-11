@@ -81,7 +81,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
     - ``pytest -m unit`` / ``make test-unit`` — все юнит-тесты (любой домен);
     - ``pytest -m users`` / ``make test-users`` — все тесты домена users (любой уровень);
-    - ``pytest -m "unit and users"`` / ``make test-m M="unit and users"`` — пересечение.
+    - ``uv run pytest -m "unit and users"`` — пересечение осей (отдельного make-таргета нет).
 
     Args:
         items: Собранные pytest'ом тест-элементы; маркеры добавляются in-place.
