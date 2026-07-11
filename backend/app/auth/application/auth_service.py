@@ -50,40 +50,42 @@ class AuthService:
         async with self._uow.transaction():
             await self._ensure_credentials_unique(email=registration.email, username=registration.username)
 
-            password = Password(hash=self._salted_hasher.hash(registration.password.get_secret_value()))
-            credentials_entity = UserCredentialsEntity.create(
+            password = Password(hash=self._salted_hasher.hash(secret=registration.password.get_secret_value()))
+            user_credentials_entity = UserCredentialsEntity.create(
                 email=registration.email,
                 username=registration.username,
                 password=password,
             )
-            await self._uow.user_credentials_repository.insert_user_credentials(credentials=credentials_entity)
+            await self._uow.user_credentials_repository.insert_user_credentials(
+                user_credentials_entity=user_credentials_entity
+            )
             # Материализуем родителя до зависимого refresh_token: INSERT user_credentials
             # должен уйти в БД раньше INSERT refresh_tokens (FK refresh_tokens.user_id →
             # user_credentials.user_id). Порядок INSERT'ов между мапперами в одном flush на
             # commit'е не гарантирован, поэтому фиксируем его явным flush'ем здесь.
             await self._uow.flush()
             await self._users_client.create_user(
-                user_id=credentials_entity.user_id,
+                user_id=user_credentials_entity.user_id,
                 username=registration.username,
                 email=registration.email,
                 marketing_emails_consent=registration.marketing_emails_consent,
-                terms_accepted_at=credentials_entity.created_at,
+                terms_accepted_at=user_credentials_entity.created_at,
             )
 
-            refresh_secret, refresh_token = self._token_issuer.issue_refresh_token(
-                user_id=credentials_entity.user_id,
+            refresh_secret, refresh_token_entity = self._token_issuer.issue_refresh_token(
+                user_id=user_credentials_entity.user_id,
                 client_metadata=client_metadata,
             )
-            await self._uow.refresh_token_repository.insert_refresh_token(token=refresh_token)
+            await self._uow.refresh_token_repository.insert_refresh_token(refresh_token_entity=refresh_token_entity)
             await self._uow.commit()
 
         # Вне транзакции register'а: own transaction()/commit (atomic-defer письма) — поэтому ПОСЛЕ блока.
-        await self._email_verification_service.request_email_verification(user_id=credentials_entity.user_id)
+        await self._email_verification_service.request_email_verification(user_id=user_credentials_entity.user_id)
 
         return self._token_issuer.build_token_pair(
-            credentials=credentials_entity,
+            user_credentials_entity=user_credentials_entity,
             refresh_secret=refresh_secret,
-            refresh_token=refresh_token,
+            refresh_token_entity=refresh_token_entity,
         )
 
     async def login(self, command: LoginCommand, client_metadata: ClientMetadata) -> TokenPairResult:
@@ -113,32 +115,32 @@ class AuthService:
                 email=command.login,
                 username=command.login,
             )
-            credentials = next(
+            user_credentials_entity = next(
                 (c for c in candidates if c.email == command.login or c.username == command.login),
                 None,
             )
 
-            if credentials is None:
+            if user_credentials_entity is None:
                 self._salted_hasher.verify(secret=command.password.get_secret_value(), hashed=_DUMMY_PASSWORD_HASH)
                 raise InvalidCredentialsError()
 
             if not self._salted_hasher.verify(
                 secret=command.password.get_secret_value(),
-                hashed=credentials.password.hash,
+                hashed=user_credentials_entity.password.hash,
             ):
                 raise InvalidCredentialsError()
 
-            refresh_secret, refresh_token = self._token_issuer.issue_refresh_token(
-                user_id=credentials.user_id,
+            refresh_secret, refresh_token_entity = self._token_issuer.issue_refresh_token(
+                user_id=user_credentials_entity.user_id,
                 client_metadata=client_metadata,
             )
-            await self._uow.refresh_token_repository.insert_refresh_token(token=refresh_token)
+            await self._uow.refresh_token_repository.insert_refresh_token(refresh_token_entity=refresh_token_entity)
             await self._uow.commit()
 
         return self._token_issuer.build_token_pair(
-            credentials=credentials,
+            user_credentials_entity=user_credentials_entity,
             refresh_secret=refresh_secret,
-            refresh_token=refresh_token,
+            refresh_token_entity=refresh_token_entity,
         )
 
     async def logout(self, refresh_secret: str | None) -> None:
@@ -158,14 +160,16 @@ class AuthService:
 
         async with self._uow.transaction():
             token_hash = self._token_issuer.hash_refresh_secret(refresh_secret=refresh_secret)
-            token = await self._uow.refresh_token_repository.find_refresh_token_by_hash_for_update(
+            refresh_token_entity = await self._uow.refresh_token_repository.find_refresh_token_by_hash_for_update(
                 token_hash=token_hash,
             )
-            if token is None or token.is_revoked:
+            if refresh_token_entity is None or refresh_token_entity.is_revoked:
                 return
 
-            token.revoke()
-            await self._uow.refresh_token_repository.update_refresh_token_by_id(token=token)
+            refresh_token_entity.revoke()
+            await self._uow.refresh_token_repository.update_refresh_token_by_id(
+                refresh_token_entity=refresh_token_entity
+            )
             await self._uow.commit()
 
     async def refresh(self, refresh_secret: str, client_metadata: ClientMetadata) -> TokenPairResult:
@@ -195,42 +199,44 @@ class AuthService:
         """
         async with self._uow.transaction():
             token_hash = self._token_issuer.hash_refresh_secret(refresh_secret=refresh_secret)
-            token = await self._uow.refresh_token_repository.find_refresh_token_by_hash_for_update(
+            refresh_token_entity = await self._uow.refresh_token_repository.find_refresh_token_by_hash_for_update(
                 token_hash=token_hash,
             )
-            if token is None:
+            if refresh_token_entity is None:
                 raise InvalidRefreshTokenError()
 
-            if token.is_revoked:
+            if refresh_token_entity.is_revoked:
                 await self._uow.refresh_token_repository.revoke_all_active_refresh_tokens_by_user_id(
-                    user_id=token.user_id,
+                    user_id=refresh_token_entity.user_id,
                 )
                 await self._uow.commit()
                 raise InvalidRefreshTokenError()
 
-            if token.is_expired:
+            if refresh_token_entity.is_expired:
                 raise InvalidRefreshTokenError()
 
-            credentials = await self._uow.user_credentials_repository.find_user_credentials_by_user_id(
-                user_id=token.user_id,
+            user_credentials_entity = await self._uow.user_credentials_repository.find_user_credentials_by_user_id(
+                user_id=refresh_token_entity.user_id,
             )
-            if credentials is None:
+            if user_credentials_entity is None:
                 raise InvalidRefreshTokenError()
 
-            token.revoke()
-            await self._uow.refresh_token_repository.update_refresh_token_by_id(token=token)
+            refresh_token_entity.revoke()
+            await self._uow.refresh_token_repository.update_refresh_token_by_id(
+                refresh_token_entity=refresh_token_entity
+            )
 
-            new_refresh_secret, new_refresh_token = self._token_issuer.issue_refresh_token(
-                user_id=token.user_id,
+            new_refresh_secret, new_refresh_token_entity = self._token_issuer.issue_refresh_token(
+                user_id=refresh_token_entity.user_id,
                 client_metadata=client_metadata,
             )
-            await self._uow.refresh_token_repository.insert_refresh_token(token=new_refresh_token)
+            await self._uow.refresh_token_repository.insert_refresh_token(refresh_token_entity=new_refresh_token_entity)
             await self._uow.commit()
 
         return self._token_issuer.build_token_pair(
-            credentials=credentials,
+            user_credentials_entity=user_credentials_entity,
             refresh_secret=new_refresh_secret,
-            refresh_token=new_refresh_token,
+            refresh_token_entity=new_refresh_token_entity,
         )
 
     async def _ensure_credentials_unique(self, email: str, username: str) -> None:

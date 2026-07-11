@@ -25,7 +25,7 @@ class UserEntity(TimestampedEntityMixin):
         self.display_name = display_name
 
     @classmethod
-    def create_new_user_entity(
+    def create(
         cls,
         user_id: UUID,
         username: str,

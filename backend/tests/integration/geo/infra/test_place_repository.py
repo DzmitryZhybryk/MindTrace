@@ -55,7 +55,7 @@ async def test_search_matches_en_prefix_ordered_by_population(db_session: AsyncS
 
     places = await PlaceRepository(session=db_session).search_places_by_name(search_text="Mos", limit=10)
 
-    assert [place.display_name(language=Language.EN) for place in places] == ["Moscow", "Mostar"]
+    assert [place_entity.display_name(language=Language.EN) for place_entity in places] == ["Moscow", "Mostar"]
 
 
 async def test_search_matches_ru_prefix(db_session: AsyncSession) -> None:
@@ -90,7 +90,7 @@ async def test_search_matches_ru_prefix(db_session: AsyncSession) -> None:
 
     places = await PlaceRepository(session=db_session).search_places_by_name(search_text="Мос", limit=10)
 
-    assert [place.place_id for place in places] == [moscow_id]
+    assert [place_entity.place_id for place_entity in places] == [moscow_id]
 
 
 async def test_search_prefix_does_not_match_substring(db_session: AsyncSession) -> None:
@@ -146,7 +146,7 @@ async def test_search_escapes_like_metacharacters(db_session: AsyncSession) -> N
 
     places = await PlaceRepository(session=db_session).search_places_by_name(search_text="A%", limit=10)
 
-    assert [place.place_id for place in places] == [literal_id]
+    assert [place_entity.place_id for place_entity in places] == [literal_id]
 
 
 async def test_search_respects_limit(db_session: AsyncSession) -> None:
@@ -168,4 +168,4 @@ async def test_search_respects_limit(db_session: AsyncSession) -> None:
 
     places = await PlaceRepository(session=db_session).search_places_by_name(search_text="Mos", limit=2)
 
-    assert [place.population for place in places] == [300, 200]
+    assert [place_entity.population for place_entity in places] == [300, 200]

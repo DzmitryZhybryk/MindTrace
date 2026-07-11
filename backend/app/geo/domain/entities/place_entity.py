@@ -4,7 +4,7 @@ from app.geo.domain.enums import Language
 from app.geo.domain.value_objects import PlaceNames
 
 
-class Place:
+class PlaceEntity:
     """
     Место из газеттира (read-only справочник-кэш).
 

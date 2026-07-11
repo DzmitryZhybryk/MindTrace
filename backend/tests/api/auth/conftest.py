@@ -24,7 +24,7 @@ import pytest
 from fastapi import APIRouter
 
 from app.auth import auth_router
-from app.auth.application.settings import EmailVerificationSettings
+from app.auth.application.settings import EmailVerificationConfig
 from app.auth.presentation.dependencies import (
     auth_uow_dependency,
     email_verification_settings_dependency,
@@ -58,7 +58,7 @@ def dependency_overrides(
     fake_users_client: FakeUsersClient,
     fake_salted_hasher: FakeSaltedHasher,
     fake_task_bus: FakeTaskBus,
-    email_verification_settings: EmailVerificationSettings,
+    email_verification_settings: EmailVerificationConfig,
 ) -> dict[Callable[..., Any], Callable[..., Any]]:
     return {
         auth_uow_dependency: lambda: fake_uow,

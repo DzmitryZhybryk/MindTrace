@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.application.auth_service import AuthService
 from app.auth.application.email_verification_service import EmailVerificationService
 from app.auth.application.schemas import ClientMetadata
-from app.auth.application.settings import EmailVerificationSettings, get_email_verification_settings
+from app.auth.application.settings import EmailVerificationConfig, get_email_verification_settings
 from app.auth.application.token_issuer import TokenIssuer
 from app.auth.exceptions import InvalidAccessTokenError, InvalidRefreshTokenError
 from app.auth.infra.clients.internal_users_client import InternalUsersClient
@@ -84,7 +84,7 @@ def current_user_id_dependency(
         raise InvalidAccessTokenError() from exc
 
 
-def email_verification_settings_dependency() -> EmailVerificationSettings:
+def email_verification_settings_dependency() -> EmailVerificationConfig:
     return get_email_verification_settings()
 
 
@@ -143,7 +143,7 @@ def email_verification_service_dependency(
     uow: Annotated[AuthUnitOfWork, Depends(auth_uow_dependency)],
     salted_hasher: Annotated[SaltedHasherPort, Depends(salted_hasher_dependency)],
     task_bus: Annotated[TaskBusPort, Depends(task_bus_dependency)],
-    email_verification_settings: Annotated[EmailVerificationSettings, Depends(email_verification_settings_dependency)],
+    email_verification_settings: Annotated[EmailVerificationConfig, Depends(email_verification_settings_dependency)],
 ) -> EmailVerificationService:
     return EmailVerificationService(
         uow=uow,

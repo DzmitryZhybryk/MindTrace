@@ -22,7 +22,7 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
         """
         super().__init__(session=session, model=UserCredentials)
 
-    async def insert_user_credentials(self, credentials: UserCredentialsEntity) -> None:
+    async def insert_user_credentials(self, user_credentials_entity: UserCredentialsEntity) -> None:
         """
         Добавляет учётные данные пользователя в сессию без коммита.
 
@@ -32,22 +32,26 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
         предварительной проверкой.
 
         Args:
-            credentials: Доменная сущность учётных данных
+            user_credentials_entity: Доменная сущность учётных данных
         """
-        await self.insert(data=UserCredentials(**self._to_columns(entity=credentials)))
+        await self.insert(data=UserCredentials(**self._to_columns(user_credentials_entity=user_credentials_entity)))
 
-    async def update_user_credentials_by_user_id(self, credentials: UserCredentialsEntity) -> None:
+    async def update_user_credentials_by_user_id(self, user_credentials_entity: UserCredentialsEntity) -> None:
         """
         Персистит изменённое состояние учётных данных через atomic UPDATE по PK.
 
-        Все non-PK-поля переписываются текущим состоянием entity.
+        Все non-PK-поля переписываются текущим состоянием credentials.
 
         Args:
-            credentials: Доменная сущность с уже обновлённым состоянием
+            user_credentials_entity: Доменная сущность с уже обновлённым состоянием
         """
-        values = self._to_columns(entity=credentials)
+        values = self._to_columns(user_credentials_entity=user_credentials_entity)
         del values["user_id"]  # PK не входит в SET
-        query = sa.update(UserCredentials).where(UserCredentials.user_id == credentials.user_id).values(**values)
+        query = (
+            sa.update(UserCredentials)
+            .where(UserCredentials.user_id == user_credentials_entity.user_id)
+            .values(**values)
+        )
         await self._session.execute(query)
 
     async def find_user_credentials_by_user_id(self, user_id: UUID) -> UserCredentialsEntity | None:
@@ -61,8 +65,8 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
             Доменная сущность учётных данных либо ``None``, если запись не найдена
         """
         query = sa.select(UserCredentials).where(UserCredentials.user_id == user_id)
-        model = await self._fetch_one(query=query)
-        return self._to_entity(model=model) if model else None
+        user_credentials_model = await self._fetch_one(query=query)
+        return self._to_entity(user_credentials_model=user_credentials_model) if user_credentials_model else None
 
     async def find_user_credentials_by_email_or_username(
         self,
@@ -89,52 +93,52 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
         )
         result = await self._session.execute(query)
         models = result.scalars().all()
-        return [self._to_entity(model=model) for model in models]
+        return [self._to_entity(user_credentials_model=user_credentials_model) for user_credentials_model in models]
 
-    def _to_columns(self, entity: UserCredentialsEntity) -> DictStrAny:
+    def _to_columns(self, user_credentials_entity: UserCredentialsEntity) -> DictStrAny:
         """
-        Единый маппинг entity → колонки ORM-модели (включая PK ``user_id``).
+        Единый маппинг credentials → колонки ORM-модели (включая PK ``user_id``).
 
         Источник истины для обоих путей записи: INSERT (``UserCredentials(**columns)``)
         и UPDATE (те же колонки минус PK). Новое поле добавляется здесь один раз —
         и попадает и в INSERT, и в UPDATE, рассинхрон между ними невозможен.
 
         Args:
-            entity: Доменная сущность учётных данных
+            user_credentials_entity: Доменная сущность учётных данных
 
         Returns:
             Словарь ``column -> value`` со всеми колонками, включая PK
         """
         return {
-            "user_id": entity.user_id,
-            "email": entity.email,
-            "username": entity.username,
-            "password_hash": entity.password.hash,
-            "role": entity.role.value,
-            "email_verified_at": entity.email_verified_at,
-            "created_at": entity.created_at,
-            "updated_at": entity.updated_at,
-            "deleted_at": entity.deleted_at,
+            "user_id": user_credentials_entity.user_id,
+            "email": user_credentials_entity.email,
+            "username": user_credentials_entity.username,
+            "password_hash": user_credentials_entity.password.hash,
+            "role": user_credentials_entity.role.value,
+            "email_verified_at": user_credentials_entity.email_verified_at,
+            "created_at": user_credentials_entity.created_at,
+            "updated_at": user_credentials_entity.updated_at,
+            "deleted_at": user_credentials_entity.deleted_at,
         }
 
-    def _to_entity(self, model: UserCredentials) -> UserCredentialsEntity:
+    def _to_entity(self, user_credentials_model: UserCredentials) -> UserCredentialsEntity:
         """
         Конвертирует ORM-модель в доменную сущность учётных данных.
 
         Args:
-            model: ORM-модель из БД
+            user_credentials_model: ORM-модель из БД
 
         Returns:
             Доменная сущность учётных данных
         """
         return UserCredentialsEntity(
-            user_id=model.user_id,
-            email=model.email,
-            username=model.username,
-            password=Password(hash=model.password_hash),
-            role=UserRole(model.role),
-            email_verified_at=model.email_verified_at,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-            deleted_at=model.deleted_at,
+            user_id=user_credentials_model.user_id,
+            email=user_credentials_model.email,
+            username=user_credentials_model.username,
+            password=Password(hash=user_credentials_model.password_hash),
+            role=UserRole(user_credentials_model.role),
+            email_verified_at=user_credentials_model.email_verified_at,
+            created_at=user_credentials_model.created_at,
+            updated_at=user_credentials_model.updated_at,
+            deleted_at=user_credentials_model.deleted_at,
         )

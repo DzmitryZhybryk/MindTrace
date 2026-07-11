@@ -1,8 +1,8 @@
-"""Unit-тесты доменных ``PlaceNames``/``Place`` — резолв имени под язык и фоллбэк на en."""
+"""Unit-тесты доменных ``PlaceNames``/``PlaceEntity`` — резолв имени под язык и фоллбэк на en."""
 
 from uuid import uuid4
 
-from app.geo.domain.entities import Place
+from app.geo.domain.entities import PlaceEntity
 from app.geo.domain.enums import Language
 from app.geo.domain.value_objects import PlaceNames
 
@@ -31,8 +31,8 @@ def test_place_names_display_falls_back_to_en() -> None:
 
 
 def test_place_localized_name_signals_missing_translation() -> None:
-    """Place.localized_name: без ru-перевода возвращает None — сигнал качества данных для сервиса."""
-    place = Place(
+    """PlaceEntity.localized_name: без ru-перевода возвращает None — сигнал качества данных для сервиса."""
+    place_entity = PlaceEntity(
         place_id=uuid4(),
         names=PlaceNames(en="Mostar"),
         country_code="BA",
@@ -41,12 +41,12 @@ def test_place_localized_name_signals_missing_translation() -> None:
         population=100_000,
     )
 
-    assert place.localized_name(language=Language.RU) is None
+    assert place_entity.localized_name(language=Language.RU) is None
 
 
 def test_place_display_name_resolves_under_language_with_fallback() -> None:
-    """Place.display_name: отдаёт имя на языке, иначе фоллбэк на en."""
-    place = Place(
+    """PlaceEntity.display_name: отдаёт имя на языке, иначе фоллбэк на en."""
+    place_entity = PlaceEntity(
         place_id=uuid4(),
         names=PlaceNames(en="Moscow", ru="Москва"),
         country_code="RU",
@@ -55,5 +55,5 @@ def test_place_display_name_resolves_under_language_with_fallback() -> None:
         population=10_000_000,
     )
 
-    assert place.display_name(language=Language.RU) == "Москва"
-    assert place.display_name(language=Language.EN) == "Moscow"
+    assert place_entity.display_name(language=Language.RU) == "Москва"
+    assert place_entity.display_name(language=Language.EN) == "Moscow"

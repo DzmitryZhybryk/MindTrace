@@ -23,7 +23,7 @@ class UserService:
         Args:
             user: Данные для создания пользователя.
         """
-        user_entity = UserEntity.create_new_user_entity(
+        user_entity = UserEntity.create(
             user_id=user.user_id,
             username=user.username,
             email=user.email,

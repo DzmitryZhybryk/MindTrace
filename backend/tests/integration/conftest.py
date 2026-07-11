@@ -122,10 +122,10 @@ def seed_user_credentials(
         email: str = "user@example.com",
         username: str = "user",
     ) -> None:
-        credentials = make_user_credentials(user_id=user_id, email=email, username=username)
+        user_credentials_entity = make_user_credentials(user_id=user_id, email=email, username=username)
         async with session_factory() as session:
             repository = UserCredentialsRepository(session=session)
-            await repository.insert_user_credentials(credentials=credentials)
+            await repository.insert_user_credentials(user_credentials_entity=user_credentials_entity)
             await session.commit()
 
     return _seed
