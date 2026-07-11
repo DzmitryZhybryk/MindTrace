@@ -11,6 +11,21 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-07-11
+
+### Backend 1.0.1
+
+- **Единая нейминг-конвенция доменных типов.** Фабрики всех entity → `.create` (было `create_new_user_entity`/`create_refresh_token_entity`); методы entity — голые (получатель уже есть сущность), методы репозитория — с именем сущности; переменные и параметры доменных типов несут layer-суффикс `_entity`/`_model`. Полный свип по auth/users/journeys/geo (продакшн + фейки + тесты), правило зафиксировано в CLAUDE.md. Попутно `class Place` → `PlaceEntity`, app-конфиг `EmailVerificationSettings` → `EmailVerificationConfig` (развод коллизии имён с env-миксином)
+- **Фикс латентного бага в `TomlFileReader`.** `except A, B:` был Python-2-синтаксисом (SyntaxError в Py3; не стрелял только потому, что модуль не импортировался). Теперь читатель различает `FileNotFoundError`/`TOMLDecodeError`, логирует и пробрасывает вместо тихого возврата `{}`. Попутно разорван цикл импорта `shared.utils` (удалён мёртвый ре-экспорт)
+- **Тест-тулинг и гейт-гигиена.** Integration-тест идемпотентности procrastinate-схемы; чистый entry-point-клей исключён из coverage (`omit`/`pragma`), реальная логика воркера — нет; фикстура-фабрика HTTP-клиента с гарантированным `aclose`; таргет `make test-health`; фикс докстринга авто-маркеров. Coverage 92.51%
+
+### Project
+
+- **Реальный IP клиента за Caddy.** Прод-`uvicorn` получает `--forwarded-allow-ips` docker-подсети → `request.client.host` = настоящий IP клиента (аудит refresh-токенов, будущий rate-limit по IP), а не внутренний адрес прокси. Не `*` — иначе клиент подделал бы IP через `X-Forwarded-For`
+- **Security-заголовки и non-root фронт-образ.** Caddy отдаёт `X-Content-Type-Options`/`X-Frame-Options`/`Referrer-Policy` на все ответы (и прячет `Server`); nginx фронта → `nginx-unprivileged` (non-root uid 101, `:8080`) + `server_tokens off`. HSTS не включаем (деплой по IP + self-signed)
+- **Supply-chain hardening.** Базовые Docker-образы (node/nginx/python/uv в Dockerfile'ах; caddy/postgres/loki/promtail/grafana/postgres-backup в прод-compose) запинены по digest; Dependabot `docker` + `npm` держат digest'ы и фронт-зависимости свежими; `npm audit --audit-level=high` включён в frontend-гейт (симметрия с backend `uv audit`)
+- **CI least-privilege и hygiene.** Deploy-job (только SSH) получил `permissions: {}` вместо унаследованного `contents: read`; `.dockerignore` фронта зеркалит backend — секреты (`.env*`) и тест-артефакты не попадают в build-контекст образа
+
 ## 2026-07-05
 
 ### Frontend 1.0.1
