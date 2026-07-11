@@ -25,6 +25,7 @@ CHANGELOG остаётся один. Новые записи группирую�
 - **Security-заголовки и non-root фронт-образ.** Caddy отдаёт `X-Content-Type-Options`/`X-Frame-Options`/`Referrer-Policy` на все ответы (и прячет `Server`); nginx фронта → `nginx-unprivileged` (non-root uid 101, `:8080`) + `server_tokens off`. HSTS не включаем (деплой по IP + self-signed)
 - **Supply-chain hardening.** Базовые Docker-образы (node/nginx/python/uv в Dockerfile'ах; caddy/postgres/loki/promtail/grafana/postgres-backup в прод-compose) запинены по digest; Dependabot `docker` + `npm` держат digest'ы и фронт-зависимости свежими; `npm audit --audit-level=high` включён в frontend-гейт (симметрия с backend `uv audit`)
 - **CI least-privilege и hygiene.** Deploy-job (только SSH) получил `permissions: {}` вместо унаследованного `contents: read`; `.dockerignore` фронта зеркалит backend — секреты (`.env*`) и тест-артефакты не попадают в build-контекст образа
+- **Миграция фронта на Node 26.** `node:22-alpine` → `node:26-alpine` (Dockerfile + `setup-node` в ci.yml/prod.yml). Тест-раннер отключает node-овский экспериментальный Web Storage (`--no-experimental-webstorage` в `NODE_OPTIONS` vitest-скриптов): в Node 26 встроенные глобалы `localStorage`/`sessionStorage` затеняют jsdom и роняли весь suite. На node 22 флаг — no-op. Гейт зелёный на обеих версиях (179 тестов, coverage 92%). SPA-бандл не меняется — версия фронта не бампается
 
 ## 2026-07-05
 

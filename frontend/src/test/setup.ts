@@ -72,6 +72,9 @@ afterEach(() => {
   cleanup();
   server.resetHandlers();
   clearAccessToken();
+  // Node ≥26 инжектит собственные глобалы localStorage/sessionStorage (экспериментальный
+  // Web Storage API), которые затеняют jsdom-storage и роняют этот clear(). Отключены флагом
+  // --no-experimental-webstorage в NODE_OPTIONS test-скриптов (package.json); на node 22 — no-op.
   sessionStorage.clear();
   // Persist-состояние (флаг легенды, дисмисс баннера, язык i18next) живёт в
   // localStorage — чистим, чтобы оно не протекало в соседние тесты.
