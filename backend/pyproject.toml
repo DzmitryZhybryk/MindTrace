@@ -54,6 +54,13 @@ markers = [
     "health: тесты домена health",
 ]
 
+[tool.coverage.run]
+# Чистый entry-point клей — только запуск uvicorn/asyncio, тестировать нечего, а его
+# «непокрытие» искажало бы гейт. Реальную логику воркера (_ensure_procrastinate_schema)
+# здесь НЕ прячем: её обёртка run_worker помечена ``# pragma: no cover`` точечно в самом
+# модуле, а сама функция покрыта integration-тестом (tests/integration/shared/...).
+omit = ["app/__main__.py"]
+
 [tool.ruff]
 line-length = 120
 exclude = [
