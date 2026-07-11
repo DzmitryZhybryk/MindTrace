@@ -75,7 +75,11 @@ services:
   app:
     <<: *backend-image
     container_name: mindtrace_app
-    command: uvicorn app.main:create_app --factory --no-use-colors --host 0.0.0.0 --port 8000 --log-level error
+    # --forwarded-allow-ips: доверять X-Forwarded-For только от прокси из docker-подсети
+    # (172.16.0.0/12 покрывает bridge-сеть mindtrace-network) → request.client.host = реальный
+    # IP клиента, а не внутренний адрес Caddy. НЕ ставить '*': Caddy аппендит XFF, и с '*'
+    # uvicorn берёт leftmost-значение → клиент подделает свой IP в аудите/rate-limit.
+    command: uvicorn app.main:create_app --factory --no-use-colors --host 0.0.0.0 --port 8000 --log-level error --forwarded-allow-ips=172.16.0.0/12
     env_file: .env
     depends_on:
       mindtrace_pg:
