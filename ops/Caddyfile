@@ -16,13 +16,24 @@
 {$DOMAIN} {
 	encode zstd gzip
 
+	# Security-заголовки на все ответы (и API, и статика). HSTS НЕ включаем: деплой по
+	# голому IP с self-signed TLS — Strict-Transport-Security сломал бы доступ; включить
+	# только на реальном домене с валидным сертификатом. -Server прячет "Server: Caddy"
+	# (парно к server_tokens off в nginx).
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		-Server
+	}
+
 	# API -> backend (единственный origin: CORS не нужен)
 	handle /v1/* {
 		reverse_proxy app:8000
 	}
 
-	# Всё остальное -> статика фронта (nginx). handle-блоки взаимоисключающие.
+	# Всё остальное -> статика фронта (nginx-unprivileged слушает :8080). handle-блоки взаимоисключающие.
 	handle {
-		reverse_proxy frontend:80
+		reverse_proxy frontend:8080
 	}
 }

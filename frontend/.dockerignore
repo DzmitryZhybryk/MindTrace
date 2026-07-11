@@ -1,7 +1,24 @@
+# Deps & build output
 node_modules
 dist
+
+# Secrets / env (никогда не в build-контекст; .env.example оставляем)
+.env
+.env.*
+!.env.example
+
+# VCS / IDE
 .git
 .gitignore
 .vscode
 .idea
+
+# Test & coverage artifacts
+coverage
+playwright-report
+test-results
+e2e
+
+# Logs / local overrides
 *.log
+*.local
