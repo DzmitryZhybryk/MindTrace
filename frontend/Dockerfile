@@ -5,7 +5,9 @@
 # -----------------------------------------------------------------------------
 FROM node:26-alpine@sha256:e88a35be04478413b7c71c455cd9865de9b9360e1f43456be5951032d7ac1a66 AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
+# .npmrc (engine-strict) в контекст COPY: npm ci сверит базовый node/npm с engines package.json —
+# сборка на «не той» базе упадёт сразу, а не даст молча дрейфующий лок.
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 
 # -----------------------------------------------------------------------------
