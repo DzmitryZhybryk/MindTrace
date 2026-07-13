@@ -127,12 +127,20 @@ services:
       - frontend_e2e_node_modules:/app/node_modules
     # 127.0.0.1, а не localhost: vite слушает IPv4 (--host 0.0.0.0), а busybox-wget резолвит
     # localhost в IPv6 ::1 → "Connection refused", хотя dev-сервер готов (проверено на живом контейнере).
+    #
+    # start_period большой намеренно: `make test-e2e` делает `down -v`, стирая named-volume
+    # node_modules → на каждом прогоне dev-CMD ставит всё дерево заново (`npm install`). Холодная
+    # установка полного дерева (three.js/react-globe.gl/Mantine, ~700 МБ) на volume Docker Desktop
+    # (медленная запись многих мелких файлов через VM-FS) — минуты, а сам Vite стартует за ~200 мс.
+    # start_period НЕ добавляет задержки, когда фронт готов быстро: контейнер становится healthy на
+    # первой успешной проверке. Окно лишь покрывает холодную установку, чтобы `up --wait frontend`
+    # не объявил unhealthy до того, как поднимется dev-сервер.
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:5173"]
       interval: 3s
       timeout: 5s
-      retries: 30
-      start_period: 5s
+      retries: 40
+      start_period: 360s
     depends_on:
       app:
         condition: service_healthy
