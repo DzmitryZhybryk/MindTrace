@@ -25,6 +25,24 @@
 		X-Frame-Options DENY
 		Referrer-Policy no-referrer
 		-Server
+
+		# CSP. Директивы выведены из собранного бандла, а не «по умолчанию строго»:
+		#
+		#   script-src 'self'   — в dist/index.html ровно один внешний <script type="module">,
+		#                         инлайновых нет; Vite в проде не использует eval.
+		#   style-src  + 'unsafe-inline' — ВЫНУЖДЕННО. MantineProvider инжектит CSS-переменные
+		#                         рантайм-тегом <style> через __html (MantineCssVariables.mjs),
+		#                         плюс по коду разбросаны инлайновые style-атрибуты React.
+		#                         Убрать можно только переездом Mantine на nonce/hash.
+		#   img-src    + data:  — в ассетах есть data:image; текстуры глобуса свои (self).
+		#   connect-src 'self'  — API живёт на том же origin (/v1/*), CORS не нужен.
+		#   blob: НЕ добавлен — в бандле он встречается только в проверках протокола
+		#                         (react-router, three.js), createObjectURL и Worker отсутствуют.
+		#   frame-ancestors     — современная замена X-Frame-Options выше; держим оба.
+		#
+		# Если после деплоя что-то не отрисовалось — смотреть консоль браузера на
+		# "Refused to load/apply": там будет точная директива. Откат — удалить строку.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 	}
 
 	# API -> backend (единственный origin: CORS не нужен)
