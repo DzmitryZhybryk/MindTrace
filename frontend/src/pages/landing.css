@@ -1,0 +1,652 @@
+/*
+ * Лендинг MyJourney. Поверхность — ночь продукта, как и везде после разворота
+ * направления: вход в приложение не должен менять мир.
+ *
+ * Ритм страницы держится НЕ инверсией яркости (её тут больше нет), а высотой
+ * поверхности: hero прозрачен и сквозит планетой, контент лежит на базовой ночи,
+ * полоса «как это работает» приподнята, карточки приподняты и обведены волосяной
+ * линией, журнальная вырезка наоборот утоплена глубже фона. Акцент и штемпели
+ * добавляют третий уровень внимания.
+ *
+ * Длинные тексты набраны приглушённым `--lp-muted-on-dark`, а не самым светлым
+ * тоном: на тёмном фоне максимально яркий текст даёт ореолы вокруг букв.
+ *
+ * Локальные имена токенов сохранены (на них завязан весь файл), но значения
+ * приходят из общего семантического слоя — см. index.css.
+ */
+
+.lp {
+  /* --- Палитра: псевдонимы общей семантики -------------------------------- */
+  --lp-ink: var(--surface);
+  --lp-ink-2: var(--surface-2);
+  --lp-deep: var(--ink-deep); /* глубже фона — утопленные объекты */
+  --lp-sun: var(--accent);
+  --lp-sun-deep: var(--accent-deep);
+  --lp-glow: var(--text-stamp);
+  --lp-sky: var(--sky);
+  --lp-sky-bright: var(--sky-bright);
+  --lp-ink-on-dark: var(--text);
+  --lp-muted-on-dark: var(--text-muted);
+  --lp-line-dark: var(--hairline);
+
+  /* --- Типографика -------------------------------------------------------- */
+  --lp-display: var(--font-display);
+  --lp-body: var(--font-body);
+  --lp-mono: var(--font-mono);
+
+  --lp-max: 1120px;
+
+  color: var(--lp-ink-on-dark);
+  font-family: var(--lp-body);
+  /* Прозрачно: под hero сквозит персистентный глобус из PublicLayout; ниже
+     контентная обёртка `.lp-content` закрывает его непрозрачной ночью. */
+  background: transparent;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.lp *,
+.lp *::before,
+.lp *::after {
+  box-sizing: border-box;
+}
+
+/* --- Общие примитивы ------------------------------------------------------ */
+
+.lp-eyebrow {
+  margin: 0;
+  font-family: var(--lp-mono);
+  font-size: var(--fs-12);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lp-glow);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Станция-точка перед эйбрау — узел «линии маршрута» (signature). */
+.lp-eyebrow::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lp-sun);
+  box-shadow: 0 0 0 4px rgb(var(--sun-rgb) / 0.16);
+  flex: none;
+}
+
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 24px;
+  border-radius: var(--radius-action);
+  font-family: var(--lp-body);
+  font-size: var(--fs-15);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    transform var(--dur-fast) ease,
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    box-shadow var(--dur-fast) ease;
+}
+
+.lp-btn--sun {
+  background: var(--lp-sun);
+  color: var(--on-accent);
+  box-shadow: 0 10px 26px rgb(var(--sun-deep-rgb) / 0.34);
+}
+
+.lp-btn--sun:hover {
+  background: var(--lp-glow);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 32px rgb(var(--sun-deep-rgb) / 0.42);
+}
+
+.lp-btn--ghost {
+  background: transparent;
+  color: var(--lp-ink-on-dark);
+  border-color: var(--lp-line-dark);
+}
+
+.lp-btn--ghost:hover {
+  border-color: rgb(var(--ink-on-dark-rgb) / 0.5);
+  background: rgb(var(--ink-on-dark-rgb) / 0.06);
+}
+
+.lp-btn:focus-visible {
+  outline: 2px solid var(--lp-sky-bright);
+  outline-offset: 3px;
+}
+
+/* --- Hero ----------------------------------------------------------------- */
+
+.lp-hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  /* Прозрачно — за hero виден фиксированный глобус (PublicLayout). Скрим ниже
+     (`.lp-hero__scrim`) сохраняет читаемость текста поверх любой грани планеты. */
+  background: transparent;
+  color: var(--lp-ink-on-dark);
+  overflow: hidden;
+}
+
+/* Мягкое затемнение слева — чтобы текст читался поверх любого фона. */
+.lp-hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    var(--lp-ink) 0%,
+    rgb(var(--ink-rgb) / 0.82) 30%,
+    rgb(var(--ink-rgb) / 0.35) 55%,
+    rgb(var(--ink-rgb) / 0) 74%
+  );
+}
+
+.lp-hero__inner {
+  position: relative;
+  z-index: 2;
+  /* Full-width с отступом от края вьюпорта (как `.flow-overlay`) — hero-текст
+     прижат к левому краю, а не центрирован в колонке. */
+  width: 100%;
+  padding: 96px clamp(20px, 5vw, 64px) 72px;
+}
+
+.lp-hero__copy {
+  max-width: 560px;
+}
+
+.lp-hero__title {
+  margin: 18px 0 0;
+  font-family: var(--lp-display);
+  font-weight: 600;
+  /* Размер как во flow-прототипе — заголовок ложится в 2 строки, без лишних переносов. */
+  font-size: clamp(2.4rem, 5.6vw, 4rem);
+  line-height: 1.03;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.lp-hero__title em {
+  font-style: italic;
+  color: var(--lp-glow);
+}
+
+.lp-hero__sub {
+  margin: 20px 0 0;
+  max-width: 500px;
+  /* Фиксированный кегль (как во flow) — sub не раздувается на широких экранах. */
+  font-size: var(--fs-17);
+  line-height: 1.6;
+  color: var(--lp-muted-on-dark);
+}
+
+.lp-hero__cta {
+  margin-top: 34px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+/* Бортовой «штемпель» под CTA — моно-строка, привязывающая копирайт к анимации. */
+.lp-strip {
+  margin-top: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border: 1px dashed var(--lp-line-dark);
+  border-radius: 12px;
+  font-family: var(--lp-mono);
+  font-size: var(--fs-12);
+  letter-spacing: 0.06em;
+  color: var(--lp-muted-on-dark);
+  background: rgb(var(--ink-deep-rgb) / 0.35);
+  backdrop-filter: blur(2px);
+}
+
+.lp-strip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lp-sun);
+  box-shadow: 0 0 12px 2px rgb(var(--sun-rgb) / 0.7);
+}
+
+.lp-strip__sep {
+  color: rgb(var(--muted-on-dark-rgb) / 0.5);
+}
+
+.lp-strip__hi {
+  color: var(--lp-glow);
+}
+
+/* Подсказка «скролл» внизу hero. */
+.lp-scroll {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 2;
+  font-family: var(--lp-mono);
+  font-size: var(--fs-11);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lp-muted-on-dark);
+  opacity: 0.7;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.lp-scroll__line {
+  width: 1px;
+  height: 34px;
+  background: linear-gradient(var(--lp-glow), transparent);
+  animation: lp-scroll-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes lp-scroll-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scaleY(0.6);
+    transform-origin: top;
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+}
+
+/* --- Секции контента ------------------------------------------------------ */
+
+/*
+ * Непрозрачная обёртка для всего под-hero контента (фичи → шаги → атлас).
+ * Полноширинная — перекрывает фиксированный глобус, чтобы планета сквозила только
+ * в прозрачном hero. Футер живёт вне обёртки со своим радиалом.
+ */
+.lp-content {
+  position: relative;
+  z-index: 1;
+  background: var(--lp-ink);
+}
+
+.lp-section {
+  position: relative;
+  max-width: var(--lp-max);
+  margin: 0 auto;
+  padding: clamp(72px, 10vw, 128px) clamp(20px, 5vw, 48px);
+}
+
+.lp-section__head {
+  max-width: 640px;
+  margin-bottom: 52px;
+}
+
+.lp-section__title {
+  margin: 16px 0 0;
+  font-family: var(--lp-display);
+  font-weight: 600;
+  font-size: clamp(1.9rem, 4vw, 2.9rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  color: var(--lp-ink-on-dark);
+  text-wrap: balance;
+}
+
+.lp-section__lead {
+  margin: 18px 0 0;
+  font-size: var(--fs-17);
+  line-height: 1.6;
+  color: var(--lp-muted-on-dark);
+  max-width: 560px;
+}
+
+/* Тонкая разделительная «параллель» между секциями. */
+.lp-rule {
+  max-width: var(--lp-max);
+  margin: 0 auto;
+  height: 1px;
+  background: var(--lp-line-dark);
+}
+
+/* --- Фичи (открытки) ------------------------------------------------------ */
+
+.lp-features__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+
+.lp-card {
+  position: relative;
+  padding: 30px 28px 32px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--lp-ink-2) 0%, var(--lp-ink) 100%);
+  border: 1px solid var(--lp-line-dark);
+  box-shadow: 0 18px 40px rgb(var(--shadow-rgb) / 0.4);
+  overflow: hidden;
+}
+
+.lp-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--lp-sun), var(--lp-glow));
+  opacity: 0.85;
+}
+
+.lp-card__stamp {
+  font-family: var(--lp-mono);
+  font-size: var(--fs-11);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lp-glow);
+}
+
+.lp-card__title {
+  margin: 16px 0 0;
+  font-family: var(--lp-display);
+  font-size: var(--fs-24);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--lp-ink-on-dark);
+}
+
+.lp-card__body {
+  margin: 12px 0 0;
+  font-size: var(--fs-16);
+  line-height: 1.55;
+  color: var(--lp-muted-on-dark);
+}
+
+/* --- Как это работает (итинерарий 01/02/03) ------------------------------ */
+
+.lp-steps {
+  background: var(--lp-ink-2);
+  max-width: none;
+}
+
+.lp-steps__wrap {
+  max-width: var(--lp-max);
+  margin: 0 auto;
+}
+
+.lp-steps__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 26px;
+  position: relative;
+}
+
+/* Соединительная «линия маршрута» между тремя станциями. */
+.lp-steps__list::before {
+  content: "";
+  position: absolute;
+  top: 21px;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  background-image: linear-gradient(90deg, var(--lp-sun) 40%, transparent 0);
+  background-size: 12px 2px;
+  background-repeat: repeat-x;
+  opacity: 0.55;
+}
+
+.lp-step {
+  position: relative;
+}
+
+.lp-step__no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--lp-deep);
+  color: var(--lp-glow);
+  font-family: var(--lp-mono);
+  font-size: var(--fs-14);
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
+  /* Кольцо цветом полосы — маскирует пунктирную линию маршрута под номером. */
+  box-shadow: 0 0 0 6px var(--lp-ink-2);
+}
+
+.lp-step__title {
+  margin: 18px 0 0;
+  font-family: var(--lp-display);
+  font-size: var(--fs-22);
+  font-weight: 600;
+  color: var(--lp-ink-on-dark);
+}
+
+.lp-step__body {
+  margin: 10px 0 0;
+  font-size: var(--fs-16);
+  line-height: 1.55;
+  color: var(--lp-muted-on-dark);
+  max-width: 300px;
+}
+
+.lp-step__stamp {
+  margin-top: 14px;
+  display: inline-block;
+  font-family: var(--lp-mono);
+  font-size: var(--fs-11);
+  letter-spacing: 0.08em;
+  color: var(--lp-glow);
+  border: 1px dashed rgb(var(--glow-rgb) / 0.42);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+/* --- Атлас (пример статистики + журнальная запись) ----------------------- */
+
+.lp-atlas__grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.lp-atlas__stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--lp-line-dark);
+  border: 1px solid var(--lp-line-dark);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.lp-stat {
+  background: var(--lp-ink-2);
+  padding: 28px 26px;
+}
+
+.lp-stat__value {
+  font-family: var(--lp-display);
+  font-size: clamp(2.2rem, 5vw, 3rem);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--lp-ink-on-dark);
+  letter-spacing: -0.02em;
+}
+
+.lp-stat__label {
+  margin-top: 8px;
+  font-family: var(--lp-mono);
+  font-size: var(--fs-12);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lp-muted-on-dark);
+}
+
+/* Журнальная запись — «вырезка из атласа», не выдуманный отзыв третьего лица. */
+.lp-journal {
+  position: relative;
+  padding: 34px 32px;
+  border-radius: 18px;
+  /* Вырезка утоплена ГЛУБЖЕ фона (остальные объекты приподняты) — второй способ
+     отделиться на одной поверхности, когда инверсии яркости больше нет. */
+  background: linear-gradient(160deg, var(--lp-deep) 0%, var(--lp-ink) 100%);
+  border: 1px solid var(--lp-line-dark);
+  color: var(--lp-ink-on-dark);
+  box-shadow: inset 0 1px 0 rgb(var(--ink-on-dark-rgb) / 0.05);
+}
+
+.lp-journal__date {
+  font-family: var(--lp-mono);
+  font-size: var(--fs-12);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lp-glow);
+}
+
+.lp-journal__quote {
+  margin: 16px 0 0;
+  font-family: var(--lp-display);
+  font-style: italic;
+  font-size: var(--fs-24);
+  line-height: 1.32;
+  letter-spacing: -0.01em;
+}
+
+.lp-journal__from {
+  margin-top: 18px;
+  font-family: var(--lp-mono);
+  font-size: var(--fs-11);
+  letter-spacing: 0.08em;
+  color: var(--lp-muted-on-dark);
+}
+
+/* --- Футер (тёмный бэкенд-баннер, закрывающий скобку к hero) -------------- */
+
+.lp-foot {
+  position: relative;
+  background: radial-gradient(ellipse 80% 120% at 50% 0%, var(--lp-ink-2) 0%, var(--lp-ink) 60%, var(--lp-deep) 100%);
+  color: var(--lp-ink-on-dark);
+  overflow: hidden;
+}
+
+.lp-foot__inner {
+  max-width: var(--lp-max);
+  margin: 0 auto;
+  padding: clamp(72px, 10vw, 120px) clamp(20px, 5vw, 48px);
+  text-align: center;
+}
+
+.lp-foot__title {
+  margin: 20px auto 0;
+  max-width: 620px;
+  font-family: var(--lp-display);
+  font-weight: 600;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.lp-foot__sub {
+  margin: 18px auto 0;
+  max-width: 440px;
+  color: var(--lp-muted-on-dark);
+  font-size: var(--fs-17);
+  line-height: 1.55;
+}
+
+.lp-foot__cta {
+  margin-top: 32px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+}
+
+.lp-foot__meta {
+  margin-top: 64px;
+  padding-top: 26px;
+  border-top: 1px solid var(--lp-line-dark);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--lp-mono);
+  font-size: var(--fs-12);
+  letter-spacing: 0.06em;
+  color: var(--lp-muted-on-dark);
+}
+
+/* --- Адаптив -------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .lp-features__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-steps__list {
+    grid-template-columns: 1fr;
+    gap: 34px;
+  }
+
+  .lp-steps__list::before {
+    top: 0;
+    bottom: 0;
+    left: 21px;
+    right: auto;
+    width: 2px;
+    height: auto;
+    background-image: linear-gradient(180deg, var(--lp-sun) 40%, transparent 0);
+    background-size: 2px 12px;
+    background-repeat: repeat-y;
+  }
+
+  .lp-atlas__grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}
+
+@media (max-width: 520px) {
+  .lp-atlas__stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .lp-hero__inner {
+    padding-top: 108px;
+  }
+}
+
+/* --- Уважение к prefers-reduced-motion ----------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-scroll__line {
+    animation: none;
+  }
+
+  .lp * {
+    scroll-behavior: auto !important;
+  }
+}

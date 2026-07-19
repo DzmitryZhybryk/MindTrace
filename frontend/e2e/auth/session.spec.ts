@@ -5,7 +5,7 @@ import { clearCookies, clearSessionStorage, getRefreshCookie, WEBKIT_SECURE_COOK
 
 /**
  * E2E: жизненный цикл сессии — флоу D (ProtectedRoute + bootstrap-refresh) и K (атрибуты
- * refresh-cookie) из `.claude/.test-plan.md`.
+ * refresh-cookie).
  *
  * Это ровно та real-stack интеграция, которую MSW-компонентные тесты не достают: настоящая
  * HttpOnly refresh-cookie и реальный bootstrap-refresh при перезагрузке/новой вкладке. Логика
@@ -34,11 +34,11 @@ function trackRefreshRequests(page: Page): string[] {
 }
 
 test.describe("Session lifecycle", () => {
-  test("D1: reload сохраняет сессию — остаёмся на /", async ({ authedPage }) => {
+  test("D1: reload сохраняет сессию — остаёмся на /home", async ({ authedPage }) => {
     await authedPage.reload();
 
     await expect(authedPage.getByRole("button", { name: PROFILE_BUTTON_NAME })).toBeVisible();
-    await expect(authedPage).toHaveURL(/\/$/u);
+    await expect(authedPage).toHaveURL(/\/home$/u);
   });
 
   test("D2: потеря access-токена → reload → bootstrap-refresh из cookie, ровно один /refresh/", async ({
@@ -55,7 +55,7 @@ test.describe("Session lifecycle", () => {
     await authedPage.reload();
 
     await expect(authedPage.getByRole("button", { name: PROFILE_BUTTON_NAME })).toBeVisible();
-    await expect(authedPage).toHaveURL(/\/$/u);
+    await expect(authedPage).toHaveURL(/\/home$/u);
     expect(refreshRequests).toHaveLength(1);
   });
 
@@ -68,25 +68,38 @@ test.describe("Session lifecycle", () => {
     await expect(authedPage).toHaveURL(/\/login$/u);
   });
 
-  test("D4: новая вкладка с живой cookie → bootstrap → /", async ({ authedPage, context, browserName }) => {
+  test("D4: новая вкладка с живой cookie → bootstrap → /home", async ({ authedPage, context, browserName }) => {
     test.skip(browserName === "webkit", WEBKIT_SECURE_COOKIE_REASON);
 
     // authedPage уже залогинен → refresh-cookie живёт в контексте. У новой вкладки свой
     // sessionStorage (без токена), но cookie общая → bootstrap-refresh поднимает сессию.
-    await expect(authedPage).toHaveURL(/\/$/u);
+    await expect(authedPage).toHaveURL(/\/home$/u);
 
     const newTab = await context.newPage();
+    // Открываем именно корень — так поступает пользователь. После bootstrap'а PublicOnlyRoute
+    // видит поднятую сессию и уводит с публичного лендинга на дашборд.
     await newTab.goto("/");
 
     await expect(newTab.getByRole("button", { name: PROFILE_BUTTON_NAME })).toBeVisible();
-    await expect(newTab).toHaveURL(/\/$/u);
+    await expect(newTab).toHaveURL(/\/home$/u);
 
     await newTab.close();
   });
 
-  test("D5: без токена и cookie → редирект на /login", async ({ page }) => {
-    // Свежий контекст без авторизации — ProtectedRoute уводит на /login.
+  test("D5: аноним на «/» остаётся на публичном лендинге", async ({ page }) => {
+    // После редизайна «/» — публичная зона, а не защищённый дашборд: аноним видит лендинг
+    // и никуда не уводится. Проверка самого ProtectedRoute переехала в D6.
     await page.goto("/");
+
+    await expect(page).toHaveURL(/\/$/u);
+    // Лендинг опознаём по единственному h1, а не по тексту кнопки: копирайт живёт в i18n
+    // и меняется, а «на странице есть заголовок первого уровня» — структурный инвариант.
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  });
+
+  test("D6: аноним на защищённом /home → редирект на /login", async ({ page }) => {
+    // Свежий контекст без токена и cookie — ProtectedRoute уводит на /login.
+    await page.goto("/home");
 
     await expect(page).toHaveURL(/\/login$/u);
   });
@@ -99,7 +112,7 @@ test.describe("Session lifecycle", () => {
     test.skip(browserName === "webkit", WEBKIT_SECURE_COOKIE_REASON);
 
     // authedPage гарантирует прошедший логин → cookie выставлена.
-    await expect(authedPage).toHaveURL(/\/$/u);
+    await expect(authedPage).toHaveURL(/\/home$/u);
 
     const refreshCookie = await getRefreshCookie(context);
 

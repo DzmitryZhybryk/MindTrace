@@ -1,0 +1,68 @@
+/*
+ * Кросс-фейд экранов публичной зоны. Уходящий и входящий экраны гаснут и
+ * проявляются ОДНОВРЕМЕННО, стартуя
+ * на 0.3s позже камеры: сначала планета трогается с места, и только потом меняется
+ * текст. Якорь для позиционирования — `.public-layout__content` (position: relative).
+ *
+ * Анимации, а не transition'ы: входящий экран только что смонтирован, и интерполировать
+ * transition'у не от чего.
+ */
+
+.public-crossfade__screen {
+  position: relative;
+  z-index: 1;
+}
+
+.public-crossfade__screen--entering {
+  animation: public-crossfade-in 0.55s ease 0.3s both;
+}
+
+/*
+ * Уходящий экран выведен из потока, иначе он толкал бы входящий вниз. `fixed`, а не
+ * `absolute`: у лендинга высота во весь документ, и абсолютный блок такой высоты
+ * растянул бы область прокрутки — страница не сжалась бы под короткую входящую форму.
+ * Фиксированный слой в прокрутке не участвует вовсе.
+ *
+ * `top` приходит инлайном как `-scrollY`: когда документ сжимается под входящий экран,
+ * браузер обрезает прокрутку к нулю, и без сдвига уходящий лендинг прыгнул бы к своему
+ * началу — гасло бы уже не то содержимое, которое видел пользователь.
+ */
+.public-crossfade__screen--leaving {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  pointer-events: none;
+  animation: public-crossfade-out 0.55s ease 0.3s both;
+}
+
+@keyframes public-crossfade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes public-crossfade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-crossfade__screen--entering {
+    animation: none;
+  }
+
+  .public-crossfade__screen--leaving {
+    animation: none;
+    opacity: 0;
+  }
+}

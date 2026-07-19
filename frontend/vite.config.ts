@@ -52,9 +52,9 @@ export default defineConfig({
         "src/main.tsx",
         "src/**/*.d.ts",
         // Императивный three/WebGL-рендер глобусов: в jsdom не исполняется, тестировать
-        // нечего. Вся чистая математика вынесена в src/components/globe/{geo,route}.ts
-        // и покрыта unit-тестами (geo.test.ts, route.test.ts) — эти файлы под покрытием.
-        "src/components/AuthGlobe.tsx",
+        // нечего. Вся чистая математика вынесена в src/components/globe/{geo,route,routes}.ts
+        // и покрыта unit-тестами — эти файлы остаются под покрытием.
+        // AuthGlobe удалён редизайном; его роль исполняет globe/PersistentGlobe поверх GlobeCanvas.
         "src/components/HomeGlobe.tsx",
         "src/components/JourneyGlobe.tsx",
         // Декларативная композиция без логики: таблица маршрутов и layout-каркас с <Outlet/>.

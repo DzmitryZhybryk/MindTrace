@@ -2,7 +2,7 @@ import { expect, test } from "../fixtures";
 import { getRefreshCookie, WEBKIT_SECURE_COOKIE_REASON } from "../helpers/session";
 
 /**
- * E2E: logout по флоу C из `.claude/.test-plan.md`.
+ * E2E: logout по флоу C.
  *
  * Real-stack: реальный `POST /v1/auth/logout/` (204) чистит и серверную HttpOnly-cookie,
  * и локальный токен. Наличие пункта меню (C1) косвенно проверяется тем, что мы по нему кликаем.

@@ -202,7 +202,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
                       <img src={pinIcon} width={PIN_ICON_SIZE} height={PIN_ICON_SIZE} alt="" />
                       <div>
                         <Text size="sm">{place.name}</Text>
-                        <Text size="xs" c="dimmed">
+                        <Text size="xs" c="var(--text-muted)">
                           {country}
                         </Text>
                       </div>
@@ -216,7 +216,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
       </Combobox>
 
       {isEmpty && (
-        <Text size="sm" c="dimmed">
+        <Text size="sm" c="var(--text-muted)">
           {t("addJourney.place.hintEmpty")}
         </Text>
       )}

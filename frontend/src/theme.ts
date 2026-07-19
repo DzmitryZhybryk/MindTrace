@@ -13,15 +13,46 @@ const slate: MantineColorsTuple = [
   "#0f172a",
 ];
 
-const fontStack =
-  '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+// Акцент редизайна — golden-hour терракота. Основной оттенок (--sun #e8935c) на
+// shade 6 (primaryShade), тёмный (--sun-deep #cf6a3a) на 7 (hover filled-кнопок).
+const sun: MantineColorsTuple = [
+  "#fdf4ed",
+  "#f7e4d3",
+  "#eecaa7",
+  "#e6b17d",
+  "#e19a5c",
+  "#dd8f4e",
+  "#e8935c",
+  "#cf6a3a",
+  "#ad5620",
+  "#8c4310",
+];
+
+/*
+ * Стеки шрифтов НЕ дублируем литералом — берём те же CSS-переменные, что объявлены в
+ * `index.css`. Раньше стек жил в двух местах сразу, и третья копия в `globe-label.css`
+ * уже успела разойтись с оригиналом. Один источник истины — `:root`.
+ */
+const bodyFont = "var(--font-body)";
+const displayFont = "var(--font-display)";
 
 export const theme = createTheme({
-  primaryColor: "slate",
+  primaryColor: "sun",
   primaryShade: 6,
-  colors: { slate },
-  fontFamily: fontStack,
-  headings: { fontFamily: fontStack, fontWeight: "600" },
+  colors: { slate, sun },
+  /*
+   * Метку на залитой акцентом кнопке выбирает Mantine, а не каждый экран вручную. Закат
+   * `#e8935c` светлый (luminance 0.388 против порога 0.179), поэтому белая метка давала
+   * 2.4:1 — ниже AA. С `autoContrast` подставляется тёмная: 7.2:1.
+   *
+   * `black` переопределён намеренно: autoContrast берёт именно `theme.black`, а дефолтный
+   * чистый #000 по терракоте звучит грубее, чем спроектированный `--on-sun`. Значение то же,
+   * что у токена, — тогда Mantine и CSS дают один цвет, а не два похожих.
+   */
+  autoContrast: true,
+  black: "#2a1608",
+  fontFamily: bodyFont,
+  headings: { fontFamily: displayFont, fontWeight: "600" },
   defaultRadius: "md",
   radius: {
     xs: "4px",

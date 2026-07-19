@@ -47,9 +47,10 @@ const TRANSPORT_VISUAL: Record<TransportType, TransportVisual> = {
   water: { icon: shipIcon, altitude: ARC_ALTITUDE_GROUND, durationMs: 6000, orient: "flip", nativeFacesRight: false },
 };
 
-// Ярко-красный «флайт-трекер» — общий для следа и иконки транспорта (тот же hex
-// продублирован в .journey-vehicle__icon). Яркий, чтобы читался на тёмном океане.
-const TRAIL_COLOR = "#ff3b30";
+// След транспорта — закатный акцент продукта (`--sun`, литералом: цвет уходит в
+// материал three.js, где CSS-переменные не работают). Ярко-красный «флайт-трекер»
+// заменён после разворота палитры: он был единственным чужим цветом на экране.
+const TRAIL_COLOR = "#e8935c";
 // Noto-самолёт нативно смотрит в верх-вправо (~45°); поворот к экранному курсу =
 // atan2(dy,dx) + 45° (для иконки «нос вверх» офсет был бы 90°).
 const ICON_ROTATION_OFFSET_DEG = 45;

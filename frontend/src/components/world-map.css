@@ -23,7 +23,7 @@
 
 .world-map__country {
   cursor: pointer;
-  transition: filter 0.15s ease;
+  transition: filter var(--dur-fast) ease;
 }
 
 /*
@@ -49,23 +49,26 @@
   min-width: 124px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(15, 23, 42, 0.92);
-  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.28);
-  backdrop-filter: blur(6px);
+  background: rgb(var(--ink-2-rgb) / 0.94);
+  /* Рамка обязательна: тултип теперь той же семьи, что и фон страницы, и без
+     неё сливается с ночью — раньше его отделяла разница со светлым фоном. */
+  border: 1px solid var(--hairline);
+  box-shadow: 0 12px 32px rgb(var(--shadow-rgb) / 0.5);
+  backdrop-filter: blur(var(--blur-glass));
 }
 
 .world-map__tooltip-title {
   display: block;
-  font: 600 13px/1.2 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font: 600 var(--fs-13)/1.2 var(--font-display);
   letter-spacing: -0.01em;
-  color: #f8fafc;
+  color: var(--ink-on-dark);
 }
 
 .world-map__tooltip-muted {
   display: block;
   margin-top: 3px;
-  font: 400 11px/1.3 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #94a3b8;
+  font: 400 var(--fs-11)/1.3 var(--font-body);
+  color: var(--muted-on-dark);
 }
 
 .world-map__tooltip-cities {
@@ -81,14 +84,14 @@
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  font: 400 12px/1.3 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font: 400 var(--fs-12)/1.3 var(--font-body);
 }
 
 .world-map__tooltip-city {
-  color: #e2e8f0;
+  color: var(--ink-on-dark);
 }
 
 .world-map__tooltip-years {
-  color: #34d399;
+  color: var(--glow);
   font-variant-numeric: tabular-nums;
 }

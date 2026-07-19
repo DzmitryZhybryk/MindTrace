@@ -14,7 +14,7 @@ import { initReactI18next } from "react-i18next";
 import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGE_CODES } from "./languages";
 
 /** Namespace'ы переводов. Имя файла локали = namespace (`<code>/<ns>.json`). */
-export const I18N_NAMESPACES = ["common", "auth", "errors", "journeys"] as const;
+export const I18N_NAMESPACES = ["common", "auth", "errors", "journeys", "landing"] as const;
 
 /** Ключ в localStorage, под которым хранится выбор языка. */
 export const LANGUAGE_STORAGE_KEY = "mindtrace.language";

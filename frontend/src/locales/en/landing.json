@@ -1,0 +1,94 @@
+{
+  "nav": {
+    "label": "Account",
+    "login": "Log in",
+    "signup": "Sign up"
+  },
+  "hero": {
+    "eyebrow": "A quiet atlas of where you've been",
+    "title": "The world, <em>the way</em> you traveled it.",
+    "sub": "MyJourney keeps every trip you take and traces it across the globe — cities, routes, and the years between them. Your own atlas, quietly filling in.",
+    "primaryCta": "Start your map",
+    "secondaryCta": "Log in",
+    "stripHour": "golden hour",
+    "stripSaved": "1 route saved"
+  },
+  "scroll": "scroll",
+  "features": {
+    "eyebrow": "Why keep a map",
+    "title": "Not a trip planner. A place your travels live.",
+    "lead": "Booking tools forget you the moment you land. MyJourney does the opposite — it holds onto where you went, and hands it back as a world you can see.",
+    "items": [
+      {
+        "stamp": "01 — keep",
+        "title": "Keep every trip",
+        "body": "A city, a date, how you got there. That's a memory saved — not a form to fill out."
+      },
+      {
+        "stamp": "02 — see",
+        "title": "See it all at once",
+        "body": "Watch your travels connect on a living globe. Every route you've flown, driven, or sailed, drawn in one line."
+      },
+      {
+        "stamp": "03 — wander",
+        "title": "Find your next one",
+        "body": "Places you loved, and quiet nudges toward the ones you haven't reached yet."
+      }
+    ]
+  },
+  "steps": {
+    "eyebrow": "Three stops in",
+    "title": "From an empty map to your own atlas.",
+    "items": [
+      {
+        "no": "01",
+        "title": "Add a trip",
+        "body": "Two cities and how you traveled between them. It takes a few seconds.",
+        "stamp": "LIS → MAR"
+      },
+      {
+        "no": "02",
+        "title": "Watch it draw",
+        "body": "Your route arcs across the map, city to city, the moment you save it.",
+        "stamp": "great circle"
+      },
+      {
+        "no": "03",
+        "title": "Grow your atlas",
+        "body": "Trip by trip, the empty map stops being the world's and starts being yours.",
+        "stamp": "your world"
+      }
+    ]
+  },
+  "atlas": {
+    "eyebrow": "One traveler's year, as an example",
+    "title": "A year, once it's on the map.",
+    "stats": [
+      {
+        "value": "12",
+        "label": "countries"
+      },
+      {
+        "value": "48",
+        "label": "cities"
+      },
+      {
+        "value": "63",
+        "label": "routes drawn"
+      },
+      {
+        "value": "31k",
+        "label": "km traced"
+      }
+    ],
+    "journalDate": "Nov 2025 · Lisbon",
+    "journalQuote": "“Third time back here. The map remembered before I did.”",
+    "journalFrom": "from a MyJourney atlas"
+  },
+  "footer": {
+    "title": "Your map is waiting to be drawn.",
+    "sub": "Start with one trip. The world fills in from there.",
+    "primaryCta": "Start your map",
+    "secondaryCta": "I already have an account"
+  }
+}

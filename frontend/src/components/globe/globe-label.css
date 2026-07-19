@@ -1,0 +1,40 @@
+/* HTML-метки городов на глобусе (см. globeLabel.ts). Яркие и читабельные:
+   тёплая светящаяся точка + белое название с плотной тенью. Плавное opacity —
+   мягкое скрытие за горизонтом при вращении (окклюзия ставит 0/1). */
+
+.globe-label {
+  position: relative;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  will-change: opacity;
+}
+
+.globe-label__dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffe1bd;
+  box-shadow:
+    0 0 5px 1px rgb(var(--glow-rgb) / 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.4);
+  transform: translate(-50%, -50%);
+}
+
+.globe-label__name {
+  position: absolute;
+  left: 7px;
+  top: 0;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.92);
+  font: 500 var(--fs-10)/1 var(--font-body);
+  letter-spacing: 0.01em;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.95),
+    0 0 7px rgba(0, 0, 0, 0.75);
+}

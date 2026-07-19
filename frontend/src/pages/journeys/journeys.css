@@ -2,9 +2,9 @@
 /* Общий «стеклянный» слой панели и легенды: фон, рамка, тень, blur. */
 .journeys-card {
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(219, 226, 236, 0.9);
-  box-shadow: var(--auth-card-shadow);
+  background: var(--surface-card);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 20px 48px rgb(var(--shadow-rgb) / 0.45);
   backdrop-filter: blur(10px);
 }
 
@@ -86,8 +86,8 @@
 
 /* Заголовок панели — тот же стиль, что у заголовка формы (.add-journey__title). */
 .journeys-panel__label {
-  font: 600 16px/1.2 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #0f172a;
+  font: 600 var(--fs-16)/1.2 var(--font-display);
+  color: var(--text);
 }
 
 /* ---- Под-навигация раздела (Карта / Все / Добавить) --------------------- */
@@ -101,20 +101,20 @@
   display: block;
   padding: 9px 12px;
   border-radius: 10px;
-  font: 500 14px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #334155;
+  font: 500 var(--fs-14)/1 var(--font-body);
+  color: var(--text-muted);
   text-decoration: none;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 
 .journeys-nav__item:hover {
-  background: rgba(148, 163, 184, 0.14);
-  color: #0f172a;
+  background: rgb(var(--ink-on-dark-rgb) / 0.07);
+  color: var(--text);
 }
 
 .journeys-nav__item--active {
-  background: rgba(15, 23, 42, 0.06);
-  color: #0f172a;
+  background: rgb(var(--sun-rgb) / 0.2);
+  color: var(--text);
   font-weight: 600;
 }
 
@@ -124,35 +124,35 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: default;
 }
 
 .journeys-nav__item--soon:hover {
   background: none;
-  color: #94a3b8;
 }
 
-/* «Добавить» — действие, выделено заливкой (slate). */
+/* «Добавить» — первичное действие раздела: тот же закатный акцент и та же тёмная
+   метка, что у кнопок auth и лендинга. Одно действие — один вид на весь продукт. */
 .journeys-nav__add {
   display: block;
   margin-top: 4px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: #334155;
-  color: #f8fafc;
-  font: 600 14px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: 600 var(--fs-14)/1 var(--font-body);
   text-align: center;
   text-decoration: none;
-  transition: background 0.15s ease;
+  transition: background var(--dur-fast) ease;
 }
 
 .journeys-nav__add:hover {
-  background: #1e293b;
+  background: var(--accent-deep);
 }
 
 .journeys-nav__add--active {
-  background: #0f172a;
+  background: var(--accent-deep);
 }
 
 /* «Добавить место» — вторичное действие (ghost), пока не реализовано: disabled,
@@ -167,10 +167,10 @@
   margin-top: 6px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.45);
+  border: 1px solid var(--hairline);
   background: transparent;
-  color: #94a3b8;
-  font: 600 14px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  color: var(--text-muted);
+  font: 600 var(--fs-14)/1 var(--font-body);
   text-align: center;
   cursor: default;
 }
@@ -203,10 +203,10 @@
   background: none;
   border: none;
   cursor: pointer;
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font: 500 var(--fs-11)/1 var(--font-mono);
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--text-stamp);
 }
 
 /* CSS-шеврон (без icon-зависимостей): вниз = свёрнуто, вверх = развёрнуто. */
@@ -215,8 +215,8 @@
   height: 0;
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
-  border-top: 5px solid #94a3b8;
-  transition: transform 0.18s ease;
+  border-top: 5px solid var(--text-muted);
+  transition: transform var(--dur-fast) ease;
 }
 
 .journeys-legend-card__chevron--open {
@@ -237,8 +237,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font: 400 13px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #475569;
+  font: 400 var(--fs-13)/1 var(--font-body);
+  color: var(--text-muted);
 }
 
 .journeys-legend__swatch {
@@ -292,14 +292,14 @@
 /* Тот же стиль, что у заголовка панели (.journeys-panel__label) — единый вид. */
 .add-journey__title {
   margin: 0 0 2px;
-  font: 600 16px/1.2 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #0f172a;
+  font: 600 var(--fs-16)/1.2 var(--font-display);
+  color: var(--text);
 }
 
 .add-journey__subtitle {
   margin: 0 0 14px;
-  font: 400 13px/1.4 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #64748b;
+  font: 400 var(--fs-13)/1.4 var(--font-body);
+  color: var(--text-muted);
 }
 
 /* Блок «откуда/куда»: relative-якорь для плавающей кнопки обмена в зазоре полей. */
@@ -309,7 +309,7 @@
 
 /* Круглая кнопка «поменять местами» — сидит в зазоре между полями у правого края
    (как в авиапоиске). Своя разметка, а не Mantine ActionIcon, ради точного вида:
-   белый кружок с тонкой рамкой под цвет инпутов, иконка — brand-ink. */
+   кружок приподнятой поверхности с тонкой рамкой под цвет полей. */
 .add-journey__swap {
   position: absolute;
   top: 50%;
@@ -322,18 +322,18 @@
   height: 34px;
   padding: 0;
   border-radius: 50%;
-  /* Чуть толще белое кольцо вокруг кнопки — она «лежит» на стыке полей, а не висит в воздухе. */
-  border: 1px solid var(--mantine-color-gray-3);
-  background: #fff;
-  color: var(--brand-ink);
+  /* Чуть толще кольцо цвета фона вокруг кнопки — она «лежит» на стыке полей, а не висит в воздухе. */
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+  color: var(--text);
   box-shadow:
-    0 0 0 4px #fff,
-    0 1px 2px rgba(15, 23, 42, 0.1);
+    0 0 0 4px var(--surface),
+    0 1px 2px rgb(var(--ink-rgb) / 0.1);
   cursor: pointer;
   transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease;
+    transform var(--dur-fast) ease,
+    box-shadow var(--dur-fast) ease,
+    border-color var(--dur-fast) ease;
 }
 
 /* Тач-таргет ≥44px без увеличения видимого кружка (34px): невидимая расширенная зона клика. */
@@ -349,10 +349,10 @@
 
 /* Ховер: приподнимаем тенью и доворачиваем стрелки на 180° — жест «обмена». */
 .add-journey__swap:hover:not(:disabled) {
-  border-color: var(--mantine-color-gray-5);
+  border-color: var(--accent);
   box-shadow:
-    0 0 0 4px #fff,
-    0 6px 14px rgba(15, 23, 42, 0.16);
+    0 0 0 4px var(--surface),
+    0 6px 14px rgb(var(--ink-rgb) / 0.16);
   transform: translate(-50%, -50%) rotate(180deg);
 }
 
@@ -361,15 +361,15 @@
 }
 
 .add-journey__swap:focus-visible {
-  outline: 2px solid var(--brand-ink);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 .add-journey__swap:disabled {
   cursor: default;
-  border-color: var(--mantine-color-gray-2);
-  color: var(--mantine-color-gray-4);
-  box-shadow: 0 0 0 4px #fff;
+  border-color: var(--hairline);
+  color: var(--text-muted);
+  box-shadow: 0 0 0 4px var(--surface);
 }
 
 /*

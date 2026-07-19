@@ -1,23 +1,26 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { renderWithProviders, screen } from "../test/render";
 import { AuthLayout } from "./AuthLayout";
 
-// AuthGlobe тянет react-globe.gl/three.js (WebGL, в jsdom не работает) — мокаем заглушкой.
-// vi.mock хойстится выше импортов, поэтому AuthLayout получает мок при импорте AuthGlobe.
-vi.mock("./AuthGlobe", () => ({
-  AuthGlobe: () => <div>globe stub</div>,
-}));
-
 describe("AuthLayout", () => {
-  it("рендерит слот хедера и контент", () => {
+  it("рендерит контент формы", () => {
     renderWithProviders(
-      <AuthLayout header={<div>header slot</div>}>
+      <AuthLayout side="left">
         <div>main content</div>
       </AuthLayout>,
     );
 
-    expect(screen.getByText("header slot")).toBeInTheDocument();
     expect(screen.getByText("main content")).toBeInTheDocument();
+  });
+
+  it("сторона формы попадает в data-side (парная кадрированию глобуса)", () => {
+    const { container } = renderWithProviders(
+      <AuthLayout side="right">
+        <div>main content</div>
+      </AuthLayout>,
+    );
+
+    expect(container.querySelector(".auth-layout")).toHaveAttribute("data-side", "right");
   });
 });
