@@ -1,0 +1,237 @@
+/*
+ * Стеклянная auth-карточка поверх глобуса плюс
+ * перевод Mantine-инпутов на тёмное стекло.
+ *
+ * Зацепка за поля — СВОИ классы, розданные через Styles API (`classNames`), а не
+ * селекторы вида `.mantine-Input-input`: в Mantine 9 стабильное статическое имя есть
+ * только у обёртки (`mantine-Input-wrapper`), остальные узлы получают хешированные
+ * классы, поэтому такие селекторы просто не совпадают. Задавать `--input-bg` на
+ * карточке тоже бесполезно: Mantine определяет эту переменную ближе к элементу, и
+ * наследование от предка проигрывает.
+ */
+
+.auth-card {
+  --auth-input-bg: rgb(var(--ink-deep-rgb) / 0.5);
+  /* Тот же цвет поля, но непрозрачным: нужен там, где полупрозрачность пропустила бы
+     сквозь себя чужой фон (автозаполнение, см. ниже). Значение = композит
+     `--auth-input-bg` поверх стекла карточки. */
+  --auth-input-bg-solid: #080b16;
+  --auth-input-bd: rgb(var(--ink-on-dark-rgb) / 0.18);
+  --auth-input-placeholder: rgb(var(--muted-on-dark-rgb) / 0.6);
+  --auth-on-sun: var(--on-sun);
+
+  padding: 34px 32px 30px;
+  border-radius: 22px;
+  border: 1px solid var(--line-dark);
+  background: var(--surface-card);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 30px 70px rgb(var(--shadow-rgb) / 0.55);
+  color: var(--ink-on-dark);
+}
+
+.auth-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-30);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.auth-card__subtitle {
+  margin: 10px 0 22px;
+  font-size: var(--fs-15);
+  line-height: 1.5;
+  color: var(--muted-on-dark);
+}
+
+/* --- Поля Mantine на тёмном стекле (зацепка — свои классы из Styles API) --- */
+
+.auth-card .auth-input {
+  background-color: var(--auth-input-bg);
+  border-color: var(--auth-input-bd);
+  color: var(--ink-on-dark);
+}
+
+/* У PasswordInput настоящее поле ввода вложено внутрь обёртки-«инпута». */
+.auth-card .auth-input__inner {
+  background: transparent;
+  color: var(--ink-on-dark);
+}
+
+.auth-card .auth-input::placeholder,
+.auth-card .auth-input__inner::placeholder {
+  color: var(--auth-input-placeholder);
+}
+
+/* Кнопка-глаз показа пароля. */
+.auth-card .auth-input__section {
+  color: var(--muted-on-dark);
+}
+
+.auth-card .auth-input:focus,
+.auth-card .auth-input:focus-within {
+  border-color: var(--sun);
+  box-shadow: 0 0 0 3px rgb(var(--sun-rgb) / 0.22);
+}
+
+/*
+ * Автозаполнение. Браузер красит подставленное поле своим светлым фоном через
+ * UA-стиль с `!important` — форма логина с сохранённым паролем выглядела белой на
+ * тёмном стекле. `background-color` тут не перебить, поэтому фон закрывается сплошной
+ * inset-тенью, а цвет текста задаётся `-webkit-text-fill-color` (обычный `color`
+ * так же проигрывает UA-стилю). Заливка непрозрачная — полупрозрачная пропустила бы
+ * светлый фон насквозь.
+ *
+ * Префиксный и стандартный селекторы разнесены по правилам намеренно: браузер,
+ * не знающий один из них, выбросил бы правило целиком вместе со вторым.
+ */
+.auth-card .auth-input:-webkit-autofill,
+.auth-card .auth-input__inner:-webkit-autofill {
+  -webkit-text-fill-color: var(--ink-on-dark);
+  -webkit-box-shadow: 0 0 0 100px var(--auth-input-bg-solid) inset;
+  caret-color: var(--ink-on-dark);
+}
+
+.auth-card .auth-input:autofill,
+.auth-card .auth-input__inner:autofill {
+  -webkit-text-fill-color: var(--ink-on-dark);
+  box-shadow: 0 0 0 100px var(--auth-input-bg-solid) inset;
+  caret-color: var(--ink-on-dark);
+}
+
+/* Фокус на автозаполненном поле: заливка съедает кольцо фокуса — возвращаем его
+   второй тенью. Только для `.auth-input`: у PasswordInput автозаполняется вложенный
+   `__inner`, а кольцо рисует обёртка по `:focus-within`. */
+.auth-card .auth-input:-webkit-autofill:focus {
+  -webkit-box-shadow:
+    0 0 0 100px var(--auth-input-bg-solid) inset,
+    0 0 0 3px rgb(var(--sun-rgb) / 0.22);
+}
+
+.auth-card .auth-input:autofill:focus {
+  box-shadow:
+    0 0 0 100px var(--auth-input-bg-solid) inset,
+    0 0 0 3px rgb(var(--sun-rgb) / 0.22);
+}
+
+.auth-card .auth-label {
+  color: var(--muted-on-dark);
+  font-weight: 600;
+  font-size: var(--fs-12);
+  letter-spacing: 0.02em;
+  margin-bottom: 7px;
+}
+
+/*
+ * Поле с ошибкой: index.css возвращает полю нейтральный вид, но значениями СВЕТЛОЙ
+ * схемы (`--mantine-color-text` — почти чёрный). На тёмном стекле такой текст
+ * нечитаем, поэтому здесь та же нейтрализация, но тёмными значениями. Обёртка —
+ * единственный узел со стабильным именем класса в Mantine 9.
+ */
+[data-mantine-color-scheme] .auth-card .mantine-Input-wrapper[data-error] .auth-input,
+[data-mantine-color-scheme] .auth-card .mantine-Input-wrapper[data-error] .auth-input__inner {
+  color: var(--ink-on-dark);
+}
+
+[data-mantine-color-scheme]
+  .auth-card
+  .mantine-Input-wrapper[data-error]:not([data-variant="unstyled"])
+  .auth-input {
+  border-color: var(--auth-input-bd);
+}
+
+/* Цвет — из общего токена ошибки, кегль не трогаем: акцент даём весом, а не размером
+   (правило «UI error display»), и `0.82rem` здесь расходился с `size="sm"` в остальном продукте. */
+.auth-card .mantine-InputWrapper-error,
+.auth-card .auth-card__error {
+  color: var(--text-error);
+  font-weight: 500;
+}
+
+.auth-card__error {
+  margin: 0;
+}
+
+/* --- Кнопка отправки и ссылки --- */
+
+/* Цвет метки больше не задаём: его выбирает `autoContrast` в теме, и `theme.black`
+   выставлен в тот же `--on-sun`. Раньше здесь стоял `!important`-обход — он и был
+   причиной того, что auth-кнопка выглядела иначе, чем кнопки journeys и диалогов. */
+.auth-card .auth-submit {
+  font-weight: 600;
+}
+
+/*
+ * Отключённая кнопка (signup ждёт согласия с условиями): Mantine подменяет фон на
+ * серый светлой схемы — на тёмном стекле это яркое белое пятно, чужое палитре.
+ * Держим закатный акцент и гасим прозрачностью: кнопка остаётся из своей палитры,
+ * а «пока нельзя» читается. Правило Mantine завёрнуто в `:where()` (нулевая
+ * специфичность), поэтому хватает обычного перекрытия — без `!important`.
+ */
+.auth-card .auth-submit:disabled,
+.auth-card .auth-submit[data-disabled] {
+  background: var(--sun);
+  opacity: 0.5;
+}
+
+/* Подсказка «Забыли пароль?» — приглушённая, но читаемая на тёмном. Раньше это была
+   Mantine `Anchor`, и цвет приходилось перебивать `!important`; теперь это обычный
+   `<span>` (поток восстановления пароля не реализован), поэтому обошлись без него. */
+.auth-card .auth-card__hint {
+  color: var(--muted-on-dark);
+  font-size: var(--fs-12);
+}
+
+/* Чекбоксы (согласие с условиями, рассылка) — светлый текст на стекле.
+   Кегль не задаём: `<Checkbox size="sm">` уже даёт метке 14px — ровно ступень
+   `--fs-14`. Здесь стояли `0.86rem` (13.76px), то есть подрез под дефолт на четверть
+   пикселя — различие, которого никто не видел, но которое выпадало из шкалы. */
+.auth-card .auth-label--checkbox {
+  color: var(--muted-on-dark);
+  line-height: 1.45;
+}
+
+/*
+ * Коробка чекбокса одинаково тёмная в обоих состояниях — как поле ввода. Mantine
+ * заливает пустую белым (дефолт светлой схемы), а отмеченную — акцентом; и то, и
+ * другое на стекле читается ярким квадратом. Состояние показывает галочка.
+ *
+ * `:checked` в селекторе обязателен: без него правило весит РОВНО столько же, сколько
+ * `.m_…:checked` у Mantine, и исход решал бы порядок подключения CSS — молчаливая
+ * зависимость, которая ломается от смены порядка импортов.
+ */
+.auth-card .auth-checkbox,
+.auth-card .auth-checkbox:checked {
+  background-color: var(--auth-input-bg);
+  border-color: var(--auth-input-bd);
+}
+
+/* Галочка — закатным акцентом, в цвет активной кнопки: на тёмной коробке она
+   единственный индикатор состояния (8:1 к фону поля). */
+.auth-card .auth-checkbox__icon {
+  color: var(--sun);
+}
+
+.auth-card a {
+  color: var(--glow);
+}
+
+/* --- Ссылка-переключатель между login и signup под формой --- */
+
+.auth-card__switch {
+  margin: 18px 0 0;
+  font-size: var(--fs-14);
+  text-align: center;
+  color: var(--muted-on-dark);
+}
+
+.auth-card__switch a {
+  color: var(--glow);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-card__switch a:hover {
+  text-decoration: underline;
+}

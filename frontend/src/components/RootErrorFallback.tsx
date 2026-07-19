@@ -8,10 +8,12 @@ export function RootErrorFallback() {
   return (
     <Center mih="100vh" p="md">
       <Stack align="center" gap="sm" maw={420}>
-        <Title order={2} size="h3" c="slate.8">
+        {/* Семантический токен, а не оттенок палитры: поверхность продукта — ночь, и `slate.8`
+            (#1e293b) давал здесь контраст ~1.3:1, то есть заголовок краш-экрана был не виден. */}
+        <Title order={2} size="h3" style={{ color: "var(--text)" }}>
           {t("error.title", { ns: "common" })}
         </Title>
-        <Text c="dimmed" ta="center">
+        <Text c="var(--text-muted)" ta="center">
           {t("fallback", { ns: "errors" })}
         </Text>
         <Button variant="light" onClick={() => window.location.reload()}>

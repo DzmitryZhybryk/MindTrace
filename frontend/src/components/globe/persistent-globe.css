@@ -1,0 +1,110 @@
+/*
+ * Персистентный глобус публичной зоны: фиксированный фон во весь вьюпорт под всем
+ * контентом. `pointer-events: none` — глобус декоративен, скролл и клики проходят
+ * сквозь него к контенту (заодно снимает конфликт с блокировкой зума в GlobeCanvas).
+ */
+.persistent-globe {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  /* Тёмная база на весь вьюпорт на время инициализации WebGL (сфера ниже кадрируется,
+     поэтому фон держит именно эта обёртка, а не трансформируемый stage). */
+  background: var(--night-bg);
+}
+
+/*
+ * Кадрирование сферы под экран: на
+ * лендинге чуть уводим вправо, на auth-экранах — сильно вбок, освобождая место под
+ * форму. Камера (pov) и рамка (transform) едут одновременно — отсюда «полёт».
+ * Трансформ чисто визуальный: слой замера в GlobeCanvas остаётся размером вьюпорта.
+ */
+.persistent-globe__stage {
+  position: absolute;
+  inset: 0;
+  transform-origin: center;
+  transition: transform 1.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.persistent-globe[data-screen="landing"] .persistent-globe__stage {
+  transform: translateX(8%) scale(1.12);
+}
+
+.persistent-globe[data-screen="signup"] .persistent-globe__stage {
+  transform: translateX(32%) scale(1.2);
+}
+
+.persistent-globe[data-screen="login"] .persistent-globe__stage {
+  transform: translateX(-32%) scale(1.2);
+}
+
+/*
+ * Скрим ПОД ШАПКОЙ. Отдельный от бокового, потому что решает другую задачу: тот
+ * защищает сторону формы, а марка всегда в левом верхнем углу. На регистрации они
+ * случайно совпадали (глобус уходит вправо, скрим темнит слева), а на входе
+ * расходились — глобус уезжал влево ровно под марку, и та ложилась на облака.
+ *
+ * Почему не сдвиг глобуса: на лендинге он ВРАЩАЕТСЯ, и под маркой по очереди
+ * проплывает то океан, то Гималаи с облаками; набор маршрутов вдобавок выбирается
+ * случайно при загрузке. Фиксированная геометрия такое не покрывает, затемнение — да.
+ *
+ * Непрозрачность не на глаз: 0.55 даёт марке 3.61:1 в ХУДШЕМ случае (белые облака)
+ * при пороге 3:1 для крупного текста; без скрима там было 1.16:1. Над сушей — 5.9:1.
+ * Держим 0.55 на всю высоту шапки и гасим к 180px, чтобы планета ниже осталась чистой.
+ */
+.persistent-globe::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 180px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--ink-rgb) / 0.55) 0%,
+    rgb(var(--ink-rgb) / 0.52) 38%,
+    rgb(var(--ink-rgb) / 0.3) 62%,
+    rgb(var(--ink-rgb) / 0) 100%
+  );
+}
+
+/*
+ * Скрим auth-экранов (порт `.flow-scrim`): затемняет край, где стоит форма, чтобы
+ * текст на стекле не спорил с дугами. На лендинге прозрачен — там свой градиент.
+ */
+.persistent-globe__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  transition: background 1.1s ease;
+}
+
+.persistent-globe[data-screen="signup"] .persistent-globe__scrim {
+  background: linear-gradient(100deg, var(--ink) 0%, rgb(var(--ink-rgb) / 0.86) 40%, rgb(var(--ink-rgb) / 0) 78%);
+}
+
+.persistent-globe[data-screen="login"] .persistent-globe__scrim {
+  background: linear-gradient(260deg, var(--ink) 0%, rgb(var(--ink-rgb) / 0.86) 40%, rgb(var(--ink-rgb) / 0) 78%);
+}
+
+/* Узкие экраны: сфера уходит за спину формы, скрим становится общим затемнением. */
+@media (max-width: 720px) {
+  .persistent-globe[data-screen="signup"] .persistent-globe__stage,
+  .persistent-globe[data-screen="login"] .persistent-globe__stage {
+    transform: translateY(-14%) scale(1.3);
+  }
+
+  .persistent-globe[data-screen="signup"] .persistent-globe__scrim,
+  .persistent-globe[data-screen="login"] .persistent-globe__scrim {
+    background: radial-gradient(ellipse 120% 80% at 50% 50%, rgb(var(--ink-rgb) / 0.5) 0%, var(--ink) 85%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .persistent-globe__stage,
+  .persistent-globe__scrim {
+    transition: none;
+  }
+}

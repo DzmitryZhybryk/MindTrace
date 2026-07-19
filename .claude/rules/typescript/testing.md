@@ -17,7 +17,10 @@ Two orthogonal axes: **test type** (speed + dependencies) and **module/feature**
 | **e2e** | Real browser + stack | full flows in Chromium/Firefox/WebKit against an ephemeral throwaway stack (`docker-compose.e2e.yaml`, `make test-e2e`) | nightly / pre-release |
 
 The **bulk of value is in `unit`** (the `api`/`auth` logic modules). Keep component thin (forms,
-dialogs, the banner) and e2e thinnest (the critical happy paths from `.claude/.test-plan.md`).
+dialogs, the banner) and e2e thinnest — only the critical happy paths. Current e2e surface:
+`e2e/auth/{signup,login,logout,session,email-verification}.spec.ts` и `e2e/journeys/map.spec.ts`.
+Флоу помечены кодами (A/B/D/K/L…), коды живут в докстрингах самих спеков — отдельного
+плана-файла НЕТ.
 
 ## Tooling
 
@@ -58,7 +61,7 @@ frontend/src/
 └── auth/
     ├── jwt.ts      + jwt.test.ts
     └── tokenStore.ts + tokenStore.test.ts
-e2e/                            # (e2e phase) Playwright specs by .claude/.test-plan.md flow
+e2e/                            # Playwright: e2e/<домен>/<флоу>.spec.ts + e2e/helpers/, e2e/fixtures.ts
 ```
 
 ## Philosophy: classicist + mock only the network
@@ -143,8 +146,23 @@ Note: the v8 **text** reporter silently hides files already at 100% — for exac
 - Fake timers or the clock globally → fake locally only for code that reads "now".
 - Recreate an existing `render`/handler/helper → scan `src/test/` first and reuse.
 
-## CI (not wired yet)
+## CI
 
-There is no CI workflow yet. The scripts are CI-ready: a future workflow runs `npm run lint`,
-`npm run test:run`, and `npm run build` from `frontend/`. Until then these run locally before merge,
-alongside the manual UI checks in [web/performance.md](../web/performance.md).
+`.github/workflows/ci.yml` держит **Frontend gate**: node 26 → `npm ci` → `make check`
+(lint + typecheck + unit/component). Backend-гейт идёт отдельной job'ой (`make check-ci`).
+
+Порог покрытия 90% форсится НЕ в CI, а локальным pre-push хуком (`.githooks/pre-push`,
+активируется разово через `make hooks`). e2e в CI не гоняется — он поднимает свой одноразовый
+стек и запускается вручную через `make test-e2e`.
+
+Для цикла разработки есть `make test-e2e-dev` — гоняет по УЖЕ поднятому дев-стеку (`make run`),
+без подъёма и сноса окружения. Плата за скорость: тесты заводят пользователей в ДЕВ-базе, она не
+одноразовая. Сузить прогон — `E2E_ARGS="--project=chromium"`.
+
+**Браузеры Playwright живут на ХОСТЕ, а не в контейнере.** После обновления пакета (`npm ci`)
+бинарники под новую версию нужно доставить: `npx playwright install`. Симптом рассинхрона —
+«Executable doesn't exist at …/chromium_headless_shell-<N>», где N не совпадает с содержимым
+`~/Library/Caches/ms-playwright/`.
+
+Ручными остаются проверки, которых автотест не видит: визуал, Lighthouse, кросс-браузер,
+адаптив — см. [web/performance.md](../web/performance.md) → «UI Quality».

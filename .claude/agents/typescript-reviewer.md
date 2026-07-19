@@ -17,10 +17,11 @@ When invoked:
    - If the PR shows merge conflicts or a non-mergeable state, stop and report that conflicts must be resolved first.
    - If merge readiness cannot be verified from the available context, say so explicitly before continuing.
 3. Run the project's canonical TypeScript check from `frontend/`: `cd frontend && npx tsc -b` (project references). Don't try `pnpm/yarn/bun` — this project uses npm only. Don't default to a repo-root `tsconfig.json` — there is no root config; configs live in `frontend/`.
-4. Run `cd frontend && npx eslint .` (config — `frontend/eslint.config.js`). If linting or TypeScript checking fails, stop and report.
-5. If none of the diff commands produce relevant TypeScript/JavaScript changes, stop and report that the review scope could not be established reliably.
-6. Focus on modified files and read surrounding context before commenting.
-7. Begin review
+4. Run `cd frontend && npm run lint` (oxlint; config — `frontend/.oxlintrc.json`). The project migrated off ESLint — there is no `eslint.config.js`.
+5. Run `cd frontend && npm run test:run` (vitest). If linting, type checking or tests fail, stop and report.
+6. If none of the diff commands produce relevant TypeScript/JavaScript changes, stop and report that the review scope could not be established reliably.
+7. Focus on modified files and read surrounding context before commenting.
+8. Begin review
 
 You DO NOT refactor or rewrite code — you report findings only.
 
@@ -87,16 +88,19 @@ You DO NOT refactor or rewrite code — you report findings only.
 
 ## Diagnostic Commands
 
-The frontend lives in `frontend/` (npm + Vite + TypeScript ~6.0). Run commands from there.
+The frontend lives in `frontend/` (npm + Vite + TypeScript ~7.0, native compiler). Run commands from there.
 
 ```bash
 cd frontend && npx tsc -b                          # Canonical type check (project references)
 cd frontend && npm run build                       # Full build (tsc -b + vite build)
-cd frontend && npx eslint .                        # ESLint (config: frontend/eslint.config.js)
+cd frontend && npm run lint                        # oxlint (config: frontend/.oxlintrc.json)
+cd frontend && npm run test:run                    # vitest (unit + component)
 cd frontend && npm audit                           # Dependency vulnerabilities
 ```
 
-**The project does not plan to write frontend tests** — neither unit nor E2E. Do not suggest Vitest/Jest/Playwright and do not require running tests as a mandatory review step. Frontend quality is verified through manual UI checks (see `rules/web/performance.md` — "UI Quality" section).
+**The frontend IS tested** — vitest (unit `*.test.ts` + component `*.test.tsx`) and Playwright e2e (`frontend/e2e/`), with a 90% coverage merge gate forced by a pre-push hook. Running `npm run test:run` is a mandatory review step. Conventions live in `rules/typescript/testing.md`.
+
+What is NOT automated and stays a manual check: visual appearance, Lighthouse, cross-browser and responsive passes (see `rules/web/performance.md` — "UI Quality").
 
 ## Approval Criteria
 

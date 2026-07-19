@@ -11,7 +11,13 @@ import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <MantineProvider theme={theme} defaultColorScheme="light">
+    {/*
+      Тёмная схема — не косметика, а выравнивание Mantine с поверхностью продукта.
+      Пока схема была светлой, её дефолты (белая коробка чекбокса, серая disabled-кнопка,
+      почти чёрный текст ошибки) приходилось перебивать вручную на каждой тёмной
+      поверхности. Теперь они работают в ту же сторону, что и дизайн.
+    */}
+    <MantineProvider theme={theme} defaultColorScheme="dark">
       <ErrorBoundary fallback={<RootErrorFallback />}>
         <Suspense fallback={null}>
           <App />

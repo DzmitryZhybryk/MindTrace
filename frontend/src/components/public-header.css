@@ -1,0 +1,132 @@
+/*
+ * Шапка публичной зоны (лендинг + auth). Порт `.lp-head` из лендинга на ГЛОБАЛЬНЫЕ
+ * токены (`--ink-on-dark`, `--sun`, …) вместо scoped `--lp-*`: шапка живёт в
+ * `PublicLayout`, снаружи обёртки `.lp`, где `--lp-*` не определены. Значения взяты
+ * один в один, поэтому вид лендинга не меняется.
+ */
+
+.public-header {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  /* Full-width: бренд у левого края, навигация у правого — без центрирующей колонки,
+     поэтому шапка не «уезжает» к середине. Отступ — общий с шапкой приложения, иначе
+     марка сдвигается на переходе через логин. */
+  padding: var(--header-inset-block) var(--header-inset);
+  /* Общая с шапкой приложения высота — см. --header-height в index.css. */
+  min-height: var(--header-height);
+}
+
+.public-header__nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Переключатель языка (Mantine Button) под тёмную шапку: светлый текст + пилюля
+   в тон капсулы. Дефолтный subtle/gray даёт тёмно-серый текст, невидимый на тёмном
+   фоне. Mantine кладёт свои цвета инлайн-переменными (сильнее класса), поэтому бьём
+   по конечным свойствам с `!important` — класс с `!important` перебивает инлайн-стиль. */
+.public-header__lang.public-header__lang {
+  color: var(--ink-on-dark) !important;
+  background: rgb(var(--ink-deep-rgb) / 0.4) !important;
+  border: 1px solid var(--line-dark) !important;
+  font-weight: 600;
+  backdrop-filter: blur(var(--blur-glass));
+}
+
+.public-header__lang.public-header__lang:hover {
+  color: #ffffff !important;
+  background: rgb(var(--ink-deep-rgb) / 0.6) !important;
+  border-color: rgb(var(--ink-on-dark-rgb) / 0.42) !important;
+}
+
+/* Навигация-капсула: активное действие — акцентная пилюля, второе — прозрачная. */
+.public-header__pills {
+  display: inline-flex;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  border: 1px solid var(--line-dark);
+  background: rgb(var(--ink-deep-rgb) / 0.4);
+  backdrop-filter: blur(var(--blur-glass));
+}
+
+.public-header__pill {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: var(--fs-14);
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--muted-on-dark);
+  background: transparent;
+  transition:
+    color var(--dur-fast) ease,
+    background var(--dur-fast) ease;
+}
+
+.public-header__pill:hover {
+  color: var(--ink-on-dark);
+}
+
+.public-header__pill.is-active {
+  color: var(--on-accent);
+  background: var(--sun);
+}
+
+.public-header__pill.is-active:hover {
+  color: var(--on-accent);
+  background: var(--glow);
+}
+
+.public-header__pill:focus-visible {
+  outline: 2px solid var(--sky-bright);
+  outline-offset: 2px;
+}
+
+/*
+ * Адаптив шапки. Её не было вовсе: на 320px бренд (24px) плюс переключатель языка плюс
+ * две пилюли требуют около 363px при доступных 280 — страница уезжала в горизонтальную
+ * прокрутку. Подбирать кегли «под 320px» ненадёжно: русские подписи длиннее английских,
+ * и порог зависит от языка. Поэтому две меры разного рода: уменьшаем размеры на узких
+ * экранах И разрешаем перенос как страховку — переносом жертвуем охотнее, чем
+ * горизонтальным скроллом всей страницы.
+ */
+@media (max-width: 560px) {
+  .public-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: var(--header-inset-block) 16px;
+  }
+
+  .public-header__nav {
+    gap: 6px;
+  }
+
+  .public-header__pill {
+    padding: 8px 12px;
+    font-size: var(--fs-13);
+  }
+}
+
+/*
+ * Тач-таргеты. Норма проекта — 44×44px; пилюля давала ~36px (8px padding + строка 14px),
+ * переключатель языка ~36px. Поднимаем только на СЕНСОРНЫХ устройствах (`pointer: coarse`),
+ * а не на всех узких экранах: на десктопе 44px-пилюля выглядит грузной, а промах мышью
+ * стоит дешевле промаха пальцем. Триггер по типу указателя, а не по ширине, потому что
+ * узкое окно на десктопе — это всё ещё мышь.
+ */
+@media (pointer: coarse) {
+  .public-header__pill,
+  .public-header__lang.public-header__lang {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

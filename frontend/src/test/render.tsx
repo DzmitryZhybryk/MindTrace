@@ -48,11 +48,17 @@ function Providers({ children, initialPath, authValue, withAuthProvider }: Provi
   }
 
   return (
+    // Схема — "dark", как в `main.tsx`. Раньше здесь стояло "light", и это было НЕ
+    // мелочью: на `main` обе стороны были светлыми, редизайн перевёл прод на тёмную, а
+    // тесты остались на светлой — то есть весь редизайн проверялся в противоположной
+    // схеме. Именно поэтому 207 зелёных тестов пропустили заголовок с контрастом 1.29:1
+    // и белую метку кнопки на светлом акценте: гейт физически не мог их увидеть.
+    //
     // env="test" отключает Mantine-transitions и порталы: дропдаун Menu/Modal
     // монтируется синхронно при открытии, без таймеров анимации. Без этого Menu в
     // jsdom флапает — открывается и закрывается посреди асинхронной цепочки
     // userEvent, и `findAllByRole("menuitem")` периодически таймаутит.
-    <MantineProvider theme={theme} defaultColorScheme="light" env="test">
+    <MantineProvider theme={theme} defaultColorScheme="dark" env="test">
       <MemoryRouter initialEntries={[initialPath]}>{withAuth}</MemoryRouter>
     </MantineProvider>
   );
@@ -162,5 +168,5 @@ export async function findMenuItem(text: string): Promise<HTMLElement> {
   return item;
 }
 
-export { waitFor, within } from "@testing-library/react";
+export { act, waitFor, within } from "@testing-library/react";
 export { screen, userEvent };

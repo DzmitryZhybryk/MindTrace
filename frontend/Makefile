@@ -52,6 +52,10 @@ audit: ## Scan npm dependencies for known vulnerabilities (high+)
 
 check: lint typecheck audit test ## Run lint + typecheck + audit + unit/component (fast; coverage-гейт — отдельно make coverage; e2e — make test-e2e)
 
-test-e2e: ## Run Playwright e2e against E2E_BASE_URL (обычно запускается корневым `make test-e2e`, который сам поднимает одноразовый стек)
-	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}playwright test${AZURE}' e2e${RESET}"
-	@npm run e2e
+# Аргументы, пробрасываемые в playwright: сузить браузер или набор тестов.
+# Напр. E2E_ARGS="--project=chromium -g login" — для дев-цикла три браузера избыточны.
+E2E_ARGS ?=
+
+test-e2e: ## Run Playwright e2e against E2E_BASE_URL (обычно запускается корневым `make test-e2e` / `make test-e2e-dev`)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}playwright test $(E2E_ARGS)${AZURE}' e2e${RESET}"
+	@npm run e2e -- $(E2E_ARGS)

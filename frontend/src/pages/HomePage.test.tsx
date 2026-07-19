@@ -19,6 +19,12 @@ function renderHome(authValue: AuthContextValue) {
 }
 
 describe("HomePage", () => {
+  it("логотип ведёт сразу на /home, без хопа через редирект с корня", () => {
+    renderHome(makeAuthValue({ isAuthenticated: true, emailVerified: true }));
+
+    expect(screen.getByRole("link", { name: "MyJourney" })).toHaveAttribute("href", "/home");
+  });
+
   it("logout: меню → Logout → очищает сессию и уводит на /login", async () => {
     const authValue = makeAuthValue({ isAuthenticated: true, emailVerified: true });
     const { user } = renderHome(authValue);

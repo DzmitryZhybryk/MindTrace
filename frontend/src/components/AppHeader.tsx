@@ -56,7 +56,7 @@ export function AppHeader() {
     <>
       <header className="app-header">
         <div className="app-header__brand">
-          <BrandMark />
+          <BrandMark to="/home" />
         </div>
 
         <nav className="app-tabs" aria-label={t("nav.ariaPrimary")}>

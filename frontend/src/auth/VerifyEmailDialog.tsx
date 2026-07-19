@@ -106,7 +106,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
       title={
         // Modal оборачивает title в свой <h2> — внутри должен быть НЕ заголовок (иначе
         // <h2><h3> = невалидный HTML + дублирующий heading для скринридера). Text сохраняет вид.
-        <Text size="h4" fw={700} c="slate.8">
+        <Text size="h4" fw={700} style={{ color: "var(--text)" }}>
           {t("verifyEmail.title")}
         </Text>
       }
@@ -114,11 +114,11 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
       <Stack gap="md">
         {stage === "intro" ? (
           <>
-            <Text size="sm" c="dimmed">
+            <Text size="sm" c="var(--text-muted)">
               {t("verifyEmail.intro")}
             </Text>
             {error && (
-              <Text size="sm" c="red" fw={500}>
+              <Text size="sm" fw={500} c="var(--text-error)" role="alert">
                 {resolveErrorToken(error)}
               </Text>
             )}
@@ -133,7 +133,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
           </>
         ) : (
           <>
-            <Text size="sm" c="dimmed">
+            <Text size="sm" c="var(--text-muted)">
               {t("verifyEmail.codeSent")}
             </Text>
 
@@ -153,7 +153,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
             </Group>
 
             {error && (
-              <Text size="sm" c="red" ta="center" fw={500}>
+              <Text size="sm" fw={500} ta="center" c="var(--text-error)" role="alert">
                 {resolveErrorToken(error)}
               </Text>
             )}

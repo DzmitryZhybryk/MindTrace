@@ -31,6 +31,8 @@ make check                                 # полный гейт обеих с
 make test                                  # быстрые тесты обеих сторон (test-back + test-front, без Docker)
 make test-infra                            # тяжёлые: backend integration + frontend e2e (оба самодостаточны — поднимают свою одноразовую инфру; нужен только Docker-демон)
 make test-e2e                              # frontend e2e: сам поднимает одноразовый стек (ops/docker-compose.e2e.yaml), гоняет Playwright, сносит с -v; дев-база не трогается
+make test-e2e-dev                          # e2e по УЖЕ поднятому дев-стеку (`make run`) — быстро, но ПИШЕТ В ДЕВ-БАЗУ.
+                                           # Сузить: make test-e2e-dev E2E_ARGS="--project=chromium"
 
 # Backend dev — из backend/ (самодостаточный uv-проект)
 cd backend
@@ -54,7 +56,7 @@ make lint-fix                              # oxlint --fix (форматтера/
 make typecheck                             # tsc -b
 make test                                  # vitest run (один прогон)
 make coverage                              # vitest run --coverage
-make check                                 # lint + typecheck + test (CI-стиль)
+make check                                 # lint + typecheck + audit + test (CI-стиль; тот же таргет гоняет CI)
 
 # Database migrations — из backend/, против запущенного контейнера
 make migrate-create "description"          # создать миграцию (autogenerate)

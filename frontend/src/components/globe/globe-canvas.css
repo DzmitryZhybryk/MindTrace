@@ -1,0 +1,12 @@
+/* Общий контейнер декоративного глобуса. Заполняет родителя; тёплая тонировка
+   canvas — единый токен --globe-tint (index.css). HTML-слой меток не тонируем. */
+
+.globe-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.globe-canvas canvas {
+  filter: var(--globe-tint);
+}

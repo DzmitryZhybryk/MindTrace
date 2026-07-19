@@ -1,10 +1,14 @@
-import { Anchor, Button, Checkbox, PasswordInput, Stack, Text, TextInput } from "@mantine/core";
+import { Anchor, Button, Checkbox, PasswordInput, Stack, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
-import { AuthHeader } from "../components/AuthHeader";
+import { Link, useNavigate } from "react-router-dom";
 import { AuthCard } from "../components/AuthCard";
+import {
+  authCheckboxClassNames,
+  authInputClassNames,
+  authPasswordClassNames,
+} from "../components/authInputClasses";
 import { AuthLayout } from "../components/AuthLayout";
 import { register } from "../api/auth";
 import { applyApiError, resolveErrorToken, withLocalizedError } from "../api/errors";
@@ -25,8 +29,10 @@ export function SignUpPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // `controlled` (а не `uncontrolled`), потому что от значений полей зависит рендер:
+  // кнопка отправки гаснет, пока форма не заполнена (см. `canSubmit` ниже).
   const form = useForm<SignUpFormValues>({
-    mode: "uncontrolled",
+    mode: "controlled",
     initialValues: {
       username: "",
       email: "",
@@ -58,8 +64,16 @@ export function SignUpPage() {
     },
   });
 
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  form.watch("termsAccepted", ({ value }) => setTermsAccepted(value));
+  // Кнопка ждёт ЗАПОЛНЕННОСТИ, а не валидности: правила (длина, формат) проверяются по
+  // сабмиту и объясняют себя сообщением под полем. Гаси кнопку по валидности — и
+  // пользователь упирался бы в мёртвую кнопку, не понимая, что именно не так.
+  // Согласие с условиями — часть этого минимума, согласие на рассылку добровольно.
+  const formValues = form.getValues();
+  const canSubmit =
+    formValues.username.trim().length > 0 &&
+    formValues.email.trim().length > 0 &&
+    formValues.password.length > 0 &&
+    formValues.termsAccepted;
 
   const handleSubmit = async (values: SignUpFormValues) => {
     setFormError(null);
@@ -67,7 +81,7 @@ export function SignUpPage() {
     try {
       const { accessToken } = await register(values);
       setAccessToken(accessToken);
-      navigate("/");
+      navigate("/home");
     } catch (err) {
       setFormError(applyApiError(err, form));
     } finally {
@@ -76,22 +90,9 @@ export function SignUpPage() {
   };
 
   return (
-    <AuthLayout
-      header={
-        <AuthHeader
-          hint={t("signup.headerHint")}
-          actionLabel={t("signup.headerAction")}
-          actionHref="/login"
-        />
-      }
-    >
+    // Форма слева — сфера на этом экране уводится вправо (persistent-globe.css).
+    <AuthLayout side="left">
       <AuthCard title={t("signup.title")} subtitle={t("signup.subtitle")}>
-        {formError && (
-          <Text size="sm" c="red" fw={500}>
-            {resolveErrorToken(formError)}
-          </Text>
-        )}
-
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
             <TextInput
@@ -101,7 +102,7 @@ export function SignUpPage() {
               radius="md"
               autoComplete="username"
               name="username"
-              key={form.key("username")}
+              classNames={authInputClassNames}
               {...withLocalizedError(form.getInputProps("username"))}
             />
 
@@ -112,7 +113,7 @@ export function SignUpPage() {
               radius="md"
               autoComplete="email"
               name="email"
-              key={form.key("email")}
+              classNames={authInputClassNames}
               {...withLocalizedError(form.getInputProps("email"))}
             />
 
@@ -123,14 +124,13 @@ export function SignUpPage() {
               radius="md"
               autoComplete="new-password"
               name="password"
-              key={form.key("password")}
+              classNames={authPasswordClassNames}
               {...withLocalizedError(form.getInputProps("password"))}
             />
 
             <Checkbox
               size="sm"
-              color="var(--brand-ink)"
-              key={form.key("termsAccepted")}
+              classNames={authCheckboxClassNames}
               {...withLocalizedError(form.getInputProps("termsAccepted", { type: "checkbox" }))}
               label={
                 <Trans
@@ -148,11 +148,20 @@ export function SignUpPage() {
 
             <Checkbox
               size="sm"
-              color="var(--brand-ink)"
+              classNames={authCheckboxClassNames}
               label={t("signup.marketing")}
-              key={form.key("marketingEmailsConsent")}
               {...form.getInputProps("marketingEmailsConsent", { type: "checkbox" })}
             />
+
+            {/* Ошибка операции (409, сеть) — у кнопки, а не в шапке карточки: правило
+                «UI error display» держит operation-scoped сообщение рядом с действием,
+                которое его вызвало. `role="alert"` озвучивает провал скринридеру —
+                узел появляется по условию, поэтому срабатывает именно на ошибку. */}
+            {formError && (
+              <p className="auth-card__error" role="alert">
+                {resolveErrorToken(formError)}
+              </p>
+            )}
 
             <Button
               type="submit"
@@ -160,14 +169,18 @@ export function SignUpPage() {
               radius="md"
               fullWidth
               mt="xs"
-              color="var(--brand-ink)"
-              disabled={!termsAccepted}
+              className="auth-submit"
+              disabled={!canSubmit}
               loading={submitting}
             >
               {t("signup.submit")}
             </Button>
           </Stack>
         </form>
+
+        <p className="auth-card__switch">
+          {t("signup.headerHint")} <Link to="/login">{t("signup.headerAction")}</Link>
+        </p>
       </AuthCard>
     </AuthLayout>
   );

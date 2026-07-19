@@ -1,4 +1,4 @@
-.PHONY: help hooks check test test-back test-front test-integration test-e2e e2e-clean test-infra \
+.PHONY: help hooks check test test-back test-front test-integration test-e2e test-e2e-dev e2e-clean test-infra \
         run stop restart logs ps prod-config prod-pull prod-up prod-down
 
 .DEFAULT_GOAL := help
@@ -122,6 +122,30 @@ test-e2e: ## Frontend e2e (Playwright; сам поднимает однораз�
 	echo "${GREEN}INFO :  ${AZURE}Tearing down ephemeral e2e stack (containers + network + volumes)${RESET}"; \
 	$(COMPOSE_E2E) down -v --remove-orphans; \
 	exit $$status
+
+# База уже поднятого дев-стека (`make run`). Переопределяется, если фронт слушает не там.
+DEV_BASE_URL ?= http://localhost:5173
+
+# Прогон по УЖЕ поднятому дев-стеку — для цикла разработки: не тратит ~минуту на подъём и снос
+# одноразового окружения. Плата за скорость — тесты пишут в ДЕВ-БАЗУ: `registerUser` заводит
+# реального пользователя на каждый прогон, и они накапливаются. Ради этого и существует
+# отдельный `make test-e2e` с tmpfs-Postgres; выбирай по ситуации, а не по привычке.
+#
+# Готовность проверяем POST'ом на /v1/auth/refresh/, а не GET'ом на «/»: он проходит весь путь,
+# который нужен тестам — Vite отдаёт SPA И проксирует /v1 на backend. Живой стек отвечает 401
+# (нет cookie), мёртвый — не отвечает вовсе. GET «/» показал бы только что Vite жив, а бэк за
+# ним мог бы лежать. `/healthz` для этого не годится: он подключён без префикса /v1, а Vite
+# проксирует только /v1 — снаружи его не достать.
+test-e2e-dev: ## Frontend e2e по УЖЕ ПОДНЯТОМУ дев-стеку (make run). Быстро, но ПИШЕТ В ДЕВ-БАЗУ. E2E_ARGS="--project=chromium"
+	@code=$$(curl -s -o /dev/null -X POST -w '%{http_code}' --max-time 5 $(DEV_BASE_URL)/v1/auth/refresh/ 2>/dev/null); \
+	if [ -z "$$code" ] || [ "$$code" = "000" ]; then \
+		echo "${GREEN}INFO :  ${AZURE}Дев-стек не отвечает на ${PURPLE}$(DEV_BASE_URL)${AZURE}${RESET}"; \
+		echo "${GREEN}INFO :  ${AZURE}Подними его через ${PURPLE}make run${AZURE}, либо гоняй одноразовый: ${PURPLE}make test-e2e${RESET}"; \
+		exit 1; \
+	fi; \
+	echo "${GREEN}INFO :  ${AZURE}Дев-стек жив (${PURPLE}$(DEV_BASE_URL)${AZURE}, /v1 отвечает $$code)${RESET}"; \
+	echo "${GREEN}WARN :  ${AZURE}Тесты заведут пользователей в ${PURPLE}дев-базе${AZURE} — она НЕ одноразовая${RESET}"; \
+	E2E_BASE_URL=$(DEV_BASE_URL) $(MAKE) -C frontend test-e2e E2E_ARGS='$(E2E_ARGS)'
 
 e2e-clean: ## Глубокая зачистка e2e-стека: контейнеры + сеть + тома + собранные образы (--rmi local)
 	@echo "${GREEN}INFO :  ${AZURE}Deep clean ephemeral e2e stack (incl. built images)${RESET}"

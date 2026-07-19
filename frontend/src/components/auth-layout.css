@@ -1,0 +1,33 @@
+/*
+ * Позиционирование auth-формы поверх персистентного глобуса. Форма прижата к краю,
+ * противоположному тому, куда
+ * `persistent-globe.css` увёл сферу: на signup глобус уезжает вправо — форма слева,
+ * на login наоборот.
+ */
+
+.auth-layout {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  /* Верхний отступ — под шапку публичной зоны (`.public-header`, absolute). */
+  padding: 96px clamp(20px, 5vw, 64px) 72px;
+}
+
+.auth-layout[data-side="right"] {
+  justify-content: flex-end;
+}
+
+.auth-layout__inner {
+  width: min(400px, 100%);
+}
+
+/* Узкие экраны: сфера уходит за спину (см. persistent-globe.css), форма — по центру. */
+@media (max-width: 720px) {
+  .auth-layout,
+  .auth-layout[data-side="right"] {
+    justify-content: center;
+    padding: 92px 20px 84px;
+  }
+}

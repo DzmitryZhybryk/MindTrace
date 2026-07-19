@@ -192,7 +192,7 @@ export function JourneyForm({ form }: JourneyFormProps) {
         <JourneyDateField form={form} />
 
         {formError && (
-          <Text size="sm" c="red" fw={500}>
+          <Text size="sm" fw={500} c="var(--text-error)">
             {resolveErrorToken(formError)}
           </Text>
         )}

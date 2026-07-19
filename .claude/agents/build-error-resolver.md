@@ -39,7 +39,7 @@ There is no separate build step for Python in this project: errors are caught by
 cd frontend && npx tsc -b                                          # Project-references type check
 cd frontend && npx tsc --noEmit --pretty --incremental false       # Show all errors at once
 cd frontend && npm run build                                       # Vite build (runs tsc -b + vite build)
-cd frontend && npx eslint .                                        # ESLint (config: frontend/eslint.config.js)
+cd frontend && npm run lint                                        # oxlint (config: frontend/.oxlintrc.json)
 ```
 
 ## Workflow
@@ -105,8 +105,8 @@ cd frontend && rm -rf node_modules/.cache dist && npm run build
 # Reinstall dependencies
 cd frontend && rm -rf node_modules package-lock.json && npm install
 
-# Fix ESLint auto-fixable
-cd frontend && npx eslint . --fix
+# Fix oxlint auto-fixable
+cd frontend && npm run lint:fix
 ```
 
 ### Backend

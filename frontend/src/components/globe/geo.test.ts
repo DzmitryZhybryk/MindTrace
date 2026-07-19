@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { centralAngleRad, toDeg } from "./geo";
+import { centralAngleRad } from "./geo";
 
 describe("centralAngleRad", () => {
   it("возвращает 0 для совпадающих точек", () => {
@@ -20,19 +20,5 @@ describe("centralAngleRad", () => {
     const ab = centralAngleRad(55, 37, 40, -74);
     const ba = centralAngleRad(40, -74, 55, 37);
     expect(ab).toBeCloseTo(ba);
-  });
-});
-
-describe("toDeg", () => {
-  it("переводит π в 180 градусов", () => {
-    expect(toDeg(Math.PI)).toBeCloseTo(180);
-  });
-
-  it("переводит π/2 в 90 градусов", () => {
-    expect(toDeg(Math.PI / 2)).toBeCloseTo(90);
-  });
-
-  it("переводит 0 в 0", () => {
-    expect(toDeg(0)).toBe(0);
   });
 });

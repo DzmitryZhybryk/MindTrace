@@ -8,7 +8,7 @@
   touch-action: none;
 }
 
-/* Тонировка под палитру — тот же токен, что у AuthGlobe (см. index.css).
+/* Тонировка под палитру — тот же токен, что у GlobeCanvas (см. index.css).
    Фильтр только на <canvas>; пины/транспорт — отдельные HTML-слои. */
 .journey-globe canvas {
   filter: var(--globe-tint);
@@ -32,9 +32,9 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #f8fafc;
-  border: 2px solid #334155;
-  box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.18);
+  background: var(--text);
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 3px rgb(var(--sun-rgb) / 0.28);
 }
 
 .journey-pin__name {
@@ -43,9 +43,9 @@
   top: 0;
   transform: translateY(-50%);
   white-space: nowrap;
-  font: 600 12px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #0f172a;
-  background: rgba(255, 255, 255, 0.82);
+  font: 600 var(--fs-12)/1 var(--font-body);
+  color: var(--text);
+  background: rgb(var(--ink-rgb) / 0.78);
   padding: 3px 7px;
   border-radius: 7px;
   backdrop-filter: blur(4px);

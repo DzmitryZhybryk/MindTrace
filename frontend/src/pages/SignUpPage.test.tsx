@@ -7,16 +7,13 @@ import { server, TEST_ACCESS_TOKEN } from "../test/handlers";
 import { makeAuthValue, renderRoutes, screen } from "../test/render";
 import { SignUpPage } from "./SignUpPage";
 
-// react-globe.gl тянет three.js/WebGL — в jsdom не рендерится и на поведение формы не влияет.
-vi.mock("react-globe.gl", () => ({ default: () => null }));
-
 /** Монтирует SignUpPage на /signup c landing-маркером "/" для наблюдения навигации. */
 function renderSignup() {
   const authValue = makeAuthValue({ setAccessToken: vi.fn() });
   const view = renderRoutes({
     element: <SignUpPage />,
     path: "/signup",
-    landings: [{ path: "/", label: "home-landing" }],
+    landings: [{ path: "/home", label: "home-landing" }],
     authValue,
   });
 
@@ -39,9 +36,16 @@ describe("SignUpPage", () => {
     expect(authValue.setAccessToken).toHaveBeenCalledWith(TEST_ACCESS_TOKEN);
   });
 
-  it("кнопка отправки заблокирована, пока не приняты условия", async () => {
+  it("кнопка отправки заблокирована, пока не заполнены поля и не приняты условия", async () => {
     const { user } = renderSignup();
 
+    expect(screen.getByRole("button", { name: "Create account" })).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Username"), "alice");
+    await user.type(screen.getByLabelText("Email"), "alice@example.com");
+    await user.type(screen.getByLabelText("Password"), "s3cret-pass");
+
+    // Поля заполнены, но согласия ещё нет — кнопка по-прежнему заблокирована.
     expect(screen.getByRole("button", { name: "Create account" })).toBeDisabled();
 
     await user.click(screen.getByRole("checkbox", termsCheckbox));
@@ -70,7 +74,11 @@ describe("SignUpPage", () => {
 
     try {
       await user.click(screen.getByRole("checkbox", termsCheckbox));
+      // Username заведомо коротковат (нужна ошибка), остальные поля — лишь бы кнопка
+      // разблокировалась: она ждёт заполненности, а валидность проверяет сабмит.
       await user.type(screen.getByLabelText("Username"), "ab");
+      await user.type(screen.getByLabelText("Email"), "alice@example.com");
+      await user.type(screen.getByLabelText("Password"), "s3cret-pass");
       await user.click(screen.getByRole("button", { name: "Create account" }));
 
       expect(await screen.findByText("Username must be at least 3 characters")).toBeInTheDocument();
@@ -89,10 +97,19 @@ describe("SignUpPage", () => {
   it("слишком длинные поля дают max-length ошибки и не отправляют запрос", async () => {
     const { user, authValue } = renderSignup();
 
+    // Вставка, а не посимвольный ввод: здесь проверяется ОГРАНИЧЕНИЕ ДЛИНЫ, а способ
+    // попадания текста в поле к этому отношения не имеет. `user.type` шлёт полный цикл
+    // событий на каждый символ — на 352 символах тест пробивал дефолтные 5 секунд под
+    // нагрузкой полного прогона с покрытием и утаскивал за собой следующий тест.
+    const fill = async (label: string, value: string) => {
+      await user.click(screen.getByLabelText(label));
+      await user.paste(value);
+    };
+
     await user.click(screen.getByRole("checkbox", termsCheckbox));
-    await user.type(screen.getByLabelText("Username"), "a".repeat(51));
-    await user.type(screen.getByLabelText("Email"), `${"a".repeat(250)}@example.com`);
-    await user.type(screen.getByLabelText("Password"), "a".repeat(51));
+    await fill("Username", "a".repeat(51));
+    await fill("Email", `${"a".repeat(250)}@example.com`);
+    await fill("Password", "a".repeat(51));
     await user.click(screen.getByRole("button", { name: "Create account" }));
 
     expect(await screen.findByText("Username must be at most 50 characters")).toBeInTheDocument();

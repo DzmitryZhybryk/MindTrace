@@ -27,5 +27,34 @@
   "error": {
     "title": "Something went wrong",
     "reload": "Reload page"
+  },
+  "pageTitle": {
+    "home": "Home",
+    "landing": "The world, the way you traveled it"
+  },
+  "home": {
+    "aura": "atmosphere · still",
+    "recommend": {
+      "title": "you might like",
+      "aria": "Recommended for you",
+      "caption": "Based on places you've rated — or travelers like you, until we know your taste",
+      "countries": "countries",
+      "cities": "cities"
+    },
+    "activity": {
+      "aria": "Activity"
+    },
+    "stats": {
+      "title": "achievements",
+      "countries": "Countries",
+      "cities": "Cities",
+      "streak": "Streak",
+      "visited": "{{count}} visited",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days"
+    },
+    "recent": {
+      "title": "recent"
+    }
   }
 }
