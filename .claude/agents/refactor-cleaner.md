@@ -36,7 +36,7 @@ uv run ruff check . --select ERA            # Commented-out code (eradicate)
 cd frontend && npx knip                                          # Unused files, exports, deps
 cd frontend && npx depcheck                                      # Unused npm dependencies
 cd frontend && npx ts-prune                                      # Unused TypeScript exports
-cd frontend && npx eslint . --report-unused-disable-directives   # Unused eslint directives
+cd frontend && npm run lint                                      # oxlint (config: frontend/.oxlintrc.json)
 ```
 
 ## Workflow

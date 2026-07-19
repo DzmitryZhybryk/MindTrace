@@ -54,7 +54,7 @@ make lint-fix                              # oxlint --fix (форматтера/
 make typecheck                             # tsc -b
 make test                                  # vitest run (один прогон)
 make coverage                              # vitest run --coverage
-make check                                 # lint + typecheck + test (CI-стиль)
+make check                                 # lint + typecheck + audit + test (CI-стиль; тот же таргет гоняет CI)
 
 # Database migrations — из backend/, против запущенного контейнера
 make migrate-create "description"          # создать миграцию (autogenerate)
