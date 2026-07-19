@@ -155,5 +155,14 @@ Note: the v8 **text** reporter silently hides files already at 100% — for exac
 активируется разово через `make hooks`). e2e в CI не гоняется — он поднимает свой одноразовый
 стек и запускается вручную через `make test-e2e`.
 
+Для цикла разработки есть `make test-e2e-dev` — гоняет по УЖЕ поднятому дев-стеку (`make run`),
+без подъёма и сноса окружения. Плата за скорость: тесты заводят пользователей в ДЕВ-базе, она не
+одноразовая. Сузить прогон — `E2E_ARGS="--project=chromium"`.
+
+**Браузеры Playwright живут на ХОСТЕ, а не в контейнере.** После обновления пакета (`npm ci`)
+бинарники под новую версию нужно доставить: `npx playwright install`. Симптом рассинхрона —
+«Executable doesn't exist at …/chromium_headless_shell-<N>», где N не совпадает с содержимым
+`~/Library/Caches/ms-playwright/`.
+
 Ручными остаются проверки, которых автотест не видит: визуал, Lighthouse, кросс-браузер,
 адаптив — см. [web/performance.md](../web/performance.md) → «UI Quality».
