@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Link, Route, Routes } from "react-router-dom";
+import { Link, Route, Routes } from "react-router";
 
 import { renderWithProviders, screen, waitFor } from "../test/render";
 import { PublicCrossfade } from "./PublicCrossfade";
