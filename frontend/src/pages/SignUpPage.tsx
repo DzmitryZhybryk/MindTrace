@@ -2,7 +2,7 @@ import { Anchor, Button, Checkbox, PasswordInput, Stack, TextInput } from "@mant
 import { useForm } from "@mantine/form";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { AuthCard } from "../components/AuthCard";
 import {
   authCheckboxClassNames,

@@ -1,7 +1,7 @@
 import { Avatar, Burger, Drawer, Group, Indicator, Menu, Stack, UnstyledButton } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { logout } from "../api/auth";
 import { useAuth } from "../auth/useAuth";

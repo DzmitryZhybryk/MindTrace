@@ -13,6 +13,10 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 ## 2026-08-02
 
+### Frontend 2.0.1
+
+- **Миграция `react-router-dom` 7.18.1 → `react-router` 8.3.0.** Закрывает high-severity advisory GHSA-qwww-vcr4-c8h2 (CSRF-обход в RSC-режиме), на котором падал `npm audit` в `make check`. Фикс есть только в ядре `react-router` (8.3.0), а `react-router-dom` заморожен на 7.18.2 и с v7 стал legacy-обёрткой, поэтому «поднять версию» невозможно — нужна миграция. По факту это чистая смена строки импорта в 17 файлах (`react-router-dom` → `react-router`): все используемые API (`BrowserRouter`, `Routes`, `Route`, `Link`, `NavLink`, `Navigate`, `Outlet`, `useLocation`, `useNavigate`, `useOutlet`, `MemoryRouter`) живут в ядре с неизменными сигнатурами. Сама уязвимость нас не касается (RSC не используем), но апгрейд убирает её из аудита и уводит с deprecated-пакета. Проверено: 241 тест, сборка, и навигация в реальном браузере под v8 (Link, deep-link + SPA-фолбэк, catch-all редирект)
+
 ### Backend 1.0.3
 
 - **Закрыты 9 уязвимостей в транзитивном `gitpython`** (GHSA-6p8h-3wgx-97gf и др.: command injection через git-опции, эксфильтрация env-переменных): 3.1.50 → 3.1.57, на этом падал `uv audit` в `make check-ci`. Пакет тянет `tach` (dev-инструмент проверки границ модулей), в прямых зависимостях его нет — апгрейд точечный, `uv lock --upgrade-package gitpython`. Тот же механизм, что с `click` в 1.0.2: `uv audit` ходит в живую базу, поэтому проходивший гейт краснеет сам по себе, когда публикуют новый advisory

@@ -20,7 +20,7 @@ import { type ReactElement, type ReactNode } from "react";
 import { MantineProvider } from "@mantine/core";
 import { render, screen, type RenderResult } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { vi } from "vitest";
 
 import { AuthProvider } from "../auth/AuthContext";

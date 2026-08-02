@@ -2,7 +2,7 @@ import { Button, Group, Select, Stack, Text } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { applyApiError, resolveErrorToken } from "../../api/errors";
 import { createJourney, TRANSPORT_TYPES, type PlaceSuggestion, type TransportType } from "../../api/journeys";

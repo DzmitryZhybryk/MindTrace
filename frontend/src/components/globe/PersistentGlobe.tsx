@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 
 import type { GlobePov } from "./GlobeCanvas";
 import { ROUTE_ARCS, ROUTE_CITIES } from "./routes";

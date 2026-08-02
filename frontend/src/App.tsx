@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { Center, Loader } from "@mantine/core";
 
 import { AuthProvider } from "./auth/AuthContext";

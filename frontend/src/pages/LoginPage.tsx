@@ -2,7 +2,7 @@ import { Button, PasswordInput, Stack, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { AuthCard } from "../components/AuthCard";
 import { authInputClassNames, authPasswordClassNames } from "../components/authInputClasses";
 import { AuthLayout } from "../components/AuthLayout";
