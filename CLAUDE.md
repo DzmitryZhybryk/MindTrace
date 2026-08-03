@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MindTrace is a FastAPI service (Python 3.14+, async) using Domain-Driven Design. Package manager is **uv**. Database is PostgreSQL via SQLAlchemy 2.0 async (typed ORM: `DeclarativeBase` + `Mapped`/`mapped_column`). Runs in Docker with a Loki/Promtail/Grafana logging stack.
 
+### Архитектурная политика (осознанные решения владельца)
+
+- **Монолит сейчас, готовность к распилу потом.** Любой домен должен извлекаться в отдельный сервис без редизайна. Cross-domain связи делаются явными и узкими (`InternalUsersClient` мимикрирует под будущую HTTP-границу). Связность оценивать против этой цели.
+- **Overengineering допустим.** Пет-проект без дедлайна: нужен архитектурно чистый код, переживающий распил, а не прагматичные сокращения. Не предлагать «тебе это пока не нужно» — только если абстракция активно вредит (запутывает вместо прояснения).
+
 ## Repository layout
 
 Монорепо разделено на самодостаточные части:
@@ -63,18 +68,26 @@ make migrate-create "description"          # создать миграцию (au
 make migrate-upgrade                       # применить миграции
 make migrate-downgrade                     # откатить одну
 make migrate-history                       # история миграций
+
+# Доступ к ДЕВ-базе (для EXPLAIN, инспекции схемы). Прода на этом хосте нет.
+# POSTGRES_HOST=mindtrace_pg работает только ВНУТРИ docker-сети; с хоста порт проброшен на 5439.
+docker compose exec postgres psql -U mindtrace -d mindtrace   # изнутри контейнера (проще всего)
+psql -h localhost -p 5439 -U mindtrace -d mindtrace           # с хоста
+
+# SQL миграции без применения — для проверки блокировок
+cd backend && uv run alembic upgrade <base>:<head> --sql
 ```
 
 ## Architecture
 
-The project follows DDD with **domain-based** module organization. Each domain (users, auth) is self-contained with four layers:
+DDD с **доменной** организацией модулей (`auth`, `users`, `geo`), каждый домен — четыре слоя
+`domain/` / `application/` / `infra/` / `presentation/`. Слои, порты (DIP), транзакционная
+граница UoW и правила именования вынесены в **@~/.claude/rules/python/ddd.md**, конвенции
+переноса данных между слоями (pydantic vs dataclass, `*Command`/`*Result`/`*Request`/`*Response`,
+где валидация, кто маппит) — в **@~/.claude/rules/python/dto.md**. Оба подключены в конце этого
+файла и являются источником истины по своим темам. Ниже — только то, что специфично для MindTrace.
 
-- **domain/** -- Pure business logic: entities, value objects. No infrastructure imports.
-- **application/** -- Use cases/services, DTOs, and **outbound ports** (`ports.py`): the `Protocol`s (repositories, UnitOfWork, external clients) the services depend on.
-- **infra/** -- SQLAlchemy DB models plus the **implementations** of those application ports (repositories, UnitOfWork, clients). By DIP `infra` imports the port from `application` and implements it — never the reverse.
-- **presentation/** -- FastAPI routes, HTTP request/response schemas, dependencies.
-
-Presentation schemas are separate from application DTOs to prevent abstraction leakage. Conversion happens in the presentation layer.
+Технологическая привязка слоёв: `infra/` — SQLAlchemy-модели, `presentation/` — FastAPI-роуты.
 
 ### Shared infrastructure (`app/shared/`)
 
@@ -94,137 +107,23 @@ Presentation schemas are separate from application DTOs to prevent abstraction l
 
 #### Component+Registry vs `@cache`-factory (когда что)
 
-Инфраструктура **с lifecycle-ресурсом** (PG-пул, httpx-пул, procrastinate-app, smtp-соединение) — `BaseComponent` + регистрация в `ComponentRegistry`. Composition root собирает компоненты в порядке зависимостей и вызывает `startup`/`shutdown`. Пример: `SqlAlchemyComponent`, `ResendComponent`, `ProcrastinateComponent`, `TaskBusComponent`.
+Критерий выбора и правила composition root — в @~/.claude/rules/python/component-lifecycle.md
+(этот проект и есть его reference implementation). Здесь — только распределение:
 
-Stateless infra **без сетевого ресурса** (`JWTService`, `Argon2SaltedHasher`, `Sha256DeterministicHasher`) — `@cache`-factory `get_<name>()` рядом с классом в том же модуле (см. `app/shared/infra/jwt/service.py`, `app/shared/infra/crypto/argon2.py`). Component тут не нужен — нечего startup'ить и нечего shutdown'ить, но singleton всё равно полезен: hasher'ы и `JWTService` thread-safe и пересоздавать их на каждый запрос бессмысленно. Presentation-dependency импортирует **factory**, а не конструктор — это снимает дубли инстансов на запрос и даёт единое место для override в тестах.
+- **Компоненты** (lifecycle-ресурс): `SqlAlchemyComponent`, `ResendComponent`, `ProcrastinateComponent`, `TaskBusComponent`.
+- **`@cache`-фабрики** `get_<name>()` рядом с классом: `get_jwt_service` (`app/shared/infra/jwt/service.py`), `get_argon2_salted_hasher` (`app/shared/infra/crypto/argon2.py`), `Sha256DeterministicHasher`. Presentation-dependency импортирует **фабрику**, а не конструктор.
 
 ### Key patterns
 
 - All DB operations are async (psycopg3 async driver — выбран для atomic defer procrastinate в SA-транзакции).
 - `Password` — тонкий value object вокруг argon2-хеша (`_hash: str` + `@property hash`). Само хеширование делает `SaltedHasherPort` снаружи (infra-protocol); VO нужен как type-level marker «эта строка — argon2-hash, а не любой str» и чтобы entity не зависел от crypto-protocol'а.
 - FastAPI dependencies chain: session -> UnitOfWork -> Service (см. `presentation/dependencies.py` в каждом домене).
-- **Транзакционная граница (UoW)**: один use-case = `async with uow.transaction(): … await uow.commit()` (rollback-by-default async-CM из `BaseUnitOfWork`: область видна по блоку, `commit()` — явная фиксация; выход без commit'а / исключение → rollback). **Владелец commit'а = входная точка use-case'а** (`AuthService.register`); cross-domain участник (`UserService.create_user`) пишет в общую request-scoped сессию и **НЕ коммитит** — всё фиксируется одним commit'ом атомарно (Option A, см. memory `project_register_transaction_model`). Cross-domain wiring идёт через `presentation` другого домена (`user_service_dependency`), **не** через его `infra`.
+- **Транзакционная граница (UoW)** — общее правило в ddd.md; здесь реализация: rollback-by-default async-CM из `BaseUnitOfWork`. Канонический пример владения commit'ом — `AuthService.register` (входная точка коммитит) + `UserService.create_user` (cross-domain участник, пишет в общую request-scoped сессию и НЕ коммитит); Option A, см. memory `project_register_transaction_model`. Cross-domain wiring — через `presentation` другого домена (`user_service_dependency`).
 - App factory pattern: `create_app()` в `app/main.py`, invoked by uvicorn with `--factory`.
 - Routers mounted at `/v1/{domain}` (e.g., `/v1/auth`).
-- **Outbound ports (DIP)**: доменно-специфичные исходящие зависимости (репозитории, UnitOfWork, клиенты к другим сервисам) объявлены как `Protocol` в `application/ports.py`; `infra` их реализует (`infra → application`, не наоборот). Сервисы и тестовые фейки опираются на порт, а не на конкретику. Shared cross-cutting инфраструктура (`crypto`, `jwt`, `procrastinate`) — исключение: там протоколом владеет сама вертикаль в `shared/infra/` (см. Shared infrastructure), порт в application не заводится. **Любой класс-наследник `typing.Protocol` (и application-порт, и shared-протокол вертикали) именуется с суффиксом `Port`** (`SaltedHasherPort`, `TaskBusPort`, `RefreshTokenRepositoryPort`), реализация — без него (`Argon2SaltedHasher`, `ProcrastinateTaskBus`, `RefreshTokenRepository`): по имени сразу видно, контракт это или реализация.
+- **Outbound ports — исключение из ddd.md**: shared cross-cutting инфраструктура (`crypto`, `jwt`, `procrastinate`) порт в `application/ports.py` НЕ заводит — протоколом владеет сама вертикаль в `shared/infra/` (см. Shared infrastructure выше). Правило суффикса `Port` при этом действует и на них.
 - **TaskBusPort pattern** для procrastinate: вне tx — `await task_bus.defer(task=...)`; в tx — `async with uow.transaction(): await task_bus.bind_to(uow.session).defer(task=...); await uow.commit()` (один commit фиксирует и pending writes, и procrastinate-job).
 - **Composition root** (`app/main.py`) собирает компоненты в порядке зависимостей: postgres → email/resend → procrastinate → task_bus (TaskBusComponent читает ProcrastinateApp из registry).
-
-### DTO conventions: pydantic vs dataclass
-
-Application и infra-слои оперируют разными типами транспортных объектов. Чтобы выбор между `pydantic.BaseModel` и `@dataclass` не зависел от настроения автора, действует одно правило:
-
-> **Pydantic используется только тогда, когда есть что валидировать или нести семантически.** Во всех остальных случаях транспортный объект — `@dataclass(frozen=True, slots=True)`.
-
-Что считается «есть что валидировать или нести семантически»:
-
-- семантические типы (`EmailStr`, `SecretStr`, `HttpUrl`, кастомные validators);
-- парсинг из недоверенного источника (HTTP body, внешний API, очередь) — pydantic выступает границей валидации;
-- участие схемы в OpenAPI (FastAPI `response_model`, request body) — нужен JSON Schema.
-
-Если ничего из этого нет, транспортный объект — `dataclass`. Конверсия в pydantic-схему на границе HTTP остаётся однострочной: `Schema.model_validate(obj, from_attributes=True)` работает с любым объектом по `getattr`.
-
-Это правило действует **только для транспортных объектов** (DTO между слоями, Result сервисов, входные контракты infra-клиентов). Не применять к:
-
-- **HTTP request/response (presentation)** — всегда pydantic, это граница системы.
-- **Domain entities** — не dataclass и не pydantic. Entity несёт поведение и инкапсуляцию (приватные поля + `@property`), это не транспортный тип.
-- **Value objects** — обычные классы с инвариантами в конструкторе.
-
-### Service Result convention
-
-Сервисы (application-слой) возвращают результаты use case'а как именованные объекты с суффиксом `*Result`. Это стабильная точка между application и presentation: presentation конвертирует `*Result` в HTTP-ответ, никогда не возвращает entity или value object наружу.
-
-Тип `*Result` выбирается по правилу выше: dataclass по умолчанию, pydantic — если внутри есть семантические типы или валидация. Допустимо иметь в одном проекте часть `*Result` как dataclass, часть как pydantic — это не несогласованность, а осмысленная разметка по правилу.
-
-### Service Command convention
-
-Симметрично выходу: входной DTO use case'а (то, что route передаёт в сервис) именуется с суффиксом `*Command`, если это **намерение пользователя** на конкретный сценарий. Каноничный CQRS-стиль `<Verb><Noun>Command` предпочтительнее: `CreateUserCommand`, `RegistrationCommand`, `VerifyEmailCommand`. Это убирает двусмысленность с domain entity (`Registration` звучит как сущность, `RegistrationCommand` — нет) и даёт симметрию `*Command` → service → `*Result`.
-
-Исключение: ambient-метадата запроса (IP, user-agent, транспортные идентификаторы вызывающего) — это **не** Command. Такие объекты именуются `*Metadata` / `*Context` без суффикса `Command` (например, `ClientMetadata`).
-
-Конверсия presentation-схемы (`*Request`) в `*Command` живёт в route одной строкой: `RegistrationCommand.model_validate(body, from_attributes=True)`.
-
-### Infra-clients: `*Request` / `*Response`
-
-Контракты с внешним сервисом (модули `infra/clients/<service>_client.py`) именуются `<Verb><Noun>Request` / `<Verb><Noun>Response`. Это совпадает с конвенциями OpenAPI codegen, gRPC, AWS SDK — любой Python-разработчик читает `CreateUserRequest` в `infra/clients/` сразу как «контракт исходящего вызова».
-
-Совпадение суффикса с `presentation/schemas.py` намеренное: **слой задаёт направление**.
-
-| Слой | Что значит `*Request` | Что значит `*Response` |
-|---|---|---|
-| `presentation/schemas.py` | приходит **к нам** (HTTP body) | мы **возвращаем** (HTTP response) |
-| `infra/clients/*.py` | мы **отправляем** во внешний сервис | приходит **нам** в ответ |
-
-Двусмысленности нет, потому что путь импорта однозначно указывает роль (`from app.auth.presentation.schemas import RegisterRequest` vs `from app.auth.infra.clients.internal_users_client import CreateUserRequest`).
-
-### Именование методов репозиториев
-
-**Имя метода репозитория (и парного метода в `*RepositoryPort` и в фейке) всегда содержит сущность/агрегат, над которым работает.** Имя самодостаточно и грепается по имени сущности. Паттерн:
-
-> `<verb>_<entity>[_<qualifier>]`
-
-- **verb** — операция: `insert` / `find` / `update` / `revoke` / `search` / `delete` …
-- **entity** — доменное существительное, которым владеет репозиторий (`challenge`, `refresh_token`, `user_credentials`, `place`); **множественное число для bulk-операций** над многими строками (`revoke_all_active_refresh_tokens_by_user_id`).
-- **qualifier** (опционально) — уточнение выборки/состояния/блокировки: `by_id`, `by_hash`, `by_user_id`, `by_email_or_username`, `active`, `for_update`.
-
-Правильно (эталон — `ChallengeRepository`):
-
-```python
-insert_challenge(challenge_entity)
-find_active_challenge_for_update(user_id, challenge_type)
-update_challenge_by_id(challenge_entity)
-find_refresh_token_by_hash_for_update(token_hash)
-revoke_all_active_refresh_tokens_by_user_id(user_id)
-find_user_credentials_by_user_id(user_id)
-search_places_by_name(search_text, limit)
-```
-
-Антипаттерн — сущность пропущена, по имени непонятно, что именно ищем/меняем, и нельзя грепнуть по сущности:
-
-```python
-find_by_hash_for_update(token_hash)      # что find'им по хэшу?
-revoke_all_active_by_user_id(user_id)    # что revoke'аем?
-```
-
-Зачем так:
-
-1. **Грепаемость** — `grep find_refresh_token_by_hash_for_update` или просто по `refresh_token` находит все вызовы метода/сущности разом.
-2. **Различимость Protocol'ов** — имя с сущностью гарантированно уникально между близкими репозиториями, что снимает риск structural-typing-подмены реализаций (см. memory `feedback_protocol_method_names`).
-3. **Само-документируемость на call-site** — `uow.refresh_token_repository.find_refresh_token_by_hash_for_update(...)` читается целиком; кажущаяся избыточность с именем атрибута намеренная и дешёвая.
-
-### Именование методов entity
-
-Симметрично репозиториям, но **правило обратное** — и это не противоречие: граница проходит по **получателю метода**.
-
-> **Имя сущности попадает в имя метода только если получатель метода — НЕ эта сущность.**
-
-- **Метод на самой entity** (получатель `self`/`cls` — это уже *и есть* сущность) → **голое имя**, получателя не повторяем: `refresh_token_entity.revoke()`, `challenge_entity.mark_used()`, `user_credentials_entity.ensure_not_verified()`, фабрика `UserEntity.create()` (а НЕ `create_user_entity` / `create_new_user_entity`).
-- **Метод на репозитории** (отдельный gateway *над* сущностями; UoW агрегирует несколько репо) → **с именем сущности** (см. секцию выше): `insert_refresh_token(...)`.
-
-Тест одной фразой: «получатель метода — сама сущность?» → да ⇒ голо; нет (репо/коллаборатор над сущностями) ⇒ с именем сущности.
-
-Зачем так: на entity `self`/`cls` уже *и есть* сущность — имя в методе даёт 0 бит (стандартное «не заикаться типом получателя»: `list.append()`, а не `list.append_to_list()`). У репозитория различать есть что — один UoW держит несколько репо, `_refresh_token` vs `_user_credentials` реально различает. Маркер «это доменная операция над entity» переносится не в имя метода, а в **имя переменной** (см. ниже) — там он объявляется один раз и виден на каждом call-site.
-
-### Cводная таблица именования по слоям
-
-| Слой | Вход | Выход |
-|---|---|---|
-| `presentation/schemas.py` (HTTP-граница нашего сервиса) | `*Request` | `*Response` |
-| `application/schemas.py` (use case'ы) | `*Command` (или `*Metadata`/`*Context` для ambient) | `*Result` |
-| `infra/clients/*.py` (исходящие вызовы внешних сервисов) | `*Request` | `*Response` |
-| `domain/entities/*.py`, `domain/value_objects.py` | без суффиксов | без суффиксов |
-
-### Именование переменных, держащих доменные типы (layer-суффикс)
-
-В DDD один концепт сосуществует несколькими типами по слоям (`UserEntity` domain / ORM-`User` infra / `CreateUserCommand` app), часто в одной функции-маппере. Чтобы на call-site было видно, *какое представление* в руках — и чтобы доменные/фабричные методы читались как доменные (`refresh_token_entity.revoke()`) — переменная/параметр, держащие доменный тип, несут **суффикс слоя**:
-
-- **domain entity** → `<concept>_entity`: `user_entity`, `refresh_token_entity`, `user_credentials_entity`, `challenge_entity`, `journey_entity`.
-- **ORM-модель (SQLAlchemy)** → `<concept>_model`: `user_model`, `refresh_token_model` (парно к `_entity`; ценнее всего в мапперах, где оба типа рядом).
-- **DTO/схемы** обычно однозначны по контексту (тип несёт `*Command`/`*Result`/`*Request`); суффикс на переменной — только при коллизии с другим представлением.
-
-Распространяется на **локальные переменные И параметры** (в т.ч. параметры репо-методов, `*RepositoryPort`, фейков и мапперов): `insert_refresh_token(refresh_token_entity=...)`, маппер `_to_entity(*, <concept>_model=...)`.
-
-Оговорка: это маркер **слоя доменного концепта**, а не «тип в имени вообще» — не `count_int` / `name_str`. Для не-доменных примитивов имя остаётся смысловым без суффикса типа.
 
 ## Code Style
 
@@ -301,21 +200,29 @@ return default_handler
 
 ## Git
 
+### Branch naming
+
+Ветки называются `<type>/<kebab-описание>`: тип — из того же набора, что и у коммитов (см. ниже), описание — короткий kebab-case суть-изменения. Ticket ID / номера задач **не используются**.
+
+Examples:
+
+- `feat/app-global-globe`
+- `fix/gitpython-advisory`
+- `perf/globe-webp-textures`
+- `chore/backend-consistency`
+
 ### Commit message format
 
-Conventional Commits со scope из ticket ID:
-
-`<type>(<DEV-XXX>): <description>`
-
-Где `DEV-XXX` — номер задачи из имени ветки (`DEV-123/create_user` → `DEV-123`).
+Conventional Commits: `<type>(<scope>): <description>`. `scope` **опционален** и обозначает область монорепо (`frontend` / `backend`); для repo-уровневых изменений (тулинг, CI, dependabot) scope опускается. Ticket ID в scope **не используется**.
 
 Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`.
 
 Examples:
 
-- `feat(DEV-18): add email verification endpoint`
-- `chore(DEV-16): bump fastapi to 0.115`
-- `refactor(DEV-123): extract password hashing into value object`
+- `feat(frontend): add app-global globe background`
+- `fix(backend): закрыть уязвимости в транзитивном gitpython`
+- `refactor(backend): extract password hashing into value object`
+- `chore: bump the npm-minor-patch group`
 
 ### Versioning & changelog
 
@@ -352,6 +259,14 @@ Python (бэкенд `app/`, `tests/`, `migrations/`):
 @.claude/rules/python/security.md
 @.claude/rules/python/testing.md
 
+DDD-конвенции (слои, порты, UoW, именование), перенос данных между слоями (DTO) и composition
+root (выбор component/`@cache`, порядок старта) — **личные файлы вне репозитория**,
+переиспользуются другими проектами:
+
+@~/.claude/rules/python/ddd.md
+@~/.claude/rules/python/dto.md
+@~/.claude/rules/python/component-lifecycle.md
+
 TypeScript / React (фронтенд `frontend/src/`):
 
 @.claude/rules/typescript/coding-style.md
@@ -361,12 +276,30 @@ TypeScript / React (фронтенд `frontend/src/`):
 
 @.claude/rules/web/performance.md
 
-> **Приоритет при конфликтах:** правила, описанные выше в этом файле (DTO conventions, Service Result, Code Style, Docstrings, Named arguments), всегда побеждают над общими rules из `.claude/rules/`. Подключённые rules — это базовый каркас; конкретика проекта в первой части CLAUDE.md является источником истины.
+> **Приоритет при конфликтах:** правила, описанные выше в этом файле (Code Style, Docstrings, Named arguments, Shared infrastructure), всегда побеждают над подключёнными rules. Подключённые rules — базовый каркас; конкретика проекта в первой части CLAUDE.md является источником истины.
+>
+> **Файлы из `~/.claude/rules/`** (`ddd.md`, `dto.md`, `component-lifecycle.md`) живут вне репозитория, поэтому у клонировавшего репо они не разрешатся: в CLAUDE.md останутся ссылки на файлы, которых у него нет. Конвенции при этом видны по коду и по `.claude/rules/python/testing.md`.
 
 ## Available toolkit
 
-Скиллы и команды загружены из `extracted-cc-toolkit` (Python+React набор). Полезное:
+- **Команды:** проектных нет. `/feature-plan` (пофазный план с чекпоинтами и state-файлом `.claude/.current-plan.md`) живёт глобально в `~/.claude/skills/`; политику версионирования и CHANGELOG он берёт из секции «Versioning & changelog» выше.
+- **Кастомные скиллы проекта:** `backend-tests` (unit-тесты бэкенда), `seo-meta-tags` (head-теги для `index.html`), `style-audit` (аудит дизайн-токенов фронтенда)
+- **Агенты:** проектных нет. `architecture-reviewer` (глубокий аудит архитектуры, read-only) живёт глобально в `~/.claude/agents/` и доступен во всех проектах; политику, по которой он судит этот проект, он берёт из секции «Архитектурная политика» выше.
 
-- **Команды:** `/python-review`, `/plan`
-- **Кастомные скиллы проекта:** `seo-meta-tags` (head-теги для `index.html`), `style-audit` (аудит дизайн-токенов фронтенда)
-- **Агенты:** `python-reviewer`, `typescript-reviewer`, `database-reviewer`, `build-error-resolver`, `refactor-cleaner`
+Ревью кода — встроенными командами: `/code-review` (баги в текущем диффе) и `/security-review`
+(уязвимости). Кастомные ревьюеры удалены: механику ловят `make lint` / `make typecheck`,
+а дублирующие агент-файлы устаревали незамеченными.
+
+### Поиск мёртвого кода
+
+```bash
+cd backend && uv run vulture app/ vulture_whitelist.py   # unused функции/классы (min_confidence=60)
+cd backend && uv run ruff check . --select F401,ERA      # unused импорты + закомментированный код
+cd frontend && npx knip                                  # unused файлы, экспорты, зависимости
+cd frontend && npx ts-prune                              # unused TS-экспорты
+cd frontend && npx depcheck                              # unused npm-зависимости
+```
+
+Ложные срабатывания vulture (динамические импорты, FastAPI-роуты) — в `vulture_whitelist.py`,
+не понижением `min_confidence`. Удалять батчами: сначала зависимости, потом экспорты, потом
+файлы; после каждого батча — тесты и коммит.

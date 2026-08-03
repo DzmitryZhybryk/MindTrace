@@ -2,7 +2,7 @@
 
 > Extends [common/coding-style.md](../common/coding-style.md) for the backend test suite (`backend/tests/`).
 > This file is the **source of truth** for *how we test the backend*. The `backend-tests`
-> skill executes against these rules; `/plan` reads them when planning test work.
+> skill executes against these rules; `/feature-plan` reads them when planning test work.
 > All commands run from `backend/` (self-contained uv project).
 
 ## Testing pyramid (what lives where)
