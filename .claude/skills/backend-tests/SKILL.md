@@ -27,8 +27,10 @@ Protocols, determinism, coverage, anti-patterns).
 1. **Locate the target.** Read the code under test in `backend/app/<domain>/<layer>/`. Identify
    branches/invariants worth covering (e.g. `AuthService.refresh` reuse-detection, timing
    mitigation in `login`, idempotent `revoke()`).
-2. **Mirror the layout.** Create the test at `backend/tests/unit/<domain>/<layer>/test_<unit>.py`
-   and tag it `@pytest.mark.unit`.
+2. **Mirror the layout.** Place the test at the path the existing suite dictates — read
+   `backend/tests/` rather than assuming. **Never hand-tag markers:** the
+   `pytest_collection_modifyitems` hook in `tests/conftest.py` applies level and domain markers
+   from the file path.
 3. **Prepare fakes (boundary only).**
    - Reuse / add an in-memory fake in `backend/tests/fakes/` (repositories, clients, `TaskBusPort`,
      hashers). Back repositories with a `dict`; `FakeSaltedHasher` avoids real argon2.
@@ -50,17 +52,11 @@ Protocols, determinism, coverage, anti-patterns).
    make lint                        # ruff (PT rules included)
    make typecheck                   # ty — catches fake/Protocol drift
    ```
-7. **Coverage (optional).** `uv run pytest -m unit --cov=app --cov-report=term-missing`. Report
-   gaps; do **not** add `--cov-fail-under` until a baseline exists.
-8. **Review (optional).** For non-trivial additions, delegate to the `python-reviewer` agent (same
-   way `/plan` finishes with `python-review`).
-
-## First-run scaffolding
-
-If `backend/tests/` has only `test_smoke.py`, lay the groundwork before the first real test:
-`tests/{unit,integration,api}/`, `tests/fakes/`, `tests/builders.py`, root + per-domain
-`conftest.py`, register pytest markers and add `pytest-cov` to the dev group in `pyproject.toml`,
-and add a `make test-unit` target.
+7. **Coverage.** `make coverage`. The 90% threshold is already enforced (`--cov-fail-under=90`
+   in the Makefile, forced by the pre-push hook) — below it the code does not merge, so check
+   before pushing rather than after.
+8. **Review (optional).** For non-trivial additions, ask the user to run `/code-review` — it
+   reviews the diff in a fresh subagent. It is user-invoked; you cannot launch it yourself.
 
 ## Notes
 

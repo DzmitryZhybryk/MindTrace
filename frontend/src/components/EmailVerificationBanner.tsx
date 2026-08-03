@@ -1,5 +1,5 @@
 import { ActionIcon, Button, Group, Text } from "@mantine/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { dismissVerifyBanner, isVerifyBannerDismissed } from "../auth/verifyBannerStorage";
@@ -11,6 +11,19 @@ interface EmailVerificationBannerProps {
 export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBannerProps) {
   const { t } = useTranslation("auth");
   const [dismissed, setDismissed] = useState<boolean>(() => isVerifyBannerDismissed());
+
+  useEffect(() => {
+    if (dismissed) {
+      return;
+    }
+
+    // Пока баннер виден, помечаем body. На /home по этому классу глобус-фон опускается и мельчает,
+    // освобождая сверху место под баннер (см. persistent-globe.css); снятие класса при закрытии/
+    // размонтировании возвращает планете полную высоту — приветствие уезжает вверх, глобус растёт.
+    // На других экранах класс безвреден (никто на него не завязан).
+    document.body.classList.add("has-verify-banner");
+    return () => document.body.classList.remove("has-verify-banner");
+  }, [dismissed]);
 
   if (dismissed) {
     return null;
@@ -26,6 +39,10 @@ export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBann
       aria-label={t("verificationBanner.regionLabel")}
       style={{
         position: "relative",
+        // На /home `.home-main` выведён из потока (position:absolute) и лёг бы ПОВЕРХ баннера,
+        // перехватывая клики по «Подтвердить»/×. z-index поднимает баннер над ним — он всплывает
+        // сверху. На Journeys баннер в потоке, z-index там ни на что не влияет.
+        zIndex: 2,
         width: "100%",
         // Информационная полоса на ночной поверхности: тонированная закатом, а не
         // залитая светлым. Кремовая заливка светлой схемы читалась ярким слепком

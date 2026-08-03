@@ -3,17 +3,8 @@
   min-height: 100vh;
 }
 
-/* Контент над фиксированным глобусом (`.persistent-globe` z-index: 0). */
+/* Контент над фиксированным глобусом-фоном (корневой `.persistent-globe`, z-index: 0). */
 .public-layout__content {
   position: relative;
   z-index: 1;
-}
-
-/* Заглушка на месте глобуса при сбое WebGL — тот же тёмный фон, что и у него самого,
-   чтобы светлый контент не оказался на белом и не «моргнул» вёрсткой. */
-.public-layout__globe-fallback {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background: var(--night-bg);
 }

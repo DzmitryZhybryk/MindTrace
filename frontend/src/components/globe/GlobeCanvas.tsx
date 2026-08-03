@@ -3,7 +3,7 @@ import Globe, { type GlobeMethods } from "react-globe.gl";
 
 import { GLOBE_ATMOSPHERE_COLOR, GLOBE_BUMP_URL, GLOBE_TEXTURE_URL } from "./constants";
 import { applyLabelVisibility, createGlobeLabel } from "./globeLabel";
-import type { City, RouteArc } from "./routes";
+import type { GlobeCity, RouteArc } from "./routes";
 import "./globe-label.css";
 import "./globe-canvas.css";
 
@@ -23,11 +23,13 @@ interface GlobeCanvasProps {
   /** Дуги маршрутов (`arcsData`); по умолчанию нет. */
   arcs?: RouteArc[];
   /** Города-концы для подписей (точка + название с окклюзией); по умолчанию нет. */
-  labelCities?: City[];
+  labelCities?: GlobeCity[];
   /** Автовращение (гасится при prefers-reduced-motion). */
   autoRotate?: boolean;
   /** Точка обзора камеры. Первая установка мгновенна, смена — плавный перелёт. */
   pov?: GlobePov;
+  /** Спрятан роутом (например, `/journeys`) — пауза рендера, чтобы WebGL не крутил вхолостую. */
+  paused?: boolean;
 }
 
 const DEFAULT_POV: GlobePov = { lat: 22, lng: 24, altitude: 2.3 };
@@ -37,33 +39,34 @@ const POV_FLIGHT_MS = 1400;
 const ARC_COLOR: [string, string] = ["rgba(246, 177, 122, 0.95)", "rgba(111, 143, 214, 0.55)"];
 // Стабильные пустые ссылки — чтобы дефолты не пересоздавали массивы на каждый рендер.
 const EMPTY_ARCS: RouteArc[] = [];
-const EMPTY_CITIES: City[] = [];
+const EMPTY_CITIES: GlobeCity[] = [];
 
 /*
  * Аксессоры — модульные константы, а НЕ стрелки в JSX. globe.gl сравнивает аксессоры по
  * идентичности: новая функция на каждый рендер читается как «правило отрисовки сменилось»,
  * и слой перестраивается целиком. Для `htmlElement` это значит снос и пересборку DOM всех
  * подписей — на ровном месте, просто потому что родитель перерисовался (а он перерисовывается
- * на каждой смене маршрута: `PersistentGlobe` сидит на `useLocation`).
+ * на каждой смене маршрута: `PersistentGlobeHost` сидит на `useLocation`).
  */
 const arcColorAccessor = (): [string, string] => ARC_COLOR;
 const arcDashInitialGapAccessor = (d: object): number => (d as RouteArc).dashInitialGap;
-const cityLatAccessor = (d: object): number => (d as City).lat;
-const cityLngAccessor = (d: object): number => (d as City).lng;
-const cityLabelAccessor = (d: object): HTMLElement => createGlobeLabel((d as City).name);
+const cityLatAccessor = (d: object): number => (d as GlobeCity).lat;
+const cityLngAccessor = (d: object): number => (d as GlobeCity).lng;
+const cityLabelAccessor = (d: object): HTMLElement => createGlobeLabel((d as GlobeCity).name);
 
 /**
  * Общая база декоративного 3D-глобуса (signature продукта). Инкапсулирует замер
  * контейнера, тёплую тонировку, атмосферу, блок зума скроллом, reduced-motion,
  * автовращение и перелёты камеры (pov). Опционально рисует дуги маршрутов и подписи
- * городов-концов (HTML-метки с окклюзией дальней стороны). Потребители — HomeGlobe,
- * hero лендинга, персистентный глобус auth-зоны.
+ * городов-концов (HTML-метки с окклюзией дальней стороны). Потребители — app-global
+ * глобус-фон (`PersistentGlobeHost`) и интерактивный предпросмотр поездки (`JourneyGlobe`).
  */
 export function GlobeCanvas({
   arcs = EMPTY_ARCS,
   labelCities = EMPTY_CITIES,
   autoRotate = true,
   pov = DEFAULT_POV,
+  paused = false,
 }: GlobeCanvasProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -127,26 +130,32 @@ export function GlobeCanvas({
    */
 
   /*
-   * Скрытая вкладка не должна крутить WebGL. Сам по себе rAF в фоне тормозится браузером,
-   * но не гарантированно (в фоновом окне поверх другого он продолжает идти), а сцена здесь
-   * анимирована всегда: автовращение плюс бегущий пунктир дуг. Останавливаем явно — это
-   * заметная разница по батарее на вкладке, забытой открытой.
+   * WebGL не должен крутиться впустую в двух случаях: вкладка скрыта ИЛИ глобус спрятан
+   * роутом (`paused`, например на /journeys, где он за непрозрачной ночью экрана). Сам по себе
+   * rAF в фоне тормозится браузером негарантированно (в фоновом окне поверх другого идёт), а
+   * сцена анимирована всегда (автовращение + пунктир дуг). Останавливаем явно — заметная
+   * разница по батарее и один живой WebGL-контекст на всё приложение.
    */
   useEffect(() => {
-    const handleVisibility = () => {
+    const applyPlayState = () => {
       const globe = globeRef.current;
       if (!globe) return;
 
-      if (document.hidden) {
+      if (paused || document.hidden) {
         globe.pauseAnimation();
       } else {
         globe.resumeAnimation();
       }
     };
 
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, []);
+    applyPlayState();
+    document.addEventListener("visibilitychange", applyPlayState);
+    return () => document.removeEventListener("visibilitychange", applyPlayState);
+    // size.* в зависимостях НЕ для галочки: `<Globe>` рендерится лишь после первого замера
+    // контейнера, поэтому на первом рендере `globeRef` пуст и applyPlayState впустую выходит.
+    // Без пере-применения по факту появления инстанса прямой заход на /journeys (там globe
+    // спрятан visibility:hidden, но коробка есть → size>0) поднял бы rAF глобуса при paused=true.
+  }, [paused, size.width, size.height]);
 
   return (
     <div ref={containerRef} className="globe-canvas">
@@ -169,7 +178,7 @@ export function GlobeCanvas({
           arcDashGap={0.35}
           arcDashInitialGap={arcDashInitialGapAccessor}
           arcDashAnimateTime={reducedMotion ? 0 : 3800}
-          arcsTransitionDuration={0}
+          arcsTransitionDuration={reducedMotion ? 0 : 1200}
           htmlElementsData={labelCities}
           htmlLat={cityLatAccessor}
           htmlLng={cityLngAccessor}

@@ -1,12 +1,7 @@
-import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AppHeader } from "../components/AppHeader";
-import { ErrorBoundary } from "../components/ErrorBoundary";
 import "./home.css";
-
-// Декоративный 3D-глобус — отдельный chunk, грузится лениво после рендера страницы.
-const HomeGlobe = lazy(() => import("../components/HomeGlobe").then((m) => ({ default: m.HomeGlobe })));
 
 /*
  * ЗАГЛУШКИ. Дашборд ещё не подключён к бэку: ни статистики, ни рекомендаций, ни списка
@@ -60,14 +55,10 @@ export function HomePage() {
           <span className="home-greeting__date">{GREETING_DATE}</span>
         </div>
 
-        <div className="home-stage">
-          {/* WebGL-сбой не должен ронять Home — fallback оставит тёмный диск стейджа со свечением. */}
-          <ErrorBoundary fallback={null}>
-            <Suspense fallback={null}>
-              <HomeGlobe />
-            </Suspense>
-          </ErrorBoundary>
-        </div>
+        {/* Пустой центральный слот: место, где визуально стоит app-global глобус-фон (корневой
+            PersistentGlobeHost, кадрируется по data-screen="home"). Держит вертикальный ритм
+            greeting → планета → подпись; сам прозрачен — глобус виден сквозь него. */}
+        <div className="home-stage" aria-hidden />
 
         <p className="home-aura">{t("home.aura")}</p>
 
