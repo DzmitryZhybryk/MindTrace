@@ -17,10 +17,19 @@ export type Continent =
   | "oceania"
   | "southAmerica";
 
-export interface City {
+/**
+ * Минимальный контракт точки на глобусе: имя + координаты. Ровно его читает `GlobeCanvas`
+ * для подписей (`htmlElementsData`) — континент ему не нужен. Реальные города пользователя
+ * (из journeys) приходят без континента и подходят под этот тип; курируемый `City` его
+ * расширяет полем `continent` (нужным только правилу подбора дуг в `routes.ts`).
+ */
+export interface GlobeCity {
   readonly name: string;
   readonly lat: number;
   readonly lng: number;
+}
+
+export interface City extends GlobeCity {
   readonly continent: Continent;
 }
 

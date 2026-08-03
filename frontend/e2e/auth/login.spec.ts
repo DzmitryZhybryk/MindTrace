@@ -23,6 +23,12 @@ test.describe("Login", () => {
     // Кнопка профиля живёт только на HomePage — её появление = успешный вход и редирект на `/home`.
     await expect(page.getByRole("button", { name: "Open profile menu" })).toBeVisible();
     await expect(page).toHaveURL(/\/home$/u);
+
+    // App-global глобус-фон смонтирован на дашборде и показывает грань home (перелёт login→home).
+    // Проверка структурная (по data-атрибутам хоста), без завязки на WebGL/текст.
+    const globe = page.locator(".persistent-globe");
+    await expect(globe).toHaveAttribute("data-screen", "home");
+    await expect(globe).toHaveAttribute("data-visible", "true");
   });
 
   test("логин по email (а не только username) ведёт на дашборд", async ({ page, request }) => {

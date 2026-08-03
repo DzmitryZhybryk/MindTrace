@@ -4,6 +4,7 @@ import { Center, Loader } from "@mantine/core";
 
 import { AuthProvider } from "./auth/AuthContext";
 import { DocumentTitle } from "./components/DocumentTitle";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PublicOnlyRoute } from "./components/PublicOnlyRoute";
 
@@ -33,6 +34,20 @@ const JourneysMapView = lazy(() =>
 const LoginPage = lazy(() => import("./pages/LoginPage").then((m) => ({ default: m.LoginPage })));
 const SignUpPage = lazy(() => import("./pages/SignUpPage").then((m) => ({ default: m.SignUpPage })));
 
+// App-global глобус-фон. Смонтирован один раз на корне (сиблинг <Routes>) и переживает ЛЮБУЮ
+// навигацию, включая login → home: WebGL-инстанс не перезагружается, камера лишь перелетает к
+// новой грани. Лениво — чтобы three.js/react-globe.gl и данные journeys не попадали в
+// критический путь первой отрисовки (аноним на лендинге их не использует); ночь-фон первого
+// кадра держит body (--app-bg), а сам холст хост тянет лениво.
+const PersistentGlobeHost = lazy(() =>
+  import("./components/globe/PersistentGlobeHost").then((m) => ({ default: m.PersistentGlobeHost })),
+);
+
+// Тёмная подложка на случай сбоя WebGL или провала загрузки chunk'а хоста: приложение
+// рассчитано на тёмный фон, без неё контент лёг бы на body-цвет без ночного градиента.
+// Класс живёт в index.css (всегда загружен), поэтому работает даже если chunk хоста не пришёл.
+const globeFallback = <div className="persistent-globe__fallback" />;
+
 // Пока грузится chunk маршрута — центрированный лоадер во весь экран.
 function PageFallback() {
   return (
@@ -49,6 +64,17 @@ export default function App() {
         {/* Вне <Suspense>: заголовок вкладки должен обновиться сразу при смене маршрута,
             не дожидаясь загрузки chunk'а страницы. */}
         <DocumentTitle />
+        {/*
+         * Глобус-фон — СИБЛИНГ <Routes>, вне его <Suspense>: он не должен размонтироваться
+         * при смене маршрута (иначе WebGL перезагружался бы). Свой ErrorBoundary — сбой WebGL
+         * не должен ронять приложение; свой Suspense(null) — фон уже держит body, вторую
+         * заглушку под ленивый chunk подставлять не нужно.
+         */}
+        <ErrorBoundary fallback={globeFallback}>
+          <Suspense fallback={null}>
+            <PersistentGlobeHost />
+          </Suspense>
+        </ErrorBoundary>
         <Suspense fallback={<PageFallback />}>
           <Routes>
             {/*

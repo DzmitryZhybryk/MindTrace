@@ -54,13 +54,15 @@ export default defineConfig({
         // Императивный three/WebGL-рендер глобусов: в jsdom не исполняется, тестировать
         // нечего. Вся чистая математика вынесена в src/components/globe/{geo,route,routes}.ts
         // и покрыта unit-тестами — эти файлы остаются под покрытием.
-        // AuthGlobe удалён редизайном; его роль исполняет globe/PersistentGlobe поверх GlobeCanvas.
-        "src/components/HomeGlobe.tsx",
+        // HomeGlobe/AuthGlobe удалены редизайном; их роль исполняет app-global
+        // globe/PersistentGlobeHost поверх GlobeCanvas (покрыт component-тестом).
         "src/components/JourneyGlobe.tsx",
-        // Декларативная композиция без логики: таблица маршрутов и layout-каркас с <Outlet/>.
-        // Ветвлений нет, покрывается e2e-навигацией, а не unit/component.
+        // Декларативная композиция без логики: таблица маршрутов и layout-каркасы с <Outlet/>.
+        // Ветвлений нет, покрывается e2e-навигацией, а не unit/component. PublicLayout стал
+        // тривиальным после переезда глобуса на корень (шапка + <Outlet/> через кросс-фейд).
         "src/App.tsx",
         "src/pages/journeys/JourneysLayout.tsx",
+        "src/pages/PublicLayout.tsx",
       ],
       // Мерж-гейт: покрытие >= 90% (форсится pre-push hook'ом, не CI — см. CLAUDE.md).
       thresholds: {

@@ -23,7 +23,7 @@
 
 import { CITIES, type City } from "./cities";
 
-export type { City } from "./cities";
+export type { City, GlobeCity } from "./cities";
 
 export interface RouteArc {
   startLat: number;

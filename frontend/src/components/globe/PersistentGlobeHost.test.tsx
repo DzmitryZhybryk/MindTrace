@@ -1,0 +1,127 @@
+import { http, HttpResponse } from "msw";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { server } from "../../test/handlers";
+import { makeAuthValue, renderWithProviders, screen, waitFor } from "../../test/render";
+import type { AuthContextValue } from "../../auth/useAuth";
+import { PersistentGlobeHost } from "./PersistentGlobeHost";
+import { clearUserCitiesCache } from "./userCities";
+
+/*
+ * Холст мокаем: он тянет three/WebGL, которых в jsdom нет. Мок отражает переданные пропы в
+ * data-атрибуты, чтобы тест проверил, ЧЕМ хост кормит глобус (число дуг/городов, пауза), не
+ * трогая сам WebGL. Холст в хосте ленивый — потому ждём его через `findByTestId`.
+ */
+type MockGlobeProps = {
+  arcs?: readonly unknown[];
+  labelCities?: readonly unknown[];
+  paused?: boolean;
+};
+
+vi.mock("./GlobeCanvas", () => ({
+  GlobeCanvas: ({ arcs, labelCities, paused }: MockGlobeProps) => (
+    <div
+      data-testid="globe-canvas"
+      data-arcs={arcs?.length ?? 0}
+      data-cities={labelCities?.length ?? 0}
+      data-paused={String(paused ?? false)}
+    />
+  ),
+}));
+
+/** AuthContext залогиненного пользователя с заданным `sub` (по нему кэшируются города). */
+function authedValue(sub: string): AuthContextValue {
+  return makeAuthValue({ isAuthenticated: true, claims: { sub, email_verified: true, exp: 4_102_444_800 } });
+}
+
+function screenAttr(container: HTMLElement, attr: string): string | null {
+  return container.querySelector(".persistent-globe")?.getAttribute(attr) ?? null;
+}
+
+beforeEach(() => {
+  // Кэш городов живёт на модуле — сбрасываем, чтобы данные не протекали между тестами.
+  clearUserCitiesCache();
+});
+
+describe("PersistentGlobeHost — грань по маршруту", () => {
+  it.each([
+    { route: "/", screen: "landing" },
+    { route: "/login", screen: "login" },
+    { route: "/signup", screen: "signup" },
+    { route: "/whatever", screen: "landing" },
+  ])("на $route ставит data-screen=$screen", ({ route, screen: expected }) => {
+    const { container } = renderWithProviders(<PersistentGlobeHost />, { route, authValue: makeAuthValue() });
+
+    expect(screenAttr(container, "data-screen")).toBe(expected);
+  });
+
+  it("на /home (залогинен) ставит грань home и держит глобус видимым", () => {
+    const { container } = renderWithProviders(<PersistentGlobeHost />, {
+      route: "/home",
+      authValue: authedValue("user-1"),
+    });
+
+    expect(screenAttr(container, "data-screen")).toBe("home");
+    expect(screenAttr(container, "data-visible")).toBe("true");
+  });
+
+  it("на /journeys прячет глобус (data-visible=false, грань остаётся home)", () => {
+    const { container } = renderWithProviders(<PersistentGlobeHost />, {
+      route: "/journeys",
+      authValue: authedValue("user-1"),
+    });
+
+    expect(screenAttr(container, "data-screen")).toBe("home");
+    expect(screenAttr(container, "data-visible")).toBe("false");
+  });
+});
+
+describe("PersistentGlobeHost — источник данных глобуса", () => {
+  it("аноним получает курируемые дуги и города", async () => {
+    renderWithProviders(<PersistentGlobeHost />, { route: "/", authValue: makeAuthValue() });
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    expect(Number(globe.getAttribute("data-arcs"))).toBeGreaterThan(0);
+    expect(Number(globe.getAttribute("data-cities"))).toBeGreaterThan(0);
+    expect(globe).toHaveAttribute("data-paused", "false");
+  });
+
+  it("залогиненный получает реальные города без дуг (fade-in по приходе /journeys/map)", async () => {
+    renderWithProviders(<PersistentGlobeHost />, { route: "/home", authValue: authedValue("user-1") });
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    // Дуг у авторизованного нет; города приезжают асинхронно из journeys/map (Moscow + London).
+    expect(globe).toHaveAttribute("data-arcs", "0");
+    await waitFor(() => expect(globe).toHaveAttribute("data-cities", "2"));
+  });
+
+  it("ошибка загрузки городов не роняет глобус — остаётся без точек", async () => {
+    server.use(http.get("/v1/journeys/map", () => HttpResponse.error()));
+
+    renderWithProviders(<PersistentGlobeHost />, { route: "/home", authValue: authedValue("user-1") });
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    expect(globe).toHaveAttribute("data-cities", "0");
+  });
+
+  it("на /journeys глобус на паузе (рендер остановлен)", async () => {
+    renderWithProviders(<PersistentGlobeHost />, { route: "/journeys", authValue: authedValue("user-1") });
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    expect(globe).toHaveAttribute("data-paused", "true");
+  });
+});
+
+describe("PersistentGlobeHost — каркас без WebGL", () => {
+  it("рисует stage и scrim и скрыт от скринридера (aria-hidden)", () => {
+    const { container } = renderWithProviders(<PersistentGlobeHost />, { route: "/", authValue: makeAuthValue() });
+
+    expect(container.querySelector(".persistent-globe__stage")).not.toBeNull();
+    expect(container.querySelector(".persistent-globe__scrim")).not.toBeNull();
+    expect(container.querySelector(".persistent-globe")).toHaveAttribute("aria-hidden");
+  });
+});

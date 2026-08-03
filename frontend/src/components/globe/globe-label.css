@@ -11,6 +11,12 @@
   will-change: opacity;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .globe-label {
+    transition: none;
+  }
+}
+
 .globe-label__dot {
   position: absolute;
   left: 0;

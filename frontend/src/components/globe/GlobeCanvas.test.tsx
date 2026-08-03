@@ -131,6 +131,10 @@ describe("GlobeCanvas", () => {
   it("останавливает рендер, когда вкладку скрыли, и возобновляет при возврате", () => {
     renderWithProviders(<GlobeCanvas />);
     act(() => fireResize?.(800, 600));
+    // Появление инстанса уже применило play-state (resume для непаузного) — дальше считаем
+    // ТОЛЬКО эффект от visibilitychange.
+    pauseAnimation.mockClear();
+    resumeAnimation.mockClear();
 
     const setHidden = (hidden: boolean) =>
       Object.defineProperty(document, "hidden", { value: hidden, configurable: true });
@@ -146,6 +150,17 @@ describe("GlobeCanvas", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
     expect(resumeAnimation).toHaveBeenCalledTimes(1);
+  });
+
+  it("paused ставит на паузу инстанс, появившийся уже спрятанным (прямой заход на /journeys)", () => {
+    // На первом рендере ref пуст (нет размера); Globe монтируется лишь после замера. Пауза
+    // обязана примениться по факту появления инстанса, иначе rAF скрытого глобуса крутился бы.
+    renderWithProviders(<GlobeCanvas paused />);
+
+    act(() => fireResize?.(800, 600));
+
+    expect(pauseAnimation).toHaveBeenCalled();
+    expect(resumeAnimation).not.toHaveBeenCalled();
   });
 
   it("нулевой размер не доводит настройку до конца", () => {
