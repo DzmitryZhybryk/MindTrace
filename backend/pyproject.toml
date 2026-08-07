@@ -1,6 +1,6 @@
 [project]
 name = "MindTrace"
-version = "1.0.3"
+version = "1.0.4"
 description = "Service for managing mindtrace"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
