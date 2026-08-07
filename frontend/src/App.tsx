@@ -43,9 +43,11 @@ const PersistentGlobeHost = lazy(() =>
   import("./components/globe/PersistentGlobeHost").then((m) => ({ default: m.PersistentGlobeHost })),
 );
 
-// Тёмная подложка на случай сбоя WebGL или провала загрузки chunk'а хоста: приложение
-// рассчитано на тёмный фон, без неё контент лёг бы на body-цвет без ночного градиента.
-// Класс живёт в index.css (всегда загружен), поэтому работает даже если chunk хоста не пришёл.
+// Тёмная подложка на случай провала загрузки chunk'а хоста: приложение рассчитано на тёмный
+// фон, без неё контент лёг бы на body-цвет без ночного градиента. Класс живёт в index.css
+// (всегда загружен), поэтому работает даже если chunk хоста не пришёл. Сбой WebGL сюда НЕ
+// доходит — его изолирует boundary внутри самого хоста (см. PersistentGlobeHost), чтобы
+// CSS-слой (кадрирование + скрим) переживал отсутствие WebGL.
 const globeFallback = <div className="persistent-globe__fallback" />;
 
 // Пока грузится chunk маршрута — центрированный лоадер во весь экран.
@@ -66,9 +68,9 @@ export default function App() {
         <DocumentTitle />
         {/*
          * Глобус-фон — СИБЛИНГ <Routes>, вне его <Suspense>: он не должен размонтироваться
-         * при смене маршрута (иначе WebGL перезагружался бы). Свой ErrorBoundary — сбой WebGL
-         * не должен ронять приложение; свой Suspense(null) — фон уже держит body, вторую
-         * заглушку под ленивый chunk подставлять не нужно.
+         * при смене маршрута (иначе WebGL перезагружался бы). Свой ErrorBoundary — на случай,
+         * если не приехал chunk самого хоста; свой Suspense(null) — фон уже держит body,
+         * вторую заглушку под ленивый chunk подставлять не нужно.
          */}
         <ErrorBoundary fallback={globeFallback}>
           <Suspense fallback={null}>

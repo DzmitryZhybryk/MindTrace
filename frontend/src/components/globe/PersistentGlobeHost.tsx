@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { useLocation } from "react-router";
 
 import { useAuth } from "../../auth/useAuth";
+import { ErrorBoundary } from "../ErrorBoundary";
 import type { GlobePov } from "./GlobeCanvas";
 import { ROUTE_ARCS, ROUTE_CITIES, type GlobeCity } from "./routes";
 import { clearUserCitiesCache, getCachedUserCities, loadUserCities } from "./userCities";
@@ -122,15 +123,22 @@ export function PersistentGlobeHost() {
     <div className="persistent-globe" data-screen={view.screen} data-visible={view.visible} aria-hidden>
       {/* Кадрирование сферы (сдвиг/масштаб) задаёт CSS по data-screen. */}
       <div className="persistent-globe__stage">
-        <Suspense fallback={null}>
-          <GlobeCanvas
-            arcs={isAuthenticated ? undefined : ROUTE_ARCS}
-            labelCities={isAuthenticated ? userCities : ROUTE_CITIES}
-            pov={view.pov}
-            autoRotate={view.autoRotate}
-            paused={!view.visible}
-          />
-        </Suspense>
+        {/*
+         * Boundary ровно вокруг холста: сбой WebGL/three.js (или chunk'а GlobeCanvas) гасит
+         * только сферу, а CSS-слой хоста — ночной градиент, кадрирование по data-screen и
+         * скрим под auth-форму — живёт без WebGL. Fallback не нужен: фон и так держит хост.
+         */}
+        <ErrorBoundary fallback={null}>
+          <Suspense fallback={null}>
+            <GlobeCanvas
+              arcs={isAuthenticated ? undefined : ROUTE_ARCS}
+              labelCities={isAuthenticated ? userCities : ROUTE_CITIES}
+              pov={view.pov}
+              autoRotate={view.autoRotate}
+              paused={!view.visible}
+            />
+          </Suspense>
+        </ErrorBoundary>
       </div>
 
       {/* Боковой скрим под форму (auth-экраны); на лендинге/дашборде прозрачен. */}

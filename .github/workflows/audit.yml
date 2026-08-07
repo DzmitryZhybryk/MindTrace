@@ -1,0 +1,57 @@
+name: Audit
+
+# Ночной скан зависимостей по живой базе advisories — тем же инструментом, что и гейты CI
+# (`make audit` обеих сторон), поэтому расхождений с `make check`/`check-ci` нет по построению.
+# Смысл: audit-шаги недетерминированы по времени (проходивший гейт краснеет сам по себе, когда
+# публикуют новый advisory — см. CHANGELOG: click 1.0.2, gitpython 1.0.3/1.0.4, undici/postcss
+# 2.1.1). Ночной прогон переносит это «краснеет» из фичевого PR в утреннее письмо.
+#
+# `schedule` GitHub читает ТОЛЬКО из workflow-файла на дефолтной ветке (main) — поэтому файл
+# должен доехать до main, а сканируем при этом dev (checkout ref: dev): advisories должны
+# ловиться там, где живёт разработка, до похода в прод.
+#
+# Установка зависимостей не нужна: `uv audit` читает uv.lock, `npm audit` — package-lock.json.
+on:
+  schedule:
+    - cron: "0 3 * * *"  # ежедневно 03:00 UTC (время не гарантировано, очередь GitHub)
+  workflow_dispatch:  # ручной запуск из вкладки Actions, не дожидаясь ночи
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: dev
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+
+      - name: Audit (uv audit по uv.lock)
+        run: make audit
+
+  frontend:
+    name: Frontend audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: dev
+
+      - name: Install Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 26
+
+      - name: Audit (npm audit по package-lock.json)
+        run: make audit
