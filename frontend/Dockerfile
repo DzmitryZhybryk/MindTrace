@@ -34,7 +34,7 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 # nginx-unprivileged: master и worker'ы под non-root (uid 101), слушает :8080 (порт >1024,
 # root не нужен). Проксирование /v1 делает внешний Caddy (reverse_proxy frontend:8080).
-FROM nginxinc/nginx-unprivileged:alpine@sha256:a718212f9cf21e241f14067333000a3f0930292f5354fe0db269e9a2a2596b9e AS final
+FROM nginxinc/nginx-unprivileged:alpine@sha256:a6c3ec0c0d249d68b0682df854d4a9e222b90fb607dc3fcf2f1d2fcbc85d347e AS final
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 8080
