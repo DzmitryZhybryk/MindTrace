@@ -11,6 +11,12 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-08-08
+
+### Project
+
+- **Деплой-секреты изолированы в environment `production`** (deployment branch policy → только `main`): SSH-доступ к VPS и `DEPLOY_PATH` физически недоступны workflow-прогону из любой другой ветки — закрыт вектор «украденный токен → мусорная ветка с workflow, читающим repo-секреты» (GhostAction/Megalodon-класс). Плюс включены Dependabot alerts + security updates (авто-PR при advisory с патчем, быстрее weekly-каденса version updates) и Dependabot malware alerts (проверка зависимостей по базе OpenSSF Malicious Packages — вредоносные пакеты, а не уязвимости; наши `uv audit`/`npm audit` этот класс не покрывают)
+
 ## 2026-08-07
 
 ### Backend 1.0.4
