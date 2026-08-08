@@ -194,6 +194,8 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
     // добавления поездки). Тогда меряем лениво здесь — иначе rect=null, ранний
     // выход, и тултип залипает в левом верхнем углу (pointer остаётся {0,0}).
     const rect = rectRef.current ?? wrapRef.current?.getBoundingClientRect() ?? null;
+    // Оборонительный guard: getBoundingClientRect у смонтированного узла всегда даёт rect.
+    /* v8 ignore next 3 */
     if (!rect) {
       return;
     }

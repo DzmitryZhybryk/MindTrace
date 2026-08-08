@@ -1,14 +1,59 @@
 /*
+ * Дашборд: приветствие сверху, планета по центру и поля-маргиналии по бокам — всё на
+ * ночной поверхности продукта. Колонки держатся тихими штемпелями (моно, капитель),
+ * как подписи на полях карты; имена мест — антиквой. Цвета берутся только из
+ * семантического слоя токенов (см. index.css).
+ */
+
+/*
+ * Дашборд показывает app-global глобус-фон СКВОЗЬ себя: ночь-подложку держит корневой
+ * `.persistent-globe` (z-0, фиксированный), поэтому оболочка Home прозрачна — иначе
+ * непрозрачная ночь `.app-shell` (index.css) закрасила бы глобус. На /journeys, где глобус
+ * спрятан, ночь остаётся у `.app-shell`. Двойная специфичность бьёт одиночный `.app-shell`.
+ */
+.app-shell.home-shell {
+  background: transparent;
+}
+
+/*
  * Десктоп (фланговый режим, >1280px): Home — экран фиксированной высоты без прокрутки.
- * height:100vh + overflow:hidden убирают полосу скролла (иначе прозрачная sticky-шапка
- * просвечивает наезжающим баннером); в пару к ограничению размера стейджа ниже это
- * гарантирует, что приветствие/глобус/aura и фланговые колонки помещаются в один экран.
- * На ≤1280px (стек) правило не действует — там Home нормально скроллится.
+ * height:100vh + overflow:hidden убирают полосу скролла. На ≤1280px правило не действует —
+ * там Home скроллится (это ок для стека).
  */
 @media (min-width: 1281px) {
   .home-shell {
     height: 100vh;
     overflow: hidden;
+  }
+
+  /*
+   * `.home-main` выведён из потока, чтобы email-баннер (он в потоке) НЕ толкал композицию
+   * перевёрсткой (это давало рывок приветствия). Позиция стабильна: `top` — под шапкой, `bottom`
+   * — у низа вьюпорта (подпись остаётся прибитой). Смещение приветствия под баннер делаем
+   * трансформом (ниже) — он анимируется, как и глобус. Баннер всплывает поверх (z-index в
+   * EmailVerificationBanner).
+   */
+  .home-main {
+    position: absolute;
+    top: var(--header-height);
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  /*
+   * Приветствие плавно уезжает вверх при закрытии баннера — тем же трансформом и с той же
+   * длительностью, что глобус, поэтому текст и планета движутся синхронно (без рывка).
+   * Пока баннер висит, приветствие сдвинуто вниз под него; класс снят → трансформ уходит в 0.
+   */
+  .home-greeting {
+    transition: transform 1.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Сдвиг ≈ высоте email-баннера (~50px): держит приветствие под ним, пока он висит. Жёсткой
+     связи с версткой баннера нет — значение сверяется глазами (ручная UI-проверка). */
+  body.has-verify-banner .home-greeting {
+    transform: translateY(52px);
   }
 }
 
@@ -17,70 +62,66 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* Колонка, ЗАПОЛНЯЮЩАЯ доступную высоту: приветствие прижато к ВЕРХУ (живёт под шапкой/
+     баннером — сам уезжает вверх, когда баннер закрыт), подпись «атмосфера · тихо» — к НИЗУ
+     (низ `.home-main` = низ вьюпорта, стабилен к баннеру), а средний слот-резина между ними
+     растёт/сжимается. Глобус-фон синхронно подрастает/сжимается под баннер (см.
+     persistent-globe.css, класс body.has-verify-banner). */
+  justify-content: space-between;
   gap: 22px;
-  padding: 16px 32px 40px;
+  padding: 24px 32px 32px;
 }
+
+/* ---- Приветствие: единственная человеческая фраза на экране, оттого антиква ---- */
 
 .home-greeting {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .home-greeting__hello {
-  font: 500 18px/1 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  font-family: var(--font-display);
+  font-size: var(--fs-22);
+  font-weight: 600;
+  line-height: 1.1;
   letter-spacing: -0.01em;
-  color: #1e293b;
+  color: var(--text);
 }
 
-.home-greeting__date {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  letter-spacing: 0.18em;
+.home-greeting__date,
+.home-aura {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  line-height: 1;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .home-aura {
   margin: 0;
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #64748b;
 }
 
+/* ---- Планета на ночной поверхности -------------------------------------------------------
+ * Ни подложки, ни рамки: только сама планета со своим свечением атмосферы.
+ * Блок остаётся исключительно мерой размера — держит глобус в пределах экрана.
+ */
+
+/*
+ * Пустой средний слот-РЕЗИНА. Глобус здесь не живёт (он — фиксированный фон,
+ * `.persistent-globe`); слот лишь занимает промежуток между приветствием и подписью, чтобы
+ * они разошлись к краям. `flex: 1` растягивает его на всё свободное место — при закрытии
+ * баннера места становится больше, промежуток растёт, и глобус-фон подрастает в него.
+ * На стеке (≤1280px) переопределяется фиксированной полосой (см. медиазапрос ниже).
+ */
 .home-stage {
-  position: relative;
-  /* Размер привязан и к высоте окна (calc(100vh - чроме)), чтобы Home помещался в
-     экран без вертикальной прокрутки и НИЧЕГО не подрезалось: ~300px — это шапка +
-     email-баннер + приветствие + aura + отступы над/под глобусом, с запасом. На узких
-     экранах (стек) бьёт 70vmin, не calc. */
-  width: min(70vmin, 700px, calc(100vh - 300px));
-  aspect-ratio: 1 / 1;
-  border-radius: 50%;
-  background: radial-gradient(circle at 32% 30%, #0a1230 0%, #02040a 62%, #000 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 0 80px rgba(74, 179, 255, 0.18),
-    0 40px 80px rgba(2, 6, 23, 0.22);
+  flex: 1;
+  min-height: 0;
 }
 
-.home-stage::before {
-  content: "";
-  position: absolute;
-  inset: -28px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(74, 179, 255, 0.22) 0%,
-    rgba(74, 179, 255, 0) 68%
-  );
-  z-index: -1;
-  pointer-events: none;
-}
+/* ---- Поля: маргиналии вокруг пластины ---------------------------------------- */
 
 .home-recommend {
   position: absolute;
@@ -99,16 +140,23 @@
   gap: 8px;
 }
 
-.home-recommend__title {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  letter-spacing: 0.22em;
+/* Заголовок поля — моно-штемпель закатным свечением. */
+.home-recommend__title,
+.home-stats__title,
+.home-recent__title {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  line-height: 1;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--text-stamp);
 }
 
 .home-recommend__caption {
-  font: 400 12px/1.4 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #94a3b8;
+  font-family: var(--font-body);
+  font-size: var(--fs-12);
+  line-height: 1.45;
+  color: var(--text-muted);
   max-width: 240px;
 }
 
@@ -118,14 +166,21 @@
   gap: 10px;
 }
 
+/* Подзаголовок группы — тот же акцент, что и заголовок поля; ступень между ними
+   задаётся кеглем, а не цветом. Правило по всему экрану: штемпель, НАЗЫВАЮЩИЙ блок,
+   идёт акцентом, а штемпель с ДАННЫМИ (дата, счётчик) — приглушённым. */
 .home-recommend__group-label {
-  font: 600 10px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-mono);
+  font-size: var(--fs-10);
+  line-height: 1;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: var(--text-stamp);
 }
 
-.home-recommend__list {
+.home-recommend__list,
+.home-stats__list,
+.home-recent__list {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -134,41 +189,79 @@
   gap: 12px;
 }
 
-.home-recommend__item {
+.home-recommend__item,
+.home-stat,
+.home-recent__item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   cursor: pointer;
 }
 
-.home-recommend__name {
+/* Имя записи — антиква: в маргиналиях именно названия мест несут смысл, всё
+   остальное вокруг них служебное. */
+.home-recommend__name,
+.home-stat__name,
+.home-recent__city {
   position: relative;
-  align-self: flex-start;
-  font: 600 16px/1.1 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  font-family: var(--font-display);
+  font-size: var(--fs-17);
+  font-weight: 600;
+  line-height: 1.15;
   letter-spacing: -0.01em;
-  color: #0f172a;
+  color: var(--text);
 }
 
-.home-recommend__name::after {
+.home-recommend__name {
+  align-self: flex-start;
+}
+
+/* Подчёркивание при наведении — закатным акцентом (единый цвет взаимодействия). */
+.home-recommend__name::after,
+.home-stat__name::after,
+.home-recent__city::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
   bottom: -2px;
   height: 1px;
-  background: currentColor;
+  background: var(--accent);
   transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.18s ease;
+  transition: transform var(--dur-fast) ease;
 }
 
-.home-recommend__item:hover .home-recommend__name::after {
+.home-recommend__name::after {
+  transform-origin: left;
+}
+
+.home-stat__name::after,
+.home-recent__city::after {
+  transform-origin: right;
+}
+
+.home-recommend__item:hover .home-recommend__name::after,
+.home-stat:hover .home-stat__name::after,
+.home-recent__item:hover .home-recent__city::after {
   transform: scaleX(1);
 }
 
 .home-recommend__desc {
-  font: 400 12px/1.3 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  color: #64748b;
+  font-family: var(--font-body);
+  font-size: var(--fs-12);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* Цифры и даты — штемпелем: это данные, а не проза. */
+.home-stat__meta,
+.home-recent__date {
+  font-family: var(--font-mono);
+  font-size: var(--fs-10);
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .home-right {
@@ -182,70 +275,7 @@
   align-items: flex-end;
 }
 
-.home-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  align-items: flex-end;
-  text-align: right;
-}
-
-.home-stats__title {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-.home-stats__list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: flex-end;
-}
-
-.home-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items: flex-end;
-  cursor: pointer;
-}
-
-.home-stat__name {
-  position: relative;
-  font: 600 16px/1.1 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
-  letter-spacing: -0.01em;
-  color: #0f172a;
-}
-
-.home-stat__name::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -2px;
-  height: 1px;
-  background: currentColor;
-  transform: scaleX(0);
-  transform-origin: right;
-  transition: transform 0.18s ease;
-}
-
-.home-stat:hover .home-stat__name::after {
-  transform: scaleX(1);
-}
-
-.home-stat__meta {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
+.home-stats,
 .home-recent {
   display: flex;
   flex-direction: column;
@@ -254,60 +284,11 @@
   text-align: right;
 }
 
-.home-recent__title {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-.home-recent__list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: flex-end;
-}
-
+.home-stats__list,
+.home-recent__list,
+.home-stat,
 .home-recent__item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   align-items: flex-end;
-  cursor: pointer;
-}
-
-.home-recent__city {
-  position: relative;
-  font: 600 16px/1.1 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
-  letter-spacing: -0.01em;
-  color: #0f172a;
-}
-
-.home-recent__city::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -2px;
-  height: 1px;
-  background: currentColor;
-  transform: scaleX(0);
-  transform-origin: right;
-  transition: transform 0.18s ease;
-}
-
-.home-recent__item:hover .home-recent__city::after {
-  transform: scaleX(1);
-}
-
-.home-recent__date {
-  font: 500 11px/1 -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #64748b;
 }
 
 /*
@@ -315,13 +296,20 @@
  * На десктопе «you might like» (слева) и achievements/recent (справа) висят
  * по бокам глобуса через position:absolute. Ниже ~1280px глобус (vmin) начинает
  * с ними пересекаться, поэтому возвращаем колонки в нормальный поток: greeting →
- * глобус → aura → рекомендации → статистика, одной колонкой, без наезжаний.
+ * глобус → подпись → рекомендации → статистика, одной колонкой, без наезжаний.
  */
 @media (max-width: 1280px) {
   .home-main {
     justify-content: flex-start;
     gap: 28px;
     padding: 16px 20px 48px;
+  }
+
+  /* На стеке слот-резина не тянется на всю высоту (оголил бы фон), а держит компактную
+     полосу под глобус; ниже неё в потоке идут колонки. */
+  .home-stage {
+    flex: none;
+    height: 60vmin;
   }
 
   .home-recommend,
@@ -344,5 +332,23 @@
   .home-recent__item {
     align-items: flex-start;
     text-align: left;
+  }
+
+  /* Подчёркивание правой колонки в потоке растёт слева, как у левой. */
+  .home-stat__name::after,
+  .home-recent__city::after {
+    transform-origin: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Приветствие едет синхронно с глобусом-фоном при появлении/скрытии баннера. Глобус свой
+     transition в reduced-motion гасит (persistent-globe.css) — гасим и здесь, иначе текст поедет,
+     а планета встанет мгновенно: ровно тот рассинхрон, который фича устраняет. */
+  .home-greeting,
+  .home-recommend__name::after,
+  .home-stat__name::after,
+  .home-recent__city::after {
+    transition: none;
   }
 }

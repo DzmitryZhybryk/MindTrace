@@ -2,7 +2,7 @@ import { expect, test } from "../fixtures";
 import { WEBKIT_SECURE_COOKIE_REASON } from "../helpers/session";
 
 /**
- * E2E: напоминание о верификации email (блок F из `.claude/.test-plan.md`) — real-stack
+ * E2E: напоминание о верификации email (блок F) — real-stack
  * срез, который MSW-компонентные тесты не достают.
  *
  * `EmailVerificationBanner.test.tsx` уже кроет рендер/dismiss в одном jsdom-контексте. Здесь —

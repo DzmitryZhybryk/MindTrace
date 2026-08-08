@@ -31,14 +31,14 @@ async def test_insert_then_find_active_for_update_roundtrip(
     """insert + commit → ``find_active_challenge_for_update`` возвращает ту же сущность."""
     user_id = uuid4()
     await seed_user_credentials(user_id=user_id, email="ch-roundtrip@example.com", username="ch_roundtrip")
-    challenge = make_challenge(
+    challenge_entity = make_challenge(
         user_id=user_id,
         challenge_type=ChallengeType.EMAIL_VERIFICATION,
         code_hash="roundtrip-code",
         expires_at=_EXPIRES_AT,
     )
     async with session_factory() as writer:
-        await ChallengeRepository(session=writer).insert_challenge(challenge=challenge)
+        await ChallengeRepository(session=writer).insert_challenge(challenge_entity=challenge_entity)
         await writer.commit()
 
     async with session_factory() as reader:
@@ -48,7 +48,7 @@ async def test_insert_then_find_active_for_update_roundtrip(
         )
 
     assert found is not None
-    assert found.challenge_id == challenge.challenge_id
+    assert found.challenge_id == challenge_entity.challenge_id
     assert found.user_id == user_id
     assert found.challenge_type is ChallengeType.EMAIL_VERIFICATION
     assert found.code_hash == "roundtrip-code"
@@ -69,7 +69,7 @@ async def test_find_active_excludes_used_challenge(
         used_at=_USED_AT,
     )
     async with session_factory() as writer:
-        await ChallengeRepository(session=writer).insert_challenge(challenge=used_challenge)
+        await ChallengeRepository(session=writer).insert_challenge(challenge_entity=used_challenge)
         await writer.commit()
 
     async with session_factory() as reader:
@@ -89,7 +89,7 @@ async def test_update_challenge_persists_attempts(
     user_id = uuid4()
     challenge_id = uuid4()
     await seed_user_credentials(user_id=user_id, email="ch-update@example.com", username="ch_update")
-    challenge = make_challenge(
+    challenge_entity = make_challenge(
         challenge_id=challenge_id,
         user_id=user_id,
         challenge_type=ChallengeType.EMAIL_VERIFICATION,
@@ -97,7 +97,7 @@ async def test_update_challenge_persists_attempts(
         attempts=0,
     )
     async with session_factory() as writer:
-        await ChallengeRepository(session=writer).insert_challenge(challenge=challenge)
+        await ChallengeRepository(session=writer).insert_challenge(challenge_entity=challenge_entity)
         await writer.commit()
 
     incremented = make_challenge(
@@ -108,7 +108,7 @@ async def test_update_challenge_persists_attempts(
         attempts=3,
     )
     async with session_factory() as writer:
-        await ChallengeRepository(session=writer).update_challenge_by_id(challenge=incremented)
+        await ChallengeRepository(session=writer).update_challenge_by_id(challenge_entity=incremented)
         await writer.commit()
 
     async with session_factory() as reader:
@@ -130,12 +130,12 @@ async def test_second_active_same_type_raises_integrity_error(
     await seed_user_credentials(user_id=user_id, email="ch-unique@example.com", username="ch_unique")
     first = make_challenge(user_id=user_id, challenge_type=ChallengeType.EMAIL_VERIFICATION, expires_at=_EXPIRES_AT)
     async with session_factory() as writer:
-        await ChallengeRepository(session=writer).insert_challenge(challenge=first)
+        await ChallengeRepository(session=writer).insert_challenge(challenge_entity=first)
         await writer.commit()
 
     second = make_challenge(user_id=user_id, challenge_type=ChallengeType.EMAIL_VERIFICATION, expires_at=_EXPIRES_AT)
     async with session_factory() as writer:
-        await ChallengeRepository(session=writer).insert_challenge(challenge=second)
+        await ChallengeRepository(session=writer).insert_challenge(challenge_entity=second)
         with pytest.raises(IntegrityError):
             await writer.commit()
 
@@ -147,13 +147,13 @@ async def test_find_active_for_update_locks_row(
     """``find_active_challenge_for_update`` берёт реальный row-лок: вторая сессия не возьмёт его под ``NOWAIT``."""
     user_id = uuid4()
     await seed_user_credentials(user_id=user_id, email="ch-lock@example.com", username="ch_lock")
-    challenge = make_challenge(
+    challenge_entity = make_challenge(
         user_id=user_id,
         challenge_type=ChallengeType.EMAIL_VERIFICATION,
         expires_at=_EXPIRES_AT,
     )
     async with session_factory() as writer:
-        await ChallengeRepository(session=writer).insert_challenge(challenge=challenge)
+        await ChallengeRepository(session=writer).insert_challenge(challenge_entity=challenge_entity)
         await writer.commit()
 
     async with session_factory() as holder, session_factory() as contender:

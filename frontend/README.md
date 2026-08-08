@@ -1,73 +1,71 @@
-# React + TypeScript + Vite
+# MyJourney — frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+SPA на Vite + React 19 + TypeScript 7 + Mantine 9. Часть монорепо MindTrace; оркестрация
+всего стека — из корня (`make run`), см. корневой `CLAUDE.md`.
 
-Currently, two official plugins are available:
+## Требования
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Node 26**, npm 11 — жёстко задано в `engines` и `.nvmrc`, CI гоняет ту же версию.
+  На более старом Node `npm ci` упадёт с `EBADENGINE`. Это не баг, а гарантия того, что
+  локальная сборка совпадает с CI.
 
-## React Compiler
+## Команды
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Все — из `frontend/`.
 
-## Expanding the ESLint configuration
+```bash
+npm ci                # установка строго по lock-файлу (не npm install)
+npm run dev           # Vite dev-сервер на :5173, /v1 проксируется на backend
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+make lint             # oxlint. ESLint в проекте НЕТ — мигрировали, конфига нет
+make lint-fix         # oxlint --fix. Форматтера/prettier тоже нет
+make typecheck        # tsc -b (нативный компилятор TS 7)
+make test             # vitest: unit + component, один прогон
+make test-unit        # только *.test.ts   — чистая логика
+make test-component   # только *.test.tsx  — рендер React
+make coverage         # то же + покрытие; порог 90%
+make check            # lint + typecheck + audit + test — ровно то, что гоняет CI
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+E2E — единственное, что запускается **из корня**, а не отсюда:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+make test-e2e         # из КОРНЯ: поднимает одноразовый стек → Playwright → сносит с -v
+make test-e2e-dev     # из КОРНЯ: по УЖЕ поднятому дев-стеку. Быстро (нет подъёма стека),
+                      # но пишет в ДЕВ-базу. Сузить: E2E_ARGS="--project=chromium"
 ```
+
+`frontend/Makefile` тоже имеет таргет `test-e2e`, но он лишь гоняет Playwright против уже
+поднятого `E2E_BASE_URL` и стек не поднимает — обычно его дёргает корневой.
+
+## Структура
+
+```
+src/
+├── api/            # HTTP-клиент, доменные вызовы, маппинг ошибок (zod на границе)
+├── auth/           # токены, jwt, контекст сессии, диалог верификации
+├── components/     # переиспользуемое; globe/ — общая база 3D-глобуса
+├── i18n/           # конфиг i18next, реестр языков
+├── locales/<lang>/ # переводы по namespace (common, auth, errors, journeys, landing)
+├── pages/          # экраны; публичная зона (лендинг, login, signup) под общим PublicLayout
+├── test/           # общие сиды тестов: setup, render с провайдерами, MSW-хендлеры
+├── index.css       # дизайн-токены (:root) — единственный источник значений
+└── theme.ts        # тема Mantine поверх тех же токенов
+e2e/                # Playwright-спеки по флоу
+```
+
+## Что стоит знать до первой правки
+
+- **Стили — только через токены.** `index.css` держит два слоя: палитра (`--ink`, `--sun`) и
+  семантика (`--surface`, `--text`, `--accent`). UI пользуется **только семантикой** — имя по
+  цвету не подсказывает, куда его класть. Сырой hex или числовой кегль в компоненте — нарушение;
+  проверяется скиллом `style-audit`.
+- **Тесты лежат рядом с кодом**, а не в зеркальном дереве: `jwt.ts` → `jwt.test.ts`.
+  Конвенции — в `.claude/rules/typescript/testing.md`.
+- **Текст ошибки хранится i18n-токеном, а не готовой строкой.** Иначе сообщение застывает в
+  языке, на котором его создали, и не переводится при переключении.
+- **Тяжёлое грузится лениво.** three.js / react-globe.gl уезжает отдельным чанком — глобус не
+  должен блокировать первую отрисовку. Проверять по графу СТАТИЧЕСКИХ импортов собранных
+  чанков: динамический `import()` попадает в манифест предзагрузки и легко читается как
+  статическая зависимость.
+- Порог покрытия 90% форсится pre-push хуком (`make hooks` из корня, разово), а не CI.

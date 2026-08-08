@@ -84,13 +84,13 @@ def validation_exception_handler(request: Request, exc: RequestValidationError) 
 
 
 def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Обрабатывает все необработанные исключения."""
-    # Сначала пробуем обработать как доменное исключение
+    """Обрабатывает необработанные исключения (не-доменные → 500)."""
+    # Страховка на случай прямого вызова с доменным исключением: через приложение
+    # BaseDomainError уходит в свой domain_exception_handler и сюда не доходит.
     if isinstance(exc, BaseDomainError):
         return domain_exception_handler(request, exc)
 
-    # Логирование выполняется в HTTPLoggingMiddleware
-    # Возвращаем общую ошибку
+    # Логирование выполняется в HTTPLoggingMiddleware.
     return JSONResponse(status_code=500, content=_INTERNAL_ERROR_CONTENT)
 
 

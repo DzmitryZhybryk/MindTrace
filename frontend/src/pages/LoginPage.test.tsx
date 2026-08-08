@@ -5,16 +5,13 @@ import { makeAccessToken, server, TEST_ACCESS_TOKEN } from "../test/handlers";
 import { makeAuthValue, renderRoutes, screen } from "../test/render";
 import { LoginPage } from "./LoginPage";
 
-// react-globe.gl тянет three.js/WebGL — в jsdom не рендерится и на поведение формы не влияет.
-vi.mock("react-globe.gl", () => ({ default: () => null }));
-
 /** Монтирует LoginPage на /login c landing-маркером "/" для наблюдения навигации. */
 function renderLogin() {
   const authValue = makeAuthValue({ setAccessToken: vi.fn() });
   const view = renderRoutes({
     element: <LoginPage />,
     path: "/login",
-    landings: [{ path: "/", label: "home-landing" }],
+    landings: [{ path: "/home", label: "home-landing" }],
     authValue,
   });
 
@@ -27,24 +24,30 @@ describe("LoginPage", () => {
 
     await user.type(screen.getByLabelText("Username or email"), "alice");
     await user.type(screen.getByLabelText("Password"), "s3cret-pass");
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.click(screen.getByRole("button", { name: "Log in" }));
 
     expect(await screen.findByText("home-landing")).toBeInTheDocument();
     expect(authValue.setAccessToken).toHaveBeenCalledWith(TEST_ACCESS_TOKEN);
   });
 
-  it("пустые login и password дают ошибки валидации и не отправляют запрос", async () => {
-    const { user, authValue } = renderLogin();
+  it("кнопка отправки заблокирована, пока не заполнены оба поля", async () => {
+    const { user } = renderLogin();
 
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(screen.getByRole("button", { name: "Log in" })).toBeDisabled();
 
-    expect(await screen.findByText("Enter your username or email")).toBeInTheDocument();
-    expect(screen.getByText("Enter your password")).toBeInTheDocument();
-    expect(authValue.setAccessToken).not.toHaveBeenCalled();
-    expect(screen.queryByText("home-landing")).not.toBeInTheDocument();
+    // Пробелы — не заполненность: `canSubmit` сравнивает login по trim'у.
+    await user.type(screen.getByLabelText("Username or email"), "   ");
+    expect(screen.getByRole("button", { name: "Log in" })).toBeDisabled();
+
+    await user.clear(screen.getByLabelText("Username or email"));
+    await user.type(screen.getByLabelText("Username or email"), "alice");
+    expect(screen.getByRole("button", { name: "Log in" })).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Password"), "s3cret-pass");
+    expect(screen.getByRole("button", { name: "Log in" })).toBeEnabled();
   });
 
-  it("неверные креды (401) показывают сообщение под полем password", async () => {
+  it("неверные креды (401) показывают общую ошибку на уровне формы", async () => {
     server.use(
       http.post("/v1/auth/login/", () =>
         HttpResponse.json(
@@ -57,7 +60,7 @@ describe("LoginPage", () => {
 
     await user.type(screen.getByLabelText("Username or email"), "alice");
     await user.type(screen.getByLabelText("Password"), "wrong-pass");
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.click(screen.getByRole("button", { name: "Log in" }));
 
     expect(await screen.findByText("Incorrect username/email or password")).toBeInTheDocument();
     expect(authValue.setAccessToken).not.toHaveBeenCalled();
@@ -75,9 +78,9 @@ describe("LoginPage", () => {
 
     await user.type(screen.getByLabelText("Username or email"), "alice");
     await user.type(screen.getByLabelText("Password"), "s3cret-pass");
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.click(screen.getByRole("button", { name: "Log in" }));
 
-    expect(await screen.findByRole("button", { name: "Sign in" })).toHaveAttribute(
+    expect(await screen.findByRole("button", { name: "Log in" })).toHaveAttribute(
       "data-loading",
       "true",
     );

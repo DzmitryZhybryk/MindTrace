@@ -31,9 +31,9 @@ async def test_insert_then_find_refresh_token_by_hash_roundtrip(
     """insert + commit → ``find_refresh_token_by_hash_for_update`` из новой сессии возвращает ту же сущность."""
     user_id = uuid4()
     await seed_user_credentials(user_id=user_id, email="rt-roundtrip@example.com", username="rt_roundtrip")
-    token = make_refresh_token(user_id=user_id, token_hash="roundtrip-hash", expires_at=_EXPIRES_AT)
+    refresh_token_entity = make_refresh_token(user_id=user_id, token_hash="roundtrip-hash", expires_at=_EXPIRES_AT)
     async with session_factory() as writer:
-        await RefreshTokenRepository(session=writer).insert_refresh_token(token=token)
+        await RefreshTokenRepository(session=writer).insert_refresh_token(refresh_token_entity=refresh_token_entity)
         await writer.commit()
 
     async with session_factory() as reader:
@@ -42,7 +42,7 @@ async def test_insert_then_find_refresh_token_by_hash_roundtrip(
         )
 
     assert found is not None
-    assert found.token_id == token.token_id
+    assert found.token_id == refresh_token_entity.token_id
     assert found.user_id == user_id
     assert found.token_hash == "roundtrip-hash"
     assert found.expires_at == _EXPIRES_AT
@@ -66,9 +66,11 @@ async def test_update_refresh_token_persists_revoked_at(
     user_id = uuid4()
     token_id = uuid4()
     await seed_user_credentials(user_id=user_id, email="rt-update@example.com", username="rt_update")
-    token = make_refresh_token(token_id=token_id, user_id=user_id, token_hash="update-hash", expires_at=_EXPIRES_AT)
+    refresh_token_entity = make_refresh_token(
+        token_id=token_id, user_id=user_id, token_hash="update-hash", expires_at=_EXPIRES_AT
+    )
     async with session_factory() as writer:
-        await RefreshTokenRepository(session=writer).insert_refresh_token(token=token)
+        await RefreshTokenRepository(session=writer).insert_refresh_token(refresh_token_entity=refresh_token_entity)
         await writer.commit()
 
     revoked_token = make_refresh_token(
@@ -79,7 +81,7 @@ async def test_update_refresh_token_persists_revoked_at(
         revoked_at=_REVOKED_AT,
     )
     async with session_factory() as writer:
-        await RefreshTokenRepository(session=writer).update_refresh_token_by_id(token=revoked_token)
+        await RefreshTokenRepository(session=writer).update_refresh_token_by_id(refresh_token_entity=revoked_token)
         await writer.commit()
 
     async with session_factory() as reader:
@@ -108,8 +110,8 @@ async def test_revoke_all_active_refresh_tokens_revokes_only_active(
     )
     async with session_factory() as writer:
         repository = RefreshTokenRepository(session=writer)
-        for token in (active_one, active_two, already_revoked):
-            await repository.insert_refresh_token(token=token)
+        for refresh_token_entity in (active_one, active_two, already_revoked):
+            await repository.insert_refresh_token(refresh_token_entity=refresh_token_entity)
 
         await writer.commit()
 
@@ -138,9 +140,9 @@ async def test_find_refresh_token_by_hash_for_update_locks_row(
     """``find_refresh_token_by_hash_for_update`` берёт реальный row-лок: вторая сессия не возьмёт его под ``NOWAIT``."""
     user_id = uuid4()
     await seed_user_credentials(user_id=user_id, email="rt-lock@example.com", username="rt_lock")
-    token = make_refresh_token(user_id=user_id, token_hash="lock-hash", expires_at=_EXPIRES_AT)
+    refresh_token_entity = make_refresh_token(user_id=user_id, token_hash="lock-hash", expires_at=_EXPIRES_AT)
     async with session_factory() as writer:
-        await RefreshTokenRepository(session=writer).insert_refresh_token(token=token)
+        await RefreshTokenRepository(session=writer).insert_refresh_token(refresh_token_entity=refresh_token_entity)
         await writer.commit()
 
     async with session_factory() as holder, session_factory() as contender:

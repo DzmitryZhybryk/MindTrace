@@ -22,11 +22,11 @@ async def test_transaction_commit_persists_journey(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     """``commit()`` внутри ``transaction()`` фиксирует поездку — она видна из новой сессии."""
-    journey = make_journey()
+    journey_entity = make_journey()
     async with session_factory() as session:
         uow = JourneyUnitOfWork(session=session)
         async with uow.transaction():
-            await uow.journey_repository.insert_journey(journey=journey)
+            await uow.journey_repository.insert_journey(journey_entity=journey_entity)
             await uow.commit()
 
     async with session_factory() as reader:
@@ -39,11 +39,11 @@ async def test_transaction_without_commit_rolls_back(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     """Выход из ``transaction()`` без ``commit()`` откатывает вставку — новая сессия её не видит."""
-    journey = make_journey()
+    journey_entity = make_journey()
     async with session_factory() as session:
         uow = JourneyUnitOfWork(session=session)
         async with uow.transaction():
-            await uow.journey_repository.insert_journey(journey=journey)
+            await uow.journey_repository.insert_journey(journey_entity=journey_entity)
             # commit() намеренно не вызываем → выход из transaction() откатывает
 
     async with session_factory() as reader:
@@ -56,14 +56,14 @@ async def test_exception_in_transaction_rolls_back(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     """Исключение внутри ``transaction()`` пробрасывается и откатывает незакоммиченную вставку."""
-    journey = make_journey()
+    journey_entity = make_journey()
     async with session_factory() as session:
         uow = JourneyUnitOfWork(session=session)
         # PT012: блок намеренно составной — проверяем, что исключение проходит сквозь
         # transaction() (и откатывает), поэтому raise обязан быть внутри async with.
         with pytest.raises(RuntimeError, match="boom"):  # noqa: PT012
             async with uow.transaction():
-                await uow.journey_repository.insert_journey(journey=journey)
+                await uow.journey_repository.insert_journey(journey_entity=journey_entity)
                 raise RuntimeError("boom")
 
     async with session_factory() as reader:

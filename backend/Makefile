@@ -1,4 +1,4 @@
-.PHONY: help format format-check lint typecheck dead-code audit arch check check-ci test coverage test-unit test-integration test-api test-auth test-users test-shared test-journeys test-geo migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
+.PHONY: help format format-check lint typecheck dead-code audit arch check check-ci test coverage test-unit test-integration test-api test-auth test-users test-shared test-journeys test-geo test-health migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -78,9 +78,9 @@ test: ## Run fast tests — unit + api (no Docker; integration → make test-int
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' unit + api tests${RESET}"
 	@uv run --no-sync pytest -m "unit or api"
 
-coverage: ## Run unit + api tests with coverage report
+coverage: ## Run unit + api tests with coverage report (мерж-гейт: >= 90%)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}pytest${AZURE}' coverage (unit + api)${RESET}"
-	@uv run --no-sync pytest -m "unit or api" --cov=app --cov-report=term-missing
+	@uv run --no-sync pytest -m "unit or api" --cov=app --cov-report=term-missing --cov-fail-under=90
 
 # Запуск тестов по осям маркеров (авто-маркировка по пути — см. tests/conftest.py).
 # `|| [ $$? -eq 5 ]` — не считать "тесты не найдены" (exit 5) ошибкой: пустые группы
@@ -108,6 +108,9 @@ test-journeys: ## Run journeys-domain tests, any level (-m journeys)
 
 test-geo: ## Run geo-domain tests, any level (-m geo)
 	@uv run --no-sync pytest -m geo || [ $$? -eq 5 ]
+
+test-health: ## Run health-domain tests, any level (-m health)
+	@uv run --no-sync pytest -m health || [ $$? -eq 5 ]
 
 migrate-create: ## Create a new migration (usage: make migrate-create "description")
 	@ARGS="$(filter-out $@,$(MAKECMDGOALS))"; \

@@ -52,7 +52,7 @@ async def _ensure_procrastinate_schema(procrastinate_app: ProcrastinateApp) -> N
         logger.info("worker.schema.already_applied")
 
 
-async def run_worker() -> None:
+async def run_worker() -> None:  # pragma: no cover — entry-point обвязка (компоненты+run), не unit-тестируется
     """Поднимает компоненты, применяет schema и запускает procrastinate-worker."""
     configure_logging(include_debug=settings.ENVIRONMENT in (AppEnvEnum.LOCAL, AppEnvEnum.DEVELOPMENT))
 
@@ -79,5 +79,5 @@ async def run_worker() -> None:
             await component.shutdown()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     asyncio.run(run_worker())

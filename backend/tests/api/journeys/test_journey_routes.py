@@ -52,11 +52,11 @@ async def test_create_journey_returns_201_and_persists(
     assert response.status_code == 201
     assert response.content == b""
     assert len(fake_journey_repository.journeys) == 1
-    journey = fake_journey_repository.journeys[0]
-    assert journey.user_id == user_id
-    assert journey.origin.name == "Moscow"
-    assert journey.destination.name == "London"
-    assert journey.transport_type is TransportType.AIR
+    journey_entity = fake_journey_repository.journeys[0]
+    assert journey_entity.user_id == user_id
+    assert journey_entity.origin.name == "Moscow"
+    assert journey_entity.destination.name == "London"
+    assert journey_entity.transport_type is TransportType.AIR
     fake_journey_uow.commit_mock.assert_awaited_once()
 
 

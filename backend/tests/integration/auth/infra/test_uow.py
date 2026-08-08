@@ -22,11 +22,15 @@ async def test_transaction_commit_persists_across_sessions(
 ) -> None:
     """``commit()`` внутри ``transaction()`` фиксирует запись — она видна из новой сессии."""
     user_id = uuid4()
-    credentials = make_user_credentials(user_id=user_id, email="uow-commit@example.com", username="uow_commit")
+    user_credentials_entity = make_user_credentials(
+        user_id=user_id, email="uow-commit@example.com", username="uow_commit"
+    )
     async with session_factory() as session:
         uow = AuthUnitOfWork(session=session)
         async with uow.transaction():
-            await uow.user_credentials_repository.insert_user_credentials(credentials=credentials)
+            await uow.user_credentials_repository.insert_user_credentials(
+                user_credentials_entity=user_credentials_entity
+            )
             await uow.commit()
 
     async with session_factory() as reader:
@@ -41,11 +45,15 @@ async def test_transaction_without_commit_rolls_back(
 ) -> None:
     """Выход из ``transaction()`` без ``commit()`` откатывает запись — новая сессия её не видит."""
     user_id = uuid4()
-    credentials = make_user_credentials(user_id=user_id, email="uow-nocommit@example.com", username="uow_nocommit")
+    user_credentials_entity = make_user_credentials(
+        user_id=user_id, email="uow-nocommit@example.com", username="uow_nocommit"
+    )
     async with session_factory() as session:
         uow = AuthUnitOfWork(session=session)
         async with uow.transaction():
-            await uow.user_credentials_repository.insert_user_credentials(credentials=credentials)
+            await uow.user_credentials_repository.insert_user_credentials(
+                user_credentials_entity=user_credentials_entity
+            )
             # commit() намеренно не вызываем → выход из transaction() откатывает
 
     async with session_factory() as reader:
@@ -59,14 +67,18 @@ async def test_exception_in_transaction_rolls_back(
 ) -> None:
     """Исключение внутри ``transaction()`` пробрасывается и откатывает незакоммиченную запись."""
     user_id = uuid4()
-    credentials = make_user_credentials(user_id=user_id, email="uow-error@example.com", username="uow_error")
+    user_credentials_entity = make_user_credentials(
+        user_id=user_id, email="uow-error@example.com", username="uow_error"
+    )
     async with session_factory() as session:
         uow = AuthUnitOfWork(session=session)
         # PT012: блок намеренно составной — проверяем, что исключение проходит сквозь
         # transaction() (и откатывает), поэтому raise обязан быть внутри async with.
         with pytest.raises(RuntimeError, match="boom"):  # noqa: PT012
             async with uow.transaction():
-                await uow.user_credentials_repository.insert_user_credentials(credentials=credentials)
+                await uow.user_credentials_repository.insert_user_credentials(
+                    user_credentials_entity=user_credentials_entity
+                )
                 raise RuntimeError("boom")
 
     async with session_factory() as reader:
@@ -97,14 +109,18 @@ async def test_transaction_flush_orders_credentials_before_dependent_refresh_tok
     фейки и раздельный сид это не покрывают.
     """
     user_id = uuid4()
-    credentials = make_user_credentials(user_id=user_id, email="uow-fk-order@example.com", username="uow_fk_order")
-    token = make_refresh_token(user_id=user_id, token_hash="uow-fk-order-token-hash")
+    user_credentials_entity = make_user_credentials(
+        user_id=user_id, email="uow-fk-order@example.com", username="uow_fk_order"
+    )
+    refresh_token_entity = make_refresh_token(user_id=user_id, token_hash="uow-fk-order-refresh_token_entity-hash")
     async with session_factory() as session:
         uow = AuthUnitOfWork(session=session)
         async with uow.transaction():
-            await uow.user_credentials_repository.insert_user_credentials(credentials=credentials)
+            await uow.user_credentials_repository.insert_user_credentials(
+                user_credentials_entity=user_credentials_entity
+            )
             await uow.flush()  # родитель уходит в БД до зависимого refresh_token
-            await uow.refresh_token_repository.insert_refresh_token(token=token)
+            await uow.refresh_token_repository.insert_refresh_token(refresh_token_entity=refresh_token_entity)
             await uow.commit()
 
     async with session_factory() as reader:
@@ -112,7 +128,7 @@ async def test_transaction_flush_orders_credentials_before_dependent_refresh_tok
             user_id=user_id,
         )
         found_token = await RefreshTokenRepository(session=reader).find_refresh_token_by_hash_for_update(
-            token_hash="uow-fk-order-token-hash",
+            token_hash="uow-fk-order-refresh_token_entity-hash",
         )
 
     assert found_credentials is not None

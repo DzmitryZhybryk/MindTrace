@@ -1,4 +1,4 @@
-.PHONY: help typecheck lint lint-fix test test-unit test-component coverage check test-e2e
+.PHONY: help typecheck lint lint-fix audit test test-unit test-component coverage check test-e2e
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -46,8 +46,16 @@ coverage: ## Run tests with coverage report
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}vitest${AZURE}' coverage${RESET}"
 	@npm run coverage
 
-check: lint typecheck test ## Run lint + typecheck + unit/component (fast; e2e is separate — make test-e2e)
+audit: ## Scan npm dependencies for known vulnerabilities (high+)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}npm audit${AZURE}' security scan${RESET}"
+	@npm audit --audit-level=high
 
-test-e2e: ## Run Playwright e2e against E2E_BASE_URL (обычно запускается корневым `make test-e2e`, который сам поднимает одноразовый стек)
-	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}playwright test${AZURE}' e2e${RESET}"
-	@npm run e2e
+check: lint typecheck audit test ## Run lint + typecheck + audit + unit/component (fast; coverage-гейт — отдельно make coverage; e2e — make test-e2e)
+
+# Аргументы, пробрасываемые в playwright: сузить браузер или набор тестов.
+# Напр. E2E_ARGS="--project=chromium -g login" — для дев-цикла три браузера избыточны.
+E2E_ARGS ?=
+
+test-e2e: ## Run Playwright e2e against E2E_BASE_URL (обычно запускается корневым `make test-e2e` / `make test-e2e-dev`)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}playwright test $(E2E_ARGS)${AZURE}' e2e${RESET}"
+	@npm run e2e -- $(E2E_ARGS)

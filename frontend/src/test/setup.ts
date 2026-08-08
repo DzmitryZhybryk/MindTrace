@@ -8,7 +8,7 @@
  *     резолвят реальные английские тексты — тестируем настоящий маппинг, а не моки.
  *  2. jest-dom — регистрирует матчеры (`toBeInTheDocument` и пр.) в `expect`.
  *  3. jsdom-полифилы — `matchMedia` и `ResizeObserver`, которых нет в jsdom, но к
- *     которым обращаются Mantine (Menu/Modal) и контейнер `AuthGlobe`.
+ *     которым обращаются Mantine (Menu/Modal) и контейнер `GlobeCanvas`.
  *  4. MSW — сетевой слой component-тестов: listen/reset/close + очистка модульного
  *     состояния (`tokenStore`, `sessionStorage`) и моков после каждого теста.
  *     Unit-тесты ставят собственный `fetch`-мок и MSW минуют (см. `handlers.ts`).
@@ -52,7 +52,7 @@ Object.defineProperty(window, "matchMedia", {
     }) as unknown as MediaQueryList,
 });
 
-// ResizeObserver: нет в jsdom; контейнер AuthGlobe и часть Mantine его инстанцируют.
+// ResizeObserver: нет в jsdom; контейнер GlobeCanvas и часть Mantine его инстанцируют.
 class ResizeObserverStub {
   observe(): void {}
   unobserve(): void {}
@@ -72,7 +72,13 @@ afterEach(() => {
   cleanup();
   server.resetHandlers();
   clearAccessToken();
+  // Node ≥26 инжектит собственные глобалы localStorage/sessionStorage (экспериментальный
+  // Web Storage API), которые затеняют jsdom-storage и роняют этот clear(). Отключены флагом
+  // --no-experimental-webstorage в NODE_OPTIONS test-скриптов (package.json); на node 22 — no-op.
   sessionStorage.clear();
+  // Persist-состояние (флаг легенды, дисмисс баннера, язык i18next) живёт в
+  // localStorage — чистим, чтобы оно не протекало в соседние тесты.
+  localStorage.clear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });

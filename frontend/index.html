@@ -3,8 +3,55 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!--
+      Предзагрузка ОДНОГО субсета Lora — латиница обычного начертания. Им набраны все
+      заголовки, включая LCP-элемент hero; без preload они успевают отрисоваться
+      запасной гарнитурой и потом прыгают. Остальные семь субсетов (курсив, кириллица)
+      не преднагружаем намеренно: они нужны фрагментами, а preload качает безусловно и
+      отобрал бы полосу у критического.
+      crossorigin обязателен даже для своего домена — иначе браузер скачает файл дважды.
+    -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/lora-normal-latin.woff2"
+      crossorigin
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MyJourney</title>
+    <!-- Цвет UI браузера на мобильных. Должен совпадать с поверхностью продукта (`--ink`):
+         кремовый #faf6ef остался от светлой темы до редизайна и давал светлую шапку
+         браузера над тёмным приложением. -->
+    <meta name="theme-color" content="#0b1020" />
+    <meta
+      name="description"
+      content="MyJourney is a quiet atlas of where you've been — save every trip and watch cities, routes, and the years between them trace across a living globe."
+    />
+    <title>MyJourney — the world, the way you traveled it</title>
+
+    <!--
+      Картинка превью НЕ задана намеренно. Раньше здесь стоял `/favicon.svg`, и это не
+      работало по двум причинам сразу: og:image требует АБСОЛЮТНЫЙ URL (относительный путь
+      краулер не резолвит), а SVG как формат превью не поддерживает ни один крупный
+      агрегатор — нужен растр (PNG/JPG), рекомендованно 1200×630.
+      Ссылка на несуществующее превью хуже отсутствия: платформа показывает битую карточку
+      вместо того, чтобы собрать её из title и description. Вернуть og:image и
+      twitter:card=summary_large_image вместе с реальным файлом og-cover.png и известным
+      доменом (сейчас прод живёт по IP — канонический URL ещё не зафиксирован).
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="MyJourney — the world, the way you traveled it" />
+    <meta
+      property="og:description"
+      content="A quiet atlas of where you've been. Save every trip and watch it draw across a living globe."
+    />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="MyJourney — the world, the way you traveled it" />
+    <meta
+      name="twitter:description"
+      content="A quiet atlas of where you've been. Save every trip and watch it draw across a living globe."
+    />
   </head>
   <body>
     <div id="root"></div>

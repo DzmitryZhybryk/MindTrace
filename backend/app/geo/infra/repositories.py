@@ -2,7 +2,7 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.geo.application.ports import PlaceRepositoryPort
-from app.geo.domain.entities import Place
+from app.geo.domain.entities import PlaceEntity
 from app.geo.domain.value_objects import PlaceNames
 from app.geo.infra.models import GeoPlace
 from app.shared.repositories.base_repository import BaseDBRepository
@@ -18,12 +18,12 @@ class PlaceRepository(BaseDBRepository[GeoPlace], PlaceRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session=session, model=GeoPlace)
 
-    async def search_places_by_name(self, *, search_text: str, limit: int) -> list[Place]:
+    async def search_places_by_name(self, *, search_text: str, limit: int) -> list[PlaceEntity]:
         query = self._prefix_query(search_text=search_text)
         # Места ранжируем по убыванию населения, затем стабильный tie-break по external_id.
         query = query.order_by(GeoPlace.population.desc(), GeoPlace.external_id).limit(limit)
         result = await self._session.execute(query)
-        return [self._to_entity(model=model) for model in result.scalars()]
+        return [self._to_entity(place_model=place_model) for place_model in result.scalars()]
 
     def _prefix_query(self, *, search_text: str) -> Select[tuple[GeoPlace]]:
         """
@@ -50,12 +50,12 @@ class PlaceRepository(BaseDBRepository[GeoPlace], PlaceRepositoryPort):
         )
 
     @staticmethod
-    def _to_entity(*, model: GeoPlace) -> Place:
-        return Place(
-            place_id=model.id,
-            names=PlaceNames(en=model.name_en, ru=model.name_ru),
-            country_code=model.country_code,
-            latitude=model.latitude,
-            longitude=model.longitude,
-            population=model.population,
+    def _to_entity(*, place_model: GeoPlace) -> PlaceEntity:
+        return PlaceEntity(
+            place_id=place_model.id,
+            names=PlaceNames(en=place_model.name_en, ru=place_model.name_ru),
+            country_code=place_model.country_code,
+            latitude=place_model.latitude,
+            longitude=place_model.longitude,
+            population=place_model.population,
         )

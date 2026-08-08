@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.pool import NullPool
-from testcontainers.postgres import PostgresContainer
+from testcontainers.community.postgres import PostgresContainer
 
 # Импорт моделей регистрирует таблицы в ``BaseDBModel.metadata`` (нужно для create_all).
 from app.auth.infra import models as _auth_models  # noqa: F401
@@ -122,10 +122,10 @@ def seed_user_credentials(
         email: str = "user@example.com",
         username: str = "user",
     ) -> None:
-        credentials = make_user_credentials(user_id=user_id, email=email, username=username)
+        user_credentials_entity = make_user_credentials(user_id=user_id, email=email, username=username)
         async with session_factory() as session:
             repository = UserCredentialsRepository(session=session)
-            await repository.insert_user_credentials(credentials=credentials)
+            await repository.insert_user_credentials(user_credentials_entity=user_credentials_entity)
             await session.commit()
 
     return _seed

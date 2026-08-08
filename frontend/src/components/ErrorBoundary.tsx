@@ -14,7 +14,7 @@ interface ErrorBoundaryState {
  *
  * React не даёт boundary-функцию — нужен класс. Логирование намеренно не делаем
  * здесь (console запрещён правилами; в dev React и так печатает стек). Корневой
- * boundary держит белый экран от падения, локальный (вокруг `AuthGlobe`) изолирует
+ * boundary держит белый экран от падения, локальный (вокруг `PersistentGlobeHost`) изолирует
  * сбой WebGL/three.js, не ломая форму.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {

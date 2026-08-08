@@ -1,7 +1,8 @@
 /*
  * Бейдж «Soon» — маркер ещё не реализованного (отключённого) пункта навигации
- * или действия. Нейтральный slate-pill: акцент даём формой и uppercase-текстом,
- * а не цветом, чтобы не спорить с активными действиями (emerald / slate-fill).
+ * или действия. Нейтральная пилюля: акцент даём формой и капителью, а не цветом,
+ * чтобы не спорить с закатным акцентом активных действий. Моно — тот же штемпель,
+ * которым по всему продукту набраны служебные подписи.
  */
 .soon-badge {
   display: inline-flex;
@@ -9,9 +10,9 @@
   flex: none;
   padding: 2px 7px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.18);
-  color: #64748b;
-  font: 600 9px/1 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  background: rgb(var(--ink-on-dark-rgb) / 0.1);
+  color: var(--text-muted);
+  font: 600 var(--fs-10)/1 var(--font-mono);
   letter-spacing: 0.09em;
   text-transform: uppercase;
   white-space: nowrap;

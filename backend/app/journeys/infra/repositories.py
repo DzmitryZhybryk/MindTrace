@@ -15,8 +15,8 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session=session, model=Journey)
 
-    async def insert_journey(self, journey: JourneyEntity) -> None:
-        await self.insert(data=self._to_model(journey=journey))
+    async def insert_journey(self, journey_entity: JourneyEntity) -> None:
+        await self.insert(data=self._to_model(journey_entity=journey_entity))
 
     async def find_journeys_by_user_id(self, *, user_id: UUID) -> list[JourneyEntity]:
         """
@@ -37,51 +37,51 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
             .order_by(Journey.traveled_on)
         )
         result = await self._session.execute(query)
-        return [self._to_entity(model=model) for model in result.scalars()]
+        return [self._to_entity(journey_model=journey_model) for journey_model in result.scalars()]
 
-    def _to_entity(self, *, model: Journey) -> JourneyEntity:
+    def _to_entity(self, *, journey_model: Journey) -> JourneyEntity:
         return JourneyEntity(
-            journey_id=model.id,
-            user_id=model.user_id,
+            journey_id=journey_model.id,
+            user_id=journey_model.user_id,
             origin=GeoPoint(
-                name=model.origin_name,
-                country_code=model.origin_country_code,
-                latitude=model.origin_latitude,
-                longitude=model.origin_longitude,
+                name=journey_model.origin_name,
+                country_code=journey_model.origin_country_code,
+                latitude=journey_model.origin_latitude,
+                longitude=journey_model.origin_longitude,
             ),
             destination=GeoPoint(
-                name=model.destination_name,
-                country_code=model.destination_country_code,
-                latitude=model.destination_latitude,
-                longitude=model.destination_longitude,
+                name=journey_model.destination_name,
+                country_code=journey_model.destination_country_code,
+                latitude=journey_model.destination_latitude,
+                longitude=journey_model.destination_longitude,
             ),
-            transport_type=TransportType(model.transport_type),
+            transport_type=TransportType(journey_model.transport_type),
             traveled_on=ApproximateDate(
-                value=model.traveled_on,
-                precision=DatePrecision(model.traveled_on_precision),
+                value=journey_model.traveled_on,
+                precision=DatePrecision(journey_model.traveled_on_precision),
             ),
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-            deleted_at=model.deleted_at,
+            created_at=journey_model.created_at,
+            updated_at=journey_model.updated_at,
+            deleted_at=journey_model.deleted_at,
         )
 
-    def _to_model(self, journey: JourneyEntity) -> Journey:
+    def _to_model(self, journey_entity: JourneyEntity) -> Journey:
         return Journey(
-            id=journey.journey_id,
-            user_id=journey.user_id,
-            origin_name=journey.origin.name,
-            origin_country_code=journey.origin.country_code,
-            origin_latitude=journey.origin.latitude,
-            origin_longitude=journey.origin.longitude,
-            destination_name=journey.destination.name,
-            destination_country_code=journey.destination.country_code,
-            destination_latitude=journey.destination.latitude,
-            destination_longitude=journey.destination.longitude,
-            transport_type=journey.transport_type,
-            distance_km=journey.distance_km,
-            traveled_on=journey.traveled_on.value,
-            traveled_on_precision=journey.traveled_on.precision,
-            created_at=journey.created_at,
-            updated_at=journey.updated_at,
-            deleted_at=journey.deleted_at,
+            id=journey_entity.journey_id,
+            user_id=journey_entity.user_id,
+            origin_name=journey_entity.origin.name,
+            origin_country_code=journey_entity.origin.country_code,
+            origin_latitude=journey_entity.origin.latitude,
+            origin_longitude=journey_entity.origin.longitude,
+            destination_name=journey_entity.destination.name,
+            destination_country_code=journey_entity.destination.country_code,
+            destination_latitude=journey_entity.destination.latitude,
+            destination_longitude=journey_entity.destination.longitude,
+            transport_type=journey_entity.transport_type,
+            distance_km=journey_entity.distance_km,
+            traveled_on=journey_entity.traveled_on.value,
+            traveled_on_precision=journey_entity.traveled_on.precision,
+            created_at=journey_entity.created_at,
+            updated_at=journey_entity.updated_at,
+            deleted_at=journey_entity.deleted_at,
         )

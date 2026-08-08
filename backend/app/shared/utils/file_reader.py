@@ -3,8 +3,11 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar
 
+from app.shared.logging import get_logger
 from app.shared.types import DictStrAny
 from app.shared.utils.utils_exceptions import UnsupportedFileTypeError
+
+logger = get_logger(__name__)
 
 
 class BaseFileReader[T](ABC):
@@ -24,8 +27,12 @@ class TomlFileReader(BaseFileReader[DictStrAny]):
         try:
             with file_path.open("rb") as f:
                 return tomllib.load(f)
-        except FileNotFoundError, tomllib.TOMLDecodeError:
-            return {}
+        except FileNotFoundError:
+            logger.warning("file_reader.file_not_found", file_path=str(file_path))
+            raise
+        except tomllib.TOMLDecodeError as exc:
+            logger.exception("file_reader.toml_decode_error", file_path=str(file_path), error=str(exc))
+            raise
 
 
 class FileReaderFactory:

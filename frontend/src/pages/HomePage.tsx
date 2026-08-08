@@ -1,15 +1,24 @@
 import { useTranslation } from "react-i18next";
 
 import { AppHeader } from "../components/AppHeader";
-import { ErrorBoundary } from "../components/ErrorBoundary";
-import { HomeGlobe } from "../components/HomeGlobe";
 import "./home.css";
 
-const STATS = [
-  { name: "Countries", meta: "12 visited" },
-  { name: "Cities", meta: "47 visited" },
-  { name: "Streak", meta: "7 days" },
-] as const;
+/*
+ * ЗАГЛУШКИ. Дашборд ещё не подключён к бэку: ни статистики, ни рекомендаций, ни списка
+ * недавних поездок API пока не отдаёт. Данные оставлены английскими намеренно — переводить
+ * вымышленные цифры и описания на два языка значит удваивать работу, которая удалится
+ * вместе с моком. Подписи разделов вокруг них — настоящий UI, и они через i18n.
+ *
+ * Имя в приветствии — тоже заглушка, и её нельзя убрать простой правкой фронта: access-токен
+ * несёт только `sub`/`email_verified`/`exp` (см. auth/jwt.ts), эндпоинта профиля в API нет.
+ * Нужен либо `/v1/users/me`, либо имя отдельным claim'ом — это бэкенд-задача.
+ */
+const STAT_KEYS = ["countries", "cities", "streak"] as const;
+const STAT_VALUES: Record<(typeof STAT_KEYS)[number], number> = {
+  countries: 12,
+  cities: 47,
+  streak: 7,
+};
 
 const RECOMMENDED = {
   countries: [
@@ -32,7 +41,6 @@ const RECENT = [
 
 const GREETING_NAME = "Dzmitry";
 const GREETING_DATE = "Saturday · May 2026";
-const AURA_WORD = "atmosphere · still";
 
 export function HomePage() {
   const { t } = useTranslation("common");
@@ -47,25 +55,21 @@ export function HomePage() {
           <span className="home-greeting__date">{GREETING_DATE}</span>
         </div>
 
-        <div className="home-stage">
-          {/* WebGL-сбой не должен ронять Home — fallback оставит тёмный диск стейджа со свечением. */}
-          <ErrorBoundary fallback={null}>
-            <HomeGlobe />
-          </ErrorBoundary>
-        </div>
+        {/* Пустой центральный слот: место, где визуально стоит app-global глобус-фон (корневой
+            PersistentGlobeHost, кадрируется по data-screen="home"). Держит вертикальный ритм
+            greeting → планета → подпись; сам прозрачен — глобус виден сквозь него. */}
+        <div className="home-stage" aria-hidden />
 
-        <p className="home-aura">{AURA_WORD}</p>
+        <p className="home-aura">{t("home.aura")}</p>
 
-        <aside className="home-recommend" aria-label="Recommended for you">
+        <aside className="home-recommend" aria-label={t("home.recommend.aria")}>
           <div className="home-recommend__head">
-            <span className="home-recommend__title">you might like</span>
-            <span className="home-recommend__caption">
-              Based on places you&apos;ve rated — or travelers like you, until we know your taste
-            </span>
+            <span className="home-recommend__title">{t("home.recommend.title")}</span>
+            <span className="home-recommend__caption">{t("home.recommend.caption")}</span>
           </div>
 
           <div className="home-recommend__group">
-            <span className="home-recommend__group-label">countries</span>
+            <span className="home-recommend__group-label">{t("home.recommend.countries")}</span>
             <ul className="home-recommend__list">
               {RECOMMENDED.countries.map((item) => (
                 <li key={item.name} className="home-recommend__item">
@@ -77,7 +81,7 @@ export function HomePage() {
           </div>
 
           <div className="home-recommend__group">
-            <span className="home-recommend__group-label">cities</span>
+            <span className="home-recommend__group-label">{t("home.recommend.cities")}</span>
             <ul className="home-recommend__list">
               {RECOMMENDED.cities.map((item) => (
                 <li key={item.name} className="home-recommend__item">
@@ -89,21 +93,25 @@ export function HomePage() {
           </div>
         </aside>
 
-        <aside className="home-right" aria-label="Activity">
+        <aside className="home-right" aria-label={t("home.activity.aria")}>
           <div className="home-stats">
-            <span className="home-stats__title">achievements</span>
+            <span className="home-stats__title">{t("home.stats.title")}</span>
             <ul className="home-stats__list">
-              {STATS.map((stat) => (
-                <li key={stat.name} className="home-stat">
-                  <span className="home-stat__name">{stat.name}</span>
-                  <span className="home-stat__meta">{stat.meta}</span>
+              {STAT_KEYS.map((key) => (
+                <li key={key} className="home-stat">
+                  <span className="home-stat__name">{t(`home.stats.${key}`)}</span>
+                  <span className="home-stat__meta">
+                    {key === "streak"
+                      ? t("home.stats.days", { count: STAT_VALUES[key] })
+                      : t("home.stats.visited", { count: STAT_VALUES[key] })}
+                  </span>
                 </li>
               ))}
             </ul>
           </div>
 
           <div className="home-recent">
-            <span className="home-recent__title">recent</span>
+            <span className="home-recent__title">{t("home.recent.title")}</span>
             <ul className="home-recent__list">
               {RECENT.map((entry) => (
                 <li key={entry.city} className="home-recent__item">

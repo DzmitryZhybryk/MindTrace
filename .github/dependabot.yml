@@ -14,3 +14,51 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  # Python-зависимости бэка (uv.lock). До 2026-08-07 эта экосистема отсутствовала — advisories
+  # транзитивных пакетов (click, gitpython) прилетали только красным `uv audit` в гейте CI,
+  # и бампить приходилось руками (`uv lock --upgrade-package ...`). Теперь Dependabot приносит
+  # готовый PR; ночной audit.yml остаётся быстрым сигналом (weekly-каденс медленнее advisory).
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+    groups:
+      # Симметрия с npm-группой ниже: minor/patch — одним тихим PR, мажоры — отдельными.
+      uv-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # npm-зависимости фронта (симметрия с backend: uv audit в CI ловит уязвимости).
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+    groups:
+      # minor/patch — одним тихим PR; мажоры выпадают из группы и приходят отдельными PR
+      # как сигнал к осознанному апгрейду (React/Vite/Mantine major и т.п. — своя задача).
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Базовые Docker-образы запинены по digest (supply-chain) — Dependabot поднимает PR при
+  # выходе нового digest тега, иначе пины заморозили бы и security-патчи самих образов.
+  - package-ecosystem: docker
+    directories:
+      - /backend
+      - /frontend
+      - /ops
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore

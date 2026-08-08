@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { searchPlaces, type PlaceSuggestion } from "../api/journeys";
 import pinIcon from "../assets/emoji/pin.svg";
 
-// Размер эмодзи-пина в строке подсказки места (px).
 const PIN_ICON_SIZE = 20;
 
 // Префиксный поиск (btree) отрабатывает и на 1 символе, но порог 2 режет флуд запросов.
@@ -109,6 +108,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
       })
       .catch((err: unknown) => {
         // Устаревший запрос отменён следующим набором — игнорируем, не трогаем стейт.
+        /* v8 ignore next 3 */
         if (err instanceof DOMException && err.name === "AbortError") {
           return;
         }
@@ -143,6 +143,8 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
   const handleOptionSubmit = (optionValue: string) => {
     const picked = options.find((place) => place.placeId === optionValue);
     combobox.closeDropdown();
+    // optionValue приходит из value рендеренной Combobox.Option → picked всегда найден.
+    /* v8 ignore next 3 */
     if (picked === undefined) {
       return;
     }
@@ -200,7 +202,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
                       <img src={pinIcon} width={PIN_ICON_SIZE} height={PIN_ICON_SIZE} alt="" />
                       <div>
                         <Text size="sm">{place.name}</Text>
-                        <Text size="xs" c="dimmed">
+                        <Text size="xs" c="var(--text-muted)">
                           {country}
                         </Text>
                       </div>
@@ -214,7 +216,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
       </Combobox>
 
       {isEmpty && (
-        <Text size="sm" c="dimmed">
+        <Text size="sm" c="var(--text-muted)">
           {t("addJourney.place.hintEmpty")}
         </Text>
       )}

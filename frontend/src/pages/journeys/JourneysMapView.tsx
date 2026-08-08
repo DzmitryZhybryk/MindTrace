@@ -30,6 +30,8 @@ export function JourneysMapView() {
         setState({ status: "ready", countries });
       })
       .catch((error: unknown) => {
+        // Прерванный запрос (размонтирование/перезагрузка) — не ошибка; тестировать нечего.
+        /* v8 ignore next 3 */
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
@@ -54,14 +56,14 @@ export function JourneysMapView() {
       {state.status === "loading" && (
         <output className="journeys-map-status">
           <Loader size="sm" color="gray" />
-          <Text size="sm" c="dimmed">
+          <Text size="sm" c="var(--text-muted)">
             {t("map.loading")}
           </Text>
         </output>
       )}
       {state.status === "error" && (
         <div className="journeys-map-status" role="alert">
-          <Text size="sm" c="red" fw={500}>
+          <Text size="sm" fw={500} c="var(--text-error)">
             {t("map.error")}
           </Text>
           <Button size="xs" variant="subtle" color="gray" onClick={() => load()}>

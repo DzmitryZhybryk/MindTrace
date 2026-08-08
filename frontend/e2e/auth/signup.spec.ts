@@ -3,10 +3,10 @@ import { expect, test } from "@playwright/test";
 import { makeUserData } from "../helpers/users";
 
 /**
- * E2E: sign-up happy-path по флоу A из `.claude/.test-plan.md` (пункт A3).
+ * E2E: sign-up happy-path по флоу A (пункт A3).
  *
  * Регистрация идёт через реальную UI-форму (а не через бэкенд-сид) — это и есть
- * смысл теста: проверить полный путь «заполнил форму → 201 → редирект на `/` →
+ * смысл теста: проверить полный путь «заполнил форму → 201 → редирект на `/home` →
  * токен сессии сохранён». Уникальный юзер на прогон, чтобы не зависеть от БД.
  *
  * Микровалидация полей (A2) и конфликты 409 (L) покрыты компонентным
@@ -26,9 +26,9 @@ test.describe("Sign up", () => {
     await page.getByRole("checkbox", { name: /I agree to the/u }).check();
     await page.getByRole("button", { name: "Create account" }).click();
 
-    // Кнопка профиля живёт только на HomePage — её появление = успешная регистрация и редирект на `/`.
+    // Кнопка профиля живёт только на HomePage — её появление = успешная регистрация и редирект на `/home`.
     await expect(page.getByRole("button", { name: "Open profile menu" })).toBeVisible();
-    await expect(page).toHaveURL(/\/$/u);
+    await expect(page).toHaveURL(/\/home$/u);
 
     // Access-токен сохранён в sessionStorage (refresh — в HttpOnly-cookie, её проверяет блок K).
     const accessToken = await page.evaluate(() => window.sessionStorage.getItem("access_token"));

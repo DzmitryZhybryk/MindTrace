@@ -1,7 +1,7 @@
 import { Avatar, Burger, Drawer, Group, Indicator, Menu, Stack, UnstyledButton } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { logout } from "../api/auth";
 import { useAuth } from "../auth/useAuth";
@@ -56,7 +56,7 @@ export function AppHeader() {
     <>
       <header className="app-header">
         <div className="app-header__brand">
-          <BrandMark />
+          <BrandMark to="/home" />
         </div>
 
         <nav className="app-tabs" aria-label={t("nav.ariaPrimary")}>

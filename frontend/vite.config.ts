@@ -44,10 +44,33 @@ export default defineConfig({
     include: resolveVitestInclude(),
     coverage: {
       provider: "v8",
-      // Покрытие пока без порога (как pytest-cov без --cov-fail-under до набора baseline).
       reporter: ["text", "html"],
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.{ts,tsx}", "src/test/**", "src/main.tsx", "src/**/*.d.ts"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/test/**",
+        "src/main.tsx",
+        "src/**/*.d.ts",
+        // Императивный three/WebGL-рендер глобусов: в jsdom не исполняется, тестировать
+        // нечего. Вся чистая математика вынесена в src/components/globe/{geo,route,routes}.ts
+        // и покрыта unit-тестами — эти файлы остаются под покрытием.
+        // HomeGlobe/AuthGlobe удалены редизайном; их роль исполняет app-global
+        // globe/PersistentGlobeHost поверх GlobeCanvas (покрыт component-тестом).
+        "src/components/JourneyGlobe.tsx",
+        // Декларативная композиция без логики: таблица маршрутов и layout-каркасы с <Outlet/>.
+        // Ветвлений нет, покрывается e2e-навигацией, а не unit/component. PublicLayout стал
+        // тривиальным после переезда глобуса на корень (шапка + <Outlet/> через кросс-фейд).
+        "src/App.tsx",
+        "src/pages/journeys/JourneysLayout.tsx",
+        "src/pages/PublicLayout.tsx",
+      ],
+      // Мерж-гейт: покрытие >= 90% (форсится pre-push hook'ом, не CI — см. CLAUDE.md).
+      thresholds: {
+        statements: 90,
+        branches: 90,
+        functions: 90,
+        lines: 90,
+      },
     },
   },
 });

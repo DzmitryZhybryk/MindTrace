@@ -1,7 +1,7 @@
-/**
- * Общие ассеты и настройки react-globe.gl-глобусов проекта (AuthGlobe, JourneyGlobe, BrandMark).
- * Один источник правды для текстур/атмосферы — иначе URL дрейфуют по копиям независимо.
- */
-export const GLOBE_TEXTURE_URL = "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg";
-export const GLOBE_BUMP_URL = "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png";
+// Исходники текстур — three-globe@2.45.2/example/img, перекодированы в WebP.
+import earthBlueMarble from "../../assets/textures/earth-blue-marble.webp";
+import earthTopology from "../../assets/textures/earth-topology.webp";
+
+export const GLOBE_TEXTURE_URL = earthBlueMarble;
+export const GLOBE_BUMP_URL = earthTopology;
 export const GLOBE_ATMOSPHERE_COLOR = "#4ab3ff";

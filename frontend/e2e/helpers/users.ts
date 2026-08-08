@@ -46,7 +46,7 @@ export function makeUserData(): RegisteredUser {
  * Регистрирует свежего пользователя через `/v1/auth/register/` и возвращает его данные.
  *
  * Уникальный логин на каждый вызов → тесты не зависят от состояния БД и идут параллельно.
- * Email остаётся неверифицированным — по контракту это не блокирует вход на `/`.
+ * Email остаётся неверифицированным — по контракту это не блокирует вход на `/home`.
  *
  * Args:
  *   request: APIRequestContext с baseURL из конфига (идёт через vite-прокси на backend)
@@ -72,7 +72,7 @@ export async function registerUser(request: APIRequestContext): Promise<Register
 }
 
 /**
- * Проходит UI-логин: заполняет форму на `/login` и ждёт появления главной.
+ * Проходит UI-логин: заполняет форму на `/login` и ждёт появления дашборда (`/home`).
  *
  * `exact: true` обязателен — `getByLabel` матчит подстроку без регистра, и "Password"
  * без него цепляет ещё и кнопку-глазик (aria-label "Toggle password visibility").
@@ -85,9 +85,9 @@ export async function loginViaUi(page: Page, credentials: Credentials): Promise<
   await page.goto("/login");
   await page.getByLabel("Username or email", { exact: true }).fill(credentials.login);
   await page.getByLabel("Password", { exact: true }).fill(credentials.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Log in" }).click();
 
-  // Кнопка профиля живёт только на HomePage — её появление = успешный вход и редирект на `/`.
+  // Кнопка профиля живёт только на HomePage — её появление = успешный вход и редирект на `/home`.
   await expect(page.getByRole("button", { name: "Open profile menu" })).toBeVisible();
 }
 

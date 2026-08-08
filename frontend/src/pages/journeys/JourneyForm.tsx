@@ -2,7 +2,7 @@ import { Button, Group, Select, Stack, Text } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 import { applyApiError, resolveErrorToken } from "../../api/errors";
 import { createJourney, TRANSPORT_TYPES, type PlaceSuggestion, type TransportType } from "../../api/journeys";
@@ -19,7 +19,6 @@ const TRANSPORT_ICONS: Record<TransportType, string> = {
   water: shipIcon,
 };
 
-// Размер эмодзи-иконки транспорта в селекте (px).
 const TRANSPORT_ICON_SIZE = 22;
 
 /**
@@ -193,7 +192,7 @@ export function JourneyForm({ form }: JourneyFormProps) {
         <JourneyDateField form={form} />
 
         {formError && (
-          <Text size="sm" c="red" fw={500}>
+          <Text size="sm" fw={500} c="var(--text-error)">
             {resolveErrorToken(formError)}
           </Text>
         )}
