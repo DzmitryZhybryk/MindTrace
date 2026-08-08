@@ -14,7 +14,7 @@ from app.shared.types import OptionalDict
 class TermsNotAcceptedError(InvalidInputError):
     code = "auth.terms_not_accepted"
     message = "Необходимо принять пользовательское соглашение"
-    details: ClassVar[OptionalDict] = {"field": "terms_accepted"}
+    default_details: ClassVar[OptionalDict] = {"field": "terms_accepted"}
 
 
 class InvalidAccessTokenError(UnauthenticatedError):
@@ -40,13 +40,13 @@ class UserCredentialsNotFoundError(NotFoundError):
 class EmailAlreadyExistError(ConflictError):
     code = "auth.email_already_registered"
     message = "Пользователь с таким email уже существует"
-    details: ClassVar[OptionalDict] = {"field": "email"}
+    default_details: ClassVar[OptionalDict] = {"field": "email"}
 
 
 class UsernameAlreadyExistError(ConflictError):
     code = "auth.username_already_taken"
     message = "Пользователь с таким username уже существует"
-    details: ClassVar[OptionalDict] = {"field": "username"}
+    default_details: ClassVar[OptionalDict] = {"field": "username"}
 
 
 class EmailAlreadyVerifiedError(ConflictError):
@@ -57,7 +57,7 @@ class EmailAlreadyVerifiedError(ConflictError):
 class VerificationCodeInvalidError(InvalidInputError):
     code = "auth.verification_code_invalid"
     message = "Неверный код подтверждения"
-    details: ClassVar[OptionalDict] = {"field": "code"}
+    default_details: ClassVar[OptionalDict] = {"field": "code"}
 
 
 class ChallengeNotFoundError(NotFoundError):

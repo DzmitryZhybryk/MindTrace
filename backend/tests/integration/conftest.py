@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.pool import NullPool
-from testcontainers.postgres import PostgresContainer
+from testcontainers.community.postgres import PostgresContainer
 
 # Импорт моделей регистрирует таблицы в ``BaseDBModel.metadata`` (нужно для create_all).
 from app.auth.infra import models as _auth_models  # noqa: F401
