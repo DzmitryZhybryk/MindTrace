@@ -1,6 +1,7 @@
 """Базовые исключения для доменов."""
 
 from enum import Enum
+from typing import ClassVar
 
 from app.shared.types import OptionalDict
 
@@ -37,13 +38,16 @@ class BaseDomainError(Exception):
     адаптер транспорта переводит его в свой код (HTTP-статус и т.п.).
     Поле `code` — стабильный машинно-читаемый идентификатор ошибки для клиента
     (часть API-контракта). Поле `details` несёт дополнительную метаинформацию
-    (например, ``{"field": "email"}`` для подсветки конкретного поля формы).
+    (например, ``{"field": "email"}`` для подсветки конкретного поля формы);
+    классовый дефолт для него наследники задают через `default_details` —
+    отдельный ClassVar-канал, чтобы классовая константа не переопределяла
+    инстанс-атрибут `details`.
     """
 
     category: ErrorCategory = ErrorCategory.INTERNAL
     code: str = "unknown_error"
     message: str = "Произошла ошибка"
-    details: OptionalDict = None
+    default_details: ClassVar[OptionalDict] = None
 
     def __init__(
         self,
@@ -58,7 +62,7 @@ class BaseDomainError(Exception):
             code = self.code
 
         if details is None:
-            details = self.details
+            details = self.default_details
 
         super().__init__(message)
         self.message = message
