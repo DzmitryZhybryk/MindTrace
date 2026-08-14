@@ -243,9 +243,9 @@ CHANGELOG — **один** файл в корне. Новые записи гр�
 
 ### Coverage gate (merge)
 
-Код с покрытием **< 90%** мержить нельзя — на обеих сторонах. Порог задан в самих coverage-таргетах: backend `make coverage` (`--cov-fail-under=90`), frontend `make coverage` (vitest `thresholds` в `vite.config.ts`). Форсится **локальным pre-push hook'ом** (`.githooks/pre-push`), а не CI: перед каждым push гоняет coverage обеих сторон и роняет push при провале порога.
+Код с покрытием **< 90%** мержить нельзя — на обеих сторонах. Порог задан в самих coverage-таргетах: backend `make coverage` (`--cov-fail-under=90`), frontend `make coverage` (vitest `thresholds` в `vite.config.ts`). Форсится **локальным pre-commit hook'ом** (`.githooks/pre-commit`), а не CI: перед каждым commit гоняет coverage обеих сторон и роняет commit при провале порога.
 
-Активация разовая: `make hooks` (== `git config core.hooksPath .githooks`). Обход в исключительном случае — `git push --no-verify`.
+Активация разовая: `make hooks` (== `git config core.hooksPath .githooks`). Обход в исключительном случае — `git commit --no-verify`.
 
 ## Always-follow rules
 
