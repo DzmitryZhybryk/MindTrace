@@ -12,7 +12,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .globe-label {
+  .globe-label,
+  .globe-label__name {
     transition: none;
   }
 }
@@ -43,4 +44,10 @@
   text-shadow:
     0 1px 3px rgba(0, 0, 0, 0.95),
     0 0 7px rgba(0, 0, 0, 0.75);
+  transition: opacity 0.4s ease;
+}
+
+/* Деклаттер коллизий: у проигравшей подписи гаснет только текст, точка остаётся. */
+.globe-label--decluttered .globe-label__name {
+  opacity: 0;
 }

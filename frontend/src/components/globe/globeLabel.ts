@@ -31,3 +31,12 @@ export function createGlobeLabel(name: string): HTMLElement {
 export function applyLabelVisibility(el: HTMLElement, isVisible: boolean): void {
   el.style.opacity = isVisible ? "1" : "0";
 }
+
+/**
+ * Прячет/показывает ТОЛЬКО текст подписи — точка города остаётся видимой всегда.
+ * Канал деклаттера коллизий (класс на обёртке, CSS гасит `__name`); не пересекается
+ * с окклюзией выше, которая владеет inline-opacity самой обёртки.
+ */
+export function applyLabelDeclutter(wrapper: HTMLElement, isHidden: boolean): void {
+  wrapper.classList.toggle("globe-label--decluttered", isHidden);
+}
