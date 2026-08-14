@@ -57,7 +57,8 @@ export function HomePage() {
 
         {/* Пустой центральный слот: место, где визуально стоит app-global глобус-фон (корневой
             PersistentGlobeHost, кадрируется по data-screen="home"). Держит вертикальный ритм
-            greeting → планета → подпись; сам прозрачен — глобус виден сквозь него. */}
+            greeting → планета → подпись; сам прозрачен и для глаз, и для событий — жесты сквозь
+            него уходят планете (драг-вращение, см. home.css). */}
         <div className="home-stage" aria-hidden />
 
         <p className="home-aura">{t("home.aura")}</p>

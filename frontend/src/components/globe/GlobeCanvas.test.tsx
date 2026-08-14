@@ -31,16 +31,26 @@ class ControllableResizeObserver {
 }
 
 /** Инстанс globe.gl, который отдаёт мок вместо настоящего three/WebGL. */
-const controls = { autoRotate: false, autoRotateSpeed: 0, enableZoom: true };
+const controls = { autoRotate: false, autoRotateSpeed: 0, enableZoom: true, enablePan: true, enableRotate: true };
 const pointOfView = vi.fn();
 const pauseAnimation = vi.fn();
 const resumeAnimation = vi.fn();
+const toGlobeCoords = vi.fn();
+// Канвас рендерера нужен интерактивному эффекту (он переопределяет touch-action OrbitControls).
+const rendererDomElement = document.createElement("canvas");
 
 vi.mock("react-globe.gl", () => ({
   default: (props: { ref?: { current?: unknown } }) => {
     // globe.gl отдаёт императивный инстанс через ref — воспроизводим ровно это.
     if (props.ref) {
-      props.ref.current = { controls: () => controls, pointOfView, pauseAnimation, resumeAnimation };
+      props.ref.current = {
+        controls: () => controls,
+        renderer: () => ({ domElement: rendererDomElement }),
+        pointOfView,
+        pauseAnimation,
+        resumeAnimation,
+        toGlobeCoords,
+      };
     }
 
     return null;
@@ -60,6 +70,10 @@ beforeEach(() => {
   fireResize = null;
   controls.autoRotate = false;
   controls.enableZoom = true;
+  controls.enablePan = true;
+  controls.enableRotate = true;
+  // По умолчанию «мимо сферы»: попадание каждый тест задаёт явно.
+  toGlobeCoords.mockReturnValue(null);
   vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
   setReducedMotion(false);
 });
@@ -77,12 +91,13 @@ describe("GlobeCanvas", () => {
     expect(pointOfView).not.toHaveBeenCalled();
   });
 
-  it("получив размер, настраивает камеру и глушит зум скроллом", () => {
+  it("получив размер, настраивает камеру и глушит зум и пан", () => {
     renderWithProviders(<GlobeCanvas />);
 
     act(() => fireResize?.(800, 600));
 
     expect(controls.enableZoom).toBe(false);
+    expect(controls.enablePan).toBe(false);
     expect(controls.autoRotate).toBe(true);
     expect(pointOfView).toHaveBeenCalledTimes(1);
   });
@@ -169,5 +184,120 @@ describe("GlobeCanvas", () => {
     act(() => fireResize?.(0, 0));
 
     expect(pointOfView).not.toHaveBeenCalled();
+  });
+
+  it("interactive: жест на сфере включает вращение, ставит автовращение на паузу и глушит скролл", () => {
+    toGlobeCoords.mockReturnValue({ lat: 10, lng: 20 });
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+
+    expect(controls.enableRotate).toBe(true);
+    expect(controls.autoRotate).toBe(false);
+
+    const touchMove = new Event("touchmove", { bubbles: true, cancelable: true });
+    act(() => {
+      el.dispatchEvent(touchMove);
+    });
+
+    expect(touchMove.defaultPrevented).toBe(true);
+  });
+
+  it("interactive: жест мимо сферы вращение не включает и скролл не трогает", () => {
+    toGlobeCoords.mockReturnValue(null);
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+
+    expect(controls.enableRotate).toBe(false);
+    expect(controls.autoRotate).toBe(true);
+
+    const touchMove = new Event("touchmove", { bubbles: true, cancelable: true });
+    act(() => {
+      el.dispatchEvent(touchMove);
+    });
+
+    expect(touchMove.defaultPrevented).toBe(false);
+  });
+
+  it("interactive: отпускание возвращает автовращение с нового места", () => {
+    toGlobeCoords.mockReturnValue({ lat: 10, lng: 20 });
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+    expect(controls.autoRotate).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(new Event("pointerup"));
+    });
+
+    expect(controls.autoRotate).toBe(true);
+  });
+
+  it("interactive: наведение показывает grab-курсор над сферой и снимает его мимо неё", () => {
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    toGlobeCoords.mockReturnValue({ lat: 10, lng: 20 });
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointermove", { bubbles: true }));
+    });
+    expect(el.style.cursor).toBe("grab");
+
+    toGlobeCoords.mockReturnValue(null);
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointermove", { bubbles: true }));
+    });
+    expect(el.style.cursor).toBe("");
+  });
+
+  it("interactive: хит-тест переводит экранные координаты в макетные (scale кадрирования stage)", () => {
+    toGlobeCoords.mockReturnValue(null);
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    // Канвас 800×600 отрисован в rect 1600×1200 (scale 2): экранная точка (800, 600) — это (400, 300) макета.
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 1600, 1200));
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 800, clientY: 600 }));
+    });
+
+    expect(toGlobeCoords).toHaveBeenCalledWith(400, 300);
+  });
+
+  it("без interactive жесты по канвасу не хит-тестятся вовсе", () => {
+    const { container } = renderWithProviders(<GlobeCanvas />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+
+    expect(toGlobeCoords).not.toHaveBeenCalled();
   });
 });
