@@ -30,6 +30,8 @@ interface GlobeCanvasProps {
   pov?: GlobePov;
   /** Спрятан роутом (например, `/journeys`) — пауза рендера, чтобы WebGL не крутил вхолостую. */
   paused?: boolean;
+  /** Драг-вращение обеими осями. Жест распознаётся пиксельно по самой сфере, мимо неё — уходит странице. */
+  interactive?: boolean;
 }
 
 const DEFAULT_POV: GlobePov = { lat: 22, lng: 24, altitude: 2.3 };
@@ -57,9 +59,9 @@ const cityLabelAccessor = (d: object): HTMLElement => createGlobeLabel((d as Glo
 /**
  * Общая база декоративного 3D-глобуса (signature продукта). Инкапсулирует замер
  * контейнера, тёплую тонировку, атмосферу, блок зума скроллом, reduced-motion,
- * автовращение и перелёты камеры (pov). Опционально рисует дуги маршрутов и подписи
- * городов-концов (HTML-метки с окклюзией дальней стороны). Потребители — app-global
- * глобус-фон (`PersistentGlobeHost`) и интерактивный предпросмотр поездки (`JourneyGlobe`).
+ * автовращение, перелёты камеры (pov) и опциональное драг-вращение по сфере. Опционально рисует дуги маршрутов и подписи
+ * городов-концов (HTML-метки с окклюзией дальней стороны). Потребитель — app-global
+ * глобус-фон (`PersistentGlobeHost`).
  */
 export function GlobeCanvas({
   arcs = EMPTY_ARCS,
@@ -67,6 +69,7 @@ export function GlobeCanvas({
   autoRotate = true,
   pov = DEFAULT_POV,
   paused = false,
+  interactive = false,
 }: GlobeCanvasProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -103,6 +106,8 @@ export function GlobeCanvas({
     controls.autoRotate = autoRotate && !reducedMotion;
     controls.autoRotateSpeed = AUTO_ROTATE_SPEED;
     controls.enableZoom = false;
+    // Пан смещает точку прицела камеры — планета «уезжает» из центра без пути назад.
+    controls.enablePan = false;
 
     // Первая установка — мгновенно; последующие смены pov — плавный перелёт.
     const duration = hasSetPovRef.current && !reducedMotion ? POV_FLIGHT_MS : 0;
@@ -117,6 +122,92 @@ export function GlobeCanvas({
     pov.lng,
     pov.altitude,
   ]);
+
+  /*
+   * Драг-вращение. Канвас растянут на весь вьюпорт, а планета занимает лишь его середину,
+   * поэтому хит-тест — по САМОЙ сфере (raycast через `toGlobeCoords`), а не по прямоугольнику
+   * элемента: жест, начатый мимо шара, глобус не трогает и уходит странице (на стеке — нативный
+   * скролл). Порядок обработчиков важен: `enableRotate` переключается в capture-фазе
+   * pointerdown, ДО обработчика OrbitControls на канвасе, поэтому тот стартует вращение только
+   * для жестов на сфере. `touch-action` канваса возвращаем в auto (OrbitControls ставит none —
+   * «все касания мои»), а скролл глушим вручную и только пока идёт драг сферы
+   * (non-passive touchmove + preventDefault).
+   */
+  useEffect(() => {
+    const el = containerRef.current;
+    const globe = globeRef.current;
+    if (!interactive || !el || !globe || size.width === 0 || size.height === 0) return;
+
+    const controls = globe.controls();
+    const canvasEl = globe.renderer().domElement;
+    const prevTouchAction = canvasEl.style.touchAction;
+    canvasEl.style.touchAction = "auto";
+
+    let isDraggingSphere = false;
+
+    const hitsSphere = (event: PointerEvent): boolean => {
+      // Raycast нормализует точку по МАКЕТНОМУ размеру канваса, а сам канвас живёт внутри
+      // трансформированного stage (scale в кадрировании грани) — поэтому экранные координаты
+      // переводим в макетные через фактический rect, иначе хит-тест уплывает к краям сферы.
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return false;
+
+      const x = ((event.clientX - rect.left) * size.width) / rect.width;
+      const y = ((event.clientY - rect.top) * size.height) / rect.height;
+      return globe.toGlobeCoords(x, y) !== null;
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      // Мультитач: пока идёт драг, новые указатели игнорируем — иначе второе касание мимо
+      // сферы обрывает жест, а endDrag уходит в ранний return и autoRotate застревает выключенным.
+      if (isDraggingSphere) return;
+
+      isDraggingSphere = hitsSphere(event);
+      controls.enableRotate = isDraggingSphere;
+
+      if (isDraggingSphere) {
+        // Пока пользователь держит планету, автовращение не борется с его рукой.
+        controls.autoRotate = false;
+        el.style.cursor = "grabbing";
+      }
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (isDraggingSphere) return;
+
+      el.style.cursor = hitsSphere(event) ? "grab" : "";
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (isDraggingSphere) {
+        event.preventDefault();
+      }
+    };
+
+    const endDrag = () => {
+      if (!isDraggingSphere) return;
+
+      isDraggingSphere = false;
+      controls.autoRotate = autoRotate && !reducedMotion;
+      el.style.cursor = "";
+    };
+
+    el.addEventListener("pointerdown", handlePointerDown, { capture: true });
+    el.addEventListener("pointermove", handlePointerMove);
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+
+    return () => {
+      el.removeEventListener("pointerdown", handlePointerDown, { capture: true });
+      el.removeEventListener("pointermove", handlePointerMove);
+      el.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+      canvasEl.style.touchAction = prevTouchAction;
+      el.style.cursor = "";
+    };
+  }, [interactive, autoRotate, reducedMotion, size.width, size.height]);
 
   /*
    * Колесо мыши над глобусом раньше глушилось безусловно — и это работало ровно наоборот

@@ -36,35 +36,39 @@ interface GlobeView {
   screen: Screen;
   pov: GlobePov;
   autoRotate: boolean;
+  /** Драг-вращение курсором/пальцем. Включено только там, где планета — главный объект экрана. */
+  interactive: boolean;
   /** Виден ли глобус-фон. `false` на `/journeys*` — там его место занимает 2D-карта/форма. */
   visible: boolean;
 }
 
 /**
- * Выбирает грань, режим вращения и видимость по текущему пути.
+ * Выбирает грань, режим вращения, интерактивность и видимость по текущему пути.
  *
  * `/journeys*` прячет глобус (там 2D-`WorldMap` и форма поездки со своим `JourneyGlobe`).
  * На auth-форме (login/signup) планета замирает спокойным фоном; лендинг и дашборд вращаются.
+ * Драг-вращение — только на дашборде: на остальных гранях глобус чисто декоративен и слой
+ * держит `pointer-events: none` (см. persistent-globe.css).
  */
 function viewForPath(pathname: string): GlobeView {
   if (pathname.startsWith("/journeys")) {
     // Спрятан и на паузе — вращение ему не нужно (защита на случай, если пауза не успела встать).
-    return { screen: "home", pov: SCREEN_POV.home, autoRotate: false, visible: false };
+    return { screen: "home", pov: SCREEN_POV.home, autoRotate: false, interactive: false, visible: false };
   }
 
   if (pathname.startsWith("/home")) {
-    return { screen: "home", pov: SCREEN_POV.home, autoRotate: true, visible: true };
+    return { screen: "home", pov: SCREEN_POV.home, autoRotate: true, interactive: true, visible: true };
   }
 
   if (pathname.startsWith("/signup")) {
-    return { screen: "signup", pov: SCREEN_POV.signup, autoRotate: false, visible: true };
+    return { screen: "signup", pov: SCREEN_POV.signup, autoRotate: false, interactive: false, visible: true };
   }
 
   if (pathname.startsWith("/login")) {
-    return { screen: "login", pov: SCREEN_POV.login, autoRotate: false, visible: true };
+    return { screen: "login", pov: SCREEN_POV.login, autoRotate: false, interactive: false, visible: true };
   }
 
-  return { screen: "landing", pov: SCREEN_POV.landing, autoRotate: true, visible: true };
+  return { screen: "landing", pov: SCREEN_POV.landing, autoRotate: true, interactive: false, visible: true };
 }
 
 /**
@@ -120,7 +124,13 @@ export function PersistentGlobeHost() {
   }, [isAuthenticated, sub]);
 
   return (
-    <div className="persistent-globe" data-screen={view.screen} data-visible={view.visible} aria-hidden>
+    <div
+      className="persistent-globe"
+      data-screen={view.screen}
+      data-visible={view.visible}
+      data-interactive={view.interactive}
+      aria-hidden
+    >
       {/* Кадрирование сферы (сдвиг/масштаб) задаёт CSS по data-screen. */}
       <div className="persistent-globe__stage">
         {/*
@@ -135,6 +145,7 @@ export function PersistentGlobeHost() {
               labelCities={isAuthenticated ? userCities : ROUTE_CITIES}
               pov={view.pov}
               autoRotate={view.autoRotate}
+              interactive={view.interactive}
               paused={!view.visible}
             />
           </Suspense>

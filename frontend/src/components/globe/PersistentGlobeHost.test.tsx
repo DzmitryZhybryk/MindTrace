@@ -16,15 +16,17 @@ type MockGlobeProps = {
   arcs?: readonly unknown[];
   labelCities?: readonly unknown[];
   paused?: boolean;
+  interactive?: boolean;
 };
 
 vi.mock("./GlobeCanvas", () => ({
-  GlobeCanvas: ({ arcs, labelCities, paused }: MockGlobeProps) => (
+  GlobeCanvas: ({ arcs, labelCities, paused, interactive }: MockGlobeProps) => (
     <div
       data-testid="globe-canvas"
       data-arcs={arcs?.length ?? 0}
       data-cities={labelCities?.length ?? 0}
       data-paused={String(paused ?? false)}
+      data-interactive={String(interactive ?? false)}
     />
   ),
 }));
@@ -74,6 +76,21 @@ describe("PersistentGlobeHost — грань по маршруту", () => {
     expect(screenAttr(container, "data-screen")).toBe("home");
     expect(screenAttr(container, "data-visible")).toBe("false");
   });
+
+  it.each([
+    { route: "/home", interactive: "true" },
+    { route: "/", interactive: "false" },
+    { route: "/login", interactive: "false" },
+    { route: "/signup", interactive: "false" },
+    { route: "/journeys", interactive: "false" },
+  ])("драг-вращение: на $route data-interactive=$interactive", ({ route, interactive }) => {
+    const { container } = renderWithProviders(<PersistentGlobeHost />, {
+      route,
+      authValue: authedValue("user-1"),
+    });
+
+    expect(screenAttr(container, "data-interactive")).toBe(interactive);
+  });
 });
 
 describe("PersistentGlobeHost — источник данных глобуса", () => {
@@ -94,6 +111,8 @@ describe("PersistentGlobeHost — источник данных глобуса",
 
     // Дуг у авторизованного нет; города приезжают асинхронно из journeys/map (Moscow + London).
     expect(globe).toHaveAttribute("data-arcs", "0");
+    // Дашборд — единственная грань, где холсту передан interactive (драг-вращение).
+    expect(globe).toHaveAttribute("data-interactive", "true");
     await waitFor(() => expect(globe).toHaveAttribute("data-cities", "2"));
   });
 
