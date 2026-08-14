@@ -252,6 +252,32 @@ describe("GlobeCanvas", () => {
     expect(controls.autoRotate).toBe(true);
   });
 
+  it("interactive: второе касание мимо сферы не обрывает драг и не глушит автовращение", () => {
+    // Первый pointerdown попадает в сферу, второй (палец/ладонь мимо шара) — нет.
+    toGlobeCoords.mockReturnValueOnce({ lat: 10, lng: 20 });
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+    expect(controls.autoRotate).toBe(false);
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+    expect(controls.enableRotate).toBe(true);
+
+    act(() => {
+      window.dispatchEvent(new Event("pointerup"));
+    });
+
+    expect(controls.autoRotate).toBe(true);
+  });
+
   it("interactive: наведение показывает grab-курсор над сферой и снимает его мимо неё", () => {
     const { container } = renderWithProviders(<GlobeCanvas interactive />);
     act(() => fireResize?.(800, 600));

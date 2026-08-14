@@ -60,8 +60,8 @@ const cityLabelAccessor = (d: object): HTMLElement => createGlobeLabel((d as Glo
  * Общая база декоративного 3D-глобуса (signature продукта). Инкапсулирует замер
  * контейнера, тёплую тонировку, атмосферу, блок зума скроллом, reduced-motion,
  * автовращение, перелёты камеры (pov) и опциональное драг-вращение по сфере. Опционально рисует дуги маршрутов и подписи
- * городов-концов (HTML-метки с окклюзией дальней стороны). Потребители — app-global
- * глобус-фон (`PersistentGlobeHost`) и интерактивный предпросмотр поездки (`JourneyGlobe`).
+ * городов-концов (HTML-метки с окклюзией дальней стороны). Потребитель — app-global
+ * глобус-фон (`PersistentGlobeHost`).
  */
 export function GlobeCanvas({
   arcs = EMPTY_ARCS,
@@ -158,6 +158,10 @@ export function GlobeCanvas({
     };
 
     const handlePointerDown = (event: PointerEvent) => {
+      // Мультитач: пока идёт драг, новые указатели игнорируем — иначе второе касание мимо
+      // сферы обрывает жест, а endDrag уходит в ранний return и autoRotate застревает выключенным.
+      if (isDraggingSphere) return;
+
       isDraggingSphere = hitsSphere(event);
       controls.enableRotate = isDraggingSphere;
 
