@@ -5,9 +5,12 @@
  * даёт `htmlElementVisibilityModifier` (applyLabelVisibility ниже).
  */
 
-export function createGlobeLabel(name: string): HTMLElement {
+export function createGlobeLabel(name: string, id: string): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "globe-label";
+  // Стабильный ключ метки для деклаттера: имя не уникально (одноимённые города легитимны),
+  // ключ включает координаты — textContent остаётся чисто отображением.
+  wrapper.dataset.labelId = id;
   // Старт с нуля: `applyLabelVisibility` тут же выставит 1 для видимых меток, и CSS-transition
   // (globe-label.css) плавно проявит их. Так реальные города пользователя ПРОЯВЛЯЮТСЯ (fade-in)
   // при входе на /home, а не выскакивают резко поверх курируемых. Проявление зависит от активного

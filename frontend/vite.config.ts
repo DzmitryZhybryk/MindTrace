@@ -64,7 +64,7 @@ export default defineConfig({
         "src/pages/journeys/JourneysLayout.tsx",
         "src/pages/PublicLayout.tsx",
       ],
-      // Мерж-гейт: покрытие >= 90% (форсится pre-push hook'ом, не CI — см. CLAUDE.md).
+      // Мерж-гейт: покрытие >= 90% (форсится pre-commit hook'ом, не CI — см. CLAUDE.md).
       thresholds: {
         statements: 90,
         branches: 90,

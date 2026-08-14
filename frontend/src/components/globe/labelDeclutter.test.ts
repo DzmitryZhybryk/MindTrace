@@ -5,8 +5,8 @@ import { type LabelBox, resolveLabelVisibility, SHOW_CLEARANCE_PX } from "./labe
 const CENTER = { x: 400, y: 300 };
 const NONE: ReadonlySet<string> = new Set();
 
-const box = (name: string, left: number, top: number, width = 60, height = 12): LabelBox => ({
-  name,
+const box = (id: string, left: number, top: number, width = 60, height = 12): LabelBox => ({
+  id,
   left,
   top,
   width,
@@ -72,5 +72,16 @@ describe("resolveLabelVisibility", () => {
     const hidden = resolveLabelVisibility([box("Бишкек", 700, 500)], CENTER, new Set(["Бишкек"]));
 
     expect(hidden.size).toBe(0);
+  });
+
+  it("одноимённые города различаются ключами: прячется только проигравший", () => {
+    // Два разных Спрингфилда (ключ = имя|координаты): гаснуть должен ровно дальний.
+    const hidden = resolveLabelVisibility(
+      [box("Спрингфилд|40.0|-89.6", 350, 296), box("Спрингфилд|37.2|-93.3", 390, 294)],
+      CENTER,
+      NONE,
+    );
+
+    expect(hidden).toEqual(new Set(["Спрингфилд|40.0|-89.6"]));
   });
 });

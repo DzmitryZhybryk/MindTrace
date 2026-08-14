@@ -5,14 +5,17 @@
  *
  * Правила:
  *  - приоритет у метки ближе к центру диска: у лимба проекция сжимает расстояния, и текст
- *    там всё равно нечитаем — уступает он; tie-break по имени, чтобы порядок был стабилен;
+ *    там всё равно нечитаем — уступает он; tie-break по ключу, чтобы порядок был стабилен;
  *  - гистерезис: спрятанная подпись возвращается только с запасом зазора (SHOW_CLEARANCE_PX),
  *    иначе на границе пересечения она мерцала бы каждый кадр вращения.
  */
 
-/** Экранный прямоугольник подписи; `name` — стабильный ключ метки (имя города). */
+/**
+ * Экранный прямоугольник подписи; `id` — стабильный уникальный ключ метки
+ * (имя города не подходит: одноимённые города легитимны).
+ */
 export interface LabelBox {
-  readonly name: string;
+  readonly id: string;
   readonly left: number;
   readonly top: number;
   readonly width: number;
@@ -67,7 +70,7 @@ function hasConflict(box: LabelBox, accepted: readonly LabelBox[], gap: number):
  * Решает, какие подписи спрятать в текущем кадре.
  *
  * Жадный отбор в порядке приоритета (ближе к центру диска — раньше; при равенстве — по
- * имени): подпись получает место, если не конфликтует с уже принятыми. Прятавшаяся в
+ * ключу): подпись получает место, если не конфликтует с уже принятыми. Прятавшаяся в
  * прошлом кадре подпись требует зазор `SHOW_CLEARANCE_PX`, видимая — лишь отсутствия
  * пересечения. Прямоугольники нулевого размера (метка ещё не отрендерена) вызывающая
  * сторона отфильтровывает сама.
@@ -75,10 +78,10 @@ function hasConflict(box: LabelBox, accepted: readonly LabelBox[], gap: number):
  * Args:
  *     boxes: Экранные прямоугольники всех видимых подписей.
  *     center: Центр диска глобуса в тех же координатах.
- *     previouslyHidden: Имена подписей, спрятанных прошлым прогоном (гистерезис).
+ *     previouslyHidden: Ключи подписей, спрятанных прошлым прогоном (гистерезис).
  *
  * Returns:
- *     Имена подписей, которые надо спрятать в этом кадре.
+ *     Ключи подписей, которые надо спрятать в этом кадре.
  */
 export function resolveLabelVisibility(
   boxes: readonly LabelBox[],
@@ -87,15 +90,15 @@ export function resolveLabelVisibility(
 ): Set<string> {
   const byPriority = boxes
     .map((box) => ({ box, distanceSq: distanceSqToCenter(box, center) }))
-    .sort((a, b) => a.distanceSq - b.distanceSq || (a.box.name < b.box.name ? -1 : 1))
+    .sort((a, b) => a.distanceSq - b.distanceSq || (a.box.id < b.box.id ? -1 : 1))
     .map((entry) => entry.box);
 
   const accepted: LabelBox[] = [];
   const hidden = new Set<string>();
   for (const box of byPriority) {
-    const requiredGap = previouslyHidden.has(box.name) ? SHOW_CLEARANCE_PX : 0;
+    const requiredGap = previouslyHidden.has(box.id) ? SHOW_CLEARANCE_PX : 0;
     if (hasConflict(box, accepted, requiredGap)) {
-      hidden.add(box.name);
+      hidden.add(box.id);
     } else {
       accepted.push(box);
     }

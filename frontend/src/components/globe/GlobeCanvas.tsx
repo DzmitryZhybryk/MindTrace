@@ -57,7 +57,10 @@ const arcColorAccessor = (): [string, string] => ARC_COLOR;
 const arcDashInitialGapAccessor = (d: object): number => (d as RouteArc).dashInitialGap;
 const cityLatAccessor = (d: object): number => (d as GlobeCity).lat;
 const cityLngAccessor = (d: object): number => (d as GlobeCity).lng;
-const cityLabelAccessor = (d: object): HTMLElement => createGlobeLabel((d as GlobeCity).name);
+const cityLabelAccessor = (d: object): HTMLElement => {
+  const city = d as GlobeCity;
+  return createGlobeLabel(city.name, `${city.name}|${city.lat}|${city.lng}`);
+};
 
 /**
  * Общая база декоративного 3D-глобуса (signature продукта). Инкапсулирует замер
@@ -230,7 +233,7 @@ export function GlobeCanvas({
     const camera = globe.camera();
     let previousMatrix: number[] = [];
     let lastRunAt = 0;
-    let hiddenNames: ReadonlySet<string> = new Set();
+    let hiddenIds: ReadonlySet<string> = new Set();
     let rafId = 0;
 
     const tick = (now: number) => {
@@ -252,31 +255,39 @@ export function GlobeCanvas({
         // Окклюзия дальней стороны владеет opacity обёртки — спрятанные ею в расчёте не участвуют.
         if (wrapper.style.opacity === "0") continue;
 
+        // Ключ метки — data-атрибут из createGlobeLabel: имя города не уникально.
+        const id = wrapper.dataset.labelId;
         const nameEl = wrapper.querySelector<HTMLElement>(".globe-label__name");
-        const name = nameEl?.textContent;
-        if (!nameEl || !name) continue;
+        if (!id || !nameEl) continue;
 
         const rect = nameEl.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) continue;
 
         measured.push({
           wrapper,
-          box: { name, left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+          box: { id, left: rect.left, top: rect.top, width: rect.width, height: rect.height },
         });
       }
 
-      hiddenNames = resolveLabelVisibility(
+      hiddenIds = resolveLabelVisibility(
         measured.map((entry) => entry.box),
         center,
-        hiddenNames,
+        hiddenIds,
       );
       for (const { wrapper, box } of measured) {
-        applyLabelDeclutter(wrapper, hiddenNames.has(box.name));
+        applyLabelDeclutter(wrapper, hiddenIds.has(box.id));
       }
     };
 
     rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
+    return () => {
+      cancelAnimationFrame(rafId);
+      // Страховка от застрявшего скрытого текста: эффект мог остановиться (labelCities < 2,
+      // pause), а globe.gl — сохранить DOM меток; спрятанной навсегда подпись остаться не должна.
+      for (const wrapper of host.querySelectorAll<HTMLElement>(".globe-label--decluttered")) {
+        applyLabelDeclutter(wrapper, false);
+      }
+    };
   }, [labelCities, paused, size.width, size.height]);
 
   /*

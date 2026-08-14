@@ -349,8 +349,8 @@ describe("GlobeCanvas", () => {
     vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
 
     // Слой подписей строим руками: мок react-globe.gl DOM-элементы данных не рендерит.
-    const tashkent = createGlobeLabel("Ташкент");
-    const bishkek = createGlobeLabel("Бишкек");
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
     for (const wrapper of [tashkent, bishkek]) {
       wrapper.style.opacity = "1";
       el.append(wrapper);
@@ -388,8 +388,8 @@ describe("GlobeCanvas", () => {
     if (!el) throw new Error("контейнер глобуса не отрендерился");
     vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
 
-    const tashkent = createGlobeLabel("Ташкент");
-    const bishkek = createGlobeLabel("Бишкек");
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
     for (const wrapper of [tashkent, bishkek]) {
       wrapper.style.opacity = "1";
       el.append(wrapper);
@@ -421,6 +421,44 @@ describe("GlobeCanvas", () => {
     expect(tashkent.classList.contains("globe-label--decluttered")).toBe(false);
   });
 
+  it("деклаттер: остановка эффекта снимает классы — текст не остаётся спрятанным", () => {
+    vi.useFakeTimers();
+    const { container, unmount } = renderWithProviders(
+      <GlobeCanvas
+        labelCities={[
+          { name: "Ташкент", lat: 41.3, lng: 69.2 },
+          { name: "Бишкек", lat: 42.9, lng: 74.6 },
+        ]}
+      />,
+    );
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
+    for (const wrapper of [tashkent, bishkek]) {
+      wrapper.style.opacity = "1";
+      el.append(wrapper);
+    }
+
+    const tashkentName = tashkent.querySelector<HTMLElement>(".globe-label__name");
+    const bishkekName = bishkek.querySelector<HTMLElement>(".globe-label__name");
+    if (!tashkentName || !bishkekName) throw new Error("подписи не собрались");
+    vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(350, 296, 60, 12));
+    vi.spyOn(bishkekName, "getBoundingClientRect").mockReturnValue(new DOMRect(390, 294, 60, 12));
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
+
+    unmount();
+
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(false);
+  });
+
   it("деклаттер: скрытая окклюзией подпись не участвует в расчёте", () => {
     vi.useFakeTimers();
     const { container } = renderWithProviders(
@@ -436,8 +474,8 @@ describe("GlobeCanvas", () => {
     if (!el) throw new Error("контейнер глобуса не отрендерился");
     vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
 
-    const tashkent = createGlobeLabel("Ташкент");
-    const bishkek = createGlobeLabel("Бишкек");
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
     tashkent.style.opacity = "1";
     // Бишкек ушёл за горизонт: окклюзия спрятала обёртку целиком.
     bishkek.style.opacity = "0";
