@@ -151,7 +151,7 @@ Note: the v8 **text** reporter silently hides files already at 100% — for exac
 `.github/workflows/ci.yml` держит **Frontend gate**: node 26 → `npm ci` → `make check`
 (lint + typecheck + unit/component). Backend-гейт идёт отдельной job'ой (`make check-ci`).
 
-Порог покрытия 90% форсится НЕ в CI, а локальным pre-push хуком (`.githooks/pre-push`,
+Порог покрытия 90% форсится НЕ в CI, а локальным pre-commit хуком (`.githooks/pre-commit`,
 активируется разово через `make hooks`). e2e в CI не гоняется — он поднимает свой одноразовый
 стек и запускается вручную через `make test-e2e`.
 

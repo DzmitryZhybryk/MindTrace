@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { act, renderWithProviders } from "../../test/render";
 import { GlobeCanvas } from "./GlobeCanvas";
+import { createGlobeLabel } from "./globeLabel";
 
 /*
  * Ветки этого компонента открываются только когда контейнер получил РАЗМЕР: до этого
@@ -36,6 +37,8 @@ const pointOfView = vi.fn();
 const pauseAnimation = vi.fn();
 const resumeAnimation = vi.fn();
 const toGlobeCoords = vi.fn();
+// Камера нужна деклаттеру подписей: гейт «матрица не менялась — кадр пропускается».
+const cameraStub = { matrixWorld: { elements: [0] } };
 // Канвас рендерера нужен интерактивному эффекту (он переопределяет touch-action OrbitControls).
 const rendererDomElement = document.createElement("canvas");
 
@@ -46,6 +49,7 @@ vi.mock("react-globe.gl", () => ({
       props.ref.current = {
         controls: () => controls,
         renderer: () => ({ domElement: rendererDomElement }),
+        camera: () => cameraStub,
         pointOfView,
         pauseAnimation,
         resumeAnimation,
@@ -74,11 +78,13 @@ beforeEach(() => {
   controls.enableRotate = true;
   // По умолчанию «мимо сферы»: попадание каждый тест задаёт явно.
   toGlobeCoords.mockReturnValue(null);
+  cameraStub.matrixWorld.elements = [0];
   vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
   setReducedMotion(false);
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
@@ -325,5 +331,167 @@ describe("GlobeCanvas", () => {
     });
 
     expect(toGlobeCoords).not.toHaveBeenCalled();
+  });
+
+  it("деклаттер: у пересёкшихся подписей гаснет текст дальней от центра, точка остаётся", () => {
+    vi.useFakeTimers();
+    const { container } = renderWithProviders(
+      <GlobeCanvas
+        labelCities={[
+          { name: "Ташкент", lat: 41.3, lng: 69.2 },
+          { name: "Бишкек", lat: 42.9, lng: 74.6 },
+        ]}
+      />,
+    );
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    // Слой подписей строим руками: мок react-globe.gl DOM-элементы данных не рендерит.
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
+    for (const wrapper of [tashkent, bishkek]) {
+      wrapper.style.opacity = "1";
+      el.append(wrapper);
+    }
+
+    const tashkentName = tashkent.querySelector<HTMLElement>(".globe-label__name");
+    const bishkekName = bishkek.querySelector<HTMLElement>(".globe-label__name");
+    if (!tashkentName || !bishkekName) throw new Error("подписи не собрались");
+    // Центр диска (400, 300): Бишкек ближе, Ташкент наезжает на него сбоку.
+    vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(350, 296, 60, 12));
+    vi.spyOn(bishkekName, "getBoundingClientRect").mockReturnValue(new DOMRect(390, 294, 60, 12));
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
+    expect(bishkek.classList.contains("globe-label--decluttered")).toBe(false);
+    // Канал окклюзии не тронут: обёртка (и точка) остаётся видимой, гаснет только текст.
+    expect(tashkent.style.opacity).toBe("1");
+  });
+
+  it("деклаттер: пересчёт только при движении камеры; разъезд возвращает текст", () => {
+    vi.useFakeTimers();
+    const { container } = renderWithProviders(
+      <GlobeCanvas
+        labelCities={[
+          { name: "Ташкент", lat: 41.3, lng: 69.2 },
+          { name: "Бишкек", lat: 42.9, lng: 74.6 },
+        ]}
+      />,
+    );
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
+    for (const wrapper of [tashkent, bishkek]) {
+      wrapper.style.opacity = "1";
+      el.append(wrapper);
+    }
+
+    const tashkentName = tashkent.querySelector<HTMLElement>(".globe-label__name");
+    const bishkekName = bishkek.querySelector<HTMLElement>(".globe-label__name");
+    if (!tashkentName || !bishkekName) throw new Error("подписи не собрались");
+    vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(350, 296, 60, 12));
+    vi.spyOn(bishkekName, "getBoundingClientRect").mockReturnValue(new DOMRect(390, 294, 60, 12));
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
+
+    // Подписи разъехались, но камера не двигалась — пересчёта нет, класс остаётся.
+    vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(600, 400, 60, 12));
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
+
+    // Камера сдвинулась — пересчёт возвращает текст (зазор больше запаса гистерезиса).
+    cameraStub.matrixWorld.elements = [1];
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(false);
+  });
+
+  it("деклаттер: остановка эффекта снимает классы — текст не остаётся спрятанным", () => {
+    vi.useFakeTimers();
+    const { container, unmount } = renderWithProviders(
+      <GlobeCanvas
+        labelCities={[
+          { name: "Ташкент", lat: 41.3, lng: 69.2 },
+          { name: "Бишкек", lat: 42.9, lng: 74.6 },
+        ]}
+      />,
+    );
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
+    for (const wrapper of [tashkent, bishkek]) {
+      wrapper.style.opacity = "1";
+      el.append(wrapper);
+    }
+
+    const tashkentName = tashkent.querySelector<HTMLElement>(".globe-label__name");
+    const bishkekName = bishkek.querySelector<HTMLElement>(".globe-label__name");
+    if (!tashkentName || !bishkekName) throw new Error("подписи не собрались");
+    vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(350, 296, 60, 12));
+    vi.spyOn(bishkekName, "getBoundingClientRect").mockReturnValue(new DOMRect(390, 294, 60, 12));
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
+
+    unmount();
+
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(false);
+  });
+
+  it("деклаттер: скрытая окклюзией подпись не участвует в расчёте", () => {
+    vi.useFakeTimers();
+    const { container } = renderWithProviders(
+      <GlobeCanvas
+        labelCities={[
+          { name: "Ташкент", lat: 41.3, lng: 69.2 },
+          { name: "Бишкек", lat: 42.9, lng: 74.6 },
+        ]}
+      />,
+    );
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
+    tashkent.style.opacity = "1";
+    // Бишкек ушёл за горизонт: окклюзия спрятала обёртку целиком.
+    bishkek.style.opacity = "0";
+    el.append(tashkent, bishkek);
+
+    const tashkentName = tashkent.querySelector<HTMLElement>(".globe-label__name");
+    const bishkekName = bishkek.querySelector<HTMLElement>(".globe-label__name");
+    if (!tashkentName || !bishkekName) throw new Error("подписи не собрались");
+    vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(350, 296, 60, 12));
+    vi.spyOn(bishkekName, "getBoundingClientRect").mockReturnValue(new DOMRect(390, 294, 60, 12));
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(false);
+    expect(bishkek.classList.contains("globe-label--decluttered")).toBe(false);
   });
 });

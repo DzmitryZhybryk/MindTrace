@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 
 import { GLOBE_ATMOSPHERE_COLOR, GLOBE_BUMP_URL, GLOBE_TEXTURE_URL } from "./constants";
-import { applyLabelVisibility, createGlobeLabel } from "./globeLabel";
+import { applyLabelDeclutter, applyLabelVisibility, createGlobeLabel } from "./globeLabel";
+import { type LabelBox, resolveLabelVisibility } from "./labelDeclutter";
 import type { GlobeCity, RouteArc } from "./routes";
 import "./globe-label.css";
 import "./globe-canvas.css";
@@ -35,6 +36,8 @@ interface GlobeCanvasProps {
 }
 
 const DEFAULT_POV: GlobePov = { lat: 22, lng: 24, altitude: 2.3 };
+/** Минимальный интервал пересчёта деклаттера подписей: fade идёт 0.4s, чаще — только лишние чтения layout. */
+const DECLUTTER_INTERVAL_MS = 150;
 /** Скорость автовращения и длительность перелёта камеры — общие для всех глобусов. */
 const AUTO_ROTATE_SPEED = 0.42;
 const POV_FLIGHT_MS = 1400;
@@ -54,7 +57,10 @@ const arcColorAccessor = (): [string, string] => ARC_COLOR;
 const arcDashInitialGapAccessor = (d: object): number => (d as RouteArc).dashInitialGap;
 const cityLatAccessor = (d: object): number => (d as GlobeCity).lat;
 const cityLngAccessor = (d: object): number => (d as GlobeCity).lng;
-const cityLabelAccessor = (d: object): HTMLElement => createGlobeLabel((d as GlobeCity).name);
+const cityLabelAccessor = (d: object): HTMLElement => {
+  const city = d as GlobeCity;
+  return createGlobeLabel(city.name, `${city.name}|${city.lat}|${city.lng}`);
+};
 
 /**
  * Общая база декоративного 3D-глобуса (signature продукта). Инкапсулирует замер
@@ -208,6 +214,81 @@ export function GlobeCanvas({
       el.style.cursor = "";
     };
   }, [interactive, autoRotate, reducedMotion, size.width, size.height]);
+
+  /*
+   * Деклаттер подписей. У лимба проекция сжимает расстояния, и тексты соседних городов
+   * наезжают друг на друга; скрывается только ТЕКСТ проигравшей подписи, точка города
+   * видна всегда (resolveLabelVisibility решает, applyLabelDeclutter применяет).
+   * Собственный rAF-цикл вместо подписки на OrbitControls: перелёты `pointOfView` двигают
+   * камеру мимо controls, а гейт «матрица камеры не менялась — выходим» делает холостой
+   * кадр бесплатным. Внутри тика — сперва батч чтений layout, потом батч записи классов.
+   */
+  useEffect(() => {
+    const host = containerRef.current;
+    const globe = globeRef.current;
+    if (!host || !globe || paused || labelCities.length < 2 || size.width === 0 || size.height === 0) {
+      return;
+    }
+
+    const camera = globe.camera();
+    let previousMatrix: number[] = [];
+    let lastRunAt = 0;
+    let hiddenIds: ReadonlySet<string> = new Set();
+    let rafId = 0;
+
+    const tick = (now: number) => {
+      rafId = requestAnimationFrame(tick);
+      if (now - lastRunAt < DECLUTTER_INTERVAL_MS) return;
+
+      const matrix = camera.matrixWorld.elements;
+      if (previousMatrix.length > 0 && matrix.every((value, index) => value === previousMatrix[index])) {
+        return;
+      }
+
+      previousMatrix = Array.from(matrix);
+      lastRunAt = now;
+
+      const hostRect = host.getBoundingClientRect();
+      const center = { x: hostRect.left + hostRect.width / 2, y: hostRect.top + hostRect.height / 2 };
+      const measured: { wrapper: HTMLElement; box: LabelBox }[] = [];
+      for (const wrapper of host.querySelectorAll<HTMLElement>(".globe-label")) {
+        // Окклюзия дальней стороны владеет opacity обёртки — спрятанные ею в расчёте не участвуют.
+        if (wrapper.style.opacity === "0") continue;
+
+        // Ключ метки — data-атрибут из createGlobeLabel: имя города не уникально.
+        const id = wrapper.dataset.labelId;
+        const nameEl = wrapper.querySelector<HTMLElement>(".globe-label__name");
+        if (!id || !nameEl) continue;
+
+        const rect = nameEl.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) continue;
+
+        measured.push({
+          wrapper,
+          box: { id, left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+        });
+      }
+
+      hiddenIds = resolveLabelVisibility(
+        measured.map((entry) => entry.box),
+        center,
+        hiddenIds,
+      );
+      for (const { wrapper, box } of measured) {
+        applyLabelDeclutter(wrapper, hiddenIds.has(box.id));
+      }
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(rafId);
+      // Страховка от застрявшего скрытого текста: эффект мог остановиться (labelCities < 2,
+      // pause), а globe.gl — сохранить DOM меток; спрятанной навсегда подпись остаться не должна.
+      for (const wrapper of host.querySelectorAll<HTMLElement>(".globe-label--decluttered")) {
+        applyLabelDeclutter(wrapper, false);
+      }
+    };
+  }, [labelCities, paused, size.width, size.height]);
 
   /*
    * Колесо мыши над глобусом раньше глушилось безусловно — и это работало ровно наоборот
