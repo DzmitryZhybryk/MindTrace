@@ -27,7 +27,14 @@ depends_on = ["app.auth.domain", "app.shared", "app.users.application", "app.aut
 
 [[modules]]
 path = "app.auth.presentation"
-depends_on = ["app.auth.application", "app.shared", "app.auth.infra", "app.users.application", "app.users.infra"]
+depends_on = [
+    "app.auth.application",
+    "app.shared",
+    "app.auth.infra",
+    "app.users.application",
+    "app.users.infra",
+    "app.users.presentation",
+]
 
 [[modules]]
 path = "app.geo.domain"
@@ -56,6 +63,10 @@ depends_on = ["app.users.domain"]
 [[modules]]
 path = "app.users.infra"
 depends_on = ["app.shared", "app.users.application", "app.users.domain"]
+
+[[modules]]
+path = "app.users.presentation"
+depends_on = ["app.users.application", "app.users.infra", "app.shared", "app.auth.presentation"]
 
 [[modules]]
 path = "app.journeys.domain"

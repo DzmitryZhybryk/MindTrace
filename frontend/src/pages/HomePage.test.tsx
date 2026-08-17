@@ -60,6 +60,42 @@ describe("HomePage", () => {
     expect(authValue.openVerifyDialog).toHaveBeenCalled();
   });
 
+  it("приветствие появляется после загрузки профиля, фоллбэк на username при displayName=null", async () => {
+    renderHome(makeAuthValue({ isAuthenticated: true, emailVerified: true }));
+
+    // До ответа /me блока нет вовсе — ни строки приветствия, ни даты.
+    expect(screen.queryByText(/Hello,/u)).not.toBeInTheDocument();
+
+    // Дефолтный MSW-профиль: displayName=null → здороваемся по username.
+    expect(await screen.findByText("Hello, traveler")).toBeInTheDocument();
+    expect(screen.getByText(/^[A-Za-z]+ · [A-Za-z]+ \d{4}$/u)).toBeInTheDocument();
+  });
+
+  it("displayName в приоритете над username в приветствии", async () => {
+    server.use(
+      http.get("/v1/users/me", () =>
+        HttpResponse.json({ username: "traveler", email: "traveler@example.com", displayName: "Alice D." }),
+      ),
+    );
+
+    renderHome(makeAuthValue({ isAuthenticated: true, emailVerified: true }));
+
+    expect(await screen.findByText("Hello, Alice D.")).toBeInTheDocument();
+  });
+
+  it("ошибка загрузки профиля: даты дожидаемся, строки приветствия нет", async () => {
+    server.use(
+      http.get("/v1/users/me", () =>
+        HttpResponse.json({ code: "internal_error", message: "boom" }, { status: 500 }),
+      ),
+    );
+
+    renderHome(makeAuthValue({ isAuthenticated: true, emailVerified: true }));
+
+    expect(await screen.findByText(/^[A-Za-z]+ · [A-Za-z]+ \d{4}$/u)).toBeInTheDocument();
+    expect(screen.queryByText(/Hello,/u)).not.toBeInTheDocument();
+  });
+
   it("верифицированный email: нет баннера и нет пункта Verify email", async () => {
     const authValue = makeAuthValue({ isAuthenticated: true, emailVerified: true });
     const { user } = renderHome(authValue);

@@ -14,6 +14,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
 import type { PlaceSuggestion } from "../api/journeys";
+import type { CurrentUser } from "../api/users";
 
 /**
  * Минимальный газеттир для component-тестов автокомплита (`/v1/geo/places/search`).
@@ -59,6 +60,17 @@ export function makeAccessToken(claims: TokenClaims = {}): string {
 /** Токен по умолчанию для успешных login/register-ответов. */
 export const TEST_ACCESS_TOKEN = makeAccessToken();
 
+/**
+ * Профиль текущего пользователя (`/v1/users/me`). `displayName: null` — дефолт
+ * покрывает фоллбэк на `username`; тест с заданным именем/ошибкой переопределяет
+ * ответ через `server.use(...)`.
+ */
+export const TEST_CURRENT_USER: CurrentUser = {
+  username: "traveler",
+  email: "traveler@example.com",
+  displayName: null,
+};
+
 const successTokenBody = { accessToken: TEST_ACCESS_TOKEN, tokenType: "bearer" };
 
 export const handlers = [
@@ -95,6 +107,8 @@ export const handlers = [
       ],
     }),
   ),
+  // Профиль текущего пользователя: кормит CurrentUserProvider при любом залогиненном рендере.
+  http.get("/v1/users/me", () => HttpResponse.json(TEST_CURRENT_USER)),
 ];
 
 export const server = setupServer(...handlers);
