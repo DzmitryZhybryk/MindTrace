@@ -51,6 +51,8 @@ export default defineConfig({
         "src/test/**",
         "src/main.tsx",
         "src/**/*.d.ts",
+        // Сгенерированный из OpenAPI SDK: свой код там не пишется, покрывать нечего.
+        "src/api/generated/**",
         // Императивный three/WebGL-рендер глобусов: в jsdom не исполняется, тестировать
         // нечего. Вся чистая математика вынесена в src/components/globe/{geo,route,routes}.ts
         // и покрыта unit-тестами — эти файлы остаются под покрытием.

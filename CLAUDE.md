@@ -63,6 +63,10 @@ make test                                  # vitest run (один прогон)
 make coverage                              # vitest run --coverage
 make check                                 # lint + typecheck + audit + test (CI-стиль; тот же таргет гоняет CI)
 
+# Контракт API: бэк → backend/openapi.json → frontend/src/api/generated/ (оба коммитятся)
+make be-openapi-dump                       # схема приложения изменилась → перезаписать openapi.json
+make fe-generate-api                       # затем перегенерировать SDK (@hey-api/openapi-ts)
+
 # Database migrations — из backend/, против запущенного контейнера
 make migrate-create "description"          # создать миграцию (autogenerate)
 make migrate-upgrade                       # применить миграции
@@ -246,6 +250,31 @@ CHANGELOG — **один** файл в корне. Новые записи гр�
 Код с покрытием **< 90%** мержить нельзя — на обеих сторонах. Порог задан в самих coverage-таргетах: backend `make coverage` (`--cov-fail-under=90`), frontend `make coverage` (vitest `thresholds` в `vite.config.ts`). Форсится **локальным pre-commit hook'ом** (`.githooks/pre-commit`), а не CI: перед каждым commit гоняет coverage обеих сторон и роняет commit при провале порога.
 
 Активация разовая: `make hooks` (== `git config core.hooksPath .githooks`). Обход в исключительном случае — `git commit --no-verify`.
+
+### Codegen drift gate
+
+Контракт фронта генерируется из OpenAPI, поэтому в гите лежат два производных артефакта:
+`backend/openapi.json` и `frontend/src/api/generated/`. Устареть они могут независимо, и на
+каждый есть свой гейт:
+
+- **бэк** — снапшот-тест `tests/api/test_openapi_schema.py`, входит в `make check`/`check-ci`;
+- **фронт** — шаг CI: `make generate-api` + `git diff --exit-code`.
+
+Красный гейт чинится не правкой артефакта руками, а пересборкой: `make be-openapi-dump`, затем
+`make fe-generate-api`, оба результата в тот же коммит.
+
+**PR'ы от dependabot этого сделать не могут.** Бамп fastapi/pydantic меняет рендер схемы, бамп
+`@hey-api/openapi-ts` — вывод генератора; в обоих случаях гейт краснеет на ветке бота, и
+пересборку делает человек, дописывая коммит в его ветку.
+
+Генератор запинен **точной** версией: `@hey-api/openapi-ts` пре-1.0, минорные релизы меняют
+вывод. Пин на предрелизной ветке (`0.0.0-next-*`) — вынужденный: стабильная линия падает на
+TypeScript 7 (`ts.SyntaxKind` отсутствует в нативном компиляторе), предрелизная не зависит от
+compiler API вовсе. Снять, когда TS 7 поедет в стабильном релизе.
+
+Оттуда же `overrides` на `js-yaml` в `frontend/package.json`: парсер схемы у предрелиза тянет
+версию из уязвимого диапазона, и `make check` краснеет на `npm audit`. Override поднимает
+только этот транзитивный пакет; снимается вместе с пином.
 
 ## Always-follow rules
 

@@ -30,13 +30,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
 
   const errorBody = await parseErrorBody(response);
 
-  const canRetryAfterRefresh =
-    response.status === 401 &&
-    errorBody.code !== INVALID_CREDENTIALS_CODE &&
-    errorBody.code !== EMAIL_NOT_VERIFIED_CODE &&
-    path !== REFRESH_PATH;
-
-  if (canRetryAfterRefresh) {
+  if (shouldRetryAfterRefresh(response.status, errorBody.code, path)) {
     const refreshed = await ensureRefreshed();
     if (refreshed) {
       const retryResponse = await sendRequest(path, init);
@@ -55,6 +49,66 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   }
 
   throw new ApiError(response.status, errorBody);
+}
+
+function shouldRetryAfterRefresh(status: number, code: string, pathname: string): boolean {
+  return (
+    status === 401 && code !== INVALID_CREDENTIALS_CODE && code !== EMAIL_NOT_VERIFIED_CODE && pathname !== REFRESH_PATH
+  );
+}
+
+/**
+ * Транспорт сгенерированного SDK — тот же контракт сессии, что и у `apiFetch`.
+ *
+ * SDK сам разбирает и валидирует успешный ответ, поэтому здесь остаётся сессия и неуспех:
+ * Bearer из `tokenStore`, refresh-cookie, single-flight refresh при 401 с повтором запроса,
+ * эмиты `auth-required` / `verify-required`. Не «чистый fetch»: на не-2xx бросает `ApiError`,
+ * иначе ветки `instanceof ApiError` на фронте остались бы без своего типа.
+ */
+export async function appFetch(input: URL | RequestInfo, init?: RequestInit): Promise<Response> {
+  const request = new Request(input, init);
+
+  // Тело запроса — одноразовый поток, поэтому копию под повтор снимаем до первой отправки.
+  const retryable = request.clone();
+  const { pathname } = new URL(request.url);
+
+  const response = await sendWithSession(request);
+  if (response.ok) {
+    return response;
+  }
+
+  const errorBody = await parseErrorBody(response);
+
+  if (shouldRetryAfterRefresh(response.status, errorBody.code, pathname)) {
+    const refreshed = await ensureRefreshed();
+    if (refreshed) {
+      const retryResponse = await sendWithSession(retryable);
+      if (retryResponse.ok) {
+        return retryResponse;
+      }
+
+      throw new ApiError(retryResponse.status, await parseErrorBody(retryResponse));
+    }
+
+    emit("auth-required", undefined);
+  }
+
+  if (response.status === 401 && errorBody.code === EMAIL_NOT_VERIFIED_CODE) {
+    emit("verify-required", undefined);
+  }
+
+  throw new ApiError(response.status, errorBody);
+}
+
+function sendWithSession(request: Request): Promise<Response> {
+  const headers = new Headers(request.headers);
+
+  const token = getAccessToken();
+  if (token !== null && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  return fetch(new Request(request, { credentials: "include", headers }));
 }
 
 async function sendRequest(path: string, init: ApiFetchInit): Promise<Response> {
