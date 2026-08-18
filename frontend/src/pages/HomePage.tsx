@@ -57,18 +57,17 @@ export function HomePage() {
       <AppHeader />
 
       <main className="home-main">
-        {/* Пока профиль в полёте — блока нет вовсе (появляется сразу с именем, без
-            вспышки «Hello, » и скачка вёрстки); не загрузился — только дата. */}
-        {(currentUser.status === "ready" || currentUser.status === "error") && (
-          <div className="home-greeting">
-            {currentUser.status === "ready" && (
-              <span className="home-greeting__hello">
-                {t("greeting", { name: currentUser.user.displayName ?? currentUser.user.username })}
-              </span>
-            )}
-            <span className="home-greeting__date">{formatGreetingDate(i18n.language)}</span>
-          </div>
-        )}
+        {/* Дата не зависит от сети — видна сразу; за /me гейтится только строка
+            приветствия. Пока профиля нет (loading/error) её место держит nbsp —
+            имя появляется на зарезервированной строке без скачка вёрстки. */}
+        <div className="home-greeting">
+          <span className="home-greeting__hello">
+            {currentUser.status === "ready"
+              ? t("greeting", { name: currentUser.user.displayName ?? currentUser.user.username })
+              : " "}
+          </span>
+          <span className="home-greeting__date">{formatGreetingDate(i18n.language)}</span>
+        </div>
 
         {/* Пустой центральный слот: место, где визуально стоит app-global глобус-фон (корневой
             PersistentGlobeHost, кадрируется по data-screen="home"). Держит вертикальный ритм

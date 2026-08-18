@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
 import { server } from "../test/handlers";
-import { findMenuItem, makeAuthValue, renderRoutes, screen } from "../test/render";
+import { findMenuItem, makeAuthValue, renderRoutes, screen, waitFor } from "../test/render";
 import type { AuthContextValue } from "../auth/useAuth";
 import { HomePage } from "./HomePage";
 
@@ -60,15 +60,15 @@ describe("HomePage", () => {
     expect(authValue.openVerifyDialog).toHaveBeenCalled();
   });
 
-  it("приветствие появляется после загрузки профиля, фоллбэк на username при displayName=null", async () => {
+  it("дата видна сразу, приветствие появляется после загрузки профиля с фоллбэком на username", async () => {
     renderHome(makeAuthValue({ isAuthenticated: true, emailVerified: true }));
 
-    // До ответа /me блока нет вовсе — ни строки приветствия, ни даты.
+    // Дата не зависит от сети — есть с первого рендера; строки приветствия ещё нет.
+    expect(screen.getByText(/^[A-Za-z]+ · [A-Za-z]+ \d{4}$/u)).toBeInTheDocument();
     expect(screen.queryByText(/Hello,/u)).not.toBeInTheDocument();
 
     // Дефолтный MSW-профиль: displayName=null → здороваемся по username.
     expect(await screen.findByText("Hello, traveler")).toBeInTheDocument();
-    expect(screen.getByText(/^[A-Za-z]+ · [A-Za-z]+ \d{4}$/u)).toBeInTheDocument();
   });
 
   it("displayName в приоритете над username в приветствии", async () => {
@@ -83,7 +83,7 @@ describe("HomePage", () => {
     expect(await screen.findByText("Hello, Alice D.")).toBeInTheDocument();
   });
 
-  it("ошибка загрузки профиля: даты дожидаемся, строки приветствия нет", async () => {
+  it("ошибка загрузки профиля: дата остаётся, строка приветствия так и не появляется", async () => {
     server.use(
       http.get("/v1/users/me", () =>
         HttpResponse.json({ code: "internal_error", message: "boom" }, { status: 500 }),
@@ -92,7 +92,10 @@ describe("HomePage", () => {
 
     renderHome(makeAuthValue({ isAuthenticated: true, emailVerified: true }));
 
-    expect(await screen.findByText(/^[A-Za-z]+ · [A-Za-z]+ \d{4}$/u)).toBeInTheDocument();
+    // Дожидаемся завершения запроса (провайдер перейдёт в error), затем проверяем DOM.
+    await waitFor(() => {
+      expect(screen.getByText(/^[A-Za-z]+ · [A-Za-z]+ \d{4}$/u)).toBeInTheDocument();
+    });
     expect(screen.queryByText(/Hello,/u)).not.toBeInTheDocument();
   });
 
