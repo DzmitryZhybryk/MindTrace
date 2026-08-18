@@ -1,8 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 
+import { ApiError } from "../api/errors";
 import { getCurrentUser } from "../api/users";
 import { useAuth } from "../auth/useAuth";
 import { CurrentUserContext, type CurrentUserState } from "./useCurrentUser";
+
+// Коды, за которыми не стоит живого пользователя: повторять запрос бессмысленно,
+// сессия подлежит разлогину. Ветвимся по `code` (стабильный контракт API), не по
+// HTTP-статусу — статус здесь деталь транспорта.
+const SESSION_INVALID_CODES: ReadonlySet<string> = new Set(["users.user_deleted", "users.user_not_found"]);
 
 interface CurrentUserProviderProps {
   children: ReactNode;
@@ -17,7 +23,7 @@ interface CurrentUserProviderProps {
  * или сбрасывает профиль.
  */
 export function CurrentUserProvider({ children }: CurrentUserProviderProps) {
-  const { isAuthenticated, isBootstrapping } = useAuth();
+  const { isAuthenticated, isBootstrapping, clearSession } = useAuth();
   const [state, setState] = useState<CurrentUserState>({ status: "loading" });
 
   useEffect(() => {
@@ -46,8 +52,17 @@ export function CurrentUserProvider({ children }: CurrentUserProviderProps) {
 
         setState({ status: "ready", user });
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (cancelled) {
+          return;
+        }
+
+        // Семантика «пользователя больше нет» — разлогин; провайдер перейдёт в
+        // anonymous сам, когда isAuthenticated погаснет. Транзиентные сбои (сеть,
+        // 5xx) остаются терминальным error до внедрения server-state библиотеки
+        // (см. .claude/feature_plan.md, п. 1).
+        if (error instanceof ApiError && SESSION_INVALID_CODES.has(error.code)) {
+          clearSession();
           return;
         }
 
@@ -58,7 +73,7 @@ export function CurrentUserProvider({ children }: CurrentUserProviderProps) {
       cancelled = true;
       controller.abort();
     };
-  }, [isAuthenticated, isBootstrapping]);
+  }, [isAuthenticated, isBootstrapping, clearSession]);
 
   return <CurrentUserContext.Provider value={state}>{children}</CurrentUserContext.Provider>;
 }

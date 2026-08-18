@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
@@ -54,6 +54,38 @@ describe("CurrentUserProvider", () => {
     render(tree(makeAuthValue({ isAuthenticated: true })));
 
     expect(await screen.findByText("error")).toBeInTheDocument();
+  });
+
+  it("код users.user_deleted (410) разлогинивает вместо перехода в error", async () => {
+    server.use(
+      http.get("/v1/users/me", () =>
+        HttpResponse.json({ code: "users.user_deleted", message: "удалён" }, { status: 410 }),
+      ),
+    );
+    const authValue = makeAuthValue({ isAuthenticated: true });
+
+    render(tree(authValue));
+
+    await waitFor(() => {
+      expect(authValue.clearSession).toHaveBeenCalledOnce();
+    });
+    expect(screen.queryByText("error")).not.toBeInTheDocument();
+  });
+
+  it("код users.user_not_found (404) тоже разлогинивает", async () => {
+    server.use(
+      http.get("/v1/users/me", () =>
+        HttpResponse.json({ code: "users.user_not_found", message: "нет такого" }, { status: 404 }),
+      ),
+    );
+    const authValue = makeAuthValue({ isAuthenticated: true });
+
+    render(tree(authValue));
+
+    await waitFor(() => {
+      expect(authValue.clearSession).toHaveBeenCalledOnce();
+    });
+    expect(screen.queryByText("error")).not.toBeInTheDocument();
   });
 
   it("поздний ответ устаревшего запроса не затирает состояние после логаута", async () => {
