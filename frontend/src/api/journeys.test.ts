@@ -2,14 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
 
 import { clearAccessToken } from "../auth/tokenStore";
+import { jsonOk, type FetchSignature } from "../test/fetchStub";
 import { getJourneysMap, TRANSPORT_TYPES } from "./journeys";
-
-type FetchSignature = (input: string, init?: RequestInit) => Promise<Response>;
-
-/** 200-ответ с JSON-телом для стаба `fetch` (unit минует MSW — см. client.test.ts). */
-function jsonOk(body: unknown): Response {
-  return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
-}
 
 describe("TransportType-контракт", () => {
   it("публикует ровно backend-набор {land, air, water}", () => {

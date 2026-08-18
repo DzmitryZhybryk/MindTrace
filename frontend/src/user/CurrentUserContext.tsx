@@ -31,15 +31,23 @@ export function CurrentUserProvider({ children }: CurrentUserProviderProps) {
       return;
     }
 
+    // `cancelled`-флаг (образец — bootstrap в AuthContext): abort не гарантирует
+    // AbortError-rejection (client.ts может превратить его в ApiError или поздний
+    // успех), поэтому устаревший запрос отсекается флагом на обоих путях, а
+    // AbortController лишь обрывает сам сетевой вызов.
+    let cancelled = false;
     const controller = new AbortController();
     setState({ status: "loading" });
     getCurrentUser(controller.signal)
       .then((user) => {
+        if (cancelled) {
+          return;
+        }
+
         setState({ status: "ready", user });
       })
-      .catch((error: unknown) => {
-        /* v8 ignore next 3 */
-        if (error instanceof DOMException && error.name === "AbortError") {
+      .catch(() => {
+        if (cancelled) {
           return;
         }
 
@@ -47,6 +55,7 @@ export function CurrentUserProvider({ children }: CurrentUserProviderProps) {
       });
 
     return () => {
+      cancelled = true;
       controller.abort();
     };
   }, [isAuthenticated, isBootstrapping]);

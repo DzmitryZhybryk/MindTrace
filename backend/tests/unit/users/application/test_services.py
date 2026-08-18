@@ -63,6 +63,20 @@ async def test_get_current_user_returns_profile(
     assert result == CurrentUserResult(username="alice", email="alice@example.com", display_name="Alice D.")
 
 
+async def test_get_current_user_does_not_commit(
+    user_service: UserService,
+    fake_user_repository: FakeUserRepository,
+    fake_user_uow: FakeUserUnitOfWork,
+) -> None:
+    """`get_current_user` — read-only use case: транзакция закрывается без commit."""
+    user_entity = make_user_entity()
+    fake_user_repository.by_user_id[user_entity.user_id] = user_entity
+
+    await user_service.get_current_user(user_id=user_entity.user_id)
+
+    fake_user_uow.commit_mock.assert_not_awaited()
+
+
 async def test_get_current_user_unknown_id_raises_not_found(user_service: UserService) -> None:
     """`get_current_user` по неизвестному id бросает UserNotFoundError."""
     with pytest.raises(UserNotFoundError):

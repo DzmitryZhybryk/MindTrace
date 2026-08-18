@@ -1,28 +1,26 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
 
-import { clearAccessToken } from "../auth/tokenStore";
+import { jsonOk, type FetchSignature } from "../test/fetchStub";
 import { getCurrentUser } from "./users";
-
-type FetchSignature = (input: string, init?: RequestInit) => Promise<Response>;
-
-/** 200-ответ с JSON-телом для стаба `fetch` (unit минует MSW — см. client.test.ts). */
-function jsonOk(body: unknown): Response {
-  return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
-}
 
 describe("getCurrentUser", () => {
   let fetchMock: ReturnType<typeof vi.fn<FetchSignature>>;
 
   beforeEach(() => {
-    clearAccessToken();
-    sessionStorage.clear();
     fetchMock = vi.fn<FetchSignature>();
     vi.stubGlobal("fetch", fetchMock);
   });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
+  it("шлёт GET на /v1/users/me и пробрасывает AbortSignal", async () => {
+    fetchMock.mockResolvedValueOnce(jsonOk({ username: "alice", email: "alice@example.com", displayName: null }));
+    const controller = new AbortController();
+
+    await getCurrentUser(controller.signal);
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe("/v1/users/me");
+    expect(options?.signal).toBe(controller.signal);
   });
 
   it("возвращает профиль с заданным displayName", async () => {
