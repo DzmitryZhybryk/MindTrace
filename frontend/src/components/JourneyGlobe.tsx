@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 
-import type { PlaceSuggestion, TransportType } from "../api/journeys";
+import type { PlaceResponse, TransportType } from "../api/sdk";
 import carIcon from "../assets/emoji/car.svg";
 import planeIcon from "../assets/emoji/plane.svg";
 import shipIcon from "../assets/emoji/ship.svg";
@@ -86,8 +86,8 @@ function createPinElement(name: string, side: LabelSide): HTMLElement {
 }
 
 interface JourneyGlobeProps {
-  origin: PlaceSuggestion | null;
-  destination: PlaceSuggestion | null;
+  origin: PlaceResponse | null;
+  destination: PlaceResponse | null;
   transportType: TransportType | null;
   originLabel: string;
   destinationLabel: string;

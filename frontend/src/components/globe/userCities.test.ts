@@ -1,17 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getJourneysMap } from "../../api/journeys";
-import type { MapCountry } from "../WorldMap";
+import { getJourneysMap, type JourneysMapResponse, type MapCityResponse, type MapCountryResponse } from "../../api/sdk";
 import { citiesFromJourneysMap, clearUserCitiesCache, getCachedUserCities, loadUserCities } from "./userCities";
 
 // Кэш звонит в getJourneysMap (сетевой боундари вертикали) — мокаем именно его: тестируем
 // логику кэша (звонок один раз, ключ по sub, сброс), а не сеть/zod (они покрыты отдельно).
-vi.mock("../../api/journeys", () => ({ getJourneysMap: vi.fn() }));
+vi.mock("../../api/sdk", () => ({ getJourneysMap: vi.fn() }));
 const getJourneysMapMock = vi.mocked(getJourneysMap);
 
 /** Строит страну карты с одним городом (лишние поля агрегата тут не важны). */
-function country(id: string, cities: MapCountry["cities"]): MapCountry {
-  return { id, status: "visited", cities };
+function country(countryCode: string, cities: MapCityResponse[]): MapCountryResponse {
+  return { countryCode, cities };
+}
+
+/** Ответ /v1/journeys/map с заданными странами — то, что отдаёт SDK потребителю кэша. */
+function mapResponse(countries: MapCountryResponse[]): JourneysMapResponse {
+  return { countries };
 }
 
 beforeEach(() => {
@@ -23,10 +27,10 @@ beforeEach(() => {
 describe("citiesFromJourneysMap", () => {
   it("разворачивает страны в плоский список городов с именем и координатами", () => {
     const countries = [
-      country("RU", [{ name: "Moscow", lat: 55.75, lng: 37.62, years: [2020] }]),
+      country("RU", [{ name: "Moscow", latitude: 55.75, longitude: 37.62, years: [2020] }]),
       country("GB", [
-        { name: "London", lat: 51.5, lng: -0.12, years: [2021] },
-        { name: "Bristol", lat: 51.45, lng: -2.58, years: [2019] },
+        { name: "London", latitude: 51.5, longitude: -0.12, years: [2021] },
+        { name: "Bristol", latitude: 51.45, longitude: -2.58, years: [2019] },
       ]),
     ];
 
@@ -39,8 +43,8 @@ describe("citiesFromJourneysMap", () => {
 
   it("дедуплицирует города с одинаковым именем и координатами", () => {
     const countries = [
-      country("RU", [{ name: "Moscow", lat: 55.75, lng: 37.62, years: [2020] }]),
-      country("RU", [{ name: "Moscow", lat: 55.75, lng: 37.62, years: [2023] }]),
+      country("RU", [{ name: "Moscow", latitude: 55.75, longitude: 37.62, years: [2020] }]),
+      country("RU", [{ name: "Moscow", latitude: 55.75, longitude: 37.62, years: [2023] }]),
     ];
 
     expect(citiesFromJourneysMap(countries)).toEqual([{ name: "Moscow", lat: 55.75, lng: 37.62 }]);
@@ -48,8 +52,8 @@ describe("citiesFromJourneysMap", () => {
 
   it("тёзок с разными координатами держит по отдельности", () => {
     const countries = [
-      country("US", [{ name: "Springfield", lat: 39.8, lng: -89.64, years: [2020] }]),
-      country("US", [{ name: "Springfield", lat: 42.1, lng: -72.59, years: [2021] }]),
+      country("US", [{ name: "Springfield", latitude: 39.8, longitude: -89.64, years: [2020] }]),
+      country("US", [{ name: "Springfield", latitude: 42.1, longitude: -72.59, years: [2021] }]),
     ];
 
     expect(citiesFromJourneysMap(countries)).toHaveLength(2);
@@ -62,7 +66,9 @@ describe("citiesFromJourneysMap", () => {
 
 describe("loadUserCities / кэш по sub", () => {
   it("кэширует результат по sub — повторный вызов не бьёт в getJourneysMap", async () => {
-    getJourneysMapMock.mockResolvedValue([country("RU", [{ name: "Moscow", lat: 55.75, lng: 37.62, years: [2020] }])]);
+    getJourneysMapMock.mockResolvedValue(
+      mapResponse([country("RU", [{ name: "Moscow", latitude: 55.75, longitude: 37.62, years: [2020] }])]),
+    );
 
     const first = await loadUserCities("user-1");
     const second = await loadUserCities("user-1");
@@ -73,7 +79,9 @@ describe("loadUserCities / кэш по sub", () => {
   });
 
   it("getCachedUserCities возвращает null до загрузки и города после", async () => {
-    getJourneysMapMock.mockResolvedValue([country("GB", [{ name: "London", lat: 51.5, lng: -0.12, years: [2021] }])]);
+    getJourneysMapMock.mockResolvedValue(
+      mapResponse([country("GB", [{ name: "London", latitude: 51.5, longitude: -0.12, years: [2021] }])]),
+    );
 
     expect(getCachedUserCities("user-1")).toBeNull();
 
@@ -83,7 +91,9 @@ describe("loadUserCities / кэш по sub", () => {
   });
 
   it("clearUserCitiesCache сбрасывает — следующий load бьёт в сеть заново", async () => {
-    getJourneysMapMock.mockResolvedValue([country("RU", [{ name: "Moscow", lat: 55.75, lng: 37.62, years: [2020] }])]);
+    getJourneysMapMock.mockResolvedValue(
+      mapResponse([country("RU", [{ name: "Moscow", latitude: 55.75, longitude: 37.62, years: [2020] }])]),
+    );
 
     await loadUserCities("user-1");
     clearUserCitiesCache();
@@ -93,7 +103,9 @@ describe("loadUserCities / кэш по sub", () => {
   });
 
   it("смена sub промахивается мимо кэша и рефетчит", async () => {
-    getJourneysMapMock.mockResolvedValue([country("RU", [{ name: "Moscow", lat: 55.75, lng: 37.62, years: [2020] }])]);
+    getJourneysMapMock.mockResolvedValue(
+      mapResponse([country("RU", [{ name: "Moscow", latitude: 55.75, longitude: 37.62, years: [2020] }])]),
+    );
 
     await loadUserCities("user-1");
     await loadUserCities("user-2");
@@ -104,16 +116,16 @@ describe("loadUserCities / кэш по sub", () => {
   });
 
   it("одновременные вызовы для одного sub дедуплицируются в один запрос", async () => {
-    let resolveMap: (countries: MapCountry[]) => void = () => {};
+    let resolveMap: (response: JourneysMapResponse) => void = () => {};
     getJourneysMapMock.mockReturnValue(
-      new Promise<MapCountry[]>((resolve) => {
+      new Promise<JourneysMapResponse>((resolve) => {
         resolveMap = resolve;
       }),
     );
 
     const inFlightA = loadUserCities("user-1");
     const inFlightB = loadUserCities("user-1");
-    resolveMap([country("RU", [{ name: "Moscow", lat: 55.75, lng: 37.62, years: [2020] }])]);
+    resolveMap(mapResponse([country("RU", [{ name: "Moscow", latitude: 55.75, longitude: 37.62, years: [2020] }])]));
     await Promise.all([inFlightA, inFlightB]);
 
     expect(getJourneysMapMock).toHaveBeenCalledOnce();
@@ -121,9 +133,9 @@ describe("loadUserCities / кэш по sub", () => {
 
   it("ошибка сбрасывает in-flight — следующий вызов пробует снова", async () => {
     getJourneysMapMock.mockRejectedValueOnce(new Error("network"));
-    getJourneysMapMock.mockResolvedValueOnce([
-      country("RU", [{ name: "Moscow", lat: 55.75, lng: 37.62, years: [2020] }]),
-    ]);
+    getJourneysMapMock.mockResolvedValueOnce(
+      mapResponse([country("RU", [{ name: "Moscow", latitude: 55.75, longitude: 37.62, years: [2020] }])]),
+    );
 
     await expect(loadUserCities("user-1")).rejects.toThrow("network");
     const retried = await loadUserCities("user-1");
@@ -133,16 +145,16 @@ describe("loadUserCities / кэш по sub", () => {
   });
 
   it("запрос, завершившийся после clearUserCitiesCache, не воскрешает кэш (логаут в полёте)", async () => {
-    let resolveMap: (countries: MapCountry[]) => void = () => {};
+    let resolveMap: (response: JourneysMapResponse) => void = () => {};
     getJourneysMapMock.mockReturnValue(
-      new Promise<MapCountry[]>((resolve) => {
+      new Promise<JourneysMapResponse>((resolve) => {
         resolveMap = resolve;
       }),
     );
 
     const inFlight = loadUserCities("user-1");
     clearUserCitiesCache(); // логаут, пока запрос ещё в полёте
-    resolveMap([country("RU", [{ name: "Moscow", lat: 55.75, lng: 37.62, years: [2020] }])]);
+    resolveMap(mapResponse([country("RU", [{ name: "Moscow", latitude: 55.75, longitude: 37.62, years: [2020] }])]));
     await inFlight;
 
     // Устаревший `.then` не записал кэш — инвариант «логаут чистит» соблюдён.

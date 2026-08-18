@@ -3,7 +3,7 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { searchPlaces, type PlaceSuggestion } from "../api/journeys";
+import { searchPlaces, type PlaceResponse } from "../api/sdk";
 import pinIcon from "../assets/emoji/pin.svg";
 
 const PIN_ICON_SIZE = 20;
@@ -18,8 +18,8 @@ const DROPDOWN_MAX_HEIGHT = 320;
 interface PlaceAutocompleteProps {
   label: string;
   placeholder: string;
-  value: PlaceSuggestion | null;
-  onChange: (place: PlaceSuggestion | null) => void;
+  value: PlaceResponse | null;
+  onChange: (place: PlaceResponse | null) => void;
   error?: ReactNode;
 }
 
@@ -47,7 +47,7 @@ function focusNextFormControl(current: HTMLElement | null): void {
  * Поле выбора места с автокомплитом по газеттиру (`/v1/geo/places/search`).
  *
  * Набор → debounce → запрос (устаревшие отменяются `AbortController`) → выпадающий
- * список кандидатов; выбор кладёт `PlaceSuggestion` (с `placeId`) в `value`. Пока место
+ * список кандидатов; выбор кладёт `PlaceResponse` (с `placeId`) в `value`. Пока место
  * не выбрано, `value` держится `null` (форма требует выбранный кандидат). При пустой
  * выдаче подсказка ведёт пользователя попробовать другое написание/английское имя
  * (страховка от дырявого `name_ru`).
@@ -58,7 +58,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState(value?.name ?? "");
-  const [options, setOptions] = useState<PlaceSuggestion[]>([]);
+  const [options, setOptions] = useState<PlaceResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [debouncedSearch] = useDebouncedValue(search, DEBOUNCE_MS);
   // Подпись уже выбранного кандидата: пока текст ей равен — повторно не ищем (иначе
@@ -67,7 +67,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
   // Последнее значение, которое МЫ САМИ отдали через onChange. Если родитель пришлёт
   // другой `value` (например, swap «Откуда»/«Куда» в форме), значит смена внешняя —
   // и видимый текст надо подтянуть под неё (см. эффект ниже).
-  const lastEmittedRef = useRef<PlaceSuggestion | null>(value);
+  const lastEmittedRef = useRef<PlaceResponse | null>(value);
 
   // Внешняя установка `value` (swap городов в форме) → синхронизируем видимый текст и
   // «якорь» имени. Свой выбор/правка уже выставили `lastEmittedRef`, поэтому условие
@@ -101,9 +101,13 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
 
     const controller = new AbortController();
     setLoading(true);
-    searchPlaces({ searchText: trimmed, language, limit: RESULT_LIMIT, signal: controller.signal })
-      .then((places) => {
-        setOptions(places);
+    searchPlaces({
+      query: { searchText: trimmed, language, limit: RESULT_LIMIT },
+      signal: controller.signal,
+      throwOnError: true,
+    })
+      .then((response) => {
+        setOptions(response.items);
         setLoading(false);
       })
       .catch((err: unknown) => {

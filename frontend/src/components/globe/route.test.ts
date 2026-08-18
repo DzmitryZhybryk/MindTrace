@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { PlaceSuggestion } from "../../api/journeys";
+import type { PlaceResponse } from "../../api/sdk";
 import {
   altitudeForSeparation,
   apexScale,
@@ -14,7 +14,7 @@ import {
 } from "./route";
 
 // Минск как «реальное» место из автокомплита; координаты переопределяются под кейс.
-function makePlace(overrides: Partial<PlaceSuggestion> = {}): PlaceSuggestion {
+function makePlace(overrides: Partial<PlaceResponse> = {}): PlaceResponse {
   return {
     placeId: "1",
     name: "Minsk",

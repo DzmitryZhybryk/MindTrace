@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Loader, Text } from "@mantine/core";
 
-import { getJourneysMap } from "../../api/journeys";
+import { getJourneysMap, type MapCountryResponse } from "../../api/sdk";
 import type { MapCountry } from "../../components/WorldMap";
 import { WorldMap } from "../../components/WorldMap";
 import { JourneysLegendCard } from "./JourneysLegendCard";
@@ -12,6 +12,25 @@ type MapLoadState =
   | { status: "loading" }
   | { status: "error" }
   | { status: "ready"; countries: MapCountry[] };
+
+/**
+ * Переводит агрегат карты в модель `WorldMap`.
+ *
+ * Эндпоинт по смыслу отдаёт только посещённые страны (wishlist — отдельный запрос), поэтому
+ * статус проставляем здесь. Имя страны фронт резолвит из кода сам, бэк его не шлёт.
+ */
+function toMapCountries(countries: readonly MapCountryResponse[]): MapCountry[] {
+  return countries.map((country) => ({
+    id: country.countryCode,
+    status: "visited",
+    cities: country.cities.map((city) => ({
+      name: city.name,
+      lat: city.latitude,
+      lng: city.longitude,
+      years: city.years,
+    })),
+  }));
+}
 
 /**
  * Под-вкладка «Карта путешествий» — индексный маршрут /journeys. Тянет агрегат поездок
@@ -25,9 +44,9 @@ export function JourneysMapView() {
   const load = useCallback(() => {
     const controller = new AbortController();
     setState({ status: "loading" });
-    getJourneysMap(controller.signal)
-      .then((countries) => {
-        setState({ status: "ready", countries });
+    getJourneysMap({ signal: controller.signal, throwOnError: true })
+      .then((response) => {
+        setState({ status: "ready", countries: toMapCountries(response.countries) });
       })
       .catch((error: unknown) => {
         // Прерванный запрос (размонтирование/перезагрузка) — не ошибка; тестировать нечего.

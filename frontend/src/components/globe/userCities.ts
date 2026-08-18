@@ -7,8 +7,7 @@
  *   2. модульный кэш по `sub` — чтобы не бить `/v1/journeys/map` на каждый вход в /home.
  * Тот же агрегат уже тянет `JourneysMapView` (2D-карта) — глобус лишь второй потребитель.
  */
-import { getJourneysMap } from "../../api/journeys";
-import type { MapCountry } from "../WorldMap";
+import { getJourneysMap, type MapCountryResponse } from "../../api/sdk";
 import type { GlobeCity } from "./cities";
 
 /**
@@ -24,18 +23,18 @@ import type { GlobeCity } from "./cities";
  * Returns:
  *     Уникальные города как `GlobeCity` (имя + координаты).
  */
-export function citiesFromJourneysMap(countries: readonly MapCountry[]): GlobeCity[] {
+export function citiesFromJourneysMap(countries: readonly MapCountryResponse[]): GlobeCity[] {
   const seen = new Set<string>();
   const cities: GlobeCity[] = [];
   for (const country of countries) {
     for (const city of country.cities) {
-      const key = `${city.name}|${city.lat}|${city.lng}`;
+      const key = `${city.name}|${city.latitude}|${city.longitude}`;
       if (seen.has(key)) {
         continue;
       }
 
       seen.add(key);
-      cities.push({ name: city.name, lat: city.lat, lng: city.lng });
+      cities.push({ name: city.name, lat: city.latitude, lng: city.longitude });
     }
   }
 
@@ -99,9 +98,9 @@ export function loadUserCities(sub: string): Promise<GlobeCity[]> {
   }
 
   const requestGeneration = generation;
-  const promise = getJourneysMap()
-    .then((countries) => {
-      const cities = citiesFromJourneysMap(countries);
+  const promise = getJourneysMap({ throwOnError: true })
+    .then((response) => {
+      const cities = citiesFromJourneysMap(response.countries);
       // Записываем в кэш, только если между стартом и ответом не было сброса (логаута).
       if (requestGeneration === generation) {
         cached = { sub, cities };

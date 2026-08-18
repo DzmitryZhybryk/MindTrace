@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import { ApiError } from "../api/errors";
-import { getCurrentUser } from "../api/users";
+import { getCurrentUser } from "../api/sdk";
 import { useAuth } from "../auth/useAuth";
 import { CurrentUserContext, type CurrentUserState } from "./useCurrentUser";
 
@@ -44,7 +44,7 @@ export function CurrentUserProvider({ children }: CurrentUserProviderProps) {
     let cancelled = false;
     const controller = new AbortController();
     setState({ status: "loading" });
-    getCurrentUser(controller.signal)
+    getCurrentUser({ signal: controller.signal, throwOnError: true })
       .then((user) => {
         if (cancelled) {
           return;

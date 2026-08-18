@@ -6,7 +6,7 @@ import { renderWithProviders, screen } from "../test/render";
 import { PlaceAutocomplete } from "./PlaceAutocomplete";
 
 describe("PlaceAutocomplete", () => {
-  it("ищет места по префиксу и кладёт выбранный PlaceSuggestion в onChange", async () => {
+  it("ищет места по префиксу и кладёт выбранный PlaceResponse в onChange", async () => {
     const onChange = vi.fn();
     const { user } = renderWithProviders(
       <PlaceAutocomplete label="From" placeholder="City" value={null} onChange={onChange} />,

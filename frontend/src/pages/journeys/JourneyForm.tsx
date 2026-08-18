@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
 import { applyApiError, resolveErrorToken } from "../../api/errors";
-import { createJourney, TRANSPORT_TYPES, type PlaceSuggestion, type TransportType } from "../../api/journeys";
+import { createJourney, zTransportType, type PlaceResponse, type TransportType } from "../../api/sdk";
 import carIcon from "../../assets/emoji/car.svg";
 import planeIcon from "../../assets/emoji/plane.svg";
 import shipIcon from "../../assets/emoji/ship.svg";
@@ -47,8 +47,8 @@ function SwapVerticalIcon() {
 }
 
 export type JourneyFormValues = {
-  origin: PlaceSuggestion | null;
-  destination: PlaceSuggestion | null;
+  origin: PlaceResponse | null;
+  destination: PlaceResponse | null;
   transport: TransportType | null;
   year: string | null;
   month: string | null;
@@ -92,22 +92,25 @@ export function JourneyForm({ form }: JourneyFormProps) {
     setSubmitting(true);
     try {
       await createJourney({
-        origin: {
-          name: values.origin.name,
-          countryCode: values.origin.countryCode,
-          latitude: values.origin.latitude,
-          longitude: values.origin.longitude,
+        body: {
+          origin: {
+            name: values.origin.name,
+            countryCode: values.origin.countryCode,
+            latitude: values.origin.latitude,
+            longitude: values.origin.longitude,
+          },
+          destination: {
+            name: values.destination.name,
+            countryCode: values.destination.countryCode,
+            latitude: values.destination.latitude,
+            longitude: values.destination.longitude,
+          },
+          transportType: values.transport,
+          traveledYear: Number(values.year),
+          traveledMonth: values.hasMonth && values.month ? Number(values.month) : null,
+          traveledDay: values.hasDay && values.day ? Number(values.day) : null,
         },
-        destination: {
-          name: values.destination.name,
-          countryCode: values.destination.countryCode,
-          latitude: values.destination.latitude,
-          longitude: values.destination.longitude,
-        },
-        transportType: values.transport,
-        traveledYear: Number(values.year),
-        traveledMonth: values.hasMonth && values.month ? Number(values.month) : null,
-        traveledDay: values.hasDay && values.day ? Number(values.day) : null,
+        throwOnError: true,
       });
       navigate("/journeys");
     } catch (err) {
@@ -164,7 +167,7 @@ export function JourneyForm({ form }: JourneyFormProps) {
           placeholder={t("addJourney.transport.placeholder")}
           size="md"
           radius="md"
-          data={TRANSPORT_TYPES.map((type) => ({ value: type, label: t(`addJourney.transport.${type}`) }))}
+          data={zTransportType.options.map((type) => ({ value: type, label: t(`addJourney.transport.${type}`) }))}
           value={values.transport}
           onChange={(value) => {
             form.setFieldValue("transport", value as TransportType | null);
