@@ -1,0 +1,1344 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MindTrace",
+    "description": "Service for managing mindtrace",
+    "version": "1.1.0"
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Healthz",
+        "description": "Liveness-проба для контейнерного healthcheck и reverse-proxy.\n\nНамеренно не трогает БД и внешние сервисы — это liveness, а не readiness:\nконтейнер не должен уходить в рестарт из-за временной недоступности\nзависимостей (за переподключение отвечают пул и retry самих клиентов).\nПробы конкретных зависимостей (postgres, procrastinate) добавятся сюда\nотдельными readiness-эндпоинтами по мере необходимости.\n\nReturns:\n    Пустой ответ со статусом 200, если процесс обрабатывает запросы.",
+        "operationId": "healthz",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/register/": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Register",
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.terms_not_accepted",
+                  "message": "Необходимо принять пользовательское соглашение",
+                  "details": {
+                    "field": "terms_accepted"
+                  },
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email или username уже заняты",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "auth.email_already_registered": {
+                    "summary": "Email уже зарегистрирован",
+                    "value": {
+                      "code": "auth.email_already_registered",
+                      "message": "Пользователь с таким email уже существует",
+                      "details": {
+                        "field": "email"
+                      },
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "auth.username_already_taken": {
+                    "summary": "Username уже занят",
+                    "value": {
+                      "code": "auth.username_already_taken",
+                      "message": "Пользователь с таким username уже существует",
+                      "details": {
+                        "field": "username"
+                      },
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/login/": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверные учётные данные",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.invalid_credentials",
+                  "message": "Неверный логин или пароль",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/logout/": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/refresh/": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Refresh",
+        "operationId": "refresh",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший refresh-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.invalid_refresh_token",
+                  "message": "Невалидный или истёкший refresh-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/email/send-verification/": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Send Email Verification",
+        "operationId": "send_email_verification",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Учётная запись не найдена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.user_credentials_not_found",
+                  "message": "Учётная запись не найдена",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email уже подтверждён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.email_already_verified",
+                  "message": "Email уже подтверждён",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cooldown повторной отправки кода ещё не истёк",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.challenge_resend_cooldown",
+                  "message": "Слишком частая отправка кода, повторите попытку позже",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/auth/email/verify/": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Verify Email",
+        "operationId": "verify_email",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Неверный код подтверждения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.verification_code_invalid",
+                  "message": "Неверный код подтверждения",
+                  "details": {
+                    "field": "code"
+                  },
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Учётная запись или активный challenge не найдены",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "auth.user_credentials_not_found": {
+                    "summary": "Учётная запись не найдена",
+                    "value": {
+                      "code": "auth.user_credentials_not_found",
+                      "message": "Учётная запись не найдена",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "auth.challenge_not_found": {
+                    "summary": "Активный challenge отсутствует",
+                    "value": {
+                      "code": "auth.challenge_not_found",
+                      "message": "Код подтверждения не запрошен или больше недоступен",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email уже подтверждён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.email_already_verified",
+                  "message": "Email уже подтверждён",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Срок действия кода истёк",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.challenge_expired",
+                  "message": "Срок действия кода подтверждения истёк",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышено количество попыток ввода кода",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.challenge_attempts_exceeded",
+                  "message": "Превышено количество попыток ввода кода",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/geo/places/search/": {
+      "get": {
+        "tags": [
+          "geo"
+        ],
+        "summary": "Search Places",
+        "operationId": "search_places",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "searchText",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "description": "Поисковый запрос (часть имени).",
+              "title": "Searchtext"
+            },
+            "description": "Поисковый запрос (часть имени)."
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Language",
+              "description": "Язык отображаемых имён."
+            },
+            "description": "Язык отображаемых имён."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "description": "Максимум кандидатов в выдаче.",
+              "default": 10,
+              "title": "Limit"
+            },
+            "description": "Максимум кандидатов в выдаче."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceSearchResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/": {
+      "post": {
+        "tags": [
+          "journeys"
+        ],
+        "summary": "Create Journey",
+        "operationId": "create_journey",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJourneyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка валидации поездки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "journeys.same_origin_destination": {
+                    "summary": "Город отправления и назначения совпадают",
+                    "value": {
+                      "code": "journeys.same_origin_destination",
+                      "message": "Город отправления и назначения не могут совпадать",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "journeys.date_in_future": {
+                    "summary": "Дата поездки в будущем",
+                    "value": {
+                      "code": "journeys.date_in_future",
+                      "message": "Дата поездки не может быть в будущем",
+                      "details": {
+                        "field": "year"
+                      },
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "journeys.invalid_date": {
+                    "summary": "Некорректная дата (например 30 февраля или день без месяца)",
+                    "value": {
+                      "code": "journeys.invalid_date",
+                      "message": "Некорректная дата поездки",
+                      "details": {
+                        "field": "year"
+                      },
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/journeys/map": {
+      "get": {
+        "tags": [
+          "journeys"
+        ],
+        "summary": "Get Journeys Map",
+        "operationId": "get_journeys_map",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneysMapResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users/me": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Get Current User",
+        "operationId": "get_current_user",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Пользователь не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "users.user_not_found",
+                  "message": "Пользователь не найден",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Пользователь удалён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "users.user_deleted",
+                  "message": "Пользователь удалён",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateJourneyRequest": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/PlaceRef"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/PlaceRef"
+          },
+          "transportType": {
+            "$ref": "#/components/schemas/TransportType"
+          },
+          "traveledYear": {
+            "type": "integer",
+            "title": "Traveledyear"
+          },
+          "traveledMonth": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Traveledmonth"
+          },
+          "traveledDay": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Traveledday"
+          }
+        },
+        "type": "object",
+        "required": [
+          "origin",
+          "destination",
+          "transportType",
+          "traveledYear"
+        ],
+        "title": "CreateJourneyRequest",
+        "description": "Тело запроса создания поездки.\n\nМеста приходят снапшотом (``origin``/``destination`` — имя/страна/координаты), бэк их\nне резолвит. Дата частями: год обязателен, месяц/день опциональны. Семантику даты\n(month 1..12, day валиден и требует month, не будущее) и инвариант origin≠destination\nвалидирует домен — отсюда консистентные доменные коды ошибок (``journeys.*``), а не 422."
+      },
+      "CurrentUserResponse": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname",
+            "description": "Отображаемое имя; null, если пользователь его не задал."
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "email",
+          "displayName"
+        ],
+        "title": "CurrentUserResponse"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Код ошибки для программной обработки",
+            "examples": [
+              "invalid_input",
+              "not_found",
+              "internal"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Человекочитаемое сообщение об ошибке",
+            "examples": [
+              "Некорректный запрос",
+              "Ресурс не найден"
+            ]
+          },
+          "details": {
+            "$ref": "#/components/schemas/OptionalDict",
+            "description": "Дополнительные детали ошибки (опционально)",
+            "examples": [
+              {
+                "field": "email",
+                "reason": "Invalid email format"
+              }
+            ]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp",
+            "description": "Временная метка возникновения ошибки (UTC)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "description": "Базовая схема ответа ошибки API.\n\nИспользуется для всех типов ошибок и автоматически генерирует документацию OpenAPI.",
+        "example": {
+          "code": "invalid_input",
+          "message": "Некорректный запрос",
+          "timestamp": "2024-01-01T12:00:00Z"
+        }
+      },
+      "JourneysMapResponse": {
+        "properties": {
+          "countries": {
+            "items": {
+              "$ref": "#/components/schemas/MapCountryResponse"
+            },
+            "type": "array",
+            "title": "Countries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "countries"
+        ],
+        "title": "JourneysMapResponse",
+        "description": "Ответ карты путешествий: посещённые страны с городами и годами визитов."
+      },
+      "Language": {
+        "type": "string",
+        "enum": [
+          "en",
+          "ru"
+        ],
+        "title": "Language",
+        "description": "Язык отображаемого имени места в автокомплите.\n\nЗакрытое множество поддерживаемых языков газеттира: имена импортируются только\nдля ``en``/``ru``. Используется как тип query-параметра ``language`` на границе HTTP\nи как ключ резолва имени в ``PlaceEntity.display_name``."
+      },
+      "LoginRequest": {
+        "properties": {
+          "login": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 1,
+            "title": "Login"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "format": "password",
+            "title": "Password",
+            "writeOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "login",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "MapCityResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Years"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "latitude",
+          "longitude",
+          "years"
+        ],
+        "title": "MapCityResponse",
+        "description": "Город на карте путешествий: точка (координаты) + годы визитов по возрастанию."
+      },
+      "MapCountryResponse": {
+        "properties": {
+          "countryCode": {
+            "type": "string",
+            "title": "Countrycode"
+          },
+          "cities": {
+            "items": {
+              "$ref": "#/components/schemas/MapCityResponse"
+            },
+            "type": "array",
+            "title": "Cities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "countryCode",
+          "cities"
+        ],
+        "title": "MapCountryResponse",
+        "description": "Посещённая страна на карте: код ISO alpha-2 и список посещённых в ней городов.\n\nИмя страны не отдаём — фронт резолвит из кода через ``Intl.DisplayNames``. Статуса в\nконтракте нет: эндпоинт по смыслу возвращает только посещённые страны (wishlist\nзапрашивается отдельно), поэтому сам факт прихода из journeys = страна посещена."
+      },
+      "OptionalDict": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "PlaceRef": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "countryCode": {
+            "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "Countrycode"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "countryCode",
+          "latitude",
+          "longitude"
+        ],
+        "title": "PlaceRef",
+        "description": "Снапшот места в теле запроса (payload-on-create): имя/страна/координаты.\n\nПоездка сохраняет эти данные как есть, ссылки на справочник не шлём. Валидируется\nтолько ФОРМА (длины, диапазоны координат) — это HTTP-граница; семантики тут нет."
+      },
+      "PlaceResponse": {
+        "properties": {
+          "placeId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Placeid"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Имя места, резолвнутое под язык запроса (параметр language)."
+          },
+          "countryCode": {
+            "type": "string",
+            "title": "Countrycode"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "population": {
+            "type": "integer",
+            "title": "Population"
+          }
+        },
+        "type": "object",
+        "required": [
+          "placeId",
+          "name",
+          "countryCode",
+          "latitude",
+          "longitude",
+          "population"
+        ],
+        "title": "PlaceResponse",
+        "description": "Кандидат автокомплита для фронта.\n\n``place_id`` (наружу ``placeId``) — суррогатный id справочника, стабильный ключ\nкандидата для выбора/рендера; вендорский ключ источника наружу не отдаётся. На create\nон НЕ уходит — поездка снапшотит данные места (имя/координаты), не ссылку."
+      },
+      "PlaceSearchResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "PlaceSearchResponse",
+        "description": "Ответ автокомплита — упорядоченная выдача кандидатов (по убыванию населения)."
+      },
+      "RegisterRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Username"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 8,
+            "format": "password",
+            "title": "Password",
+            "writeOnly": true
+          },
+          "termsAccepted": {
+            "type": "boolean",
+            "title": "Termsaccepted"
+          },
+          "marketingEmailsConsent": {
+            "type": "boolean",
+            "title": "Marketingemailsconsent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "email",
+          "password",
+          "termsAccepted",
+          "marketingEmailsConsent"
+        ],
+        "title": "RegisterRequest"
+      },
+      "TokenResponse": {
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "title": "Accesstoken"
+          },
+          "tokenType": {
+            "type": "string",
+            "title": "Tokentype",
+            "default": "bearer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accessToken"
+        ],
+        "title": "TokenResponse"
+      },
+      "TransportType": {
+        "type": "string",
+        "enum": [
+          "land",
+          "air",
+          "water"
+        ],
+        "title": "TransportType",
+        "description": "Среда передвижения в поездке (а не конкретный вид транспорта).\n\nКатегория среды, не средство: пешком/машина/поезд = ``LAND``, самолёт = ``AIR``,\nпаром/корабль = ``WATER``. Зеркалит string-literal union на фронте."
+      },
+      "VerifyEmailRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "VerifyEmailRequest"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
