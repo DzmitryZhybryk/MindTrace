@@ -2,13 +2,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from app.auth.presentation.dependencies import current_user_id_dependency
 from app.geo.application.schemas import SearchPlacesCommand
 from app.geo.application.services import PlaceService
 from app.geo.domain.enums import Language
 from app.geo.presentation.dependencies import place_service_dependency
 from app.geo.presentation.responses import SEARCH_PLACES_RESPONSES
 from app.geo.presentation.schemas import PlaceResponse, PlaceSearchResponse
+from app.shared.infra.jwt import current_user_id_dependency
 
 geo_router = APIRouter()
 

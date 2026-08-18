@@ -16,6 +16,7 @@ CHANGELOG остаётся один. Новые записи группирую�
 ### Backend 1.1.0
 
 - **`GET /v1/users/me`** — первый роут домена users: профиль текущего пользователя (`username`, `email`, `displayName`) по Bearer-токену. Контракт различает «пользователя нет» (404 `users.user_not_found`) и «пользователь удалён» (410 `users.user_deleted`): guard `ensure_not_deleted` живёт на entity, репозиторий отдаёт запись без скрытых фильтров
+- **`current_user_id_dependency` и `InvalidAccessTokenError` переехали из `auth/presentation` в shared jwt-вертикаль** (`app/shared/infra/jwt/`) — аутентификация запроса это cross-cutting инфраструктура, а не логика домена auth. Presentation-слои geo/journeys/users больше не зависят от `auth.presentation`, взаимный цикл auth ↔ users разомкнут, в tach включён `forbid_circular_dependencies` (возврат любого цикла роняет гейт). Код ошибки `auth.invalid_access_token` не менялся — внешний контракт
 - **Убран реэкспорт роутеров из доменных `__init__.py`** (auth/geo/journeys/health; у нового домена users он не заводился) — presentation-слои auth и users взаимно зависимы (cross-domain wiring регистрации; сама зависимость остаётся и задекларирована в `tach.toml`), и эагерный реэкспорт в `__init__` детонировал этот цикл ImportError'ом при старте приложения; `main.py` и api-тесты импортируют роутеры напрямую из `presentation.routes`
 
 ### Frontend 2.4.0

@@ -7,7 +7,6 @@ from app.auth.exceptions import (
     ChallengeResendCooldownError,
     EmailAlreadyExistError,
     EmailAlreadyVerifiedError,
-    InvalidAccessTokenError,
     InvalidCredentialsError,
     InvalidRefreshTokenError,
     TermsNotAcceptedError,
@@ -17,6 +16,7 @@ from app.auth.exceptions import (
 )
 from app.shared.exceptions import ErrorResponse, InternalError
 from app.shared.exceptions.examples import error_response_example
+from app.shared.infra.jwt import InvalidAccessTokenError
 from app.shared.types import DictStrAny
 
 REGISTER_RESPONSES: Final[dict[int | str, DictStrAny]] = {

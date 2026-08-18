@@ -5,6 +5,7 @@
 # любой неожиданный edge (напр. application → infra) — это нарушение.
 
 source_roots = ["."]
+forbid_circular_dependencies = true
 
 exclude = [
     "migrations",
@@ -50,7 +51,7 @@ depends_on = ["app.geo.domain", "app.geo.application", "app.shared"]
 
 [[modules]]
 path = "app.geo.presentation"
-depends_on = ["app.geo.application", "app.geo.infra", "app.geo.domain", "app.shared", "app.auth.presentation"]
+depends_on = ["app.geo.application", "app.geo.infra", "app.geo.domain", "app.shared"]
 
 [[modules]]
 path = "app.users.domain"
@@ -66,7 +67,7 @@ depends_on = ["app.shared", "app.users.application", "app.users.domain"]
 
 [[modules]]
 path = "app.users.presentation"
-depends_on = ["app.users.application", "app.users.infra", "app.shared", "app.auth.presentation"]
+depends_on = ["app.users.application", "app.users.infra", "app.shared"]
 
 [[modules]]
 path = "app.journeys.domain"
@@ -87,7 +88,6 @@ depends_on = [
     "app.journeys.infra",
     "app.journeys.domain",
     "app.shared",
-    "app.auth.presentation",
 ]
 
 [[modules]]
