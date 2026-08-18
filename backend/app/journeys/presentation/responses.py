@@ -1,6 +1,5 @@
 from typing import Final
 
-from app.auth.exceptions import InvalidAccessTokenError
 from app.journeys.exceptions import (
     InvalidJourneyDateError,
     JourneyDateInFutureError,
@@ -8,6 +7,7 @@ from app.journeys.exceptions import (
 )
 from app.shared.exceptions import ErrorResponse, InternalError
 from app.shared.exceptions.examples import error_response_example
+from app.shared.infra.jwt import InvalidAccessTokenError
 from app.shared.types import DictStrAny
 
 CREATE_JOURNEY_RESPONSES: Final[dict[int | str, DictStrAny]] = {

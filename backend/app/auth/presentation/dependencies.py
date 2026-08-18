@@ -1,8 +1,6 @@
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import Depends, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.application.auth_service import AuthService
@@ -10,7 +8,7 @@ from app.auth.application.email_verification_service import EmailVerificationSer
 from app.auth.application.schemas import ClientMetadata
 from app.auth.application.settings import EmailVerificationConfig, get_email_verification_settings
 from app.auth.application.token_issuer import TokenIssuer
-from app.auth.exceptions import InvalidAccessTokenError, InvalidRefreshTokenError
+from app.auth.exceptions import InvalidRefreshTokenError
 from app.auth.infra.clients.internal_users_client import InternalUsersClient
 from app.auth.infra.uow import AuthUnitOfWork
 from app.auth.presentation.cookies import read_refresh_token_cookie
@@ -20,15 +18,13 @@ from app.shared.infra.crypto import (
     get_argon2_salted_hasher,
     get_sha256_deterministic_hasher,
 )
-from app.shared.infra.jwt import JWTDecodeError, JWTService, get_jwt_service
+from app.shared.infra.jwt import JWTService, jwt_service_dependency
 from app.shared.infra.postgres.dependency import db_session_dependency
 from app.shared.infra.procrastinate import ProcrastinateTaskBus, TaskBusPort
 from app.shared.schemas.base import BFastAPI
 from app.shared.settings import settings
 from app.users.application.services import UserService
 from app.users.presentation.dependencies import user_service_dependency
-
-bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def client_metadata_dependency(request: Request) -> ClientMetadata:
@@ -48,40 +44,6 @@ def users_client_dependency(
     user_service: Annotated[UserService, Depends(user_service_dependency)],
 ) -> InternalUsersClient:
     return InternalUsersClient(user_service=user_service)
-
-
-def jwt_service_dependency() -> JWTService:
-    return get_jwt_service()
-
-
-def current_user_id_dependency(
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-    jwt_service: Annotated[JWTService, Depends(jwt_service_dependency)],
-) -> UUID:
-    """
-    Извлекает ``user_id`` из Bearer access-токена.
-
-    Заголовок ``Authorization: Bearer <token>`` обязателен — отсутствие
-    или невалидный токен (просроченная подпись, искажённый формат, чужой
-    secret) приводят к 401 ``InvalidAccessTokenError``.
-
-    Args:
-        credentials: Распарсенный ``Authorization`` (или ``None`` если заголовка нет)
-        jwt_service: Сервис подписи/декодирования JWT
-
-    Returns:
-        UUID пользователя из claim'а ``sub``
-
-    Raises:
-        InvalidAccessTokenError: Заголовок отсутствует или токен не прошёл валидацию
-    """
-    if credentials is None:
-        raise InvalidAccessTokenError()
-
-    try:
-        return jwt_service.decode_access_token(token=credentials.credentials)
-    except JWTDecodeError as exc:
-        raise InvalidAccessTokenError() from exc
 
 
 def email_verification_settings_dependency() -> EmailVerificationConfig:

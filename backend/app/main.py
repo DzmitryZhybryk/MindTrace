@@ -2,11 +2,11 @@ from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from typing import Any
 
-from app.auth import auth_router
 from app.auth.infra import auth_blueprint
-from app.geo import geo_router
-from app.health import health_router
-from app.journeys import journey_router
+from app.auth.presentation.routes import auth_router
+from app.geo.presentation.routes import geo_router
+from app.health.presentation.routes import health_router
+from app.journeys.presentation.routes import journey_router
 from app.shared.enums import AppEnvEnum
 from app.shared.exceptions import register_exception_handlers
 from app.shared.infra.di.base import BaseComponent
@@ -18,6 +18,7 @@ from app.shared.logging import HTTPLoggingMiddleware, configure_logging, get_log
 from app.shared.schemas.base import BFastAPI
 from app.shared.settings import settings
 from app.shared.types import DictStrAny
+from app.users.presentation.routes import users_router
 
 logger = get_logger(__name__)
 
@@ -102,5 +103,6 @@ def create_app() -> BFastAPI:
     app.include_router(auth_router, prefix="/v1/auth", tags=["v1.auth"])
     app.include_router(geo_router, prefix="/v1/geo", tags=["v1.geo"])
     app.include_router(journey_router, prefix="/v1/journeys", tags=["v1.journeys"])
+    app.include_router(users_router, prefix="/v1/users", tags=["v1.users"])
 
     return app

@@ -2,12 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { on } from "../auth/events";
 import { clearAccessToken, getAccessToken, setAccessToken } from "../auth/tokenStore";
+import { jsonResponse, type FetchSignature } from "../test/fetchStub";
 import { apiFetch, ensureRefreshed } from "./client";
 import { ApiError } from "./errors";
 
 const REFRESH_PATH = "/v1/auth/refresh/";
-
-type FetchSignature = (input: string, init?: RequestInit) => Promise<Response>;
 
 /** Управляемый промис: позволяет держать запрос «в полёте» и резолвить его вручную. */
 function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; reject: (reason: unknown) => void } {
@@ -19,14 +18,6 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; reje
   });
 
   return { promise, resolve, reject };
-}
-
-/** JSON-ответ с заданным статусом. */
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
 }
 
 /** Считает, сколько раз дёрнули именно `/v1/auth/refresh/`. */

@@ -10,7 +10,6 @@ from app.auth.presentation.cookies import clear_refresh_token_cookie, set_refres
 from app.auth.presentation.dependencies import (
     auth_service_dependency,
     client_metadata_dependency,
-    current_user_id_dependency,
     email_verification_service_dependency,
     optional_refresh_secret_dependency,
     required_refresh_secret_dependency,
@@ -24,6 +23,7 @@ from app.auth.presentation.responses import (
     VERIFY_EMAIL_RESPONSES,
 )
 from app.auth.presentation.schemas import LoginRequest, RegisterRequest, TokenResponse, VerifyEmailRequest
+from app.shared.infra.jwt import current_user_id_dependency
 
 auth_router = APIRouter()
 

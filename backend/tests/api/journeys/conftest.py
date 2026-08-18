@@ -15,8 +15,8 @@ from typing import Any
 import pytest
 from fastapi import APIRouter
 
-from app.journeys import journey_router
 from app.journeys.presentation.dependencies import journey_uow_dependency
+from app.journeys.presentation.routes import journey_router
 from tests.fakes import FakeJourneyUnitOfWork
 
 _JOURNEYS_ROUTER_PREFIX = "/v1/journeys"

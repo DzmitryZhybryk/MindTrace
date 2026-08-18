@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from "react-router";
 
 import { logout } from "../api/auth";
 import { useAuth } from "../auth/useAuth";
+import { useCurrentUser } from "../user/useCurrentUser";
 import { BrandMark } from "./BrandMark";
 import { EmailVerificationBanner } from "./EmailVerificationBanner";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -17,10 +18,6 @@ const TABS = [
   { key: "journeys", to: "/journeys", soon: false },
   { key: "mind", to: "/mind", soon: true },
 ] as const;
-
-// Имя профиля захардкожено: бэк пока не отдаёт профиль (в JWT только sub / exp /
-// email_verified). Заменить на данные пользователя, когда появится эндпоинт /me.
-const PLACEHOLDER_PROFILE_NAME = "Dzmitry Zhybryk";
 
 /**
  * Шапка приложения, общая для всех внутренних экранов (Home, Journeys, ...).
@@ -36,7 +33,15 @@ export function AppHeader() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { emailVerified, clearSession, openVerifyDialog } = useAuth();
+  const currentUser = useCurrentUser();
   const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false);
+
+  // Пока профиль не загружен, name=undefined — Mantine Avatar рендерит генерик-иконку
+  // вместо инициалов.
+  const profileName =
+    currentUser.status === "ready"
+      ? (currentUser.user.displayName ?? currentUser.user.username)
+      : undefined;
 
   const handleLogout = async () => {
     try {
@@ -97,7 +102,7 @@ export function AppHeader() {
                     offset={4}
                     withBorder
                   >
-                    <Avatar radius="xl" size="md" color="slate" name={PLACEHOLDER_PROFILE_NAME} />
+                    <Avatar radius="xl" size="md" color="slate" name={profileName} />
                   </Indicator>
                 </UnstyledButton>
               </Menu.Target>

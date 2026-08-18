@@ -7,6 +7,7 @@ import { DocumentTitle } from "./components/DocumentTitle";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PublicOnlyRoute } from "./components/PublicOnlyRoute";
+import { CurrentUserProvider } from "./user/CurrentUserContext";
 
 // Страницы грузятся лениво (dynamic import → отдельный chunk на маршрут), поэтому
 // главный бандл несёт только каркас (router + провайдеры + Mantine-база). Тяжёлое —
@@ -63,96 +64,98 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        {/* Вне <Suspense>: заголовок вкладки должен обновиться сразу при смене маршрута,
-            не дожидаясь загрузки chunk'а страницы. */}
-        <DocumentTitle />
-        {/*
-         * Глобус-фон — СИБЛИНГ <Routes>, вне его <Suspense>: он не должен размонтироваться
-         * при смене маршрута (иначе WebGL перезагружался бы). Свой ErrorBoundary — на случай,
-         * если не приехал chunk самого хоста; свой Suspense(null) — фон уже держит body,
-         * вторую заглушку под ленивый chunk подставлять не нужно.
-         */}
-        <ErrorBoundary fallback={globeFallback}>
-          <Suspense fallback={null}>
-            <PersistentGlobeHost />
+        <CurrentUserProvider>
+          {/* Вне <Suspense>: заголовок вкладки должен обновиться сразу при смене маршрута,
+              не дожидаясь загрузки chunk'а страницы. */}
+          <DocumentTitle />
+          {/*
+           * Глобус-фон — СИБЛИНГ <Routes>, вне его <Suspense>: он не должен размонтироваться
+           * при смене маршрута (иначе WebGL перезагружался бы). Свой ErrorBoundary — на случай,
+           * если не приехал chunk самого хоста; свой Suspense(null) — фон уже держит body,
+           * вторую заглушку под ленивый chunk подставлять не нужно.
+           */}
+          <ErrorBoundary fallback={globeFallback}>
+            <Suspense fallback={null}>
+              <PersistentGlobeHost />
+            </Suspense>
+          </ErrorBoundary>
+          <Suspense fallback={<PageFallback />}>
+            <Routes>
+              {/*
+               * Публичная зона под общим PublicLayout — персистентный глобус-фон и шапка
+               * («Уровень 3») монтируются один раз и переживают навигацию внутри неё.
+               * Поэтому переход лендинг → signup → login не перезагружает WebGL: камера
+               * лишь перелетает к другой грани планеты.
+               */}
+              <Route element={<PublicLayout />}>
+                <Route
+                  path="/"
+                  element={
+                    <PublicOnlyRoute>
+                      <LandingPage />
+                    </PublicOnlyRoute>
+                  }
+                />
+                <Route
+                  path="/login"
+                  element={
+                    <PublicOnlyRoute>
+                      <LoginPage />
+                    </PublicOnlyRoute>
+                  }
+                />
+                <Route
+                  path="/signup"
+                  element={
+                    <PublicOnlyRoute>
+                      <SignUpPage />
+                    </PublicOnlyRoute>
+                  }
+                />
+              </Route>
+
+              {/* Дашборд: переехал с «/» на «/home» (на «/» теперь публичный лендинг). */}
+              <Route
+                path="/home"
+                element={
+                  <ProtectedRoute>
+                    <HomePage />
+                  </ProtectedRoute>
+                }
+              />
+              {/*
+               * Раздел Journeys — общий каркас (шапка + панель) с под-вкладками через
+               * <Outlet/>. Индексный маршрут показывает карту, «add» — форму добавления
+               * поездки; movements/all/wishlist пока заглушки (element={null}) — маршруты
+               * заведены, чтобы навигация в панели подсвечивалась, контент появится по мере готовности.
+               */}
+              <Route
+                path="/journeys"
+                element={
+                  <ProtectedRoute>
+                    <JourneysLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<JourneysMapView />} />
+                <Route path="movements" element={null} />
+                <Route path="all" element={null} />
+                <Route path="wishlist" element={null} />
+                <Route path="add" element={<AddJourneyPage />} />
+              </Route>
+
+              {/*
+               * Неизвестный путь. Без этого маршрута ни одна ветка не совпадала и React Router
+               * рендерил пустоту: белый экран без шапки и без способа вернуться (nginx отдаёт
+               * index.html на любой URL, так что попасть сюда можно опечаткой в адресе или
+               * старой ссылкой). Уводим на корень — аноним попадёт на лендинг, залогиненный
+               * оттуда же уедет на дашборд. Отдельная страница 404 — продуктовое решение
+               * (нужен свой копирайт в EN/RU), здесь сознательно не изобретаем.
+               */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </Suspense>
-        </ErrorBoundary>
-        <Suspense fallback={<PageFallback />}>
-          <Routes>
-            {/*
-             * Публичная зона под общим PublicLayout — персистентный глобус-фон и шапка
-             * («Уровень 3») монтируются один раз и переживают навигацию внутри неё.
-             * Поэтому переход лендинг → signup → login не перезагружает WebGL: камера
-             * лишь перелетает к другой грани планеты.
-             */}
-            <Route element={<PublicLayout />}>
-              <Route
-                path="/"
-                element={
-                  <PublicOnlyRoute>
-                    <LandingPage />
-                  </PublicOnlyRoute>
-                }
-              />
-              <Route
-                path="/login"
-                element={
-                  <PublicOnlyRoute>
-                    <LoginPage />
-                  </PublicOnlyRoute>
-                }
-              />
-              <Route
-                path="/signup"
-                element={
-                  <PublicOnlyRoute>
-                    <SignUpPage />
-                  </PublicOnlyRoute>
-                }
-              />
-            </Route>
-
-            {/* Дашборд: переехал с «/» на «/home» (на «/» теперь публичный лендинг). */}
-            <Route
-              path="/home"
-              element={
-                <ProtectedRoute>
-                  <HomePage />
-                </ProtectedRoute>
-              }
-            />
-            {/*
-             * Раздел Journeys — общий каркас (шапка + панель) с под-вкладками через
-             * <Outlet/>. Индексный маршрут показывает карту, «add» — форму добавления
-             * поездки; movements/all/wishlist пока заглушки (element={null}) — маршруты
-             * заведены, чтобы навигация в панели подсвечивалась, контент появится по мере готовности.
-             */}
-            <Route
-              path="/journeys"
-              element={
-                <ProtectedRoute>
-                  <JourneysLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<JourneysMapView />} />
-              <Route path="movements" element={null} />
-              <Route path="all" element={null} />
-              <Route path="wishlist" element={null} />
-              <Route path="add" element={<AddJourneyPage />} />
-            </Route>
-
-            {/*
-             * Неизвестный путь. Без этого маршрута ни одна ветка не совпадала и React Router
-             * рендерил пустоту: белый экран без шапки и без способа вернуться (nginx отдаёт
-             * index.html на любой URL, так что попасть сюда можно опечаткой в адресе или
-             * старой ссылкой). Уводим на корень — аноним попадёт на лендинг, залогиненный
-             * оттуда же уедет на дашборд. Отдельная страница 404 — продуктовое решение
-             * (нужен свой копирайт в EN/RU), здесь сознательно не изобретаем.
-             */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+        </CurrentUserProvider>
       </AuthProvider>
     </BrowserRouter>
   );

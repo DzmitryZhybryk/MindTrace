@@ -25,6 +25,9 @@ class FakeUserRepository(UserRepositoryPort):
     async def insert_user(self, user_entity: UserEntity) -> None:
         self.by_user_id[user_entity.user_id] = user_entity
 
+    async def find_user_by_id(self, user_id: UUID) -> UserEntity | None:
+        return self.by_user_id.get(user_id)
+
 
 class FakeUserUnitOfWork(UserUnitOfWorkPort):
     """

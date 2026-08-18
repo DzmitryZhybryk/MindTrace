@@ -26,6 +26,7 @@ import { vi } from "vitest";
 import { AuthProvider } from "../auth/AuthContext";
 import { AuthContext, type AuthContextValue } from "../auth/useAuth";
 import { theme } from "../theme";
+import { CurrentUserProvider } from "../user/CurrentUserContext";
 
 type AuthOptions = {
   /** Stub-значение контекста; имеет приоритет над `withAuthProvider`. */
@@ -40,11 +41,21 @@ type ProvidersProps = AuthOptions & {
 };
 
 function Providers({ children, initialPath, authValue, withAuthProvider }: ProvidersProps) {
+  // Реальный CurrentUserProvider в обоих auth-режимах (сеть закрывает MSW-handler
+  // `/v1/users/me`); в default-ветке его нет — без Auth-предка useAuth внутри бросит.
   let withAuth: ReactNode = children;
   if (authValue !== undefined) {
-    withAuth = <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>;
+    withAuth = (
+      <AuthContext.Provider value={authValue}>
+        <CurrentUserProvider>{children}</CurrentUserProvider>
+      </AuthContext.Provider>
+    );
   } else if (withAuthProvider) {
-    withAuth = <AuthProvider>{children}</AuthProvider>;
+    withAuth = (
+      <AuthProvider>
+        <CurrentUserProvider>{children}</CurrentUserProvider>
+      </AuthProvider>
+    );
   }
 
   return (

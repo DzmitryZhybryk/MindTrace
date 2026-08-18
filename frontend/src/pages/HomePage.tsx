@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import { AppHeader } from "../components/AppHeader";
+import { useCurrentUser } from "../user/useCurrentUser";
 import "./home.css";
 
 /*
@@ -8,10 +9,6 @@ import "./home.css";
  * недавних поездок API пока не отдаёт. Данные оставлены английскими намеренно — переводить
  * вымышленные цифры и описания на два языка значит удваивать работу, которая удалится
  * вместе с моком. Подписи разделов вокруг них — настоящий UI, и они через i18n.
- *
- * Имя в приветствии — тоже заглушка, и её нельзя убрать простой правкой фронта: access-токен
- * несёт только `sub`/`email_verified`/`exp` (см. auth/jwt.ts), эндпоинта профиля в API нет.
- * Нужен либо `/v1/users/me`, либо имя отдельным claim'ом — это бэкенд-задача.
  */
 const STAT_KEYS = ["countries", "cities", "streak"] as const;
 const STAT_VALUES: Record<(typeof STAT_KEYS)[number], number> = {
@@ -39,20 +36,37 @@ const RECENT = [
   { city: "Berlin", date: "Nov 2025" },
 ] as const;
 
-const GREETING_NAME = "Dzmitry";
-const GREETING_DATE = "Saturday · May 2026";
+/**
+ * «Saturday · May 2026» — текущая дата в языке интерфейса. Собрана из частей
+ * (weekday + standalone-месяц + год), а не одним форматом: единый ru-формат Intl
+ * добавил бы «г.» после года и склонял бы месяц («мая» вместо «май»).
+ */
+function formatGreetingDate(locale: string): string {
+  const now = new Date();
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(now);
+  const month = new Intl.DateTimeFormat(locale, { month: "long" }).format(now);
+  return `${weekday} · ${month} ${now.getFullYear()}`;
+}
 
 export function HomePage() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
+  const currentUser = useCurrentUser();
 
   return (
     <div className="app-shell home-shell">
       <AppHeader />
 
       <main className="home-main">
+        {/* Дата не зависит от сети — видна сразу; за /me гейтится только строка
+            приветствия. Пока профиля нет (loading/error) её место держит nbsp —
+            имя появляется на зарезервированной строке без скачка вёрстки. */}
         <div className="home-greeting">
-          <span className="home-greeting__hello">{t("greeting", { name: GREETING_NAME })}</span>
-          <span className="home-greeting__date">{GREETING_DATE}</span>
+          <span className="home-greeting__hello">
+            {currentUser.status === "ready"
+              ? t("greeting", { name: currentUser.user.displayName ?? currentUser.user.username })
+              : " "}
+          </span>
+          <span className="home-greeting__date">{formatGreetingDate(i18n.language)}</span>
         </div>
 
         {/* Пустой центральный слот: место, где визуально стоит app-global глобус-фон (корневой
