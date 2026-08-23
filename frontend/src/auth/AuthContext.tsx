@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { ensureRefreshed } from "../api/client";
@@ -18,13 +19,26 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const queryClient = useQueryClient();
   const [accessToken, setAccessTokenState] = useState<string | null>(() => getAccessToken());
   const [isBootstrapping, setIsBootstrapping] = useState<boolean>(() => getAccessToken() === null);
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const isAuthenticated = accessToken !== null;
 
   useEffect(() => {
     return subscribeAccessToken((token) => setAccessTokenState(token));
   }, []);
+
+  // Кэш Query держит данные ушедшей сессии (профиль, карта поездок) — без сброса их
+  // увидел бы следующий вошедший в этой вкладке, причём глобус-фон со `staleTime: Infinity`
+  // не перезапросил бы их никогда. Чистим на СМЕНЕ auth-состояния, а не в обработчике
+  // кнопки: разлогин приходит тремя путями (кнопка, событие `auth-required` из транспорта,
+  // код `users.user_deleted` на /me), и общее у них ровно одно — пропавший токен.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      queryClient.clear();
+    }
+  }, [isAuthenticated, queryClient]);
 
   useEffect(() => {
     if (!isBootstrapping) {
@@ -81,7 +95,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextValue = {
     accessToken,
     claims,
-    isAuthenticated: accessToken !== null,
+    isAuthenticated,
     isBootstrapping,
     emailVerified: claims?.email_verified ?? false,
     setAccessToken,

@@ -1,26 +1,26 @@
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button, Loader, Text } from "@mantine/core";
 
-import { getJourneysMap, type MapCountryResponse } from "../../api/sdk";
+import { getJourneysMapOptions, type JourneysMapResponse } from "../../api/sdk";
 import type { MapCountry } from "../../components/WorldMap";
 import { WorldMap } from "../../components/WorldMap";
 import { JourneysLegendCard } from "./JourneysLegendCard";
 import { MAP_TONE } from "./journeys-data";
 
-type MapLoadState =
-  | { status: "loading" }
-  | { status: "error" }
-  | { status: "ready"; countries: MapCountry[] };
+// Стабильная ссылка на «стран нет»: `WorldMap` пересчитывает раскраску по идентичности пропа.
+const NO_COUNTRIES: MapCountry[] = [];
 
 /**
  * Переводит агрегат карты в модель `WorldMap`.
  *
  * Эндпоинт по смыслу отдаёт только посещённые страны (wishlist — отдельный запрос), поэтому
  * статус проставляем здесь. Имя страны фронт резолвит из кода сам, бэк его не шлёт.
+ *
+ * Модульная (а не инлайн-стрелка) — Query мемоизирует результат `select` по ссылке на функцию.
  */
-function toMapCountries(countries: readonly MapCountryResponse[]): MapCountry[] {
-  return countries.map((country) => ({
+function toMapCountries(response: JourneysMapResponse): MapCountry[] {
+  return response.countries.map((country) => ({
     id: country.countryCode,
     status: "visited",
     cities: country.cities.map((city) => ({
@@ -39,40 +39,18 @@ function toMapCountries(countries: readonly MapCountryResponse[]): MapCountry[] 
  */
 export function JourneysMapView() {
   const { t } = useTranslation("journeys");
-  const [state, setState] = useState<MapLoadState>({ status: "loading" });
-
-  const load = useCallback(() => {
-    const controller = new AbortController();
-    setState({ status: "loading" });
-    getJourneysMap({ signal: controller.signal, throwOnError: true })
-      .then((response) => {
-        setState({ status: "ready", countries: toMapCountries(response.countries) });
-      })
-      .catch((error: unknown) => {
-        // Прерванный запрос (размонтирование/перезагрузка) — не ошибка; тестировать нечего.
-        /* v8 ignore next 3 */
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-
-        setState({ status: "error" });
-      });
-    return controller;
-  }, []);
-
-  useEffect(() => {
-    const controller = load();
-    return () => {
-      controller.abort();
-    };
-  }, [load]);
-
-  const countries = state.status === "ready" ? state.countries : [];
+  // `staleTime: 0` — своя свежесть поверх общего с глобусом-фоном queryKey: вкладку карты
+  // открывают, чтобы увидеть актуальные поездки, поэтому на каждый маунт идём за данными.
+  const { data, isPending, isError, isFetching, refetch } = useQuery({
+    ...getJourneysMapOptions(),
+    staleTime: 0,
+    select: toMapCountries,
+  });
 
   return (
     <>
-      <WorldMap className="journeys-map" countries={countries} tone={MAP_TONE} />
-      {state.status === "loading" && (
+      <WorldMap className="journeys-map" countries={data ?? NO_COUNTRIES} tone={MAP_TONE} />
+      {isPending && (
         <output className="journeys-map-status">
           <Loader size="sm" color="gray" />
           <Text size="sm" c="var(--text-muted)">
@@ -80,12 +58,14 @@ export function JourneysMapView() {
           </Text>
         </output>
       )}
-      {state.status === "error" && (
+      {isError && (
         <div className="journeys-map-status" role="alert">
           <Text size="sm" fw={500} c="var(--text-error)">
             {t("map.error")}
           </Text>
-          <Button size="xs" variant="subtle" color="gray" onClick={() => load()}>
+          {/* Алерт остаётся на экране на время повтора — спиннер живёт в самой кнопке,
+              иначе управление пропадало бы вместе с сообщением. */}
+          <Button size="xs" variant="subtle" color="gray" loading={isFetching} onClick={() => refetch()}>
             {t("map.retry")}
           </Button>
         </div>

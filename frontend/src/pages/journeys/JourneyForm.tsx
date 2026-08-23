@@ -1,11 +1,18 @@
 import { Button, Group, Select, Stack, Text } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
 import { applyApiError, resolveErrorToken } from "../../api/errors";
-import { createJourney, zTransportType, type PlaceResponse, type TransportType } from "../../api/sdk";
+import {
+  createJourneyMutation,
+  getJourneysMapQueryKey,
+  zTransportType,
+  type PlaceResponse,
+  type TransportType,
+} from "../../api/sdk";
 import carIcon from "../../assets/emoji/car.svg";
 import planeIcon from "../../assets/emoji/plane.svg";
 import shipIcon from "../../assets/emoji/ship.svg";
@@ -70,8 +77,15 @@ interface JourneyFormProps {
 export function JourneyForm({ form }: JourneyFormProps) {
   const { t } = useTranslation("journeys");
   const navigate = useNavigate();
-  const [submitting, setSubmitting] = useState(false);
+  const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Новая поездка меняет агрегат карты — инвалидируем его общий queryKey. Без этого
+  // глобус-фон (`staleTime: Infinity`) не увидел бы её до перезагрузки страницы.
+  const { mutateAsync: submitJourney, isPending: submitting } = useMutation({
+    ...createJourneyMutation(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: getJourneysMapQueryKey() }),
+  });
 
   // Меняем «откуда»/«куда» местами. Глобус развернёт маршрут и иконку транспорта сам —
   // его анимация завязана на порядок origin→destination. Ошибки полей сбрасываем, чтобы
@@ -89,9 +103,8 @@ export function JourneyForm({ form }: JourneyFormProps) {
     }
 
     setFormError(null);
-    setSubmitting(true);
     try {
-      await createJourney({
+      await submitJourney({
         body: {
           origin: {
             name: values.origin.name,
@@ -110,7 +123,6 @@ export function JourneyForm({ form }: JourneyFormProps) {
           traveledMonth: values.hasMonth && values.month ? Number(values.month) : null,
           traveledDay: values.hasDay && values.day ? Number(values.day) : null,
         },
-        throwOnError: true,
       });
       navigate("/journeys");
     } catch (err) {
@@ -119,8 +131,6 @@ export function JourneyForm({ form }: JourneyFormProps) {
       if (message) {
         setFormError(message);
       }
-    } finally {
-      setSubmitting(false);
     }
   };
 

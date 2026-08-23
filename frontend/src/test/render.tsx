@@ -15,9 +15,10 @@
  * в DOM появляется текст landing'а. `useNavigate` при этом не мокается.
  */
 
-import { type ReactElement, type ReactNode } from "react";
+import { useState, type ReactElement, type ReactNode } from "react";
 
 import { MantineProvider } from "@mantine/core";
+import { QueryClient, QueryClientProvider, type DefaultOptions } from "@tanstack/react-query";
 import { render, screen, type RenderResult } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -28,11 +29,35 @@ import { AuthContext, type AuthContextValue } from "../auth/useAuth";
 import { theme } from "../theme";
 import { CurrentUserProvider } from "../user/CurrentUserContext";
 
+/**
+ * Query-клиент для одного теста — с боевыми дефолтами он был бы источником флака.
+ *
+ * `retry: false` — иначе кейс «запрос упал» ждал бы три повтора с backoff'ом и
+ * упирался в таймаут вместо того, чтобы показать ошибку. `refetchOnWindowFocus: false`
+ * — jsdom шлёт focus по ходу `userEvent`, и фоновый рефетч бил бы по MSW уже после
+ * `server.resetHandlers()`. Кэш свежий на каждый рендер: состояние между кейсами не течёт.
+ *
+ * Returns:
+ *     Изолированный `QueryClient` для одного дерева.
+ */
+export function createTestQueryClient(queries: DefaultOptions["queries"] = {}): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false, ...queries },
+    },
+  });
+}
+
 type AuthOptions = {
   /** Stub-значение контекста; имеет приоритет над `withAuthProvider`. */
   authValue?: AuthContextValue;
   /** Обернуть в реальный `<AuthProvider>` (если `authValue` не задан). */
   withAuthProvider?: boolean;
+  /**
+   * Свой Query-клиент вместо дефолтного — когда тест смотрит на кэш снаружи дерева
+   * (инвалидация, очистка на разлогине) или меняет политику повторов.
+   */
+  queryClient?: QueryClient;
 };
 
 type ProvidersProps = AuthOptions & {
@@ -40,7 +65,11 @@ type ProvidersProps = AuthOptions & {
   initialPath: string;
 };
 
-function Providers({ children, initialPath, authValue, withAuthProvider }: ProvidersProps) {
+function Providers({ children, initialPath, authValue, withAuthProvider, queryClient }: ProvidersProps) {
+  // Клиент фиксируется на монтирование дерева: `rerender` в тесте не должен сбрасывать
+  // кэш вместе с ним.
+  const [client] = useState(() => queryClient ?? createTestQueryClient());
+
   // Реальный CurrentUserProvider в обоих auth-режимах (сеть закрывает MSW-handler
   // `/v1/users/me`); в default-ветке его нет — без Auth-предка useAuth внутри бросит.
   let withAuth: ReactNode = children;
@@ -70,7 +99,9 @@ function Providers({ children, initialPath, authValue, withAuthProvider }: Provi
     // jsdom флапает — открывается и закрывается посреди асинхронной цепочки
     // userEvent, и `findAllByRole("menuitem")` периодически таймаутит.
     <MantineProvider theme={theme} defaultColorScheme="dark" env="test">
-      <MemoryRouter initialEntries={[initialPath]}>{withAuth}</MemoryRouter>
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[initialPath]}>{withAuth}</MemoryRouter>
+      </QueryClientProvider>
     </MantineProvider>
   );
 }

@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -5,8 +6,9 @@ import { describe, expect, it } from "vitest";
 import { emit } from "./events";
 import { useAuth } from "./useAuth";
 import { dismissVerifyBanner, isVerifyBannerDismissed } from "./verifyBannerStorage";
+import { getJourneysMapQueryKey } from "../api/sdk";
 import { makeAccessToken, server } from "../test/handlers";
-import { renderWithProviders, screen } from "../test/render";
+import { createTestQueryClient, renderWithProviders, screen } from "../test/render";
 
 /** Проба контекста: рендерит состояние auth текстом + кнопку входа для наблюдения извне. */
 function AuthProbe() {
@@ -22,8 +24,17 @@ function AuthProbe() {
 }
 
 /** Рендерит пробу под реальным `<AuthProvider>` (bootstrap бьёт в MSW-refresh). */
-function renderAuth() {
-  return renderWithProviders(<AuthProbe />, { withAuthProvider: true });
+function renderAuth(queryClient?: QueryClient) {
+  return renderWithProviders(<AuthProbe />, { withAuthProvider: true, queryClient });
+}
+
+/** Подменяет дефолтный 401-refresh успешным — проба стартует залогиненной. */
+function withLiveSession(): void {
+  server.use(
+    http.post("/v1/auth/refresh/", () =>
+      HttpResponse.json({ accessToken: makeAccessToken() }, { status: 200 }),
+    ),
+  );
 }
 
 describe("AuthProvider", () => {
@@ -62,17 +73,31 @@ describe("AuthProvider", () => {
   });
 
   it("событие auth-required сбрасывает сессию", async () => {
-    server.use(
-      http.post("/v1/auth/refresh/", () =>
-        HttpResponse.json({ accessToken: makeAccessToken() }, { status: 200 }),
-      ),
-    );
+    withLiveSession();
     renderAuth();
     await screen.findByText("authenticated: true");
 
     act(() => emit("auth-required", undefined));
 
     expect(await screen.findByText("authenticated: false")).toBeInTheDocument();
+  });
+
+  it("недобровольный разлогин чистит кэш server-state — данные не достаются следующему входу", async () => {
+    // Разлогин через событие транспорта, а не через кнопку: кэш обязан чиститься на СМЕНЕ
+    // состояния сессии, иначе карта и профиль ушедшего пользователя видны следующему —
+    // причём глобус-фон со `staleTime: Infinity` не перезапросил бы их никогда.
+    withLiveSession();
+    const queryClient = createTestQueryClient();
+    renderAuth(queryClient);
+    await screen.findByText("authenticated: true");
+    act(() => {
+      queryClient.setQueryData(getJourneysMapQueryKey(), { countries: [] });
+    });
+
+    act(() => emit("auth-required", undefined));
+
+    await screen.findByText("authenticated: false");
+    expect(queryClient.getQueryData(getJourneysMapQueryKey())).toBeUndefined();
   });
 
   it("setAccessToken (вход) сбрасывает флаг скрытия verify-баннера", async () => {

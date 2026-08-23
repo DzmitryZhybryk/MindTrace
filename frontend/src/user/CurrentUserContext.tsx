@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, type ReactNode } from "react";
 
 import { ApiError } from "../api/errors";
-import { getCurrentUser } from "../api/sdk";
+import { getCurrentUserOptions, type CurrentUserResponse } from "../api/sdk";
 import { useAuth } from "../auth/useAuth";
 import { CurrentUserContext, type CurrentUserState } from "./useCurrentUser";
 
@@ -10,70 +11,81 @@ import { CurrentUserContext, type CurrentUserState } from "./useCurrentUser";
 // HTTP-статусу — статус здесь деталь транспорта.
 const SESSION_INVALID_CODES: ReadonlySet<string> = new Set(["users.user_deleted", "users.user_not_found"]);
 
+function isSessionInvalid(error: unknown): boolean {
+  return error instanceof ApiError && SESSION_INVALID_CODES.has(error.code);
+}
+
 interface CurrentUserProviderProps {
   children: ReactNode;
 }
 
 /**
- * Грузит профиль (`/v1/users/me`) один раз на сессию и раздаёт его через контекст.
+ * Грузит профиль (`/v1/users/me`) и раздаёт его через контекст.
  *
  * Живёт ПОВЕРХ `AuthProvider` и реагирует на его состояние: пока auth-bootstrap не
  * завершён — `loading` (запрос не шлём, токена может ещё не быть); без сессии —
- * `anonymous`; логин/логаут переключают `isAuthenticated` и эффект сам загружает
- * или сбрасывает профиль.
+ * `anonymous`; логин/логаут переключают `isAuthenticated`, а с ним и `enabled` запроса.
+ * Транзиентные сбои (сеть, 5xx) Query повторяет сам, поэтому `error` здесь — уже
+ * терминальный исход, а не первая неудача.
  */
 export function CurrentUserProvider({ children }: CurrentUserProviderProps) {
   const { isAuthenticated, isBootstrapping, clearSession } = useAuth();
-  const [state, setState] = useState<CurrentUserState>({ status: "loading" });
+  const { data, error } = useQuery({
+    ...getCurrentUserOptions(),
+    enabled: !isBootstrapping && isAuthenticated,
+  });
 
+  // Семантика «пользователя больше нет» — разлогин; провайдер уйдёт в anonymous сам,
+  // когда погаснет isAuthenticated.
   useEffect(() => {
-    if (isBootstrapping) {
-      setState({ status: "loading" });
-      return;
+    if (isSessionInvalid(error)) {
+      clearSession();
     }
+  }, [error, clearSession]);
 
-    if (!isAuthenticated) {
-      setState({ status: "anonymous" });
-      return;
-    }
+  return (
+    <CurrentUserContext.Provider value={toState({ isAuthenticated, isBootstrapping, data, error })}>
+      {children}
+    </CurrentUserContext.Provider>
+  );
+}
 
-    // `cancelled`-флаг (образец — bootstrap в AuthContext): abort не гарантирует
-    // AbortError-rejection (client.ts может превратить его в ApiError или поздний
-    // успех), поэтому устаревший запрос отсекается флагом на обоих путях, а
-    // AbortController лишь обрывает сам сетевой вызов.
-    let cancelled = false;
-    const controller = new AbortController();
-    setState({ status: "loading" });
-    getCurrentUser({ signal: controller.signal, throwOnError: true })
-      .then((user) => {
-        if (cancelled) {
-          return;
-        }
+interface StateInput {
+  isAuthenticated: boolean;
+  isBootstrapping: boolean;
+  data: CurrentUserResponse | undefined;
+  error: unknown;
+}
 
-        setState({ status: "ready", user });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return;
-        }
+/**
+ * Сводит auth-состояние и исход запроса в машину состояний контекста.
+ *
+ * Auth важнее данных: поздний ответ на запрос, отправленный до логаута, не должен
+ * поднять профиль поверх `anonymous`. Разлогинивающий код держит `loading` — состояние
+ * временное, `clearSession` уже в пути и переведёт провайдер в `anonymous`.
+ *
+ * Args:
+ *     input: Флаги auth-провайдера и результат запроса `/me`.
+ *
+ * Returns:
+ *     Состояние для потребителей `useCurrentUser`.
+ */
+function toState({ isAuthenticated, isBootstrapping, data, error }: StateInput): CurrentUserState {
+  if (isBootstrapping) {
+    return { status: "loading" };
+  }
 
-        // Семантика «пользователя больше нет» — разлогин; провайдер перейдёт в
-        // anonymous сам, когда isAuthenticated погаснет. Транзиентные сбои (сеть,
-        // 5xx) остаются терминальным error до внедрения server-state библиотеки
-        // (см. .claude/feature_plan.md, п. 1).
-        if (error instanceof ApiError && SESSION_INVALID_CODES.has(error.code)) {
-          clearSession();
-          return;
-        }
+  if (!isAuthenticated) {
+    return { status: "anonymous" };
+  }
 
-        setState({ status: "error" });
-      });
+  if (data !== undefined) {
+    return { status: "ready", user: data };
+  }
 
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [isAuthenticated, isBootstrapping, clearSession]);
+  if (error !== null && error !== undefined) {
+    return isSessionInvalid(error) ? { status: "loading" } : { status: "error" };
+  }
 
-  return <CurrentUserContext.Provider value={state}>{children}</CurrentUserContext.Provider>;
+  return { status: "loading" };
 }

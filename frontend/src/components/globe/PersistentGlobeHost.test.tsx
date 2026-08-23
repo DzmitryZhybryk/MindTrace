@@ -1,11 +1,11 @@
 import { http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { getJourneysMapQueryKey } from "../../api/sdk";
 import { server } from "../../test/handlers";
-import { makeAuthValue, renderWithProviders, screen, waitFor } from "../../test/render";
+import { act, createTestQueryClient, makeAuthValue, renderWithProviders, screen, waitFor } from "../../test/render";
 import type { AuthContextValue } from "../../auth/useAuth";
 import { PersistentGlobeHost } from "./PersistentGlobeHost";
-import { clearUserCitiesCache } from "./userCities";
 
 /*
  * Холст мокаем: он тянет three/WebGL, которых в jsdom нет. Мок отражает переданные пропы в
@@ -39,11 +39,6 @@ function authedValue(sub: string): AuthContextValue {
 function screenAttr(container: HTMLElement, attr: string): string | null {
   return container.querySelector(".persistent-globe")?.getAttribute(attr) ?? null;
 }
-
-beforeEach(() => {
-  // Кэш городов живёт на модуле — сбрасываем, чтобы данные не протекали между тестами.
-  clearUserCitiesCache();
-});
 
 describe("PersistentGlobeHost — грань по маршруту", () => {
   it.each([
@@ -132,6 +127,79 @@ describe("PersistentGlobeHost — источник данных глобуса",
     const globe = await screen.findByTestId("globe-canvas");
 
     expect(globe).toHaveAttribute("data-paused", "true");
+  });
+});
+
+describe("PersistentGlobeHost — свежесть данных фона", () => {
+  /** Считает обращения к карте и отдаёт указанное число городов в одной стране. */
+  function countMapRequests(cityNames: string[]): () => number {
+    let requests = 0;
+    server.use(
+      http.get("/v1/journeys/map", () => {
+        requests += 1;
+        return HttpResponse.json({
+          countries: [
+            {
+              countryCode: "RU",
+              cities: cityNames.map((name, index) => ({
+                name,
+                latitude: 55 + index,
+                longitude: 37 + index,
+                years: [2020],
+              })),
+            },
+          ],
+        });
+      }),
+    );
+
+    return () => requests;
+  }
+
+  it("возврат на грань не перезапрашивает карту — фон живёт со снимка (staleTime: Infinity)", async () => {
+    const requestCount = countMapRequests(["Moscow", "Kazan"]);
+    const queryClient = createTestQueryClient();
+    const options = { route: "/home", authValue: authedValue("user-1"), queryClient };
+
+    const first = renderWithProviders(<PersistentGlobeHost />, options);
+    await waitFor(() => expect(screen.getByTestId("globe-canvas")).toHaveAttribute("data-cities", "2"));
+    first.unmount();
+
+    renderWithProviders(<PersistentGlobeHost />, options);
+
+    // Точки на месте сразу, из кэша — и второго запроса не было.
+    expect(await screen.findByTestId("globe-canvas")).toHaveAttribute("data-cities", "2");
+    expect(requestCount()).toBe(1);
+  });
+
+  it("инвалидация ключа карты обновляет фон, несмотря на бесконечную свежесть", async () => {
+    // Так до глобуса доезжает поездка, добавленная в форме: `staleTime: Infinity` сам по себе
+    // не обновился бы никогда, поэтому мутация инвалидирует общий ключ.
+    const requestCount = countMapRequests(["Moscow"]);
+    const queryClient = createTestQueryClient();
+    renderWithProviders(<PersistentGlobeHost />, {
+      route: "/home",
+      authValue: authedValue("user-1"),
+      queryClient,
+    });
+    await waitFor(() => expect(screen.getByTestId("globe-canvas")).toHaveAttribute("data-cities", "1"));
+
+    countMapRequests(["Moscow", "London"]);
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: getJourneysMapQueryKey() });
+    });
+
+    await waitFor(() => expect(screen.getByTestId("globe-canvas")).toHaveAttribute("data-cities", "2"));
+    expect(requestCount()).toBe(1);
+  });
+
+  it("аноним карту не запрашивает вовсе", async () => {
+    const requestCount = countMapRequests(["Moscow"]);
+
+    renderWithProviders(<PersistentGlobeHost />, { route: "/", authValue: makeAuthValue() });
+
+    await screen.findByTestId("globe-canvas");
+    expect(requestCount()).toBe(0);
   });
 });
 
