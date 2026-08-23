@@ -3,6 +3,7 @@ from typing import Self
 from uuid import UUID
 
 from app.shared.domain.domain_mixins import TimestampedEntityMixin
+from app.users.exceptions import UserDeletedError
 
 
 class UserEntity(TimestampedEntityMixin):
@@ -40,3 +41,13 @@ class UserEntity(TimestampedEntityMixin):
             terms_accepted_at=terms_accepted_at,
             marketing_emails_consent=marketing_emails_consent,
         )
+
+    def ensure_not_deleted(self) -> None:
+        """
+        Гарантирует, что пользователь не удалён.
+
+        Raises:
+            UserDeletedError: Если пользователь удалён (soft-delete).
+        """
+        if self.is_deleted:
+            raise UserDeletedError()

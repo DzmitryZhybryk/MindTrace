@@ -98,7 +98,7 @@ DDD с **доменной** организацией модулей (`auth`, `us
 - **procrastinate** (`infra/procrastinate/`) — `ProcrastinateComponent`+`ProcrastinateApp`, Protocol'ы `TaskBusPort`+`SessionBoundTaskBusPort` с реализацией `ProcrastinateTaskBus`+`ProcrastinateSessionBoundTaskBus` (вертикаль владеет своими протоколами, как `crypto`; фасад для defer'а: `TaskBusPort` без сессии для fire-and-forget, `bus.bind_to(uow.session)` — atomic defer в текущей SA-транзакции), `TaskBusComponent` (регистрирует impl под ключом `ProcrastinateTaskBus`). Application зависит от Protocol'а `TaskBusPort`. Импорт: `from app.shared.infra.procrastinate import TaskBusPort`.
 - **email** (`infra/email/`) — `EmailTransportPort` Protocol, `ResendClient`, `ResendComponent`, `EmailMessage`. Импорт: `from app.shared.infra.email import EmailTransportPort`.
 - **http** (`infra/http/`) — `BaseHTTPClient` (используют клиенты-наследники), `HTTPClientConfig`, `ExternalAPI*Error`. Импорт: `from app.shared.infra.http import BaseHTTPClient`.
-- **jwt** (`infra/jwt/`) — `JWTService` + `JWTDecodeError`. Импорт: `from app.shared.infra.jwt import JWTService`.
+- **jwt** (`infra/jwt/`) — `JWTService` + `JWTDecodeError`, а также request-аутентификация: `current_user_id_dependency` (Bearer → UUID) + `InvalidAccessTokenError` (код `auth.invalid_access_token` сохранён как внешний контракт). Вертикаль shared, чтобы presentation-слои доменов не зависели от `auth.presentation`. Импорт: `from app.shared.infra.jwt import JWTService, current_user_id_dependency`.
 - **crypto** (`infra/crypto/`) — два независимых Protocol'а: `SaltedHasherPort` (с реализацией `Argon2SaltedHasher` — для паролей и других плейнтекст-секретов, где требуется уникальная соль и timing-safe verify) и `DeterministicHasherPort` (с реализацией `Sha256DeterministicHasher` — для refresh-token lookup'а по индексу). Импорт: `from app.shared.infra.crypto import SaltedHasherPort, Argon2SaltedHasher, DeterministicHasherPort, Sha256DeterministicHasher`.
 - **logging** (`logging/`) — `configure_logging`, `get_logger`, `HTTPLoggingMiddleware` + helper-модули (`events`, `classify`, `context`). Импорт: `from app.shared.logging import get_logger`.
 - **BaseDBRepository[ModelT]** (`repositories/base_repository.py`) — generic async repository с `_fetch_one` (выполнить SELECT и вернуть одну модель или `None`) и `insert` (добавить модель в сессию без коммита). Доменные репозитории наследуются и добавляют собственные SELECT'ы поверх `_fetch_one`.
@@ -243,9 +243,9 @@ CHANGELOG — **один** файл в корне. Новые записи гр�
 
 ### Coverage gate (merge)
 
-Код с покрытием **< 90%** мержить нельзя — на обеих сторонах. Порог задан в самих coverage-таргетах: backend `make coverage` (`--cov-fail-under=90`), frontend `make coverage` (vitest `thresholds` в `vite.config.ts`). Форсится **локальным pre-push hook'ом** (`.githooks/pre-push`), а не CI: перед каждым push гоняет coverage обеих сторон и роняет push при провале порога.
+Код с покрытием **< 90%** мержить нельзя — на обеих сторонах. Порог задан в самих coverage-таргетах: backend `make coverage` (`--cov-fail-under=90`), frontend `make coverage` (vitest `thresholds` в `vite.config.ts`). Форсится **локальным pre-commit hook'ом** (`.githooks/pre-commit`), а не CI: перед каждым commit гоняет coverage обеих сторон и роняет commit при провале порога.
 
-Активация разовая: `make hooks` (== `git config core.hooksPath .githooks`). Обход в исключительном случае — `git push --no-verify`.
+Активация разовая: `make hooks` (== `git config core.hooksPath .githooks`). Обход в исключительном случае — `git commit --no-verify`.
 
 ## Always-follow rules
 

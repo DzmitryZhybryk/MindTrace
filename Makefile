@@ -76,8 +76,8 @@ prod-down: ## Остановить прод-стек (тома/данные со
 	$(COMPOSE_PROD) down
 
 # --- Git hooks: мерж-гейт покрытия без CI ---
-# Разовая активация pre-push hook'а (.githooks/pre-push): блокирует push при покрытии < 90%.
-hooks: ## Активировать git-хуки репозитория (pre-push coverage-гейт, core.hooksPath=.githooks)
+# Разовая активация pre-commit hook'а (.githooks/pre-commit): блокирует commit при покрытии < 90%.
+hooks: ## Активировать git-хуки репозитория (pre-commit coverage-гейт, core.hooksPath=.githooks)
 	@git config core.hooksPath .githooks
 	@echo "${GREEN}INFO :  ${AZURE}git hooks активированы: ${PURPLE}core.hooksPath=.githooks${RESET}"
 

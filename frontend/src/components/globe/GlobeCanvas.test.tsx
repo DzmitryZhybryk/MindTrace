@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { act, renderWithProviders } from "../../test/render";
 import { GlobeCanvas } from "./GlobeCanvas";
+import { createGlobeLabel } from "./globeLabel";
 
 /*
  * Ветки этого компонента открываются только когда контейнер получил РАЗМЕР: до этого
@@ -31,16 +32,29 @@ class ControllableResizeObserver {
 }
 
 /** Инстанс globe.gl, который отдаёт мок вместо настоящего three/WebGL. */
-const controls = { autoRotate: false, autoRotateSpeed: 0, enableZoom: true };
+const controls = { autoRotate: false, autoRotateSpeed: 0, enableZoom: true, enablePan: true, enableRotate: true };
 const pointOfView = vi.fn();
 const pauseAnimation = vi.fn();
 const resumeAnimation = vi.fn();
+const toGlobeCoords = vi.fn();
+// Камера нужна деклаттеру подписей: гейт «матрица не менялась — кадр пропускается».
+const cameraStub = { matrixWorld: { elements: [0] } };
+// Канвас рендерера нужен интерактивному эффекту (он переопределяет touch-action OrbitControls).
+const rendererDomElement = document.createElement("canvas");
 
 vi.mock("react-globe.gl", () => ({
   default: (props: { ref?: { current?: unknown } }) => {
     // globe.gl отдаёт императивный инстанс через ref — воспроизводим ровно это.
     if (props.ref) {
-      props.ref.current = { controls: () => controls, pointOfView, pauseAnimation, resumeAnimation };
+      props.ref.current = {
+        controls: () => controls,
+        renderer: () => ({ domElement: rendererDomElement }),
+        camera: () => cameraStub,
+        pointOfView,
+        pauseAnimation,
+        resumeAnimation,
+        toGlobeCoords,
+      };
     }
 
     return null;
@@ -60,11 +74,17 @@ beforeEach(() => {
   fireResize = null;
   controls.autoRotate = false;
   controls.enableZoom = true;
+  controls.enablePan = true;
+  controls.enableRotate = true;
+  // По умолчанию «мимо сферы»: попадание каждый тест задаёт явно.
+  toGlobeCoords.mockReturnValue(null);
+  cameraStub.matrixWorld.elements = [0];
   vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
   setReducedMotion(false);
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
@@ -77,12 +97,13 @@ describe("GlobeCanvas", () => {
     expect(pointOfView).not.toHaveBeenCalled();
   });
 
-  it("получив размер, настраивает камеру и глушит зум скроллом", () => {
+  it("получив размер, настраивает камеру и глушит зум и пан", () => {
     renderWithProviders(<GlobeCanvas />);
 
     act(() => fireResize?.(800, 600));
 
     expect(controls.enableZoom).toBe(false);
+    expect(controls.enablePan).toBe(false);
     expect(controls.autoRotate).toBe(true);
     expect(pointOfView).toHaveBeenCalledTimes(1);
   });
@@ -169,5 +190,308 @@ describe("GlobeCanvas", () => {
     act(() => fireResize?.(0, 0));
 
     expect(pointOfView).not.toHaveBeenCalled();
+  });
+
+  it("interactive: жест на сфере включает вращение, ставит автовращение на паузу и глушит скролл", () => {
+    toGlobeCoords.mockReturnValue({ lat: 10, lng: 20 });
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+
+    expect(controls.enableRotate).toBe(true);
+    expect(controls.autoRotate).toBe(false);
+
+    const touchMove = new Event("touchmove", { bubbles: true, cancelable: true });
+    act(() => {
+      el.dispatchEvent(touchMove);
+    });
+
+    expect(touchMove.defaultPrevented).toBe(true);
+  });
+
+  it("interactive: жест мимо сферы вращение не включает и скролл не трогает", () => {
+    toGlobeCoords.mockReturnValue(null);
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+
+    expect(controls.enableRotate).toBe(false);
+    expect(controls.autoRotate).toBe(true);
+
+    const touchMove = new Event("touchmove", { bubbles: true, cancelable: true });
+    act(() => {
+      el.dispatchEvent(touchMove);
+    });
+
+    expect(touchMove.defaultPrevented).toBe(false);
+  });
+
+  it("interactive: отпускание возвращает автовращение с нового места", () => {
+    toGlobeCoords.mockReturnValue({ lat: 10, lng: 20 });
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+    expect(controls.autoRotate).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(new Event("pointerup"));
+    });
+
+    expect(controls.autoRotate).toBe(true);
+  });
+
+  it("interactive: второе касание мимо сферы не обрывает драг и не глушит автовращение", () => {
+    // Первый pointerdown попадает в сферу, второй (палец/ладонь мимо шара) — нет.
+    toGlobeCoords.mockReturnValueOnce({ lat: 10, lng: 20 });
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+    expect(controls.autoRotate).toBe(false);
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+    expect(controls.enableRotate).toBe(true);
+
+    act(() => {
+      window.dispatchEvent(new Event("pointerup"));
+    });
+
+    expect(controls.autoRotate).toBe(true);
+  });
+
+  it("interactive: наведение показывает grab-курсор над сферой и снимает его мимо неё", () => {
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    toGlobeCoords.mockReturnValue({ lat: 10, lng: 20 });
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointermove", { bubbles: true }));
+    });
+    expect(el.style.cursor).toBe("grab");
+
+    toGlobeCoords.mockReturnValue(null);
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointermove", { bubbles: true }));
+    });
+    expect(el.style.cursor).toBe("");
+  });
+
+  it("interactive: хит-тест переводит экранные координаты в макетные (scale кадрирования stage)", () => {
+    toGlobeCoords.mockReturnValue(null);
+    const { container } = renderWithProviders(<GlobeCanvas interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    // Канвас 800×600 отрисован в rect 1600×1200 (scale 2): экранная точка (800, 600) — это (400, 300) макета.
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 1600, 1200));
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 800, clientY: 600 }));
+    });
+
+    expect(toGlobeCoords).toHaveBeenCalledWith(400, 300);
+  });
+
+  it("без interactive жесты по канвасу не хит-тестятся вовсе", () => {
+    const { container } = renderWithProviders(<GlobeCanvas />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+
+    act(() => {
+      el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+
+    expect(toGlobeCoords).not.toHaveBeenCalled();
+  });
+
+  it("деклаттер: у пересёкшихся подписей гаснет текст дальней от центра, точка остаётся", () => {
+    vi.useFakeTimers();
+    const { container } = renderWithProviders(
+      <GlobeCanvas
+        labelCities={[
+          { name: "Ташкент", lat: 41.3, lng: 69.2 },
+          { name: "Бишкек", lat: 42.9, lng: 74.6 },
+        ]}
+      />,
+    );
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    // Слой подписей строим руками: мок react-globe.gl DOM-элементы данных не рендерит.
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
+    for (const wrapper of [tashkent, bishkek]) {
+      wrapper.style.opacity = "1";
+      el.append(wrapper);
+    }
+
+    const tashkentName = tashkent.querySelector<HTMLElement>(".globe-label__name");
+    const bishkekName = bishkek.querySelector<HTMLElement>(".globe-label__name");
+    if (!tashkentName || !bishkekName) throw new Error("подписи не собрались");
+    // Центр диска (400, 300): Бишкек ближе, Ташкент наезжает на него сбоку.
+    vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(350, 296, 60, 12));
+    vi.spyOn(bishkekName, "getBoundingClientRect").mockReturnValue(new DOMRect(390, 294, 60, 12));
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
+    expect(bishkek.classList.contains("globe-label--decluttered")).toBe(false);
+    // Канал окклюзии не тронут: обёртка (и точка) остаётся видимой, гаснет только текст.
+    expect(tashkent.style.opacity).toBe("1");
+  });
+
+  it("деклаттер: пересчёт только при движении камеры; разъезд возвращает текст", () => {
+    vi.useFakeTimers();
+    const { container } = renderWithProviders(
+      <GlobeCanvas
+        labelCities={[
+          { name: "Ташкент", lat: 41.3, lng: 69.2 },
+          { name: "Бишкек", lat: 42.9, lng: 74.6 },
+        ]}
+      />,
+    );
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
+    for (const wrapper of [tashkent, bishkek]) {
+      wrapper.style.opacity = "1";
+      el.append(wrapper);
+    }
+
+    const tashkentName = tashkent.querySelector<HTMLElement>(".globe-label__name");
+    const bishkekName = bishkek.querySelector<HTMLElement>(".globe-label__name");
+    if (!tashkentName || !bishkekName) throw new Error("подписи не собрались");
+    vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(350, 296, 60, 12));
+    vi.spyOn(bishkekName, "getBoundingClientRect").mockReturnValue(new DOMRect(390, 294, 60, 12));
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
+
+    // Подписи разъехались, но камера не двигалась — пересчёта нет, класс остаётся.
+    vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(600, 400, 60, 12));
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
+
+    // Камера сдвинулась — пересчёт возвращает текст (зазор больше запаса гистерезиса).
+    cameraStub.matrixWorld.elements = [1];
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(false);
+  });
+
+  it("деклаттер: остановка эффекта снимает классы — текст не остаётся спрятанным", () => {
+    vi.useFakeTimers();
+    const { container, unmount } = renderWithProviders(
+      <GlobeCanvas
+        labelCities={[
+          { name: "Ташкент", lat: 41.3, lng: 69.2 },
+          { name: "Бишкек", lat: 42.9, lng: 74.6 },
+        ]}
+      />,
+    );
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
+    for (const wrapper of [tashkent, bishkek]) {
+      wrapper.style.opacity = "1";
+      el.append(wrapper);
+    }
+
+    const tashkentName = tashkent.querySelector<HTMLElement>(".globe-label__name");
+    const bishkekName = bishkek.querySelector<HTMLElement>(".globe-label__name");
+    if (!tashkentName || !bishkekName) throw new Error("подписи не собрались");
+    vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(350, 296, 60, 12));
+    vi.spyOn(bishkekName, "getBoundingClientRect").mockReturnValue(new DOMRect(390, 294, 60, 12));
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
+
+    unmount();
+
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(false);
+  });
+
+  it("деклаттер: скрытая окклюзией подпись не участвует в расчёте", () => {
+    vi.useFakeTimers();
+    const { container } = renderWithProviders(
+      <GlobeCanvas
+        labelCities={[
+          { name: "Ташкент", lat: 41.3, lng: 69.2 },
+          { name: "Бишкек", lat: 42.9, lng: 74.6 },
+        ]}
+      />,
+    );
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+
+    const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
+    const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
+    tashkent.style.opacity = "1";
+    // Бишкек ушёл за горизонт: окклюзия спрятала обёртку целиком.
+    bishkek.style.opacity = "0";
+    el.append(tashkent, bishkek);
+
+    const tashkentName = tashkent.querySelector<HTMLElement>(".globe-label__name");
+    const bishkekName = bishkek.querySelector<HTMLElement>(".globe-label__name");
+    if (!tashkentName || !bishkekName) throw new Error("подписи не собрались");
+    vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(350, 296, 60, 12));
+    vi.spyOn(bishkekName, "getBoundingClientRect").mockReturnValue(new DOMRect(390, 294, 60, 12));
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+
+    expect(tashkent.classList.contains("globe-label--decluttered")).toBe(false);
+    expect(bishkek.classList.contains("globe-label--decluttered")).toBe(false);
   });
 });

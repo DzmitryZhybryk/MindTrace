@@ -1,6 +1,6 @@
 [project]
 name = "MindTrace"
-version = "1.0.4"
+version = "1.1.0"
 description = "Service for managing mindtrace"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
@@ -10,12 +10,12 @@ readme = "README.md"
 
 dependencies = [
     "fastapi[standard]>=0.141.1",
-    "alembic>=1.19.0",
+    "alembic>=1.19.1",
     "orjson>=3.11.9",
-    "pydantic-settings>=2.14.2",
-    "sqlalchemy[asyncio]>=2.0.51",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy[asyncio]>=2.0.52",
     "structlog>=26.1.0",
-    "uvicorn>=0.52.1",
+    "uvicorn>=0.52.3",
     "argon2-cffi>=25.1.0",
     "pyjwt>=2.10.0",
     "httpx>=0.28.0",
@@ -29,10 +29,10 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
-    "ruff>=0.16.1",
+    "ruff>=0.16.3",
     "tach>=0.35.0",
     "testcontainers[postgres]>=4.15.0",
-    "ty>=0.0.66",
+    "ty>=0.0.71",
     "vulture>=2.16",
 ]
 

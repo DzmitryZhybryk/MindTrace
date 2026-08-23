@@ -49,7 +49,9 @@ from tests.fakes import (  # noqa: E402
     FakeSaltedHasher,
     FakeTaskBus,
     FakeUserCredentialsRepository,
+    FakeUserRepository,
     FakeUsersClient,
+    FakeUserUnitOfWork,
 )
 
 _EMAIL_VERIFICATION_TTL_MINUTES = 15
@@ -133,6 +135,18 @@ def fake_uow(
 @pytest.fixture
 def fake_users_client() -> FakeUsersClient:
     return FakeUsersClient()
+
+
+@pytest.fixture
+def fake_user_repository() -> FakeUserRepository:
+    return FakeUserRepository()
+
+
+@pytest.fixture
+def fake_user_uow(fake_user_repository: FakeUserRepository) -> FakeUserUnitOfWork:
+    # Репозиторий — отдельная фикстура того же инстанса: тест сидит/ассертит его состояние
+    # по конкретному типу (на uow он под port-типом, без .by_user_id).
+    return FakeUserUnitOfWork(user_repository=fake_user_repository)
 
 
 @pytest.fixture

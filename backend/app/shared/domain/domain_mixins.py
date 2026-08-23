@@ -28,6 +28,10 @@ class TimestampedEntityMixin:
     def deleted_at(self) -> dt.datetime | None:
         return self._deleted_at
 
+    @property
+    def is_deleted(self) -> bool:
+        return self._deleted_at is not None
+
     def _mark_updated(self) -> None:
         """
         Помечает сущность как изменённую, обновляя ``updated_at`` текущим временем.

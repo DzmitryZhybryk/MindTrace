@@ -3,7 +3,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response, status
 
-from app.auth.presentation.dependencies import current_user_id_dependency
 from app.journeys.application.schemas import CreateJourneyCommand, PlaceSnapshot
 from app.journeys.application.services import JourneyService
 from app.journeys.presentation.dependencies import journey_service_dependency
@@ -13,6 +12,7 @@ from app.journeys.presentation.schemas import (
     JourneysMapResponse,
     MapCountryResponse,
 )
+from app.shared.infra.jwt import current_user_id_dependency
 
 journey_router = APIRouter()
 
