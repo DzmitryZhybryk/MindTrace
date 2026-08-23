@@ -1,4 +1,4 @@
-.PHONY: help typecheck lint lint-fix audit test test-unit test-component coverage check test-e2e
+.PHONY: help typecheck lint lint-fix audit test test-unit test-component coverage check test-e2e generate-api
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -45,6 +45,10 @@ test-component: ## Run component tests only (*.test.tsx — rendered React)
 coverage: ## Run tests with coverage report
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}vitest${AZURE}' coverage${RESET}"
 	@npm run coverage
+
+generate-api: ## Regenerate src/api/generated from backend/openapi.json (run after make be-openapi-dump)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}openapi-ts${AZURE}' codegen${RESET}"
+	@npm run generate:api
 
 audit: ## Scan npm dependencies for known vulnerabilities (high+)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}npm audit${AZURE}' security scan${RESET}"

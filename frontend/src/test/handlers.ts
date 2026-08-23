@@ -13,18 +13,41 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
-import type { PlaceSuggestion } from "../api/journeys";
-import type { CurrentUser } from "../api/users";
+import type { PlaceResponse } from "../api/sdk";
+import type { CurrentUserResponse } from "../api/sdk";
 
 /**
  * Минимальный газеттир для component-тестов автокомплита (`/v1/geo/places/search`).
  * Имена уже «резолвнуты» (бэк отдаёт их под язык) — хендлер фильтрует по префиксу, как
  * боевой поиск. Тест переопределяет выдачу через `server.use(...)` для пустого/ошибочного кейса.
  */
-export const GEO_PLACES: readonly PlaceSuggestion[] = [
-  { placeId: "place-moscow", name: "Moscow", countryCode: "RU", latitude: 55.75, longitude: 37.62, population: 10_000_000 },
-  { placeId: "place-london", name: "London", countryCode: "GB", latitude: 51.5, longitude: -0.12, population: 9_000_000 },
-  { placeId: "place-paris", name: "Paris", countryCode: "FR", latitude: 48.85, longitude: 2.35, population: 2_000_000 },
+export const GEO_PLACES: readonly PlaceResponse[] = [
+  // placeId — именно UUID: SDK валидирует ответ сгенерированной схемой (`z.uuid()`), и
+  // «говорящий» идентификатор из фикстуры её не проходит.
+  {
+    placeId: "11111111-1111-4111-8111-111111111111",
+    name: "Moscow",
+    countryCode: "RU",
+    latitude: 55.75,
+    longitude: 37.62,
+    population: 10_000_000,
+  },
+  {
+    placeId: "22222222-2222-4222-8222-222222222222",
+    name: "London",
+    countryCode: "GB",
+    latitude: 51.5,
+    longitude: -0.12,
+    population: 9_000_000,
+  },
+  {
+    placeId: "33333333-3333-4333-8333-333333333333",
+    name: "Paris",
+    countryCode: "FR",
+    latitude: 48.85,
+    longitude: 2.35,
+    population: 2_000_000,
+  },
 ];
 
 /** base64url-кодирование payload-сегмента JWT (`+/` → `-_`, без паддинга). */
@@ -65,7 +88,7 @@ export const TEST_ACCESS_TOKEN = makeAccessToken();
  * покрывает фоллбэк на `username`; тест с заданным именем/ошибкой переопределяет
  * ответ через `server.use(...)`.
  */
-export const TEST_CURRENT_USER: CurrentUser = {
+export const TEST_CURRENT_USER: CurrentUserResponse = {
   username: "traveler",
   email: "traveler@example.com",
   displayName: null,

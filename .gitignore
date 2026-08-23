@@ -218,6 +218,10 @@ ZTODO
 
 # Claude Code /plan working state (ephemeral, per-task)
 .claude/.current-plan.md
+# личные конвенции: канон в ~/.claude/optional/rules/python/, здесь рабочая копия
+.claude/rules/python/ddd.md
+.claude/rules/python/dto.md
+.claude/rules/python/component-lifecycle.md
 
 # Playwright MCP authoring artifacts (snapshots/console logs, written to repo root)
 .playwright-mcp/

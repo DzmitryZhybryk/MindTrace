@@ -62,5 +62,11 @@ jobs:
       - name: Install deps (ci)
         run: npm ci
 
+      - name: Codegen drift (src/api/generated == backend/openapi.json)
+        run: |
+          make generate-api
+          git diff --exit-code -- src/api/generated \
+            || { echo "::error::SDK устарел — прогони 'make fe-generate-api' и закоммить результат"; exit 1; }
+
       - name: Quality gate (lint, typecheck, unit+component)
         run: make check
