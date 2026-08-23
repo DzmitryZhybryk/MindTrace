@@ -86,9 +86,9 @@ cd backend && uv run alembic upgrade <base>:<head> --sql
 
 DDD с **доменной** организацией модулей (`auth`, `users`, `geo`), каждый домен — четыре слоя
 `domain/` / `application/` / `infra/` / `presentation/`. Слои, порты (DIP), транзакционная
-граница UoW и правила именования вынесены в **@~/.claude/rules/python/ddd.md**, конвенции
+граница UoW и правила именования вынесены в **@.claude/rules/python/ddd.md**, конвенции
 переноса данных между слоями (pydantic vs dataclass, `*Command`/`*Result`/`*Request`/`*Response`,
-где валидация, кто маппит) — в **@~/.claude/rules/python/dto.md**. Оба подключены в конце этого
+где валидация, кто маппит) — в **@.claude/rules/python/dto.md**. Оба подключены в конце этого
 файла и являются источником истины по своим темам. Ниже — только то, что специфично для MindTrace.
 
 Технологическая привязка слоёв: `infra/` — SQLAlchemy-модели, `presentation/` — FastAPI-роуты.
@@ -111,7 +111,7 @@ DDD с **доменной** организацией модулей (`auth`, `us
 
 #### Component+Registry vs `@cache`-factory (когда что)
 
-Критерий выбора и правила composition root — в @~/.claude/rules/python/component-lifecycle.md
+Критерий выбора и правила composition root — в @.claude/rules/python/component-lifecycle.md
 (этот проект и есть его reference implementation). Здесь — только распределение:
 
 - **Компоненты** (lifecycle-ресурс): `SqlAlchemyComponent`, `ResendComponent`, `ProcrastinateComponent`, `TaskBusComponent`.
@@ -289,12 +289,12 @@ Python (бэкенд `app/`, `tests/`, `migrations/`):
 @.claude/rules/python/testing.md
 
 DDD-конвенции (слои, порты, UoW, именование), перенос данных между слоями (DTO) и composition
-root (выбор component/`@cache`, порядок старта) — **личные файлы вне репозитория**,
-переиспользуются другими проектами:
+root (выбор component/`@cache`, порядок старта) — **личные правила, в git не попадают**
+(`.gitignore`); канон — `~/.claude/optional/rules/python/`, здесь рабочие копии:
 
-@~/.claude/rules/python/ddd.md
-@~/.claude/rules/python/dto.md
-@~/.claude/rules/python/component-lifecycle.md
+@.claude/rules/python/ddd.md
+@.claude/rules/python/dto.md
+@.claude/rules/python/component-lifecycle.md
 
 TypeScript / React (фронтенд `frontend/src/`):
 
@@ -307,7 +307,7 @@ TypeScript / React (фронтенд `frontend/src/`):
 
 > **Приоритет при конфликтах:** правила, описанные выше в этом файле (Code Style, Docstrings, Named arguments, Shared infrastructure), всегда побеждают над подключёнными rules. Подключённые rules — базовый каркас; конкретика проекта в первой части CLAUDE.md является источником истины.
 >
-> **Файлы из `~/.claude/rules/`** (`ddd.md`, `dto.md`, `component-lifecycle.md`) живут вне репозитория, поэтому у клонировавшего репо они не разрешатся: в CLAUDE.md останутся ссылки на файлы, которых у него нет. Конвенции при этом видны по коду и по `.claude/rules/python/testing.md`.
+> **`ddd.md`, `dto.md`, `component-lifecycle.md`** — личные конвенции: канонический экземпляр лежит в `~/.claude/optional/rules/python/`, здесь рабочая копия, исключённая из git (`.gitignore`). У клонировавшего репо этих файлов не будет — в CLAUDE.md останутся ссылки на отсутствующие файлы; конвенции при этом видны по коду и по `.claude/rules/python/testing.md`. Правишь канон — перекопируй сюда (кросс-проектный `@`-импорт в `~/.claude/` не работает, симлинк тоже).
 
 ## Available toolkit
 
