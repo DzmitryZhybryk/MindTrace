@@ -1,12 +1,16 @@
 import { Combobox, Group, InputBase, Loader, ScrollArea, Stack, Text, useCombobox } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { searchPlaces, type PlaceSuggestion } from "../api/journeys";
+import { searchPlacesOptions, type PlaceResponse } from "../api/sdk";
 import pinIcon from "../assets/emoji/pin.svg";
 
 const PIN_ICON_SIZE = 20;
+// Стабильная ссылка на пустую выдачу: эффект «подсветить первую подсказку» завязан на
+// идентичность `options` и на новом `[]` каждый рендер гонялся бы вхолостую.
+const NO_OPTIONS: PlaceResponse[] = [];
 
 // Префиксный поиск (btree) отрабатывает и на 1 символе, но порог 2 режет флуд запросов.
 const MIN_LENGTH = 2;
@@ -18,8 +22,8 @@ const DROPDOWN_MAX_HEIGHT = 320;
 interface PlaceAutocompleteProps {
   label: string;
   placeholder: string;
-  value: PlaceSuggestion | null;
-  onChange: (place: PlaceSuggestion | null) => void;
+  value: PlaceResponse | null;
+  onChange: (place: PlaceResponse | null) => void;
   error?: ReactNode;
 }
 
@@ -47,7 +51,7 @@ function focusNextFormControl(current: HTMLElement | null): void {
  * Поле выбора места с автокомплитом по газеттиру (`/v1/geo/places/search`).
  *
  * Набор → debounce → запрос (устаревшие отменяются `AbortController`) → выпадающий
- * список кандидатов; выбор кладёт `PlaceSuggestion` (с `placeId`) в `value`. Пока место
+ * список кандидатов; выбор кладёт `PlaceResponse` (с `placeId`) в `value`. Пока место
  * не выбрано, `value` держится `null` (форма требует выбранный кандидат). При пустой
  * выдаче подсказка ведёт пользователя попробовать другое написание/английское имя
  * (страховка от дырявого `name_ru`).
@@ -58,16 +62,15 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState(value?.name ?? "");
-  const [options, setOptions] = useState<PlaceSuggestion[]>([]);
-  const [loading, setLoading] = useState(false);
   const [debouncedSearch] = useDebouncedValue(search, DEBOUNCE_MS);
   // Подпись уже выбранного кандидата: пока текст ей равен — повторно не ищем (иначе
-  // debounce, «догнав» имя после выбора, тут же запустил бы лишний запрос).
-  const selectedNameRef = useRef<string | null>(value?.name ?? null);
+  // debounce, «догнав» имя после выбора, тут же запустил бы лишний запрос). Состояние,
+  // а не ref: от него зависит `enabled` запроса, то есть значение нужно на рендере.
+  const [selectedName, setSelectedName] = useState<string | null>(value?.name ?? null);
   // Последнее значение, которое МЫ САМИ отдали через onChange. Если родитель пришлёт
   // другой `value` (например, swap «Откуда»/«Куда» в форме), значит смена внешняя —
   // и видимый текст надо подтянуть под неё (см. эффект ниже).
-  const lastEmittedRef = useRef<PlaceSuggestion | null>(value);
+  const lastEmittedRef = useRef<PlaceResponse | null>(value);
 
   // Внешняя установка `value` (swap городов в форме) → синхронизируем видимый текст и
   // «якорь» имени. Свой выбор/правка уже выставили `lastEmittedRef`, поэтому условие
@@ -78,7 +81,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
     }
 
     lastEmittedRef.current = value;
-    selectedNameRef.current = value?.name ?? null;
+    setSelectedName(value?.name ?? null);
     setSearch(value?.name ?? "");
   }, [value]);
 
@@ -87,38 +90,24 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
   // (контракт проекта — см. docs/architecture.md); неизвестный код → показываем сам код.
   const countryNames = useMemo(() => new Intl.DisplayNames([language], { type: "region", fallback: "none" }), [language]);
 
-  useEffect(() => {
-    const trimmed = debouncedSearch.trim();
-    if (trimmed === selectedNameRef.current) {
-      return;
-    }
+  const trimmedSearch = debouncedSearch.trim();
+  const isBelowMinLength = trimmedSearch.length < MIN_LENGTH;
 
-    if (trimmed.length < MIN_LENGTH) {
-      setOptions([]);
-      setLoading(false);
-      return;
-    }
+  const { data, isFetching, isError } = useQuery({
+    ...searchPlacesOptions({ query: { searchText: trimmedSearch, language, limit: RESULT_LIMIT } }),
+    enabled: !isBelowMinLength && trimmedSearch !== selectedName,
+    // Подсказки предыдущего набора остаются на экране, пока едет следующий запрос:
+    // список не схлопывается на каждый введённый символ. Устаревший запрос Query
+    // отменяет сам — сигнал уходит в SDK из сгенерированного queryFn.
+    placeholderData: keepPreviousData,
+  });
 
-    const controller = new AbortController();
-    setLoading(true);
-    searchPlaces({ searchText: trimmed, language, limit: RESULT_LIMIT, signal: controller.signal })
-      .then((places) => {
-        setOptions(places);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        // Устаревший запрос отменён следующим набором — игнорируем, не трогаем стейт.
-        /* v8 ignore next 3 */
-        if (err instanceof DOMException && err.name === "AbortError") {
-          return;
-        }
-
-        setOptions([]);
-        setLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [debouncedSearch, language]);
+  // Короткий текст очищает выдачу, ошибка — тоже (иначе keepPreviousData показывал бы
+  // подсказки от запроса, которого пользователь уже не делает).
+  const options = useMemo(
+    () => (isBelowMinLength || isError ? NO_OPTIONS : (data?.items ?? NO_OPTIONS)),
+    [isBelowMinLength, isError, data],
+  );
 
   // Первую подсказку держим активной → Enter сразу выбирает её (без клика/стрелок), и
   // Mantine сам обрабатывает Enter на активной опции, не давая ему отправить форму.
@@ -131,7 +120,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
   const handleInputChange = (text: string) => {
     setSearch(text);
     // Редактирование сбрасывает выбранное место: пока не выбран новый кандидат, value пуст.
-    selectedNameRef.current = null;
+    setSelectedName(null);
     if (value !== null) {
       lastEmittedRef.current = null;
       onChange(null);
@@ -149,7 +138,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
       return;
     }
 
-    selectedNameRef.current = picked.name;
+    setSelectedName(picked.name);
     lastEmittedRef.current = picked;
     onChange(picked);
     setSearch(picked.name);
@@ -158,8 +147,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
     focusNextFormControl(inputRef.current);
   };
 
-  const hasQuery = debouncedSearch.trim().length >= MIN_LENGTH;
-  const isEmpty = hasQuery && !loading && options.length === 0 && value === null;
+  const isEmpty = !isBelowMinLength && !isFetching && options.length === 0 && value === null;
 
   return (
     <Stack gap={6}>
@@ -185,7 +173,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
                 handleOptionSubmit(options[0].placeId);
               }
             }}
-            rightSection={loading ? <Loader size="xs" /> : null}
+            rightSection={isFetching ? <Loader size="xs" /> : null}
             rightSectionPointerEvents="none"
             error={error}
           />

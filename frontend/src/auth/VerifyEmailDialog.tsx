@@ -2,8 +2,8 @@ import { Button, Group, Modal, PinInput, Stack, Text } from "@mantine/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { refresh, sendEmailVerification, verifyEmail } from "../api/auth";
 import { ApiError, errorCodeToken, resolveErrorToken } from "../api/errors";
+import { refresh, sendEmailVerification, verifyEmail } from "../api/sdk";
 import { setAccessToken } from "./tokenStore";
 
 type Stage = "intro" | "code";
@@ -37,7 +37,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
     setError(null);
     setSubmitting(true);
     try {
-      await sendEmailVerification();
+      await sendEmailVerification({ throwOnError: true });
       setStage("code");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -67,7 +67,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
     setError(null);
     setSubmitting(true);
     try {
-      await verifyEmail({ code });
+      await verifyEmail({ body: { code }, throwOnError: true });
       await syncVerifiedClaim();
       onVerified?.();
       handleClose();
@@ -181,7 +181,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
  */
 async function syncVerifiedClaim(): Promise<void> {
   try {
-    const { accessToken } = await refresh();
+    const { accessToken } = await refresh({ throwOnError: true });
     setAccessToken(accessToken);
   } catch {
     // Refresh может упасть, если refresh-cookie истёк; UI всё равно

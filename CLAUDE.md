@@ -63,6 +63,10 @@ make test                                  # vitest run (один прогон)
 make coverage                              # vitest run --coverage
 make check                                 # lint + typecheck + audit + test (CI-стиль; тот же таргет гоняет CI)
 
+# Контракт API: бэк → backend/openapi.json → frontend/src/api/generated/ (оба коммитятся)
+make be-openapi-dump                       # схема приложения изменилась → перезаписать openapi.json
+make fe-generate-api                       # затем перегенерировать SDK (@hey-api/openapi-ts)
+
 # Database migrations — из backend/, против запущенного контейнера
 make migrate-create "description"          # создать миграцию (autogenerate)
 make migrate-upgrade                       # применить миграции
@@ -82,9 +86,9 @@ cd backend && uv run alembic upgrade <base>:<head> --sql
 
 DDD с **доменной** организацией модулей (`auth`, `users`, `geo`), каждый домен — четыре слоя
 `domain/` / `application/` / `infra/` / `presentation/`. Слои, порты (DIP), транзакционная
-граница UoW и правила именования вынесены в **@~/.claude/rules/python/ddd.md**, конвенции
+граница UoW и правила именования вынесены в **@.claude/rules/python/ddd.md**, конвенции
 переноса данных между слоями (pydantic vs dataclass, `*Command`/`*Result`/`*Request`/`*Response`,
-где валидация, кто маппит) — в **@~/.claude/rules/python/dto.md**. Оба подключены в конце этого
+где валидация, кто маппит) — в **@.claude/rules/python/dto.md**. Оба подключены в конце этого
 файла и являются источником истины по своим темам. Ниже — только то, что специфично для MindTrace.
 
 Технологическая привязка слоёв: `infra/` — SQLAlchemy-модели, `presentation/` — FastAPI-роуты.
@@ -107,7 +111,7 @@ DDD с **доменной** организацией модулей (`auth`, `us
 
 #### Component+Registry vs `@cache`-factory (когда что)
 
-Критерий выбора и правила composition root — в @~/.claude/rules/python/component-lifecycle.md
+Критерий выбора и правила composition root — в @.claude/rules/python/component-lifecycle.md
 (этот проект и есть его reference implementation). Здесь — только распределение:
 
 - **Компоненты** (lifecycle-ресурс): `SqlAlchemyComponent`, `ResendComponent`, `ProcrastinateComponent`, `TaskBusComponent`.
@@ -247,6 +251,31 @@ CHANGELOG — **один** файл в корне. Новые записи гр�
 
 Активация разовая: `make hooks` (== `git config core.hooksPath .githooks`). Обход в исключительном случае — `git commit --no-verify`.
 
+### Codegen drift gate
+
+Контракт фронта генерируется из OpenAPI, поэтому в гите лежат два производных артефакта:
+`backend/openapi.json` и `frontend/src/api/generated/`. Устареть они могут независимо, и на
+каждый есть свой гейт:
+
+- **бэк** — снапшот-тест `tests/api/test_openapi_schema.py`, входит в `make check`/`check-ci`;
+- **фронт** — шаг CI: `make generate-api` + `git diff --exit-code`.
+
+Красный гейт чинится не правкой артефакта руками, а пересборкой: `make be-openapi-dump`, затем
+`make fe-generate-api`, оба результата в тот же коммит.
+
+**PR'ы от dependabot этого сделать не могут.** Бамп fastapi/pydantic меняет рендер схемы, бамп
+`@hey-api/openapi-ts` — вывод генератора; в обоих случаях гейт краснеет на ветке бота, и
+пересборку делает человек, дописывая коммит в его ветку.
+
+Генератор запинен **точной** версией: `@hey-api/openapi-ts` пре-1.0, минорные релизы меняют
+вывод. Пин на предрелизной ветке (`0.0.0-next-*`) — вынужденный: стабильная линия падает на
+TypeScript 7 (`ts.SyntaxKind` отсутствует в нативном компиляторе), предрелизная не зависит от
+compiler API вовсе. Снять, когда TS 7 поедет в стабильном релизе.
+
+Оттуда же `overrides` на `js-yaml` в `frontend/package.json`: парсер схемы у предрелиза тянет
+версию из уязвимого диапазона, и `make check` краснеет на `npm audit`. Override поднимает
+только этот транзитивный пакет; снимается вместе с пином.
+
 ## Always-follow rules
 
 Общие правила инженерии (применяются ко всему репозиторию):
@@ -260,12 +289,12 @@ Python (бэкенд `app/`, `tests/`, `migrations/`):
 @.claude/rules/python/testing.md
 
 DDD-конвенции (слои, порты, UoW, именование), перенос данных между слоями (DTO) и composition
-root (выбор component/`@cache`, порядок старта) — **личные файлы вне репозитория**,
-переиспользуются другими проектами:
+root (выбор component/`@cache`, порядок старта) — **личные правила, в git не попадают**
+(`.gitignore`); канон — `~/.claude/optional/rules/python/`, здесь рабочие копии:
 
-@~/.claude/rules/python/ddd.md
-@~/.claude/rules/python/dto.md
-@~/.claude/rules/python/component-lifecycle.md
+@.claude/rules/python/ddd.md
+@.claude/rules/python/dto.md
+@.claude/rules/python/component-lifecycle.md
 
 TypeScript / React (фронтенд `frontend/src/`):
 
@@ -278,7 +307,7 @@ TypeScript / React (фронтенд `frontend/src/`):
 
 > **Приоритет при конфликтах:** правила, описанные выше в этом файле (Code Style, Docstrings, Named arguments, Shared infrastructure), всегда побеждают над подключёнными rules. Подключённые rules — базовый каркас; конкретика проекта в первой части CLAUDE.md является источником истины.
 >
-> **Файлы из `~/.claude/rules/`** (`ddd.md`, `dto.md`, `component-lifecycle.md`) живут вне репозитория, поэтому у клонировавшего репо они не разрешатся: в CLAUDE.md останутся ссылки на файлы, которых у него нет. Конвенции при этом видны по коду и по `.claude/rules/python/testing.md`.
+> **`ddd.md`, `dto.md`, `component-lifecycle.md`** — личные конвенции: канонический экземпляр лежит в `~/.claude/optional/rules/python/`, здесь рабочая копия, исключённая из git (`.gitignore`). У клонировавшего репо этих файлов не будет — в CLAUDE.md останутся ссылки на отсутствующие файлы; конвенции при этом видны по коду и по `.claude/rules/python/testing.md`. Правишь канон — перекопируй сюда (кросс-проектный `@`-импорт в `~/.claude/` не работает, симлинк тоже).
 
 ## Available toolkit
 

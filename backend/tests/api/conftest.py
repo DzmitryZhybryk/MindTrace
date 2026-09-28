@@ -39,10 +39,11 @@ import pytest
 from fastapi import APIRouter
 from httpx import ASGITransport, AsyncClient, Response
 
-from app.main import create_default_app
+from app.main import create_app, create_default_app
 from app.shared.exceptions import register_exception_handlers
 from app.shared.infra.jwt import get_jwt_service
 from app.shared.schemas.base import BFastAPI
+from app.shared.types import DictStrAny
 
 _BASE_URL = "http://testserver"
 
@@ -52,6 +53,12 @@ def api_app() -> BFastAPI:
     app = create_default_app()
     register_exception_handlers(app)
     return app
+
+
+@pytest.fixture
+def openapi_schema() -> DictStrAny:
+    """Схема боевого приложения — со всеми роутерами, тегами и версией (в отличие от ``api_app``)."""
+    return create_app().openapi()
 
 
 @pytest.fixture

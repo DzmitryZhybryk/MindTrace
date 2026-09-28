@@ -1,10 +1,12 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
+import { shouldRetry } from "../api/queryClient";
 import { AuthContext, type AuthContextValue } from "../auth/useAuth";
 import { server, TEST_CURRENT_USER } from "../test/handlers";
-import { makeAuthValue } from "../test/render";
+import { createTestQueryClient, makeAuthValue } from "../test/render";
 import { CurrentUserProvider } from "./CurrentUserContext";
 import { useCurrentUser } from "./useCurrentUser";
 
@@ -14,13 +16,15 @@ function Probe() {
   return <span>{state.status === "ready" ? `ready:${state.user.displayName ?? state.user.username}` : state.status}</span>;
 }
 
-function tree(authValue: AuthContextValue) {
+function tree(authValue: AuthContextValue, queryClient = createTestQueryClient()) {
   return (
-    <AuthContext.Provider value={authValue}>
-      <CurrentUserProvider>
-        <Probe />
-      </CurrentUserProvider>
-    </AuthContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <AuthContext.Provider value={authValue}>
+        <CurrentUserProvider>
+          <Probe />
+        </CurrentUserProvider>
+      </AuthContext.Provider>
+    </QueryClientProvider>
   );
 }
 
@@ -88,6 +92,43 @@ describe("CurrentUserProvider", () => {
     expect(screen.queryByText("error")).not.toBeInTheDocument();
   });
 
+  it("транзиентный сбой /me больше не терминален — боевая политика повторов доводит до ready", async () => {
+    // До Query первая же неудача оставляла профиль в error навсегда; теперь 5xx повторяется.
+    // Клиент с боевым предикатом (retryDelay: 0 — ждать backoff в тесте незачем).
+    let attempts = 0;
+    server.use(
+      http.get("/v1/users/me", () => {
+        attempts += 1;
+        return attempts === 1
+          ? HttpResponse.json({ code: "internal_error", message: "boom" }, { status: 500 })
+          : HttpResponse.json(TEST_CURRENT_USER);
+      }),
+    );
+
+    render(tree(makeAuthValue({ isAuthenticated: true }), createTestQueryClient({ retry: shouldRetry, retryDelay: 0 })));
+
+    expect(await screen.findByText("ready:traveler")).toBeInTheDocument();
+    expect(attempts).toBe(2);
+  });
+
+  it("разлогинивающий код (410) не повторяется — бить по удалённому пользователю нечем", async () => {
+    let attempts = 0;
+    server.use(
+      http.get("/v1/users/me", () => {
+        attempts += 1;
+        return HttpResponse.json({ code: "users.user_deleted", message: "удалён" }, { status: 410 });
+      }),
+    );
+    const authValue = makeAuthValue({ isAuthenticated: true });
+
+    render(tree(authValue, createTestQueryClient({ retry: shouldRetry, retryDelay: 0 })));
+
+    await waitFor(() => {
+      expect(authValue.clearSession).toHaveBeenCalledOnce();
+    });
+    expect(attempts).toBe(1);
+  });
+
   it("поздний ответ устаревшего запроса не затирает состояние после логаута", async () => {
     // Ответ /me придерживается вручную: логаут происходит, пока запрос «в полёте».
     let releaseProfile!: () => void;
@@ -101,10 +142,13 @@ describe("CurrentUserProvider", () => {
       }),
     );
 
-    const { rerender } = render(tree(makeAuthValue({ isAuthenticated: true })));
+    // Один клиент на оба рендера: новый обнулил бы кэш вместе с запросом «в полёте»,
+    // и проверять было бы нечего.
+    const queryClient = createTestQueryClient();
+    const { rerender } = render(tree(makeAuthValue({ isAuthenticated: true }), queryClient));
     expect(screen.getByText("loading")).toBeInTheDocument();
 
-    rerender(tree(makeAuthValue({ isAuthenticated: false })));
+    rerender(tree(makeAuthValue({ isAuthenticated: false }), queryClient));
     expect(await screen.findByText("anonymous")).toBeInTheDocument();
 
     releaseProfile();

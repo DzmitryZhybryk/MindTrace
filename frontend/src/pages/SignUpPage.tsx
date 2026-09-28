@@ -10,8 +10,8 @@ import {
   authPasswordClassNames,
 } from "../components/authInputClasses";
 import { AuthLayout } from "../components/AuthLayout";
-import { register } from "../api/auth";
 import { applyApiError, resolveErrorToken, withLocalizedError } from "../api/errors";
+import { register } from "../api/sdk";
 import { useAuth } from "../auth/useAuth";
 
 type SignUpFormValues = {
@@ -79,7 +79,16 @@ export function SignUpPage() {
     setFormError(null);
     setSubmitting(true);
     try {
-      const { accessToken } = await register(values);
+      const { accessToken } = await register({
+        body: {
+          username: values.username,
+          email: values.email,
+          password: values.password,
+          termsAccepted: values.termsAccepted,
+          marketingEmailsConsent: values.marketingEmailsConsent,
+        },
+        throwOnError: true,
+      });
       setAccessToken(accessToken);
       navigate("/home");
     } catch (err) {

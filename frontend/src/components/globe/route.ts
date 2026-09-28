@@ -1,4 +1,4 @@
-import type { PlaceSuggestion } from "../../api/journeys";
+import type { PlaceResponse } from "../../api/sdk";
 
 /*
  * Чистая геометрия маршрута для JourneyGlobe: great-circle интерполяция, высота дуги,
@@ -110,6 +110,6 @@ export function buildTrail(
 }
 
 /** Место «реальное» (выбрано из автокомплита), если у него есть координаты. */
-export function isRealPlace(place: PlaceSuggestion | null): place is PlaceSuggestion {
+export function isRealPlace(place: PlaceResponse | null): place is PlaceResponse {
   return place !== null && (place.latitude !== 0 || place.longitude !== 0);
 }

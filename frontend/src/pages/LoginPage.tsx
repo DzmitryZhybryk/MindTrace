@@ -6,8 +6,8 @@ import { Link, useNavigate } from "react-router";
 import { AuthCard } from "../components/AuthCard";
 import { authInputClassNames, authPasswordClassNames } from "../components/authInputClasses";
 import { AuthLayout } from "../components/AuthLayout";
-import { login } from "../api/auth";
 import { applyApiError, resolveErrorToken, withLocalizedError } from "../api/errors";
+import { login } from "../api/sdk";
 import { useAuth } from "../auth/useAuth";
 
 type LoginFormValues = {
@@ -49,7 +49,10 @@ export function LoginPage() {
     setFormError(null);
     setSubmitting(true);
     try {
-      const { accessToken } = await login(values);
+      const { accessToken } = await login({
+        body: { login: values.login, password: values.password },
+        throwOnError: true,
+      });
       setAccessToken(accessToken);
       navigate("/home");
     } catch (err) {
