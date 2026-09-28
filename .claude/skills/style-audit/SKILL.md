@@ -60,7 +60,7 @@ description: Audit MindTrace frontend files (.tsx, .css, index.html) against the
   `c="var(--text-error)"` и т. д.
 - Допустимые исключения (проверить контекст, не флагать вслепую): чистые `#fff`/`#000`
   и `rgba(255,255,255,·)`/`rgba(0,0,0,·)` в обводках и тенях подписей поверх текстуры глобуса
-  (`globe-label.css`, `journey-globe.css`) — там нужен абсолютный контраст к произвольному фону.
+  (`globe-label.css`, `globe-route.css`) — там нужен абсолютный контраст к произвольному фону.
 
 ### Типографика
 

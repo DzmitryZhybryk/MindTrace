@@ -53,7 +53,7 @@ export function HomePage() {
   const currentUser = useCurrentUser();
 
   return (
-    <div className="app-shell home-shell">
+    <div className="app-shell home-shell" data-globe-passthrough>
       <AppHeader />
 
       <main className="home-main">
@@ -72,8 +72,8 @@ export function HomePage() {
         {/* Пустой центральный слот: место, где визуально стоит app-global глобус-фон (корневой
             PersistentGlobeHost, кадрируется по data-screen="home"). Держит вертикальный ритм
             greeting → планета → подпись; сам прозрачен и для глаз, и для событий — жесты сквозь
-            него уходят планете (драг-вращение, см. home.css). */}
-        <div className="home-stage" aria-hidden />
+            него уходят планете (драг-вращение, контракт — persistent-globe.css). */}
+        <div className="home-stage" aria-hidden data-globe-slot />
 
         <p className="home-aura">{t("home.aura")}</p>
 

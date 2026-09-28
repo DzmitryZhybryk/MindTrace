@@ -1,11 +1,16 @@
 import { http, HttpResponse } from "msw";
-import { describe, expect, it, vi } from "vitest";
+import { useEffect } from "react";
+import { useNavigate } from "react-router";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getJourneysMapQueryKey } from "../../api/sdk";
-import { server } from "../../test/handlers";
+import { GEO_PLACES, server } from "../../test/handlers";
 import { act, createTestQueryClient, makeAuthValue, renderWithProviders, screen, waitFor } from "../../test/render";
 import type { AuthContextValue } from "../../auth/useAuth";
+import type { GlobePov } from "./GlobeCanvas";
+import { useGlobeSceneActions, type GlobeSlot } from "./globeScene";
 import { PersistentGlobeHost } from "./PersistentGlobeHost";
+import { routeCameraPov, type GlobeRoute } from "./route";
 
 /*
  * Холст мокаем: он тянет three/WebGL, которых в jsdom нет. Мок отражает переданные пропы в
@@ -17,19 +22,56 @@ type MockGlobeProps = {
   labelCities?: readonly unknown[];
   paused?: boolean;
   interactive?: boolean;
+  autoRotate?: boolean;
+  route?: GlobeRoute | null;
+  routeFading?: boolean;
+  pov?: GlobePov;
+  reveal?: boolean;
 };
 
 vi.mock("./GlobeCanvas", () => ({
-  GlobeCanvas: ({ arcs, labelCities, paused, interactive }: MockGlobeProps) => (
+  GlobeCanvas: ({ arcs, labelCities, paused, interactive, autoRotate, route, routeFading, pov, reveal }: MockGlobeProps) => (
     <div
       data-testid="globe-canvas"
       data-arcs={arcs?.length ?? 0}
       data-cities={labelCities?.length ?? 0}
       data-paused={String(paused ?? false)}
       data-interactive={String(interactive ?? false)}
+      data-auto-rotate={String(autoRotate ?? true)}
+      data-route={route ? route.originLabel : "none"}
+      data-route-fading={String(routeFading ?? false)}
+      data-pov-lat={pov?.lat}
+      data-pov-altitude={pov?.altitude}
+      data-reveal={String(reveal ?? false)}
     />
   ),
 }));
+
+/*
+ * Публикатор сцены — то, что на проде делает страница добавления поездки: кладёт в канал
+ * маршрут формы и прямоугольник колонки. Живёт ВНЕ роутов, поэтому уход с /journeys/add
+ * его не размонтирует: сцена после навигации держит маршрут, как в тот единственный рендер,
+ * когда страница ещё не успела его очистить.
+ */
+function ScenePublisher({ route, slot }: { route: GlobeRoute | null; slot: GlobeSlot | null }) {
+  const { setRoute, setSlot } = useGlobeSceneActions();
+  useEffect(() => {
+    setRoute(route);
+    setSlot(slot);
+  }, [route, slot, setRoute, setSlot]);
+
+  return null;
+}
+
+/** Кнопка навигации по приложению — уход с грани формы так, как его делает пользователь. */
+function GoTo({ path }: { path: string }) {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(path)}>
+      {`go ${path}`}
+    </button>
+  );
+}
 
 /** AuthContext залогиненного пользователя с заданным `sub` (по нему кэшируются города). */
 function authedValue(sub: string): AuthContextValue {
@@ -210,5 +252,186 @@ describe("PersistentGlobeHost — каркас без WebGL", () => {
     expect(container.querySelector(".persistent-globe__stage")).not.toBeNull();
     expect(container.querySelector(".persistent-globe__scrim")).not.toBeNull();
     expect(container.querySelector(".persistent-globe")).toHaveAttribute("aria-hidden");
+  });
+});
+
+describe("PersistentGlobeHost — грань формы поездки", () => {
+  const [MOSCOW, LONDON] = GEO_PLACES;
+  const ROUTE: GlobeRoute = {
+    origin: MOSCOW,
+    destination: LONDON,
+    transportType: "air",
+    originLabel: "Moscow",
+    destinationLabel: "London",
+  };
+  // jsdom: вьюпорт 1024×768. Колонка справа — как на десктопной раскладке формы.
+  const SLOT: GlobeSlot = { left: 700, top: 100, width: 300, height: 600 };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function renderJourneyAdd(options: { slot?: GlobeSlot | null; route?: GlobeRoute | null; queryClient?: ReturnType<typeof createTestQueryClient> } = {}) {
+    const { slot = SLOT, route = ROUTE, queryClient } = options;
+    return renderWithProviders(
+      <>
+        <ScenePublisher route={route} slot={slot} />
+        <GoTo path="/home" />
+        <GoTo path="/journeys" />
+        <GoTo path="/login" />
+        <PersistentGlobeHost />
+      </>,
+      { route: "/journeys/add", authValue: authedValue("user-1"), queryClient },
+    );
+  }
+
+  it("с колонкой — грань journeyAdd: глобус видим, крутится рукой, не на паузе", async () => {
+    const { container } = renderJourneyAdd();
+
+    await waitFor(() => expect(screenAttr(container, "data-screen")).toBe("journeyAdd"));
+    expect(screenAttr(container, "data-visible")).toBe("true");
+    expect(screenAttr(container, "data-interactive")).toBe("true");
+    expect(await screen.findByTestId("globe-canvas")).toHaveAttribute("data-paused", "false");
+  });
+
+  it("пустая форма — глобус медленно вращается, как на дашборде", async () => {
+    renderJourneyAdd({ route: { ...ROUTE, origin: null, destination: null } });
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    await waitFor(() => expect(globe).toHaveAttribute("data-auto-rotate", "true"));
+  });
+
+  it.each([
+    { case: "выбран город отправления", origin: MOSCOW, destination: null },
+    { case: "выбран только город назначения", origin: null, destination: LONDON },
+  ])("$case — вращение стоит: камера кадрирует маршрут", async ({ origin, destination }) => {
+    renderJourneyAdd({ route: { ...ROUTE, origin, destination } });
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    await waitFor(() => expect(globe).toHaveAttribute("data-route", "Moscow"));
+    expect(globe).toHaveAttribute("data-auto-rotate", "false");
+  });
+
+  it("на грани формы камера появляется подлётом издалека, на дашборде — сразу на месте", async () => {
+    const { user } = renderJourneyAdd({ route: { ...ROUTE, origin: null, destination: null } });
+    const globe = await screen.findByTestId("globe-canvas");
+
+    await waitFor(() => expect(globe).toHaveAttribute("data-reveal", "true"));
+
+    await user.click(screen.getByRole("button", { name: "go /home" }));
+    expect(globe).toHaveAttribute("data-reveal", "false");
+  });
+
+  it("без колонки (узкий экран) — глобус спрятан, на паузе и не ловит жесты", async () => {
+    const { container } = renderJourneyAdd({ slot: null });
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    expect(screenAttr(container, "data-visible")).toBe("false");
+    expect(screenAttr(container, "data-interactive")).toBe("false");
+    expect(globe).toHaveAttribute("data-paused", "true");
+    expect(globe).toHaveAttribute("data-route", "none");
+  });
+
+  it("на грани формы — только маршрут: посещённые города не рисуются", async () => {
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(getJourneysMapQueryKey(), {
+      countries: [{ countryCode: "RU", cities: [{ name: "Kazan", latitude: 55.8, longitude: 49.1, years: [2020] }] }],
+    });
+    renderJourneyAdd({ queryClient });
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    await waitFor(() => expect(globe).toHaveAttribute("data-route", "Moscow"));
+    expect(globe).toHaveAttribute("data-cities", "0");
+  });
+
+  it("камера кадрирует маршрут формы, а не грань дашборда", async () => {
+    renderJourneyAdd();
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    await waitFor(() => expect(globe).toHaveAttribute("data-pov-lat", String(routeCameraPov(ROUTE).lat)));
+  });
+
+  it("кадрирует и обрезает сферу по прямоугольнику колонки", async () => {
+    const { container } = renderJourneyAdd();
+    const host = container.querySelector<HTMLElement>(".persistent-globe");
+
+    await waitFor(() => expect(host?.style.getPropertyValue("--globe-slot-clip")).not.toBe(""));
+    // Отступы обрезки от краёв вьюпорта: справа 1024 − (700 + 300), снизу 768 − (100 + 600).
+    expect(host?.style.getPropertyValue("--globe-slot-clip")).toBe("inset(100px 24px 68px 700px)");
+    // Центр колонки (850, 400) минус центр вьюпорта (512, 384).
+    expect(host?.style.getPropertyValue("--globe-slot-x")).toBe("338px");
+    expect(host?.style.getPropertyValue("--globe-slot-y")).toBe("16px");
+    // Своего масштаба у грани нет — он общий с дашбордом (CSS), иначе переход менял бы размер.
+    expect(host?.style.getPropertyValue("--globe-slot-scale")).toBe("");
+  });
+
+  it("без маршрута камера формы на высоте дашборда — уход на /home не меняет размер сферы", async () => {
+    const queryClient = createTestQueryClient();
+    const home = renderWithProviders(<PersistentGlobeHost />, {
+      route: "/home",
+      authValue: authedValue("user-1"),
+      queryClient,
+    });
+    const homeAltitude = (await screen.findByTestId("globe-canvas")).getAttribute("data-pov-altitude");
+    home.unmount();
+
+    renderJourneyAdd({ route: null, queryClient });
+    const globe = await screen.findByTestId("globe-canvas");
+
+    await waitFor(() => expect(globe).toHaveAttribute("data-route", "none"));
+    expect(globe).toHaveAttribute("data-pov-altitude", homeAltitude);
+  });
+
+  it("уход на дашборд: маршрут остаётся и гаснет во время перелёта, затем снимается", async () => {
+    const { container, user } = renderJourneyAdd();
+    const globe = await screen.findByTestId("globe-canvas");
+    await waitFor(() => expect(globe).toHaveAttribute("data-route", "Moscow"));
+
+    await user.click(screen.getByRole("button", { name: "go /home" }));
+
+    expect(screenAttr(container, "data-screen")).toBe("home");
+    expect(globe).toHaveAttribute("data-route", "Moscow");
+    expect(globe).toHaveAttribute("data-route-fading", "true");
+    // Кадрирование грани формы уходит вместе с ней — рамка перелетает к дашборду.
+    expect(container.querySelector<HTMLElement>(".persistent-globe")?.style.getPropertyValue("--globe-slot-clip")).toBe(
+      "",
+    );
+    await waitFor(() => expect(globe).toHaveAttribute("data-route", "none"), { timeout: 2000 });
+    expect(globe).toHaveAttribute("data-route-fading", "false");
+  });
+
+  it.each([
+    { path: "/journeys", reason: "2D-карта: оболочку сразу закрашивает своя ночь" },
+    { path: "/login", reason: "выход из аккаунта: маршрут лёг бы поверх курируемых дуг" },
+  ])("уход на $path маршрут не удерживает — $reason", async ({ path }) => {
+    const { user } = renderJourneyAdd();
+    const globe = await screen.findByTestId("globe-canvas");
+    await waitFor(() => expect(globe).toHaveAttribute("data-route", "Moscow"));
+
+    await user.click(screen.getByRole("button", { name: `go ${path}` }));
+
+    expect(globe).toHaveAttribute("data-route", "none");
+    expect(globe).toHaveAttribute("data-route-fading", "false");
+  });
+
+  it("при prefers-reduced-motion маршрут на уходе не удерживается — снимается сразу", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    const { user } = renderJourneyAdd();
+    const globe = await screen.findByTestId("globe-canvas");
+    await waitFor(() => expect(globe).toHaveAttribute("data-route", "Moscow"));
+
+    await user.click(screen.getByRole("button", { name: "go /home" }));
+
+    expect(globe).toHaveAttribute("data-route", "none");
   });
 });

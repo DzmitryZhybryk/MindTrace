@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EventDispatcher } from "three";
+import type { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
+import { GEO_PLACES } from "../../test/handlers";
 import { act, renderWithProviders } from "../../test/render";
 import { GlobeCanvas } from "./GlobeCanvas";
 import { createGlobeLabel } from "./globeLabel";
+import type { GlobeRoute } from "./route";
+import type { RouteHtmlDatum, RouteTrail } from "./routeScene";
+import type { GlobeCity } from "./routes";
 
 /*
  * Ветки этого компонента открываются только когда контейнер получил РАЗМЕР: до этого
@@ -32,7 +38,10 @@ class ControllableResizeObserver {
 }
 
 /** Инстанс globe.gl, который отдаёт мок вместо настоящего three/WebGL. */
-const controls = { autoRotate: false, autoRotateSpeed: 0, enableZoom: true, enablePan: true, enableRotate: true };
+let controls: Pick<OrbitControls,
+  | "autoRotate" | "autoRotateSpeed" | "enableZoom" | "enablePan" | "enableRotate"
+  | "addEventListener" | "removeEventListener" | "dispatchEvent"
+>;
 const pointOfView = vi.fn();
 const pauseAnimation = vi.fn();
 const resumeAnimation = vi.fn();
@@ -42,8 +51,12 @@ const cameraStub = { matrixWorld: { elements: [0] } };
 // Канвас рендерера нужен интерактивному эффекту (он переопределяет touch-action OrbitControls).
 const rendererDomElement = document.createElement("canvas");
 
+// Пропсы последнего рендера `<Globe>`: по ним видно, чем холст кормит слои (данные, аксессоры).
+let globeProps: Record<string, unknown> = {};
+
 vi.mock("react-globe.gl", () => ({
   default: (props: { ref?: { current?: unknown } }) => {
+    globeProps = props;
     // globe.gl отдаёт императивный инстанс через ref — воспроизводим ровно это.
     if (props.ref) {
       props.ref.current = {
@@ -72,10 +85,10 @@ function setReducedMotion(reduced: boolean) {
 
 beforeEach(() => {
   fireResize = null;
-  controls.autoRotate = false;
-  controls.enableZoom = true;
-  controls.enablePan = true;
-  controls.enableRotate = true;
+  globeProps = {};
+  controls = Object.assign(new EventDispatcher(), {
+    autoRotate: false, autoRotateSpeed: 0, enableZoom: true, enablePan: true, enableRotate: true,
+  });
   // По умолчанию «мимо сферы»: попадание каждый тест задаёт явно.
   toGlobeCoords.mockReturnValue(null);
   cameraStub.matrixWorld.elements = [0];
@@ -493,5 +506,276 @@ describe("GlobeCanvas", () => {
 
     expect(tashkent.classList.contains("globe-label--decluttered")).toBe(false);
     expect(bishkek.classList.contains("globe-label--decluttered")).toBe(false);
+  });
+});
+
+describe("GlobeCanvas — маршрут формы поездки", () => {
+  const [MOSCOW, LONDON] = GEO_PLACES;
+  const CITIES: GlobeCity[] = [{ name: "Minsk", lat: 53.9, lng: 27.56 }];
+
+  function makeRoute(overrides: Partial<GlobeRoute> = {}): GlobeRoute {
+    return {
+      origin: MOSCOW,
+      destination: LONDON,
+      transportType: "air",
+      originLabel: "Moscow",
+      destinationLabel: "London",
+      ...overrides,
+    };
+  }
+
+  function htmlData(): object[] {
+    return globeProps.htmlElementsData as object[];
+  }
+
+  function routeData(): RouteHtmlDatum[] {
+    return htmlData().filter((datum): datum is RouteHtmlDatum => "kind" in datum);
+  }
+
+  beforeEach(() => {
+    // Без анимации транспорт сразу стоит в конце пути — позиция детерминирована.
+    setReducedMotion(true);
+  });
+
+  it("без маршрута отдаёт слою подписей тот же массив городов — слой не пересобирается", () => {
+    renderWithProviders(<GlobeCanvas labelCities={CITIES} />);
+    act(() => fireResize?.(800, 600));
+
+    expect(htmlData()).toBe(CITIES);
+    expect(globeProps.pathsData).toEqual([]);
+  });
+
+  it("полный маршрут: пины обоих концов, транспорт в конце пути и след", () => {
+    renderWithProviders(<GlobeCanvas route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+
+    const pins = routeData().filter((datum) => datum.kind === "route-pin");
+    const vehicle = routeData().find((datum) => datum.kind === "route-vehicle");
+
+    expect(pins.map((pin) => pin.name)).toEqual(["Moscow", "London"]);
+    expect(vehicle?.lat).toBeCloseTo(LONDON.latitude);
+    expect(vehicle?.lng).toBeCloseTo(LONDON.longitude);
+    expect(globeProps.pathsData).toHaveLength(1);
+  });
+
+  it("выбран один город — только его пин, без транспорта и следа", () => {
+    renderWithProviders(<GlobeCanvas route={makeRoute({ destination: null, transportType: null })} />);
+    act(() => fireResize?.(800, 600));
+
+    expect(routeData()).toEqual([expect.objectContaining({ kind: "route-pin", name: "Moscow" })]);
+    expect(globeProps.pathsData).toEqual([]);
+  });
+
+  it("оба города без среды передвижения — пины без следа и транспорта", () => {
+    renderWithProviders(<GlobeCanvas route={makeRoute({ transportType: null })} />);
+    act(() => fireResize?.(800, 600));
+
+    expect(routeData().map((datum) => datum.kind)).toEqual(["route-pin", "route-pin"]);
+    expect(globeProps.pathsData).toEqual([]);
+  });
+
+  it("подписи городов и маршрут делят один html-слой", () => {
+    renderWithProviders(<GlobeCanvas labelCities={CITIES} route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+
+    expect(htmlData()).toEqual(expect.arrayContaining([CITIES[0], expect.objectContaining({ kind: "route-pin" })]));
+  });
+
+  it("аксессоры различают подпись и элемент маршрута: высота и DOM", () => {
+    renderWithProviders(<GlobeCanvas labelCities={CITIES} route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+    const altitude = globeProps.htmlAltitude as (datum: object) => number;
+    const element = globeProps.htmlElement as (datum: object) => HTMLElement;
+    const [pin] = routeData();
+
+    expect(altitude(CITIES[0])).toBe(0);
+    expect(altitude(pin)).toBeGreaterThan(0);
+    expect(element(CITIES[0]).classList.contains("globe-label")).toBe(true);
+    expect(element(pin).classList.contains("globe-route-pin")).toBe(true);
+    expect(element(pin).textContent).toBe("Moscow");
+  });
+
+  it("окклюзия: подпись гаснет прозрачностью, элемент маршрута прячется, не трогая opacity", () => {
+    renderWithProviders(<GlobeCanvas labelCities={CITIES} route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+    const element = globeProps.htmlElement as (datum: object) => HTMLElement;
+    const hideBehindGlobe = globeProps.htmlElementVisibilityModifier as (el: HTMLElement, visible: boolean) => void;
+    const label = element(CITIES[0]);
+    const pin = element(routeData()[0]);
+
+    hideBehindGlobe(label, false);
+    hideBehindGlobe(pin, false);
+
+    expect(label.style.opacity).toBe("0");
+    expect(pin.style.visibility).toBe("hidden");
+    // opacity пина свободна под угасание маршрута — окклюзия её не занимает.
+    expect(pin.style.opacity).toBe("");
+
+    hideBehindGlobe(pin, true);
+    expect(pin.style.visibility).toBe("");
+  });
+
+  it("позиции html-меток ставятся без твина — иначе транспорт отставал бы от следа", () => {
+    renderWithProviders(<GlobeCanvas route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+
+    expect(globeProps.htmlTransitionDuration).toBe(0);
+  });
+
+  it("след рисуется непрозрачным закатным цветом, пока маршрут не гаснет", () => {
+    renderWithProviders(<GlobeCanvas route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+    const color = globeProps.pathColor as (trail: object) => string;
+    const [trail] = globeProps.pathsData as RouteTrail[];
+
+    expect(color(trail)).toBe("rgba(232, 147, 92, 1)");
+  });
+
+  it("угасание маршрута помечает контейнер — CSS гасит пины и иконку", () => {
+    const { container, rerender } = renderWithProviders(<GlobeCanvas route={makeRoute()} />);
+    const canvas = container.querySelector(".globe-canvas");
+
+    expect(canvas?.classList.contains("globe-canvas--route-fading")).toBe(false);
+
+    rerender(<GlobeCanvas route={makeRoute()} routeFading />);
+    expect(canvas?.classList.contains("globe-canvas--route-fading")).toBe(true);
+  });
+});
+
+describe("GlobeCanvas — камера и пауза", () => {
+  it("pov, сменившийся вместе с уходом в паузу, ставится без перелёта — спрятанному лететь незачем", () => {
+    const { rerender } = renderWithProviders(<GlobeCanvas pov={{ lat: 0, lng: 0, altitude: 2 }} />);
+    act(() => fireResize?.(800, 600));
+
+    act(() => rerender(<GlobeCanvas paused pov={{ lat: 40, lng: 30, altitude: 1.8 }} />));
+
+    expect(pointOfView.mock.calls.at(-1)?.[1]).toBe(0);
+  });
+
+  it("выход из паузы с новым pov — без перелёта (проявление на месте), следующая смена — перелётом", () => {
+    const { rerender } = renderWithProviders(<GlobeCanvas paused pov={{ lat: 0, lng: 0, altitude: 2 }} />);
+    act(() => fireResize?.(800, 600));
+
+    act(() => rerender(<GlobeCanvas pov={{ lat: 40, lng: 30, altitude: 1.8 }} />));
+    expect(pointOfView.mock.calls.at(-1)?.[1]).toBe(0);
+
+    act(() => rerender(<GlobeCanvas pov={{ lat: 10, lng: 60, altitude: 1.5 }} />));
+    expect(pointOfView.mock.calls.at(-1)?.[1]).toBeGreaterThan(0);
+  });
+});
+
+describe("GlobeCanvas — подлёт камеры при появлении (reveal)", () => {
+  const TARGET = { lat: 12, lng: 0, altitude: 2.4 };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
+  });
+
+  type Pov = { lat: number; lng: number; altitude: number };
+  function calls(): [Pov, number][] {
+    return pointOfView.mock.calls as [Pov, number][];
+  }
+
+  it("выход из паузы: камера стартует издалека и покадрово подлетает ровно в pov", () => {
+    const { rerender } = renderWithProviders(<GlobeCanvas paused pov={TARGET} reveal />);
+    act(() => fireResize?.(800, 600));
+    pointOfView.mockClear();
+
+    act(() => rerender(<GlobeCanvas pov={TARGET} reveal />));
+    const [start] = calls()[0];
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(start.altitude).toBeGreaterThan(TARGET.altitude);
+    // Кадры идут без tween globe.gl (длительность 0) — иначе он съел бы автовращение.
+    expect(calls().every(([, duration]) => duration === 0)).toBe(true);
+    expect(calls().length).toBeGreaterThan(10);
+    const [end] = calls().at(-1) ?? [];
+    expect(end?.altitude).toBeCloseTo(TARGET.altitude);
+    expect(end?.lng).toBeCloseTo(TARGET.lng);
+  });
+
+  it("после подлёта кадры прекращаются — дальше крутит автовращение", () => {
+    renderWithProviders(<GlobeCanvas pov={TARGET} reveal />);
+    act(() => fireResize?.(800, 600));
+    act(() => vi.advanceTimersByTime(2000));
+    const settled = pointOfView.mock.calls.length;
+
+    act(() => vi.advanceTimersByTime(1000));
+
+    expect(pointOfView.mock.calls.length).toBe(settled);
+  });
+
+  it("захват сферы прерывает подлёт, размонтирование отписывает обработчик", () => {
+    const { unmount } = renderWithProviders(<GlobeCanvas pov={TARGET} reveal interactive />);
+    act(() => fireResize?.(800, 600));
+    const [start] = calls()[0];
+    act(() => vi.advanceTimersByTime(300));
+    const [inFlight] = calls().at(-1) ?? [];
+
+    expect(inFlight?.altitude).toBeLessThan(start.altitude);
+    expect(inFlight?.altitude).toBeGreaterThan(TARGET.altitude);
+    act(() => controls.dispatchEvent({ type: "start" }));
+    pointOfView.mockClear();
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(pointOfView).not.toHaveBeenCalled();
+    unmount();
+    // Утёкшая подписка вызвала бы отмену старого кадра даже после размонтирования.
+    const cancelFrame = vi.spyOn(window, "cancelAnimationFrame");
+    act(() => controls.dispatchEvent({ type: "start" }));
+    expect(cancelFrame).not.toHaveBeenCalled();
+  });
+
+  it("смена pov у уже видимого глобуса — обычный перелёт, без повторного подлёта", () => {
+    const { rerender } = renderWithProviders(<GlobeCanvas pov={TARGET} reveal />);
+    act(() => fireResize?.(800, 600));
+    act(() => vi.advanceTimersByTime(2000));
+    pointOfView.mockClear();
+
+    const next = { lat: 50, lng: 30, altitude: 1.2 };
+    act(() => rerender(<GlobeCanvas pov={next} reveal />));
+
+    expect(calls()).toEqual([[next, expect.any(Number)]]);
+    expect(calls()[0]?.[1]).toBeGreaterThan(0);
+  });
+
+  it("смена pov посреди подлёта отменяет его — кадры подлёта больше не перетирают камеру", () => {
+    const { rerender } = renderWithProviders(<GlobeCanvas pov={TARGET} reveal />);
+    act(() => fireResize?.(800, 600));
+    act(() => vi.advanceTimersByTime(300));
+
+    const next = { lat: 50, lng: 30, altitude: 1.2 };
+    act(() => rerender(<GlobeCanvas pov={next} reveal />));
+    pointOfView.mockClear();
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(pointOfView).not.toHaveBeenCalled();
+  });
+
+  it("на паузе подлёта нет — спрятанный глобус камеру не гоняет", () => {
+    renderWithProviders(<GlobeCanvas paused pov={TARGET} reveal />);
+
+    act(() => fireResize?.(800, 600));
+
+    expect(calls()).toEqual([[TARGET, 0]]);
+  });
+
+  it("при prefers-reduced-motion появление мгновенное", () => {
+    setReducedMotion(true);
+    renderWithProviders(<GlobeCanvas pov={TARGET} reveal />);
+
+    act(() => fireResize?.(800, 600));
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(calls()).toEqual([[TARGET, 0]]);
+  });
+
+  it("без reveal появление мгновенное, как на остальных гранях", () => {
+    renderWithProviders(<GlobeCanvas pov={TARGET} />);
+
+    act(() => fireResize?.(800, 600));
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(calls()).toEqual([[TARGET, 0]]);
   });
 });

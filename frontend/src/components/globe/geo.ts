@@ -3,7 +3,8 @@ const DEG = Math.PI / 180;
 /**
  * Угловое расстояние (центральный угол, радианы) между двумя гео-точками — haversine.
  *
- * Потребитель — `JourneyGlobe`: радианы уходят напрямую в расчёт altitude-зума камеры.
+ * Потребители — сцена маршрута поездки (`routeCameraPov`, `useRouteScene`): радианы уходят
+ * напрямую в расчёт altitude-зума камеры и высоты дуги.
  */
 export function centralAngleRad(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const phi1 = lat1 * DEG;

@@ -26,6 +26,7 @@ import { vi } from "vitest";
 
 import { AuthProvider } from "../auth/AuthContext";
 import { AuthContext, type AuthContextValue } from "../auth/useAuth";
+import { GlobeSceneProvider } from "../components/globe/GlobeSceneProvider";
 import { theme } from "../theme";
 import { CurrentUserProvider } from "../user/CurrentUserContext";
 
@@ -100,7 +101,9 @@ function Providers({ children, initialPath, authValue, withAuthProvider, queryCl
     // userEvent, и `findAllByRole("menuitem")` периодически таймаутит.
     <MantineProvider theme={theme} defaultColorScheme="dark" env="test">
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={[initialPath]}>{withAuth}</MemoryRouter>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <GlobeSceneProvider>{withAuth}</GlobeSceneProvider>
+        </MemoryRouter>
       </QueryClientProvider>
     </MantineProvider>
   );
