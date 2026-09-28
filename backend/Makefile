@@ -1,4 +1,4 @@
-.PHONY: help format format-check lint typecheck dead-code audit arch check check-ci test coverage test-unit test-integration test-api test-auth test-users test-shared test-journeys test-geo test-health migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
+.PHONY: help format format-check lint typecheck dead-code audit arch check check-ci test coverage test-unit test-integration test-api test-auth test-users test-shared test-journeys test-geo test-health openapi-dump migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -111,6 +111,10 @@ test-geo: ## Run geo-domain tests, any level (-m geo)
 
 test-health: ## Run health-domain tests, any level (-m health)
 	@uv run --no-sync pytest -m health || [ $$? -eq 5 ]
+
+openapi-dump: ## Rewrite backend/openapi.json from the app (drift gate is the snapshot test in make test)
+	@echo "${GREEN}INFO :  ${AZURE}Update '${PURPLE}openapi.json${AZURE}' snapshot${RESET}"
+	@UPDATE_OPENAPI=1 uv run --no-sync pytest tests/api/test_openapi_schema.py -q
 
 migrate-create: ## Create a new migration (usage: make migrate-create "description")
 	@ARGS="$(filter-out $@,$(MAKECMDGOALS))"; \

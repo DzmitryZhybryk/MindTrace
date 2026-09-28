@@ -1,20 +1,23 @@
+import type { QueryClient } from "@tanstack/react-query";
 import type { UserEvent } from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
+import { getJourneysMapQueryKey } from "../../api/sdk";
 import { server } from "../../test/handlers";
-import { renderRoutes, screen, waitFor, within } from "../../test/render";
+import { createTestQueryClient, renderRoutes, screen, waitFor, within } from "../../test/render";
 import { AddJourneyPage } from "./AddJourneyPage";
 
 // react-globe.gl тянет three.js/WebGL — в jsdom не рендерится и на поведение формы не влияет.
 vi.mock("../../components/JourneyGlobe", () => ({ JourneyGlobe: () => null }));
 
 /** Монтирует AddJourneyPage на /journeys/add с landing-маркером целевого пути сабмита. */
-function renderAddJourney() {
+function renderAddJourney(queryClient?: QueryClient) {
   return renderRoutes({
     element: <AddJourneyPage />,
     path: "/journeys/add",
     landings: [{ path: "/journeys", label: "journeys-landing" }],
+    queryClient,
   });
 }
 
@@ -77,6 +80,39 @@ describe("AddJourneyPage", () => {
       traveledMonth: null,
       traveledDay: null,
     });
+  });
+
+  it("успешное создание помечает карту устаревшей — и 2D-карта, и глобус-фон перечитают её", async () => {
+    server.use(http.post("/v1/journeys/", () => new HttpResponse(null, { status: 201 })));
+    const queryClient = createTestQueryClient();
+    // Карта уже в кэше — как после захода на /journeys перед добавлением поездки.
+    queryClient.setQueryData(getJourneysMapQueryKey(), { countries: [] });
+    const { user } = renderAddJourney(queryClient);
+
+    await pickPlace({ user, label: "From", query: "Mos", option: /Moscow/iu });
+    await pickPlace({ user, label: "To", query: "Lon", option: /London/iu });
+    await pickOption({ user, trigger: screen.getByPlaceholderText("Choose transport"), option: "Air" });
+    await pickOption({ user, trigger: screen.getByPlaceholderText("Select year"), option: "2020" });
+    await user.click(screen.getByRole("button", { name: "Add journey" }));
+
+    expect(await screen.findByText("journeys-landing")).toBeInTheDocument();
+    expect(queryClient.getQueryState(getJourneysMapQueryKey())?.isInvalidated).toBe(true);
+  });
+
+  it("провал создания карту не трогает — инвалидировать нечего", async () => {
+    server.use(http.post("/v1/journeys/", () => HttpResponse.error()));
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(getJourneysMapQueryKey(), { countries: [] });
+    const { user } = renderAddJourney(queryClient);
+
+    await pickPlace({ user, label: "From", query: "Mos", option: /Moscow/iu });
+    await pickPlace({ user, label: "To", query: "Lon", option: /London/iu });
+    await pickOption({ user, trigger: screen.getByPlaceholderText("Choose transport"), option: "Air" });
+    await pickOption({ user, trigger: screen.getByPlaceholderText("Select year"), option: "2020" });
+    await user.click(screen.getByRole("button", { name: "Add journey" }));
+
+    expect(await screen.findByText("Network error. Please try again.")).toBeInTheDocument();
+    expect(queryClient.getQueryState(getJourneysMapQueryKey())?.isInvalidated).toBe(false);
   });
 
   it("кнопка swap меняет «откуда»/«куда» местами — в полях и в payload", async () => {

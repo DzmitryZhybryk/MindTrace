@@ -3,7 +3,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router";
 
-import { logout } from "../api/auth";
+import { logout } from "../api/sdk";
 import { useAuth } from "../auth/useAuth";
 import { useCurrentUser } from "../user/useCurrentUser";
 import { BrandMark } from "./BrandMark";
@@ -45,7 +45,7 @@ export function AppHeader() {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await logout({ throwOnError: true });
     } catch {
       // Logout идемпотентен на бэке (204 даже без cookie); сетевая ошибка
       // не должна оставить пользователя залогиненным локально.

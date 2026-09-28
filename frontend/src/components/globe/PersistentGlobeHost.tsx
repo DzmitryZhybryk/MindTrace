@@ -1,11 +1,13 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
 import { useLocation } from "react-router";
 
+import { getJourneysMapOptions } from "../../api/sdk";
 import { useAuth } from "../../auth/useAuth";
 import { ErrorBoundary } from "../ErrorBoundary";
 import type { GlobePov } from "./GlobeCanvas";
 import { ROUTE_ARCS, ROUTE_CITIES, type GlobeCity } from "./routes";
-import { clearUserCitiesCache, getCachedUserCities, loadUserCities } from "./userCities";
+import { citiesFromJourneysMap } from "./userCities";
 import "./persistent-globe.css";
 
 /*
@@ -21,6 +23,10 @@ const GlobeCanvas = lazy(() => import("./GlobeCanvas").then((m) => ({ default: m
  * там глобус прячется (`visible=false`), оставаясь на последней.
  */
 type Screen = "landing" | "signup" | "login" | "home";
+
+// Стабильная ссылка на «точек нет»: `react-globe.gl` сравнивает данные слоя по идентичности,
+// и новый `[]` на каждом рендере заставлял бы его пересобирать слой подписей впустую.
+const NO_CITIES: GlobeCity[] = [];
 
 // Точка обзора камеры для каждой грани: разные стороны планеты, чтобы переход читался
 // «перелётом». `home` — грань дашборда (наследует прежний HomeGlobe), отдельная от login,
@@ -78,50 +84,23 @@ function viewForPath(pathname: string): GlobeView {
  *
  * Источник точек зависит от авторизации: аноним видит курируемые маршруты
  * (`ROUTE_ARCS`/`ROUTE_CITIES`), залогиненный — свои реальные посещённые города без дуг
- * (дуги маршрутов — отдельная будущая задача). Реальные города тянутся из `/v1/journeys/map`
- * один раз на `sub` и кэшируются, логаут кэш чистит.
+ * (дуги маршрутов — отдельная будущая задача). Реальные города приходят из общего с 2D-картой
+ * запроса `/v1/journeys/map`; кэш и его сброс на смене сессии держит Query (см. `AuthProvider`).
  */
 export function PersistentGlobeHost() {
   const { pathname } = useLocation();
-  const { isAuthenticated, claims } = useAuth();
-  const sub = claims?.sub ?? null;
+  const { isAuthenticated } = useAuth();
   const view = viewForPath(pathname);
 
-  // Синхронный старт из кэша — при повторном входе на /home точки уже на месте, без мигания.
-  const [userCities, setUserCities] = useState<GlobeCity[]>(() => (sub !== null ? getCachedUserCities(sub) ?? [] : []));
-
-  useEffect(() => {
-    if (!isAuthenticated || sub === null) {
-      // Логаут / аноним: сбрасываем кэш и локальные точки, чтобы города не «протекли»
-      // в следующую сессию под другим аккаунтом.
-      clearUserCitiesCache();
-      setUserCities([]);
-      return;
-    }
-
-    const cachedCities = getCachedUserCities(sub);
-    if (cachedCities !== null) {
-      setUserCities(cachedCities);
-      return;
-    }
-
-    let mounted = true;
-    loadUserCities(sub)
-      .then((cities) => {
-        if (mounted) {
-          setUserCities(cities);
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setUserCities([]);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [isAuthenticated, sub]);
+  // Тот же queryKey, что у 2D-карты (`JourneysMapView`), но своя свежесть: фон снимок
+  // не обновляет — новая поездка доезжает сюда инвалидацией из формы, а не рефетчем по
+  // маунту. Ошибку намеренно не разбираем: без точек глобус остаётся глобусом.
+  const { data: userCities = NO_CITIES } = useQuery({
+    ...getJourneysMapOptions(),
+    enabled: isAuthenticated,
+    staleTime: Infinity,
+    select: citiesFromJourneysMap,
+  });
 
   return (
     <div

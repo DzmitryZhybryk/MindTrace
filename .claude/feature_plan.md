@@ -4,36 +4,7 @@
 потерять. Пункт заводится при откладывании, удаляется при отгрузке фичи. Не путать с
 `.claude/.current-plan.md` — тот живёт только на время активной задачи и gitignored.
 
-## 1. Server-state библиотека для фронта (TanStack Query v5, + codegen из OpenAPI)
-
-**Проблема.** Ручные fetch-эффекты не переживают транзиентные сбои: `/me` грузится один раз,
-при ошибке состояние терминально — нет retry с backoff, refetch-on-focus/reconnect, кэша и
-дедупликации. С 2026-08-18 семантические коды обработаны вручную (разлогин по
-`users.user_deleted` / `users.user_not_found` в `CurrentUserProvider`), транзиентные сбои
-осознанно отложены до внедрения библиотеки.
-
-**Ресёрч (2026-08-18).**
-
-- **TanStack Query v5** — дефолт индустрии: ~12.3M скачиваний/нед (у SWR ~7.7M), retry с
-  экспоненциальным backoff, `refetchOnWindowFocus`/`refetchOnReconnect`, кэш, мутации,
-  devtools. React-версия стабильна на v5 (v6 — только не-React адаптеры).
-- **SWR** — легче (~4KB против ~13KB gz), но беднее по мутациям/инвалидации; ниша — простые
-  read-only экраны. **RTK Query** — требует Redux (у нас его нет). **Apollo** — GraphQL, не наш случай.
-- **Прогрессивный слой сверху — codegen из OpenAPI.** FastAPI уже отдаёт схему:
-  **Hey API (openapi-ts)** генерирует типизированный SDK + zod-схемы + готовые
-  TanStack Query-хуки из спеки; **Orval** — то же плюс генерация **MSW-моков** (наш
-  тестовый стек). Это убирает ручные `api/*.ts` и ручной zod — контракт фронта перестаёт
-  дрейфовать от бэка.
-- **TanStack DB** — реактивный слой коллекций ПОВЕРХ Query (live queries, optimistic
-  transactions, cross-collection joins); инкрементально надстраивается над Query. На вырост.
-
-**Решение при внедрении.** База — TanStack Query v5; сравнить Hey API vs Orval (Orval
-интересен MSW-моками для component-тестов). Триггер для старта — вторая-третья точка
-server-state (страница профиля, статистика дашборда). Чек-лист внедрения: перевести `/me`
-(`CurrentUserProvider`), `journeys/map`, geo-автокомплит; проверить бюджет бандла
-(+~13KB gz к app page < 300kb — влезает, см. `.claude/rules/web/performance.md`).
-
-## 2. Удаление и редактирование аккаунта (users)
+## 1. Удаление и редактирование аккаунта (users)
 
 Скоро в работу (решение 2026-08-18). Сейчас у `users.deleted_at` нет писателя (только ручной
 SQL), а у `display_name` — нет продюсера (UserEntity.create его не принимает, update-эндпоинта
@@ -48,5 +19,5 @@ SQL), а у `display_name` — нет продюсера (UserEntity.create ег
   токены (сейчас — да: login ищет по `user_credentials` без предиката `deleted_at` → петля
   «login → 410 на /me → разлогин»); grace-период восстановления; судьба journeys и
   `user_credentials`/refresh-токенов (отзывать ли активные сессии при удалении).
-- Конвенция чтения soft-deleted зафиксирована в `~/.claude/rules/python/ddd.md`
+- Конвенция чтения soft-deleted зафиксирована в `.claude/rules/python/ddd.md`
   (point-lookup отдаёт всё + entity-guard; списки фильтруют в SQL по умолчанию).

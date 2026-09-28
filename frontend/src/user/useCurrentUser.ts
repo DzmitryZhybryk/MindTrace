@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-import type { CurrentUser } from "../api/users";
+import type { CurrentUserResponse } from "../api/sdk";
 
 /**
  * Состояние профиля текущего пользователя.
@@ -13,7 +13,7 @@ export type CurrentUserState =
   | { status: "anonymous" }
   | { status: "loading" }
   | { status: "error" }
-  | { status: "ready"; user: CurrentUser };
+  | { status: "ready"; user: CurrentUserResponse };
 
 export const CurrentUserContext = createContext<CurrentUserState | null>(null);
 

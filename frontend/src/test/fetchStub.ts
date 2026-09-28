@@ -4,7 +4,7 @@
  * каждый api-сьют держал собственную копию.
  */
 
-export type FetchSignature = (input: string, init?: RequestInit) => Promise<Response>;
+export type FetchSignature = (input: string | Request, init?: RequestInit) => Promise<Response>;
 
 /** JSON-ответ с заданным статусом. */
 export function jsonResponse(status: number, body: unknown): Response {
@@ -12,9 +12,4 @@ export function jsonResponse(status: number, body: unknown): Response {
     status,
     headers: { "Content-Type": "application/json" },
   });
-}
-
-/** 200-ответ с JSON-телом — сокращение для happy-path. */
-export function jsonOk(body: unknown): Response {
-  return jsonResponse(200, body);
 }

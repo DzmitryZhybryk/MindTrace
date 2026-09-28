@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 
-import type { PlaceSuggestion, TransportType } from "../api/journeys";
+import type { PlaceResponse, TransportType } from "../api/sdk";
 import carIcon from "../assets/emoji/car.svg";
 import planeIcon from "../assets/emoji/plane.svg";
 import shipIcon from "../assets/emoji/ship.svg";
@@ -86,8 +86,8 @@ function createPinElement(name: string, side: LabelSide): HTMLElement {
 }
 
 interface JourneyGlobeProps {
-  origin: PlaceSuggestion | null;
-  destination: PlaceSuggestion | null;
+  origin: PlaceResponse | null;
+  destination: PlaceResponse | null;
   transportType: TransportType | null;
   originLabel: string;
   destinationLabel: string;
@@ -270,15 +270,25 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
 
     const place = (t: number) => {
       const point = greatCirclePoint(startLat, startLng, endLat, endLng, t);
+      // Мутация полей `vehicle` намеренная (см. комментарий у useMemo выше, строка ~172):
+      // three-globe диффит htmlElementsData по identity объекта и переиспользует DOM,
+      // только если ссылка стабильна. Пересоздание объекта на каждый кадр rAF означало
+      // бы пересборку DOM-иконки 60 раз в секунду вместо обновления её transform.
+      /* oxlint-disable react/immutability -- см. комментарий выше */
       vehicle.lat = point.lat;
       vehicle.lng = point.lng;
       vehicle.alt = arcAltitude(t, apex);
+      /* oxlint-enable react/immutability */
       progressRef.current = t;
       orientIcon(t);
     };
 
     if (reducedMotion) {
       place(1);
+      // `place` мутирует `vehicle`/`progressRef` напрямую (см. комментарий выше) — ни то,
+      // ни другое не триггерит ре-рендер само по себе, поэтому единственный способ
+      // подхватить конечную позицию в htmlData/pathsData — форсировать его этим счётчиком.
+      // oxlint-disable-next-line react/set-state-in-effect -- намеренный форс ре-рендера после внешней мутации, см. выше
       setFrame((f) => f + 1);
       return;
     }
@@ -299,9 +309,14 @@ export function JourneyGlobe({ origin, destination, transportType, originLabel, 
   // Новый массив на каждый ре-рендер (его триггерит setFrame): pins/vehicle —
   // стабильные объекты, three-globe переиспользует их DOM, меняются лишь координаты.
   const htmlData: HtmlDatum[] = showRoute ? [...pins, vehicle] : pins;
+  // progressRef обновляется только синхронно внутри rAF-колбэка (см. `place`/`loop` выше),
+  // а этот рендер форсирует тот же колбэк через setFrame — рваного чтения между записью и
+  // рендером здесь не бывает, значение уже «устоялось» к моменту чтения.
+  /* oxlint-disable react/refs -- намеренное чтение вне эффекта, см. комментарий выше */
   const pathsData = showRoute
     ? [{ coords: buildTrail(startLat, startLng, endLat, endLng, apex, progressRef.current) }]
     : [];
+  /* oxlint-enable react/refs */
 
   return (
     <div ref={containerRef} className="journey-globe">
