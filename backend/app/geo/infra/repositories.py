@@ -25,7 +25,7 @@ class PlaceRepository(BaseDBRepository[GeoPlace], PlaceRepositoryPort):
         result = await self._session.execute(query)
         return [self._to_entity(place_model=place_model) for place_model in result.scalars()]
 
-    def _prefix_query(self, *, search_text: str) -> Select[tuple[GeoPlace]]:
+    def _prefix_query(self, *, search_text: str) -> Select[GeoPlace]:
         """
         Префиксный матч ``lower(name) LIKE 'q%'`` по ``name_en``/``name_ru``.
 

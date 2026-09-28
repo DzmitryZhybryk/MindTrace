@@ -18,7 +18,7 @@ class BaseDBRepository[ModelT: BaseDBModel]:
         self._session = session
         self._model = model
 
-    async def _fetch_one(self, query: Select[tuple[ModelT]]) -> ModelT | None:
+    async def _fetch_one(self, query: Select[ModelT]) -> ModelT | None:
         """
         Выполняет запрос и возвращает одну модель или ``None``.
 
