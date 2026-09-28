@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 
+import { revealPov } from "./cameraReveal";
 import { GLOBE_ATMOSPHERE_COLOR, GLOBE_BUMP_URL, GLOBE_TEXTURE_URL } from "./constants";
 import { applyLabelDeclutter, applyLabelVisibility, createGlobeLabel } from "./globeLabel";
 import { type LabelBox, resolveLabelVisibility } from "./labelDeclutter";
@@ -46,6 +47,11 @@ interface GlobeCanvasProps {
   route?: GlobeRoute | null;
   /** Маршрут гаснет (уход с формы поездки на дашборд), затем хост его снимает. */
   routeFading?: boolean;
+  /**
+   * Появление (первая установка или выход из паузы) — подлётом камеры с докруткой, которая
+   * переходит в автовращение (см. cameraReveal.ts). Без него камера встаёт в `pov` сразу.
+   */
+  reveal?: boolean;
 }
 
 const DEFAULT_POV: GlobePov = { lat: 22, lng: 24, altitude: 2.3 };
@@ -53,6 +59,9 @@ const DEFAULT_POV: GlobePov = { lat: 22, lng: 24, altitude: 2.3 };
 const DECLUTTER_INTERVAL_MS = 150;
 /** Скорость автовращения и длительность перелёта камеры — общие для всех глобусов. */
 const AUTO_ROTATE_SPEED = 0.42;
+// Та же скорость в градусах долготы камеры в секунду: OrbitControls крутит 2π/60·speed рад/с,
+// а его `_rotateLeft` уменьшает азимут — в three-globe это и есть долгота камеры.
+const AUTO_ROTATE_DEG_PER_SEC = -6 * AUTO_ROTATE_SPEED;
 const POV_FLIGHT_MS = 1400;
 const ARC_COLOR: [string, string] = ["rgba(246, 177, 122, 0.95)", "rgba(111, 143, 214, 0.55)"];
 // Стабильные пустые ссылки — чтобы дефолты не пересоздавали массивы на каждый рендер.
@@ -115,6 +124,7 @@ export function GlobeCanvas({
   interactive = false,
   route = null,
   routeFading = false,
+  reveal = false,
 }: GlobeCanvasProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -160,12 +170,36 @@ export function GlobeCanvas({
     // Пан смещает точку прицела камеры — планета «уезжает» из центра без пути назад.
     controls.enablePan = false;
 
-    // Перелёт — только для смены pov у видимого глобуса. Мгновенно: первая установка, pov,
-    // сменившийся пока глобус спрятан (paused), и pov в момент выхода из паузы — иначе
-    // проявление глобуса читалось бы влётом камеры с прошлой грани.
-    const isInstant = !hasSetPovRef.current || reducedMotion || paused || wasPausedRef.current;
-    globe.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: pov.altitude }, isInstant ? 0 : POV_FLIGHT_MS);
+    const target = { lat: pov.lat, lng: pov.lng, altitude: pov.altitude };
+    // Появление: первая установка или выход из паузы. С `reveal` — подлёт; без него —
+    // мгновенно, иначе проявление читалось бы влётом камеры с прошлой грани.
+    const isAppearing = !paused && (!hasSetPovRef.current || wasPausedRef.current);
     hasSetPovRef.current = true;
+
+    if (isAppearing && reveal && !reducedMotion) {
+      // Подлёт ведём сами, покадрово: штатный tween globe.gl перезаписывал бы камеру поверх
+      // автовращения. Автовращение при этом НЕ гасим — демпфированные контролы набирают
+      // скорость заранее, и к концу подлёта вращение подхватывается без провала.
+      const spin = autoRotate ? AUTO_ROTATE_DEG_PER_SEC : 0;
+      let rafId = 0;
+      let startedAt: number | null = null;
+      const step = (now: number) => {
+        startedAt ??= now;
+        const progress = (now - startedAt) / POV_FLIGHT_MS;
+        globe.pointOfView(revealPov(target, progress, spin, POV_FLIGHT_MS), 0);
+        if (progress < 1) {
+          rafId = requestAnimationFrame(step);
+        }
+      };
+
+      globe.pointOfView(revealPov(target, 0, spin, POV_FLIGHT_MS), 0);
+      rafId = requestAnimationFrame(step);
+      return () => cancelAnimationFrame(rafId);
+    }
+
+    // Перелёт — только для смены pov у видимого глобуса: спрятанному (paused) лететь незачем.
+    const isInstant = isAppearing || reducedMotion || paused;
+    globe.pointOfView(target, isInstant ? 0 : POV_FLIGHT_MS);
   }, [
     paused,
     size.width,
@@ -175,6 +209,7 @@ export function GlobeCanvas({
     pov.lat,
     pov.lng,
     pov.altitude,
+    reveal,
   ]);
 
   // Объявлен ПОСЛЕ эффекта камеры: в одном коммите тот успевает прочитать прошлое значение.

@@ -7,7 +7,7 @@ import { useAuth } from "../../auth/useAuth";
 import { ErrorBoundary } from "../ErrorBoundary";
 import type { GlobePov } from "./GlobeCanvas";
 import { useGlobeScene, type GlobeSlot } from "./globeScene";
-import { CAMERA_MAX_ALTITUDE, routeCameraPov, type GlobeRoute } from "./route";
+import { CAMERA_MAX_ALTITUDE, isRealPlace, routeCameraPov, type GlobeRoute } from "./route";
 import { ROUTE_FADE_MS } from "./routeScene";
 import { ROUTE_ARCS, ROUTE_CITIES, type GlobeCity } from "./routes";
 import { citiesFromJourneysMap } from "./userCities";
@@ -57,18 +57,19 @@ interface GlobeView {
  * Выбирает грань, режим вращения, интерактивность и видимость по текущему пути.
  *
  * `/journeys/add` с опубликованным слотом — грань `journeyAdd` (планета в колонке формы,
- * стоит на месте, крутится рукой). Без слота (узкий экран: колонка скрыта) и на остальных
- * `/journeys*` (2D-`WorldMap`) глобус спрятан. На auth-форме (login/signup) планета замирает
- * спокойным фоном; лендинг и дашборд вращаются. Драг-вращение — на дашборде и в форме
- * поездки: на остальных гранях глобус чисто декоративен и слой держит `pointer-events: none`
- * (см. persistent-globe.css).
+ * крутится рукой). Пока в форме не выбрано ни одного места, она вращается, как на дашборде;
+ * с первым городом замирает — камера кадрирует маршрут, и вращение уводило бы его из кадра.
+ * Без слота (узкий экран: колонка скрыта) и на остальных `/journeys*` (2D-`WorldMap`) глобус
+ * спрятан. На auth-форме (login/signup) планета замирает спокойным фоном; лендинг и дашборд
+ * вращаются. Драг-вращение — на дашборде и в форме поездки: на остальных гранях глобус чисто
+ * декоративен и слой держит `pointer-events: none` (см. persistent-globe.css).
  */
-function viewForPath(pathname: string, hasSlot: boolean): GlobeView {
+function viewForPath(pathname: string, hasSlot: boolean, hasRoutePlace: boolean): GlobeView {
   if (pathname.startsWith("/journeys/add") && hasSlot) {
     return {
       screen: "journeyAdd",
       pov: SCREEN_POV.journeyAdd,
-      autoRotate: false,
+      autoRotate: !hasRoutePlace,
       interactive: true,
       visible: true,
     };
@@ -130,7 +131,8 @@ export function PersistentGlobeHost() {
   const { pathname } = useLocation();
   const { isAuthenticated } = useAuth();
   const { route, slot } = useGlobeScene();
-  const view = viewForPath(pathname, slot !== null);
+  const hasRoutePlace = isRealPlace(route?.origin ?? null) || isRealPlace(route?.destination ?? null);
+  const view = viewForPath(pathname, slot !== null, hasRoutePlace);
   const isJourneyAdd = view.screen === "journeyAdd";
   // На грани формы камера кадрирует маршрут; GlobeCanvas сравнивает pov по полям, не по ссылке.
   const pov = isJourneyAdd ? routeCameraPov(route) : view.pov;
@@ -213,6 +215,8 @@ export function PersistentGlobeHost() {
                 route={canvasRoute}
                 routeFading={!isJourneyAdd && fadingRoute !== null}
                 pov={pov}
+                // Появление на грани формы — подлётом к планете, а не только проявлением.
+                reveal={isJourneyAdd}
                 autoRotate={view.autoRotate}
                 interactive={view.interactive}
                 paused={!view.visible}

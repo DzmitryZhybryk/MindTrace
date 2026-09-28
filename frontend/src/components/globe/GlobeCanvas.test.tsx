@@ -659,3 +659,98 @@ describe("GlobeCanvas — камера и пауза", () => {
     expect(pointOfView.mock.calls.at(-1)?.[1]).toBeGreaterThan(0);
   });
 });
+
+describe("GlobeCanvas — подлёт камеры при появлении (reveal)", () => {
+  const TARGET = { lat: 12, lng: 0, altitude: 2.4 };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
+  });
+
+  type Pov = { lat: number; lng: number; altitude: number };
+  function calls(): [Pov, number][] {
+    return pointOfView.mock.calls as [Pov, number][];
+  }
+
+  it("выход из паузы: камера стартует издалека и покадрово подлетает ровно в pov", () => {
+    const { rerender } = renderWithProviders(<GlobeCanvas paused pov={TARGET} reveal />);
+    act(() => fireResize?.(800, 600));
+    pointOfView.mockClear();
+
+    act(() => rerender(<GlobeCanvas pov={TARGET} reveal />));
+    const [start] = calls()[0];
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(start.altitude).toBeGreaterThan(TARGET.altitude);
+    // Кадры идут без tween globe.gl (длительность 0) — иначе он съел бы автовращение.
+    expect(calls().every(([, duration]) => duration === 0)).toBe(true);
+    expect(calls().length).toBeGreaterThan(10);
+    const [end] = calls().at(-1) ?? [];
+    expect(end?.altitude).toBeCloseTo(TARGET.altitude);
+    expect(end?.lng).toBeCloseTo(TARGET.lng);
+  });
+
+  it("после подлёта кадры прекращаются — дальше крутит автовращение", () => {
+    renderWithProviders(<GlobeCanvas pov={TARGET} reveal />);
+    act(() => fireResize?.(800, 600));
+    act(() => vi.advanceTimersByTime(2000));
+    const settled = pointOfView.mock.calls.length;
+
+    act(() => vi.advanceTimersByTime(1000));
+
+    expect(pointOfView.mock.calls.length).toBe(settled);
+  });
+
+  it("смена pov у уже видимого глобуса — обычный перелёт, без повторного подлёта", () => {
+    const { rerender } = renderWithProviders(<GlobeCanvas pov={TARGET} reveal />);
+    act(() => fireResize?.(800, 600));
+    act(() => vi.advanceTimersByTime(2000));
+    pointOfView.mockClear();
+
+    const next = { lat: 50, lng: 30, altitude: 1.2 };
+    act(() => rerender(<GlobeCanvas pov={next} reveal />));
+
+    expect(calls()).toEqual([[next, expect.any(Number)]]);
+    expect(calls()[0]?.[1]).toBeGreaterThan(0);
+  });
+
+  it("смена pov посреди подлёта отменяет его — кадры подлёта больше не перетирают камеру", () => {
+    const { rerender } = renderWithProviders(<GlobeCanvas pov={TARGET} reveal />);
+    act(() => fireResize?.(800, 600));
+    act(() => vi.advanceTimersByTime(300));
+
+    const next = { lat: 50, lng: 30, altitude: 1.2 };
+    act(() => rerender(<GlobeCanvas pov={next} reveal />));
+    pointOfView.mockClear();
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(pointOfView).not.toHaveBeenCalled();
+  });
+
+  it("на паузе подлёта нет — спрятанный глобус камеру не гоняет", () => {
+    renderWithProviders(<GlobeCanvas paused pov={TARGET} reveal />);
+
+    act(() => fireResize?.(800, 600));
+
+    expect(calls()).toEqual([[TARGET, 0]]);
+  });
+
+  it("при prefers-reduced-motion появление мгновенное", () => {
+    setReducedMotion(true);
+    renderWithProviders(<GlobeCanvas pov={TARGET} reveal />);
+
+    act(() => fireResize?.(800, 600));
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(calls()).toEqual([[TARGET, 0]]);
+  });
+
+  it("без reveal появление мгновенное, как на остальных гранях", () => {
+    renderWithProviders(<GlobeCanvas pov={TARGET} />);
+
+    act(() => fireResize?.(800, 600));
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(calls()).toEqual([[TARGET, 0]]);
+  });
+});

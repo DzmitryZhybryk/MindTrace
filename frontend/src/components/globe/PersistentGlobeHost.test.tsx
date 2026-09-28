@@ -22,23 +22,27 @@ type MockGlobeProps = {
   labelCities?: readonly unknown[];
   paused?: boolean;
   interactive?: boolean;
+  autoRotate?: boolean;
   route?: GlobeRoute | null;
   routeFading?: boolean;
   pov?: GlobePov;
+  reveal?: boolean;
 };
 
 vi.mock("./GlobeCanvas", () => ({
-  GlobeCanvas: ({ arcs, labelCities, paused, interactive, route, routeFading, pov }: MockGlobeProps) => (
+  GlobeCanvas: ({ arcs, labelCities, paused, interactive, autoRotate, route, routeFading, pov, reveal }: MockGlobeProps) => (
     <div
       data-testid="globe-canvas"
       data-arcs={arcs?.length ?? 0}
       data-cities={labelCities?.length ?? 0}
       data-paused={String(paused ?? false)}
       data-interactive={String(interactive ?? false)}
+      data-auto-rotate={String(autoRotate ?? true)}
       data-route={route ? route.originLabel : "none"}
       data-route-fading={String(routeFading ?? false)}
       data-pov-lat={pov?.lat}
       data-pov-altitude={pov?.altitude}
+      data-reveal={String(reveal ?? false)}
     />
   ),
 }));
@@ -288,6 +292,36 @@ describe("PersistentGlobeHost — грань формы поездки", () => {
     expect(screenAttr(container, "data-visible")).toBe("true");
     expect(screenAttr(container, "data-interactive")).toBe("true");
     expect(await screen.findByTestId("globe-canvas")).toHaveAttribute("data-paused", "false");
+  });
+
+  it("пустая форма — глобус медленно вращается, как на дашборде", async () => {
+    renderJourneyAdd({ route: { ...ROUTE, origin: null, destination: null } });
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    await waitFor(() => expect(globe).toHaveAttribute("data-auto-rotate", "true"));
+  });
+
+  it.each([
+    { case: "выбран город отправления", origin: MOSCOW, destination: null },
+    { case: "выбран только город назначения", origin: null, destination: LONDON },
+  ])("$case — вращение стоит: камера кадрирует маршрут", async ({ origin, destination }) => {
+    renderJourneyAdd({ route: { ...ROUTE, origin, destination } });
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    await waitFor(() => expect(globe).toHaveAttribute("data-route", "Moscow"));
+    expect(globe).toHaveAttribute("data-auto-rotate", "false");
+  });
+
+  it("на грани формы камера появляется подлётом издалека, на дашборде — сразу на месте", async () => {
+    const { user } = renderJourneyAdd({ route: { ...ROUTE, origin: null, destination: null } });
+    const globe = await screen.findByTestId("globe-canvas");
+
+    await waitFor(() => expect(globe).toHaveAttribute("data-reveal", "true"));
+
+    await user.click(screen.getByRole("button", { name: "go /home" }));
+    expect(globe).toHaveAttribute("data-reveal", "false");
   });
 
   it("без колонки (узкий экран) — глобус спрятан, на паузе и не ловит жесты", async () => {
