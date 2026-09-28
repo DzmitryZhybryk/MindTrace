@@ -23,23 +23,15 @@
 
   /*
    * Добавление поездки: глобус в колонке — app-global `PersistentGlobeHost`, фиксированный
-   * слой ПОД оболочкой. Оболочка прозрачна (ночь-подложку держит хост; токены
-   * `--app-page-bg` и `--night-bg` совпадают, шва нет) и пропускает события сквозь пустой
-   * слот к сфере — тот же приём, что у `.home-shell` (home.css). Живые блоки — шапка,
-   * баннер, панель, карточка формы — события получают обратно.
+   * слой ПОД оболочкой. Оболочка прозрачна: ночь-подложку держит хост (токены
+   * `--app-page-bg` и `--night-bg` совпадают, шва нет). События сквозь пустой слот к сфере
+   * пропускает контракт `data-globe-passthrough` / `data-globe-slot` (persistent-globe.css).
    *
    * Только на десктопе: ниже 62em колонка глобуса скрыта, хост спрятан вместе со своей
    * ночью, и оболочка обязана держать фон сама — иначе под ней плоский `body`.
    */
   .app-shell.journeys-shell--globe {
     background: transparent;
-    pointer-events: none;
-  }
-
-  .journeys-shell--globe > :not(.journeys-stage),
-  .journeys-shell--globe .journeys-stage > :not(.add-journey),
-  .journeys-shell--globe .add-journey > :not(.add-journey__globe-col) {
-    pointer-events: auto;
   }
 }
 

@@ -10,8 +10,9 @@ import "./journeys.css";
  * через <Outlet/>, поэтому шапка и панель не перемонтируются при переключении.
  *
  * На добавлении поездки оболочка получает модификатор `journeys-shell--globe`: там
- * глобус — app-global `PersistentGlobeHost` ПОД оболочкой, и она должна пропускать его
- * сквозь себя (см. journeys.css).
+ * глобус — app-global `PersistentGlobeHost` ПОД оболочкой, и она должна быть прозрачной
+ * (см. journeys.css). События к глобусу пропускает `data-globe-passthrough` — он действует,
+ * только пока хост интерактивен (контракт — persistent-globe.css), поэтому стоит всегда.
  */
 export function JourneysLayout() {
   const { pathname } = useLocation();
@@ -20,7 +21,7 @@ export function JourneysLayout() {
     : "app-shell journeys-shell";
 
   return (
-    <div className={shellClassName}>
+    <div className={shellClassName} data-globe-passthrough>
       <AppHeader />
 
       <main className="journeys-stage">

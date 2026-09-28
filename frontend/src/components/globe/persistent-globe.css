@@ -24,10 +24,29 @@ body.has-verify-banner .persistent-globe {
 /*
  * Интерактивная грань (дашборд): слой ловит события сам — драг-вращение планеты. Прозрачность
  * для кликов/скролла МИМО сферы обеспечивает не CSS, а пиксельный хит-тест в GlobeCanvas:
- * жест, начатый вне шара, глобус игнорирует, и страница живёт как обычно. Оболочка /home при
- * этом пропускает события сквозь себя (см. home.css).
+ * жест, начатый вне шара, глобус игнорирует, и страница живёт как обычно. Сквозь оболочку
+ * страницы события доходят по контракту ниже.
  */
 .persistent-globe[data-interactive="true"] {
+  pointer-events: auto;
+}
+
+/*
+ * Сквозной проход событий к глобусу. Интерактивный хост лежит ПОД оболочкой страницы, поэтому
+ * оболочка ([data-globe-passthrough]) и каждый предок пустого слота ([data-globe-slot])
+ * прозрачны для указателя, а их дети, ответвляющиеся от пути к слоту, получают события
+ * обратно (потомки наследуют как обычно). Глубина вложенности слота роли не играет — путь к
+ * нему находит :has(). Действует, только пока хост сам ловит события (data-interactive): на
+ * узкой форме поездки, на 2D-карте и при упавшем chunk'е глобуса страница остаётся обычной.
+ */
+body:has(.persistent-globe[data-interactive="true"])
+  :is([data-globe-passthrough], [data-globe-passthrough] :has([data-globe-slot]), [data-globe-slot]) {
+  pointer-events: none;
+}
+
+body:has(.persistent-globe[data-interactive="true"])
+  :is([data-globe-passthrough], [data-globe-passthrough] :has([data-globe-slot]))
+  > :not(:has([data-globe-slot])):not([data-globe-slot]) {
   pointer-events: auto;
 }
 

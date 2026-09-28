@@ -114,7 +114,8 @@ export function AddJourneyPage() {
         </section>
       </div>
 
-      <div ref={slotRef} className="add-journey__globe-col" />
+      {/* Пустой слот под глобус: жесты сквозь него уходят планете (контракт — persistent-globe.css). */}
+      <div ref={slotRef} className="add-journey__globe-col" data-globe-slot />
     </div>
   );
 }
