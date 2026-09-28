@@ -53,12 +53,10 @@ export default defineConfig({
         "src/**/*.d.ts",
         // Сгенерированный из OpenAPI SDK: свой код там не пишется, покрывать нечего.
         "src/api/generated/**",
-        // Императивный three/WebGL-рендер глобусов: в jsdom не исполняется, тестировать
-        // нечего. Вся чистая математика вынесена в src/components/globe/{geo,route,routes}.ts
-        // и покрыта unit-тестами — эти файлы остаются под покрытием.
-        // HomeGlobe/AuthGlobe удалены редизайном; их роль исполняет app-global
-        // globe/PersistentGlobeHost поверх GlobeCanvas (покрыт component-тестом).
-        "src/components/JourneyGlobe.tsx",
+        // Императивная сцена маршрута на глобусе (DOM пинов/транспорта, rAF-движение, курс
+        // через getScreenCoords): three/WebGL в jsdom не исполняется, тестировать нечего. Вся
+        // чистая математика — в src/components/globe/{geo,route,routes}.ts, она под покрытием.
+        "src/components/globe/routeScene.ts",
         // Декларативная композиция без логики: таблица маршрутов и layout-каркасы с <Outlet/>.
         // Ветвлений нет, покрывается e2e-навигацией, а не unit/component. PublicLayout стал
         // тривиальным после переезда глобуса на корень (шапка + <Outlet/> через кросс-фейд).

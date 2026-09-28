@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { GEO_PLACES } from "../../test/handlers";
 import { act, renderWithProviders } from "../../test/render";
 import { GlobeCanvas } from "./GlobeCanvas";
 import { createGlobeLabel } from "./globeLabel";
+import type { GlobeRoute } from "./route";
+import type { RouteHtmlDatum, RouteTrail } from "./routeScene";
+import type { GlobeCity } from "./routes";
 
 /*
  * Ветки этого компонента открываются только когда контейнер получил РАЗМЕР: до этого
@@ -42,8 +46,12 @@ const cameraStub = { matrixWorld: { elements: [0] } };
 // Канвас рендерера нужен интерактивному эффекту (он переопределяет touch-action OrbitControls).
 const rendererDomElement = document.createElement("canvas");
 
+// Пропсы последнего рендера `<Globe>`: по ним видно, чем холст кормит слои (данные, аксессоры).
+let globeProps: Record<string, unknown> = {};
+
 vi.mock("react-globe.gl", () => ({
   default: (props: { ref?: { current?: unknown } }) => {
+    globeProps = props;
     // globe.gl отдаёт императивный инстанс через ref — воспроизводим ровно это.
     if (props.ref) {
       props.ref.current = {
@@ -72,6 +80,7 @@ function setReducedMotion(reduced: boolean) {
 
 beforeEach(() => {
   fireResize = null;
+  globeProps = {};
   controls.autoRotate = false;
   controls.enableZoom = true;
   controls.enablePan = true;
@@ -493,5 +502,160 @@ describe("GlobeCanvas", () => {
 
     expect(tashkent.classList.contains("globe-label--decluttered")).toBe(false);
     expect(bishkek.classList.contains("globe-label--decluttered")).toBe(false);
+  });
+});
+
+describe("GlobeCanvas — маршрут формы поездки", () => {
+  const [MOSCOW, LONDON] = GEO_PLACES;
+  const CITIES: GlobeCity[] = [{ name: "Minsk", lat: 53.9, lng: 27.56 }];
+
+  function makeRoute(overrides: Partial<GlobeRoute> = {}): GlobeRoute {
+    return {
+      origin: MOSCOW,
+      destination: LONDON,
+      transportType: "air",
+      originLabel: "Moscow",
+      destinationLabel: "London",
+      ...overrides,
+    };
+  }
+
+  function htmlData(): object[] {
+    return globeProps.htmlElementsData as object[];
+  }
+
+  function routeData(): RouteHtmlDatum[] {
+    return htmlData().filter((datum): datum is RouteHtmlDatum => "kind" in datum);
+  }
+
+  beforeEach(() => {
+    // Без анимации транспорт сразу стоит в конце пути — позиция детерминирована.
+    setReducedMotion(true);
+  });
+
+  it("без маршрута отдаёт слою подписей тот же массив городов — слой не пересобирается", () => {
+    renderWithProviders(<GlobeCanvas labelCities={CITIES} />);
+    act(() => fireResize?.(800, 600));
+
+    expect(htmlData()).toBe(CITIES);
+    expect(globeProps.pathsData).toEqual([]);
+  });
+
+  it("полный маршрут: пины обоих концов, транспорт в конце пути и след", () => {
+    renderWithProviders(<GlobeCanvas route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+
+    const pins = routeData().filter((datum) => datum.kind === "route-pin");
+    const vehicle = routeData().find((datum) => datum.kind === "route-vehicle");
+
+    expect(pins.map((pin) => pin.name)).toEqual(["Moscow", "London"]);
+    expect(vehicle?.lat).toBeCloseTo(LONDON.latitude);
+    expect(vehicle?.lng).toBeCloseTo(LONDON.longitude);
+    expect(globeProps.pathsData).toHaveLength(1);
+  });
+
+  it("выбран один город — только его пин, без транспорта и следа", () => {
+    renderWithProviders(<GlobeCanvas route={makeRoute({ destination: null, transportType: null })} />);
+    act(() => fireResize?.(800, 600));
+
+    expect(routeData()).toEqual([expect.objectContaining({ kind: "route-pin", name: "Moscow" })]);
+    expect(globeProps.pathsData).toEqual([]);
+  });
+
+  it("оба города без среды передвижения — пины без следа и транспорта", () => {
+    renderWithProviders(<GlobeCanvas route={makeRoute({ transportType: null })} />);
+    act(() => fireResize?.(800, 600));
+
+    expect(routeData().map((datum) => datum.kind)).toEqual(["route-pin", "route-pin"]);
+    expect(globeProps.pathsData).toEqual([]);
+  });
+
+  it("подписи городов и маршрут делят один html-слой", () => {
+    renderWithProviders(<GlobeCanvas labelCities={CITIES} route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+
+    expect(htmlData()).toEqual(expect.arrayContaining([CITIES[0], expect.objectContaining({ kind: "route-pin" })]));
+  });
+
+  it("аксессоры различают подпись и элемент маршрута: высота и DOM", () => {
+    renderWithProviders(<GlobeCanvas labelCities={CITIES} route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+    const altitude = globeProps.htmlAltitude as (datum: object) => number;
+    const element = globeProps.htmlElement as (datum: object) => HTMLElement;
+    const [pin] = routeData();
+
+    expect(altitude(CITIES[0])).toBe(0);
+    expect(altitude(pin)).toBeGreaterThan(0);
+    expect(element(CITIES[0]).classList.contains("globe-label")).toBe(true);
+    expect(element(pin).classList.contains("globe-route-pin")).toBe(true);
+    expect(element(pin).textContent).toBe("Moscow");
+  });
+
+  it("окклюзия: подпись гаснет прозрачностью, элемент маршрута прячется, не трогая opacity", () => {
+    renderWithProviders(<GlobeCanvas labelCities={CITIES} route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+    const element = globeProps.htmlElement as (datum: object) => HTMLElement;
+    const hideBehindGlobe = globeProps.htmlElementVisibilityModifier as (el: HTMLElement, visible: boolean) => void;
+    const label = element(CITIES[0]);
+    const pin = element(routeData()[0]);
+
+    hideBehindGlobe(label, false);
+    hideBehindGlobe(pin, false);
+
+    expect(label.style.opacity).toBe("0");
+    expect(pin.style.visibility).toBe("hidden");
+    // opacity пина свободна под угасание маршрута — окклюзия её не занимает.
+    expect(pin.style.opacity).toBe("");
+
+    hideBehindGlobe(pin, true);
+    expect(pin.style.visibility).toBe("");
+  });
+
+  it("позиции html-меток ставятся без твина — иначе транспорт отставал бы от следа", () => {
+    renderWithProviders(<GlobeCanvas route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+
+    expect(globeProps.htmlTransitionDuration).toBe(0);
+  });
+
+  it("след рисуется непрозрачным закатным цветом, пока маршрут не гаснет", () => {
+    renderWithProviders(<GlobeCanvas route={makeRoute()} />);
+    act(() => fireResize?.(800, 600));
+    const color = globeProps.pathColor as (trail: object) => string;
+    const [trail] = globeProps.pathsData as RouteTrail[];
+
+    expect(color(trail)).toBe("rgba(232, 147, 92, 1)");
+  });
+
+  it("угасание маршрута помечает контейнер — CSS гасит пины и иконку", () => {
+    const { container, rerender } = renderWithProviders(<GlobeCanvas route={makeRoute()} />);
+    const canvas = container.querySelector(".globe-canvas");
+
+    expect(canvas?.classList.contains("globe-canvas--route-fading")).toBe(false);
+
+    rerender(<GlobeCanvas route={makeRoute()} routeFading />);
+    expect(canvas?.classList.contains("globe-canvas--route-fading")).toBe(true);
+  });
+});
+
+describe("GlobeCanvas — камера и пауза", () => {
+  it("pov, сменившийся вместе с уходом в паузу, ставится без перелёта — спрятанному лететь незачем", () => {
+    const { rerender } = renderWithProviders(<GlobeCanvas pov={{ lat: 0, lng: 0, altitude: 2 }} />);
+    act(() => fireResize?.(800, 600));
+
+    act(() => rerender(<GlobeCanvas paused pov={{ lat: 40, lng: 30, altitude: 1.8 }} />));
+
+    expect(pointOfView.mock.calls.at(-1)?.[1]).toBe(0);
+  });
+
+  it("выход из паузы с новым pov — без перелёта (проявление на месте), следующая смена — перелётом", () => {
+    const { rerender } = renderWithProviders(<GlobeCanvas paused pov={{ lat: 0, lng: 0, altitude: 2 }} />);
+    act(() => fireResize?.(800, 600));
+
+    act(() => rerender(<GlobeCanvas pov={{ lat: 40, lng: 30, altitude: 1.8 }} />));
+    expect(pointOfView.mock.calls.at(-1)?.[1]).toBe(0);
+
+    act(() => rerender(<GlobeCanvas pov={{ lat: 10, lng: 60, altitude: 1.5 }} />));
+    expect(pointOfView.mock.calls.at(-1)?.[1]).toBeGreaterThan(0);
   });
 });

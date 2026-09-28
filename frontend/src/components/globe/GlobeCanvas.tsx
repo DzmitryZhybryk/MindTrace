@@ -4,6 +4,15 @@ import Globe, { type GlobeMethods } from "react-globe.gl";
 import { GLOBE_ATMOSPHERE_COLOR, GLOBE_BUMP_URL, GLOBE_TEXTURE_URL } from "./constants";
 import { applyLabelDeclutter, applyLabelVisibility, createGlobeLabel } from "./globeLabel";
 import { type LabelBox, resolveLabelVisibility } from "./labelDeclutter";
+import type { GlobeRoute, TrailPoint } from "./route";
+import {
+  applyRouteVisibility,
+  createRouteElement,
+  isRouteDatum,
+  isRouteElement,
+  useRouteScene,
+  type RouteTrail,
+} from "./routeScene";
 import type { GlobeCity, RouteArc } from "./routes";
 import "./globe-label.css";
 import "./globe-canvas.css";
@@ -33,6 +42,10 @@ interface GlobeCanvasProps {
   paused?: boolean;
   /** Драг-вращение обеими осями. Жест распознаётся пиксельно по самой сфере, мимо неё — уходит странице. */
   interactive?: boolean;
+  /** Маршрут формы поездки: пины концов, след и бегущий транспорт; по умолчанию нет. */
+  route?: GlobeRoute | null;
+  /** Маршрут гаснет (уход с формы поездки на дашборд), затем хост его снимает. */
+  routeFading?: boolean;
 }
 
 const DEFAULT_POV: GlobePov = { lat: 22, lng: 24, altitude: 2.3 };
@@ -55,19 +68,43 @@ const EMPTY_CITIES: GlobeCity[] = [];
  */
 const arcColorAccessor = (): [string, string] => ARC_COLOR;
 const arcDashInitialGapAccessor = (d: object): number => (d as RouteArc).dashInitialGap;
-const cityLatAccessor = (d: object): number => (d as GlobeCity).lat;
-const cityLngAccessor = (d: object): number => (d as GlobeCity).lng;
-const cityLabelAccessor = (d: object): HTMLElement => {
+/*
+ * Html-слой в globe.gl один, поэтому подписи городов и элементы маршрута (пины, транспорт)
+ * делят его: аксессоры различают датумы по дискриминатору `kind` маршрута.
+ */
+const htmlLatAccessor = (d: object): number => (d as GlobeCity | { lat: number }).lat;
+const htmlLngAccessor = (d: object): number => (d as GlobeCity | { lng: number }).lng;
+const htmlAltitudeAccessor = (d: object): number => (isRouteDatum(d) ? d.alt : 0);
+const htmlElementAccessor = (d: object): HTMLElement => {
+  if (isRouteDatum(d)) {
+    return createRouteElement(d);
+  }
+
   const city = d as GlobeCity;
   return createGlobeLabel(city.name, `${city.name}|${city.lat}|${city.lng}`);
 };
+// Окклюзия дальней стороны: подписи гаснут прозрачностью, маршрут прячется мгновенно (как было).
+const htmlVisibilityModifier = (el: HTMLElement, isVisible: boolean): void => {
+  if (isRouteElement(el)) {
+    applyRouteVisibility(el, isVisible);
+    return;
+  }
+
+  applyLabelVisibility(el, isVisible);
+};
+const pathPointsAccessor = (d: object): TrailPoint[] => (d as RouteTrail).coords;
+const pathPointLatAccessor = (p: unknown): number => (p as TrailPoint).lat;
+const pathPointLngAccessor = (p: unknown): number => (p as TrailPoint).lng;
+const pathPointAltAccessor = (p: unknown): number => (p as TrailPoint).alt;
+const pathColorAccessor = (d: object): string => (d as RouteTrail).color;
 
 /**
  * Общая база декоративного 3D-глобуса (signature продукта). Инкапсулирует замер
  * контейнера, тёплую тонировку, атмосферу, блок зума скроллом, reduced-motion,
- * автовращение, перелёты камеры (pov) и опциональное драг-вращение по сфере. Опционально рисует дуги маршрутов и подписи
- * городов-концов (HTML-метки с окклюзией дальней стороны). Потребитель — app-global
- * глобус-фон (`PersistentGlobeHost`).
+ * автовращение, перелёты камеры (pov) и опциональное драг-вращение по сфере. Опционально рисует дуги маршрутов,
+ * подписи городов-концов (HTML-метки с окклюзией дальней стороны) и маршрут формы поездки
+ * (пины, след, бегущий транспорт — см. routeScene.ts). Потребитель — app-global глобус-фон
+ * (`PersistentGlobeHost`).
  */
 export function GlobeCanvas({
   arcs = EMPTY_ARCS,
@@ -76,16 +113,24 @@ export function GlobeCanvas({
   pov = DEFAULT_POV,
   paused = false,
   interactive = false,
+  route = null,
+  routeFading = false,
 }: GlobeCanvasProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hasSetPovRef = useRef(false);
+  // `paused` прошлого коммита: эффект камеры читает его ДО эффекта, который его обновляет.
+  const wasPausedRef = useRef(paused);
   const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [reducedMotion] = useState(
     () =>
       typeof window !== "undefined" &&
       (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false),
   );
+  const routeScene = useRouteScene({ route, globeRef, containerRef, reducedMotion, fading: routeFading });
+  // Без маршрута — та же ссылка `labelCities`: новый массив на рендер пересобирал бы слой.
+  const htmlData: object[] =
+    routeScene.htmlData.length === 0 ? labelCities : [...labelCities, ...routeScene.htmlData];
 
   useEffect(() => {
     const el = containerRef.current;
@@ -115,11 +160,14 @@ export function GlobeCanvas({
     // Пан смещает точку прицела камеры — планета «уезжает» из центра без пути назад.
     controls.enablePan = false;
 
-    // Первая установка — мгновенно; последующие смены pov — плавный перелёт.
-    const duration = hasSetPovRef.current && !reducedMotion ? POV_FLIGHT_MS : 0;
-    globe.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: pov.altitude }, duration);
+    // Перелёт — только для смены pov у видимого глобуса. Мгновенно: первая установка, pov,
+    // сменившийся пока глобус спрятан (paused), и pov в момент выхода из паузы — иначе
+    // проявление глобуса читалось бы влётом камеры с прошлой грани.
+    const isInstant = !hasSetPovRef.current || reducedMotion || paused || wasPausedRef.current;
+    globe.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: pov.altitude }, isInstant ? 0 : POV_FLIGHT_MS);
     hasSetPovRef.current = true;
   }, [
+    paused,
     size.width,
     size.height,
     reducedMotion,
@@ -128,6 +176,11 @@ export function GlobeCanvas({
     pov.lng,
     pov.altitude,
   ]);
+
+  // Объявлен ПОСЛЕ эффекта камеры: в одном коммите тот успевает прочитать прошлое значение.
+  useEffect(() => {
+    wasPausedRef.current = paused;
+  }, [paused]);
 
   /*
    * Драг-вращение. Канвас растянут на весь вьюпорт, а планета занимает лишь его середину,
@@ -330,7 +383,7 @@ export function GlobeCanvas({
   }, [paused, size.width, size.height]);
 
   return (
-    <div ref={containerRef} className="globe-canvas">
+    <div ref={containerRef} className={routeFading ? "globe-canvas globe-canvas--route-fading" : "globe-canvas"}>
       {size.width > 0 && size.height > 0 && (
         <Globe
           ref={globeRef}
@@ -351,12 +404,25 @@ export function GlobeCanvas({
           arcDashInitialGap={arcDashInitialGapAccessor}
           arcDashAnimateTime={reducedMotion ? 0 : 3800}
           arcsTransitionDuration={reducedMotion ? 0 : 1200}
-          htmlElementsData={labelCities}
-          htmlLat={cityLatAccessor}
-          htmlLng={cityLngAccessor}
-          htmlAltitude={0}
-          htmlElement={cityLabelAccessor}
-          htmlElementVisibilityModifier={applyLabelVisibility}
+          pathsData={routeScene.trails}
+          pathPoints={pathPointsAccessor}
+          pathPointLat={pathPointLatAccessor}
+          pathPointLng={pathPointLngAccessor}
+          pathPointAlt={pathPointAltAccessor}
+          pathColor={pathColorAccessor}
+          pathDashLength={0.05}
+          pathDashGap={0.02}
+          pathDashAnimateTime={reducedMotion ? 0 : 1600}
+          pathTransitionDuration={0}
+          htmlElementsData={htmlData}
+          htmlLat={htmlLatAccessor}
+          htmlLng={htmlLngAccessor}
+          htmlAltitude={htmlAltitudeAccessor}
+          htmlElement={htmlElementAccessor}
+          htmlElementVisibilityModifier={htmlVisibilityModifier}
+          // Позиции ставятся сразу: с дефолтной 1000мс твин-анимацией транспорт, чьи координаты
+          // меняются каждый кадр, копил бы твины и отставал от головы следа.
+          htmlTransitionDuration={0}
         />
       )}
     </div>

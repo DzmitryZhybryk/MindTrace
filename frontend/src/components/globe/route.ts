@@ -1,8 +1,10 @@
-import type { PlaceResponse } from "../../api/sdk";
+import type { PlaceResponse, TransportType } from "../../api/sdk";
+import type { GlobePov } from "./GlobeCanvas";
+import { centralAngleRad } from "./geo";
 
 /*
- * Чистая геометрия маршрута для JourneyGlobe: great-circle интерполяция, высота дуги,
- * авто-зум камеры под длину маршрута, сэмплирование следа. Вынесено из компонента,
+ * Чистая геометрия маршрута поездки на глобусе: great-circle интерполяция, высота дуги,
+ * авто-зум камеры под длину маршрута, сэмплирование следа. Вынесено из сцены (routeScene.ts),
  * чтобы математику (ядро визуализации поездки) можно было покрыть unit-тестами —
  * сам three/WebGL-рендер в jsdom не тестируется, а эти функции детерминированы.
  */
@@ -14,7 +16,10 @@ const RAD = 180 / Math.PI;
 // чтобы маршрут занимал ~ROUTE_VIEWPORT_SPAN долю обзора, в пределах [MIN, MAX].
 const CAMERA_FOV_DEG = 50; // поле зрения камеры three.js в globe.gl
 const ROUTE_VIEWPORT_SPAN = 0.1; // целевая доля обзора под маршрут (больше → ближе зум)
-export const CAMERA_MAX_ALTITUDE = 1.7; // дальний предел (города далеко / выбран один)
+// Дальний предел (города далеко / выбран один / форма пуста). Он же высота камеры грани
+// дашборда: при одинаковом масштабе рамки сфера на форме и на главной одного размера, и
+// переход между ними — чистый переезд, без раздувания (см. SCREEN_POV в PersistentGlobeHost).
+export const CAMERA_MAX_ALTITUDE = 2.4;
 export const CAMERA_MIN_ALTITUDE = 0.12; // ближний предел (ближе города не приближаем)
 // Высота дуги нормируется на этот угловой размер: у дальних маршрутов дуга «полная»,
 // у близких масштабируется вниз, иначе при зуме превратится в вертикальный шпиль.
@@ -23,6 +28,20 @@ const TRAIL_SAMPLES = 96;
 
 export type GeoPoint = { lat: number; lng: number };
 export type TrailPoint = { lat: number; lng: number; alt: number };
+
+/** Маршрут поездки, который форма добавления отдаёт глобусу. */
+export interface GlobeRoute {
+  origin: PlaceResponse | null;
+  destination: PlaceResponse | null;
+  transportType: TransportType | null;
+  originLabel: string;
+  destinationLabel: string;
+}
+
+// Вид камеры, пока ни один город не выбран (нейтральный, без демо-маршрута).
+const DEFAULT_ROUTE_VIEW: GeoPoint = { lat: 20, lng: 0 };
+// Доля широты, которую дальний зум «отдаёт» экватору: вид парой к форме, а не с полюса.
+const FAR_ZOOM_EQUATOR_PULL = 0.4;
 
 /** Точка на большом круге между двумя координатами при параметре t ∈ [0, 1] (slerp). */
 export function greatCirclePoint(
@@ -112,4 +131,37 @@ export function buildTrail(
 /** Место «реальное» (выбрано из автокомплита), если у него есть координаты. */
 export function isRealPlace(place: PlaceResponse | null): place is PlaceResponse {
   return place !== null && (place.latitude !== 0 || place.longitude !== 0);
+}
+
+/**
+ * Точка обзора камеры под маршрут: середина пути (зум по расстоянию), либо единственный
+ * выбранный город, либо нейтральный вид, пока ничего не выбрано.
+ *
+ * Args:
+ *     route: Маршрут формы или `null`, если формы нет.
+ *
+ * Returns:
+ *     Точка обзора для `pointOfView` globe.gl.
+ */
+export function routeCameraPov(route: GlobeRoute | null): GlobePov {
+  const origin = route?.origin ?? null;
+  const destination = route?.destination ?? null;
+
+  let target = DEFAULT_ROUTE_VIEW;
+  let altitude = CAMERA_MAX_ALTITUDE;
+  if (isRealPlace(origin) && isRealPlace(destination)) {
+    target = greatCirclePoint(origin.latitude, origin.longitude, destination.latitude, destination.longitude, 0.5);
+    altitude = altitudeForSeparation(
+      centralAngleRad(origin.latitude, origin.longitude, destination.latitude, destination.longitude),
+    );
+  } else if (isRealPlace(origin)) {
+    target = { lat: origin.latitude, lng: origin.longitude };
+  } else if (isRealPlace(destination)) {
+    target = { lat: destination.latitude, lng: destination.longitude };
+  }
+
+  // На ближнем зуме центрируем ровно на маршруте, иначе зум уведёт города из кадра.
+  const zoomT = (altitude - CAMERA_MIN_ALTITUDE) / (CAMERA_MAX_ALTITUDE - CAMERA_MIN_ALTITUDE);
+  const latFactor = 1 - FAR_ZOOM_EQUATOR_PULL * zoomT;
+  return { lat: target.lat * latFactor, lng: target.lng, altitude };
 }

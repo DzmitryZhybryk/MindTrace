@@ -12,6 +12,13 @@
   /* Тёмная база на весь вьюпорт на время инициализации WebGL (сфера ниже кадрируется,
      поэтому фон держит именно эта обёртка, а не трансформируемый stage). */
   background: var(--night-bg);
+  /* Масштаб рамки дашборда. Его же берёт грань формы поездки — сфера одного размера на обеих,
+     и переход между ними только двигает её (без баннера / с баннером — ниже). */
+  --globe-home-scale: 1.05;
+}
+
+body.has-verify-banner .persistent-globe {
+  --globe-home-scale: 0.98;
 }
 
 /*
@@ -32,6 +39,33 @@
  */
 .persistent-globe[data-visible="false"] {
   visibility: hidden;
+}
+
+/*
+ * Обрезка сферы. На всех гранях — во весь вьюпорт (`inset(0)`, а не `none`: между
+ * двумя inset() переход интерполируется, с `none` — прыгает). Анимируется синхронно с
+ * кадрированием stage: уход с грани формы на /home раскрывает рамку колонки в полный экран.
+ */
+.persistent-globe__clip {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0);
+  opacity: 1;
+  transition:
+    clip-path 1.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.7s ease;
+}
+
+/*
+ * Проявление после скрытия роутом (например, 2D-карта → форма поездки): сфера проступает
+ * прозрачностью НА МЕСТЕ — рамка грани встаёт сразу, камера ставится без перелёта (см.
+ * GlobeCanvas). Гасится только сфера, а не весь хост: его ночь-подложка нужна сразу, иначе
+ * во время проявления сквозь прозрачную оболочку страницы проступал бы плоский `body`.
+ * Уход в скрытие мгновенный (`transition: none`): там оболочку и так закрашивает своя ночь.
+ */
+.persistent-globe[data-visible="false"] .persistent-globe__clip {
+  opacity: 0;
+  transition: none;
 }
 
 /*
@@ -66,7 +100,29 @@
  * планета крупнее и выше.
  */
 .persistent-globe[data-screen="home"] .persistent-globe__stage {
-  transform: translateY(5%) scale(1.05);
+  transform: translateY(5%) scale(var(--globe-home-scale));
+}
+
+/*
+ * Грань формы поездки (/journeys/add): планета в колонке справа от формы. Геометрия —
+ * из измеренного страницей слота (CSS-переменные ставит PersistentGlobeHost), поэтому
+ * процентами, как у остальных граней, её не выразить. Масштаб — ОБЩИЙ с дашбордом
+ * (`--globe-home-scale`), а высота камеры без маршрута та же, что у грани home: сфера одного
+ * размера, и уход на /home только переносит её. Свой масштаб у грани давал раздувание на
+ * переходе — рамка и камера меняли размер двумя анимациями с разными кривыми.
+ *
+ * `transition: none` — на ВХОД и ресайз: рамка встаёт в колонку сразу (проявление идёт
+ * прозрачностью, а не влётом из центра экрана), и не плывёт 1.3s за окном при ресайзе.
+ * Уход анимируется: переход берётся из правила целевой грани, у которой он есть.
+ */
+.persistent-globe[data-screen="journeyAdd"] .persistent-globe__clip {
+  clip-path: var(--globe-slot-clip);
+  transition: opacity 0.7s ease;
+}
+
+.persistent-globe[data-screen="journeyAdd"] .persistent-globe__stage {
+  transform: translate(var(--globe-slot-x), var(--globe-slot-y)) scale(var(--globe-home-scale));
+  transition: none;
 }
 
 /*
@@ -77,7 +133,7 @@
  * при закрытии баннера, синхронно с уезжающим вверх приветствием.
  */
 body.has-verify-banner .persistent-globe[data-screen="home"] .persistent-globe__stage {
-  transform: translateY(8%) scale(0.98);
+  transform: translateY(8%) scale(var(--globe-home-scale));
 }
 
 /*
@@ -144,6 +200,7 @@ body.has-verify-banner .persistent-globe[data-screen="home"] .persistent-globe__
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .persistent-globe__clip,
   .persistent-globe__stage,
   .persistent-globe__scrim {
     transition: none;
