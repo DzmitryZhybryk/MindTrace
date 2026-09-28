@@ -68,7 +68,7 @@
 /*
  * Угасание маршрута при уходе с формы на /home. Гасим ДЕТЕЙ, а не обёртку: inline-стили
  * обёрток пишет globe.gl (позиция CSS2D-рендерера, окклюзия дальней стороны). 0.7s =
- * ROUTE_FADE_MS в routeScene.ts; след гаснет там же альфой своего цвета.
+ * ROUTE_FADE_MS в route.ts; след гаснет в routeScene.ts альфой своего цвета.
  */
 .globe-route-pin__dot,
 .globe-route-pin__name,

@@ -12,6 +12,7 @@ import {
   buildTrail,
   greatCirclePoint,
   isRealPlace,
+  ROUTE_FADE_MS,
   type GlobeRoute,
   type TrailPoint,
 } from "./route";
@@ -49,11 +50,6 @@ const TRANSPORT_VISUAL: Record<TransportType, TransportVisual> = {
 // three.js, где CSS-переменные не работают). RGB без альфы — альфу добавляет угасание.
 const TRAIL_RGB = "232, 147, 92";
 
-/**
- * Длительность угасания маршрута при уходе с формы на /home. Та же цифра — в
- * globe-route.css (переход прозрачности пинов/иконки): держать их синхронными.
- */
-export const ROUTE_FADE_MS = 700;
 // Noto-самолёт нативно смотрит в верх-вправо (~45°); поворот к экранному курсу = atan2(dy,dx) + 45°.
 const ICON_ROTATION_OFFSET_DEG = 45;
 // Шаг «вперёд по курсу» для расчёта направления иконки (доля пути).

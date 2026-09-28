@@ -26,6 +26,14 @@ export const CAMERA_MIN_ALTITUDE = 0.12; // ближний предел (бли�
 const ARC_REFERENCE_SEPARATION_RAD = (50 * Math.PI) / 180;
 const TRAIL_SAMPLES = 96;
 
+/**
+ * Длительность угасания маршрута при уходе с формы на /home. Та же цифра — в
+ * globe-route.css (переход прозрачности пинов/иконки): держать их синхронными.
+ * Живёт здесь, а не в routeScene.ts: хост импортирует её напрямую, а value-импорт из
+ * сцены утянул бы её DOM-код, CSS и SVG в чанк хоста, который грузится на каждой странице.
+ */
+export const ROUTE_FADE_MS = 700;
+
 export type GeoPoint = { lat: number; lng: number };
 export type TrailPoint = { lat: number; lng: number; alt: number };
 
