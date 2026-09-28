@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useLocation, useOutlet } from "react-router";
 
 import "./public-crossfade.css";
@@ -38,14 +38,15 @@ export function PublicCrossfade() {
   const outlet = useOutlet();
   const [shownPath, setShownPath] = useState(pathname);
   const [leaving, setLeaving] = useState<LeavingScreen | null>(null);
-  // Узел ПРЕДЫДУЩЕГО рендера: ref обновляется в эффекте (после коммита), поэтому в
-  // момент смены пути здесь ещё лежит уходящий экран — то, что и нужно погасить.
-  const previousNodeRef = useRef<ReactNode>(outlet);
+  // Узел ПРЕДЫДУЩЕГО рендера: обновляется ниже прямо в рендере (не в эффекте) — читать
+  // ref в фазе рендера React не гарантирует, а state, подправленный тем же способом,
+  // что и shownPath/leaving выше, даёт то же самое «на один рендер позади» безопасно.
+  const [previousNode, setPreviousNode] = useState<ReactNode>(outlet);
 
   if (shownPath !== pathname) {
     setLeaving({
       pathname: shownPath,
-      node: previousNodeRef.current,
+      node: previousNode,
       // Скролл читаем здесь, до коммита: после него документ уже сожмётся под входящий
       // экран и браузер обрежет позицию прокрутки — «где был пользователь» будет потеряно.
       scrollY: window.scrollY,
@@ -53,9 +54,9 @@ export function PublicCrossfade() {
     setShownPath(pathname);
   }
 
-  useEffect(() => {
-    previousNodeRef.current = outlet;
-  });
+  if (previousNode !== outlet) {
+    setPreviousNode(outlet);
+  }
 
   useEffect(() => {
     if (leaving === null) return;
