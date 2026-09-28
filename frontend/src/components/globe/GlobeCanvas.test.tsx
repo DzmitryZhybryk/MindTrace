@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EventDispatcher } from "three";
+import type { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import { GEO_PLACES } from "../../test/handlers";
 import { act, renderWithProviders } from "../../test/render";
@@ -36,7 +38,10 @@ class ControllableResizeObserver {
 }
 
 /** Инстанс globe.gl, который отдаёт мок вместо настоящего three/WebGL. */
-const controls = { autoRotate: false, autoRotateSpeed: 0, enableZoom: true, enablePan: true, enableRotate: true };
+let controls: Pick<OrbitControls,
+  | "autoRotate" | "autoRotateSpeed" | "enableZoom" | "enablePan" | "enableRotate"
+  | "addEventListener" | "removeEventListener" | "dispatchEvent"
+>;
 const pointOfView = vi.fn();
 const pauseAnimation = vi.fn();
 const resumeAnimation = vi.fn();
@@ -81,10 +86,9 @@ function setReducedMotion(reduced: boolean) {
 beforeEach(() => {
   fireResize = null;
   globeProps = {};
-  controls.autoRotate = false;
-  controls.enableZoom = true;
-  controls.enablePan = true;
-  controls.enableRotate = true;
+  controls = Object.assign(new EventDispatcher(), {
+    autoRotate: false, autoRotateSpeed: 0, enableZoom: true, enablePan: true, enableRotate: true,
+  });
   // По умолчанию «мимо сферы»: попадание каждый тест задаёт явно.
   toGlobeCoords.mockReturnValue(null);
   cameraStub.matrixWorld.elements = [0];
@@ -699,6 +703,27 @@ describe("GlobeCanvas — подлёт камеры при появлении (r
     act(() => vi.advanceTimersByTime(1000));
 
     expect(pointOfView.mock.calls.length).toBe(settled);
+  });
+
+  it("захват сферы прерывает подлёт, размонтирование отписывает обработчик", () => {
+    const { unmount } = renderWithProviders(<GlobeCanvas pov={TARGET} reveal interactive />);
+    act(() => fireResize?.(800, 600));
+    const [start] = calls()[0];
+    act(() => vi.advanceTimersByTime(300));
+    const [inFlight] = calls().at(-1) ?? [];
+
+    expect(inFlight?.altitude).toBeLessThan(start.altitude);
+    expect(inFlight?.altitude).toBeGreaterThan(TARGET.altitude);
+    act(() => controls.dispatchEvent({ type: "start" }));
+    pointOfView.mockClear();
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(pointOfView).not.toHaveBeenCalled();
+    unmount();
+    // Утёкшая подписка вызвала бы отмену старого кадра даже после размонтирования.
+    const cancelFrame = vi.spyOn(window, "cancelAnimationFrame");
+    act(() => controls.dispatchEvent({ type: "start" }));
+    expect(cancelFrame).not.toHaveBeenCalled();
   });
 
   it("смена pov у уже видимого глобуса — обычный перелёт, без повторного подлёта", () => {

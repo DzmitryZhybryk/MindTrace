@@ -192,9 +192,17 @@ export function GlobeCanvas({
         }
       };
 
+      // Захват сферы рукой обрывает подлёт: покадровая перезапись камеры иначе тянула бы её
+      // назад из-под руки. `start` контролы шлют, только когда реально начали вращение.
+      const stopReveal = () => cancelAnimationFrame(rafId);
+      controls.addEventListener("start", stopReveal);
+
       globe.pointOfView(revealPov(target, 0, spin, POV_FLIGHT_MS), 0);
       rafId = requestAnimationFrame(step);
-      return () => cancelAnimationFrame(rafId);
+      return () => {
+        cancelAnimationFrame(rafId);
+        controls.removeEventListener("start", stopReveal);
+      };
     }
 
     // Перелёт — только для смены pov у видимого глобуса: спрятанному (paused) лететь незачем.
