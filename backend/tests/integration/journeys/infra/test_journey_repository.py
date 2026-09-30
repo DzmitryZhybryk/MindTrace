@@ -105,6 +105,33 @@ async def test_find_journeys_by_user_id_orders_by_traveled_on(db_session: AsyncS
     assert [journey_entity.traveled_on.value.year for journey_entity in result] == [2018, 2020, 2022]
 
 
+async def test_find_journeys_by_user_id_same_date_orders_by_created_at(db_session: AsyncSession) -> None:
+    """find_journeys_by_user_id: поездки с одной датой упорядочены по времени добавления, а не как лягут строки."""
+    user_id = uuid4()
+    repository = JourneyRepository(session=db_session)
+    inserted_first = make_journey(user_id=user_id, traveled_on=make_approximate_date(year=2020))
+    inserted_second = make_journey(user_id=user_id, traveled_on=make_approximate_date(year=2020))
+    for journey_entity in (inserted_first, inserted_second):
+        await repository.insert_journey(journey_entity=journey_entity)
+
+    await db_session.commit()
+    # Время добавления расходится с порядком вставки строк: без сортировки по нему поездки
+    # вернулись бы в порядке вставки.
+    await db_session.execute(
+        sa.update(Journey)
+        .where(Journey.id == inserted_second.journey_id)
+        .values(created_at=dt.datetime(2000, 1, 1, tzinfo=dt.UTC)),
+    )
+    await db_session.commit()
+
+    result = await repository.find_journeys_by_user_id(user_id=user_id)
+
+    assert [journey_entity.journey_id for journey_entity in result] == [
+        inserted_second.journey_id,
+        inserted_first.journey_id,
+    ]
+
+
 async def test_find_journeys_by_user_id_hydrates_entity_round_trip(db_session: AsyncSession) -> None:
     """find_journeys_by_user_id: модель гидрируется обратно в сущность — снапшот точек, транспорт, дата+точность."""
     user_id = uuid4()

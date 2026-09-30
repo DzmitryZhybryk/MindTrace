@@ -20,8 +20,15 @@ logger = get_logger(__name__)
 class PlaceService:
     """Поиск мест в газеттире и их названия на нужном языке."""
 
-    def __init__(self, *, repository: PlaceRepositoryPort) -> None:
+    def __init__(self, *, repository: PlaceRepositoryPort, logged_unknown_place_ids_limit: int = 10) -> None:
+        """
+        Args:
+            repository: Репозиторий мест
+            logged_unknown_place_ids_limit: Сколько неизвестных id попадает в лог — для сигнала хватает
+                примера, а весь запрос — до 1000 id
+        """
         self._repository = repository
+        self._logged_unknown_place_ids_limit = logged_unknown_place_ids_limit
 
     async def search_places(self, command: SearchPlacesCommand) -> PlaceSearchResult:
         """
@@ -61,7 +68,11 @@ class PlaceService:
         places = await self._repository.find_places_by_ids(place_ids=command.place_ids)
         missing_place_ids = set(command.place_ids) - {place_entity.place_id for place_entity in places}
         if missing_place_ids:
-            logger.warning("geo.place_ids_unknown", place_ids=list(missing_place_ids))
+            logger.warning(
+                "geo.place_ids_unknown",
+                count=len(missing_place_ids),
+                place_ids=sorted(missing_place_ids)[: self._logged_unknown_place_ids_limit],
+            )
 
         items = tuple(
             ResolvedPlace(place_id=place_entity.place_id, name=place_entity.display_name(language=command.language))

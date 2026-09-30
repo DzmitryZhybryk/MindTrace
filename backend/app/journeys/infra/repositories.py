@@ -22,8 +22,9 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
         """
         Возвращает все неудалённые поездки пользователя, упорядоченные по дате поездки.
 
-        Soft-deleted записи (``deleted_at IS NOT NULL``) отфильтрованы. Порядок по
-        ``traveled_on`` детерминирован для стабильной агрегации карты на стороне сервиса.
+        Soft-deleted записи (``deleted_at IS NOT NULL``) отфильтрованы. Поездки с одной датой
+        упорядочены по времени добавления: без этого порядок городов карты и координаты их
+        точек могли бы меняться от запроса к запросу.
 
         Args:
             user_id: Владелец поездок
@@ -34,7 +35,7 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
         query = (
             select(Journey)
             .where(Journey.user_id == user_id, Journey.deleted_at.is_(None))
-            .order_by(Journey.traveled_on)
+            .order_by(Journey.traveled_on, Journey.created_at, Journey.id)
         )
         result = await self._session.execute(query)
         return [self._to_entity(journey_model=journey_model) for journey_model in result.scalars()]

@@ -104,7 +104,20 @@ async def test_resolve_places_omits_unknown_ids_and_warns(
     assert [item.place_id for item in result.items] == [moscow.place_id]
     [warning] = [log for log in logs if log["event"] == "geo.place_ids_unknown"]
     assert warning["log_level"] == "warning"
+    assert warning["count"] == 1
     assert warning["place_ids"] == [unknown_id]
+
+
+async def test_resolve_places_many_unknown_logs_count_and_sample(place_service: PlaceService) -> None:
+    """resolve_places: при множестве неизвестных id в лог идут их число и первые 10, а не весь список."""
+    unknown_ids = [uuid4() for _ in range(25)]
+
+    with capture_logs() as logs:
+        await place_service.resolve_places(ResolvePlacesCommand(place_ids=tuple(unknown_ids), language=Language.EN))
+
+    [warning] = [log for log in logs if log["event"] == "geo.place_ids_unknown"]
+    assert warning["count"] == 25
+    assert warning["place_ids"] == sorted(unknown_ids)[:10]
 
 
 async def test_resolve_places_all_known_does_not_warn(
