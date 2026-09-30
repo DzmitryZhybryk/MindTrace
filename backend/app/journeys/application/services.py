@@ -49,7 +49,9 @@ class JourneyService:
             transport_type=command.transport_type,
             traveled_on=traveled_on,
         )
-        # Вызов в geo — до транзакции: не держим соединение открытым, пока ждём ответ.
+        # Вызов в geo — до транзакции journeys, чтобы при вынесении geo в сервис сетевой вызов не попал
+        # внутрь tx. Пока geo в том же процессе, его SELECT идёт в общей сессии запроса и уже открывает
+        # ту транзакцию, которую фиксирует commit ниже.
         missing_place_ids = await self._places_client.get_missing_place_ids(
             place_ids=(journey_entity.origin.place_id, journey_entity.destination.place_id),
         )

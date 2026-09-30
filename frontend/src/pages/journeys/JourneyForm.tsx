@@ -67,11 +67,16 @@ export type JourneyFormValues = {
 
 const UNKNOWN_PLACE_CODE = "journeys.unknown_place";
 
+type PlaceWithCountry = PlaceSearchItem & { countryCode: string };
+
+/** Поездке нужна страна места; место без неё валидатор формы не пропускает до сабмита. */
+function hasCountry(place: PlaceSearchItem): place is PlaceWithCountry {
+  return Boolean(place.countryCode);
+}
+
 /** Место из подсказок → тело запроса: бэк проверяет место по `placeId`. */
-function toPlaceRef(place: PlaceSearchItem): PlaceRef {
-  // Место без страны выбрать нельзя: подсказки поездки — только города. Пустая строка
-  // отсечётся бэком как некорректный ввод, если это когда-нибудь изменится.
-  return { placeId: place.placeId, countryCode: place.countryCode ?? "", latitude: place.latitude, longitude: place.longitude };
+function toPlaceRef(place: PlaceWithCountry): PlaceRef {
+  return { placeId: place.placeId, countryCode: place.countryCode, latitude: place.latitude, longitude: place.longitude };
 }
 
 /**
@@ -140,7 +145,8 @@ export function JourneyForm({ form }: JourneyFormProps) {
   };
 
   const handleSubmit = async (values: JourneyFormValues) => {
-    if (!values.origin || !values.destination || !values.transport || !values.year) {
+    const { origin, destination } = values;
+    if (!origin || !destination || !hasCountry(origin) || !hasCountry(destination) || !values.transport || !values.year) {
       return;
     }
 
@@ -148,8 +154,8 @@ export function JourneyForm({ form }: JourneyFormProps) {
     try {
       await submitJourney({
         body: {
-          origin: toPlaceRef(values.origin),
-          destination: toPlaceRef(values.destination),
+          origin: toPlaceRef(origin),
+          destination: toPlaceRef(destination),
           transportType: values.transport,
           traveledYear: Number(values.year),
           traveledMonth: values.hasMonth && values.month ? Number(values.month) : null,

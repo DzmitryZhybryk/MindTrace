@@ -5,7 +5,8 @@
  * даёт `htmlElementVisibilityModifier` (applyLabelVisibility ниже).
  */
 
-export function createGlobeLabel(name: string, id: string): HTMLElement {
+/** Без `name` метка — одна точка: название города ещё не пришло. */
+export function createGlobeLabel(name: string | undefined, id: string): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "globe-label";
   // Стабильный ключ метки для деклаттера: имя не уникально (одноимённые города легитимны),
@@ -21,12 +22,16 @@ export function createGlobeLabel(name: string, id: string): HTMLElement {
 
   const dot = document.createElement("span");
   dot.className = "globe-label__dot";
+  wrapper.append(dot);
+  if (name === undefined) {
+    return wrapper;
+  }
 
   const label = document.createElement("span");
   label.className = "globe-label__name";
   label.textContent = name;
 
-  wrapper.append(dot, label);
+  wrapper.append(label);
   return wrapper;
 }
 

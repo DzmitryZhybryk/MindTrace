@@ -183,20 +183,19 @@ export function PersistentGlobeHost() {
   });
 
   // Названия городов — тот же запрос и кэш, что у 2D-карты. Город, чьё название ещё
-  // грузится, не подписываем; город, которого geo не знает, — подписываем как неизвестный.
+  // грузится или не пришло из-за сбоя, — точка без подписи; город, которого geo не знает, —
+  // подписан как неизвестный.
   const { t } = useTranslation("common");
   const unknownLabel = t("map.unknownPlace");
   const nameOf = usePlaceNames(userCityPoints.map((city) => city.id));
   const userCities = useMemo(() => {
-    const named: GlobeCity[] = [];
-    for (const city of userCityPoints) {
-      const name = placeLabel(nameOf(city.id), unknownLabel);
-      if (name !== undefined) {
-        named.push({ name, lat: city.lat, lng: city.lng });
-      }
-    }
+    const cities: GlobeCity[] = userCityPoints.map((city) => ({
+      name: placeLabel(nameOf(city.id), unknownLabel),
+      lat: city.lat,
+      lng: city.lng,
+    }));
 
-    return named.length > 0 ? named : NO_CITIES;
+    return cities.length > 0 ? cities : NO_CITIES;
   }, [userCityPoints, nameOf, unknownLabel]);
 
   // На грани формы — только маршрут, посещённые города не рисуем.

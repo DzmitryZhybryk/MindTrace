@@ -243,6 +243,42 @@ describe("AddJourneyPage", () => {
     expect(posted).toBe(false);
   });
 
+  it.each([
+    { field: "From", other: "To" },
+    { field: "To", other: "From" },
+  ])("место без страны в поле $field — ошибка под полем, запрос не уходит", async ({ field, other }) => {
+    const northSea = {
+      placeId: "44444444-4444-4444-8444-444444444444",
+      name: "North Sea",
+      countryCode: null,
+      latitude: 56,
+      longitude: 3,
+      population: null,
+    };
+    let posted = false;
+    server.use(
+      http.get("/v1/geo/places/search/", ({ request }) => {
+        const query = new URL(request.url).searchParams.get("searchText") ?? "";
+        return HttpResponse.json({ items: query.startsWith("Nor") ? [northSea] : [MOSCOW] });
+      }),
+      http.post("/v1/journeys/", () => {
+        posted = true;
+        return new HttpResponse(null, { status: 201 });
+      }),
+    );
+    const { user } = renderAddJourney();
+
+    await pickPlace({ user, label: field, query: "Nor", option: /North Sea/iu });
+    await pickPlace({ user, label: other, query: "Mos", option: /Moscow/iu });
+    await pickOption({ user, trigger: screen.getByPlaceholderText("Choose transport"), option: "Air" });
+    await pickOption({ user, trigger: screen.getByPlaceholderText("Select year"), option: "2020" });
+
+    await user.click(screen.getByRole("button", { name: "Add journey" }));
+
+    expect(await screen.findByText("This place has no country — choose a city")).toBeInTheDocument();
+    expect(posted).toBe(false);
+  });
+
   it("кладёт точную дату (год+месяц+день) в payload через прогрессивные чекбоксы", async () => {
     let body: unknown = null;
     server.use(

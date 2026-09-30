@@ -51,6 +51,7 @@
       "originRequired": "Choose the departure city",
       "destinationRequired": "Choose the destination city",
       "sameCity": "Departure and destination must differ",
+      "placeWithoutCountry": "This place has no country — choose a city",
       "transportRequired": "Choose a transport type",
       "yearRequired": "Choose a year",
       "monthRequired": "Choose a month",

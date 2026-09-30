@@ -45,10 +45,19 @@ export function AddJourneyPage() {
     // готовый текст: резолв в строку — при рендере (`resolveErrorToken`), чтобы
     // ошибка переключалась на новый язык вместе с интерфейсом.
     validate: {
-      origin: (value) => (value ? null : "journeys:addJourney.validation.originRequired"),
+      origin: (value) => {
+        if (!value) {
+          return "journeys:addJourney.validation.originRequired";
+        }
+        // Поездка хранит страну места; справочник допускает места без неё (моря, океаны).
+        return value.countryCode ? null : "journeys:addJourney.validation.placeWithoutCountry";
+      },
       destination: (value, values) => {
         if (!value) {
           return "journeys:addJourney.validation.destinationRequired";
+        }
+        if (!value.countryCode) {
+          return "journeys:addJourney.validation.placeWithoutCountry";
         }
         // Тот же город отсекаем ещё на фронте; бэк проверит то же самое по placeId.
         if (values.origin && values.origin.placeId === value.placeId) {

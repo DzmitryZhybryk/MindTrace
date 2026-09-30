@@ -19,7 +19,7 @@ import { routeCameraPov, type GlobeRoute } from "./route";
  */
 type MockGlobeProps = {
   arcs?: readonly unknown[];
-  labelCities?: readonly { name: string }[];
+  labelCities?: readonly { name?: string }[];
   paused?: boolean;
   interactive?: boolean;
   autoRotate?: boolean;
@@ -35,7 +35,7 @@ vi.mock("./GlobeCanvas", () => ({
       data-testid="globe-canvas"
       data-arcs={arcs?.length ?? 0}
       data-cities={labelCities?.length ?? 0}
-      data-city-names={labelCities?.map((city) => city.name).join("|") ?? ""}
+      data-city-names={labelCities?.map((city) => city.name ?? "∅").join("|") ?? ""}
       data-paused={String(paused ?? false)}
       data-interactive={String(interactive ?? false)}
       data-auto-rotate={String(autoRotate ?? true)}
@@ -185,7 +185,7 @@ describe("PersistentGlobeHost — источник данных глобуса",
     await waitFor(() => expect(globe).toHaveAttribute("data-city-names", "Moscow|Unknown place"));
   });
 
-  it("пока названия грузятся, города не подписываются", async () => {
+  it("пока названия грузятся, города видны точками без подписи", async () => {
     server.use(
       http.post("/v1/geo/places/resolve", async () => {
         await delay("infinite");
@@ -204,8 +204,18 @@ describe("PersistentGlobeHost — источник данных глобуса",
     const globe = await screen.findByTestId("globe-canvas");
 
     await waitFor(() => expect(resolveRequests).toBe(1));
-    expect(globe).toHaveAttribute("data-cities", "0");
+    expect(globe).toHaveAttribute("data-city-names", "∅|∅");
     server.events.removeAllListeners();
+  });
+
+  it("сбой загрузки названий не стирает точки городов", async () => {
+    server.use(http.post("/v1/geo/places/resolve", () => new HttpResponse(null, { status: 500 })));
+
+    renderWithProviders(<PersistentGlobeHost />, { route: "/home", authValue: authedValue("user-1") });
+
+    const globe = await screen.findByTestId("globe-canvas");
+
+    await waitFor(() => expect(globe).toHaveAttribute("data-city-names", "∅|∅"));
   });
 
   it("ошибка загрузки городов не роняет глобус — остаётся без точек", async () => {

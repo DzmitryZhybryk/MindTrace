@@ -51,6 +51,7 @@
       "originRequired": "Выберите город отправления",
       "destinationRequired": "Выберите город назначения",
       "sameCity": "Города отправления и назначения должны отличаться",
+      "placeWithoutCountry": "У этого места нет страны — выберите город",
       "transportRequired": "Выберите тип транспорта",
       "yearRequired": "Выберите год",
       "monthRequired": "Выберите месяц",

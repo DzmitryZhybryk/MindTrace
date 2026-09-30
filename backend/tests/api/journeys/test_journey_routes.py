@@ -15,9 +15,19 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 
+from app.geo.presentation.dependencies import place_repository_dependency
 from app.journeys.domain.enums import TransportType
-from tests.builders import LONDON_PLACE_ID, MOSCOW_PLACE_ID, make_approximate_date, make_geo_point, make_journey
-from tests.fakes import FakeJourneyRepository, FakeJourneyUnitOfWork, FakePlacesClient
+from app.journeys.presentation.dependencies import places_client_dependency
+from app.shared.schemas.base import BFastAPI
+from tests.builders import (
+    LONDON_PLACE_ID,
+    MOSCOW_PLACE_ID,
+    make_approximate_date,
+    make_geo_point,
+    make_journey,
+    make_place,
+)
+from tests.fakes import FakeJourneyRepository, FakeJourneyUnitOfWork, FakePlaceRepository, FakePlacesClient
 
 _CREATE_PATH = "/v1/journeys/"
 _MAP_PATH = "/v1/journeys/map"
@@ -121,6 +131,30 @@ async def test_create_journey_unknown_place_returns_400_with_missing_ids(
     body = response.json()
     assert body["code"] == "journeys.unknown_place"
     assert body["details"] == {"place_ids": [str(LONDON_PLACE_ID)]}
+    assert fake_journey_repository.journeys == []
+
+
+async def test_create_journey_checks_places_through_real_geo_wiring(
+    app: BFastAPI,
+    make_async_client: Callable[[BFastAPI], AsyncClient],
+    fake_journey_repository: FakeJourneyRepository,
+    fake_place_repository: FakePlaceRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """400: без подмены клиента мест проверка идёт через настоящую цепочку journeys → geo до репозитория geo."""
+    app.dependency_overrides.pop(places_client_dependency)
+    app.dependency_overrides[place_repository_dependency] = lambda: fake_place_repository
+    fake_place_repository.places.append(make_place(place_id=MOSCOW_PLACE_ID))
+
+    async with make_async_client(app) as client:
+        response = await client.post(
+            _CREATE_PATH,
+            json=_VALID_BODY,
+            headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"},
+        )
+
+    assert response.status_code == 400
+    assert response.json()["details"] == {"place_ids": [str(LONDON_PLACE_ID)]}
     assert fake_journey_repository.journeys == []
 
 
