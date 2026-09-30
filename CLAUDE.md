@@ -72,6 +72,11 @@ make migrate-create "description"          # создать миграцию (au
 make migrate-upgrade                       # применить миграции
 make migrate-downgrade                     # откатить одну
 make migrate-history                       # история миграций
+make geo-load                              # догрузить справочник мест (manifest.toml) в дев-базу; уже загруженное пропускает
+
+# Пересоздать дев-базу с нуля (init-миграция редактируется на месте, прода нет) — из корня:
+# make stop && docker volume rm mindtrace_pg_data && make run, затем из backend/:
+# make migrate-upgrade && make geo-load   (файл датасета берётся из backend/.geo-cache, если уже скачан)
 
 # Доступ к ДЕВ-базе (для EXPLAIN, инспекции схемы). Прода на этом хосте нет.
 # POSTGRES_HOST=mindtrace_pg работает только ВНУТРИ docker-сети; с хоста порт проброшен на 5439.
@@ -234,6 +239,7 @@ Examples:
 
 - **Backend** — версия в `backend/pyproject.toml`, реальный SemVer по контракту HTTP-API и машинным кодам ошибок (`code`). Бамп бэка тянет за собой `backend/uv.lock`, если менялись зависимости. Теги — `backend-vX.Y.Z`.
 - **Frontend** — версия в `frontend/package.json`, маркер релиза SPA (внешнего контракта нет, SemVer формален). Теги — `frontend-vX.Y.Z`.
+- **Датасеты справочника мест** — не версия кода, а данные: ассет GitHub Release под тегом `geo-data-vN`, версия и sha256 — в `backend/app/geo/infra/datasets/manifest.toml`. Новый датасет = новый тег + правка манифеста.
 
 Не бампать версию одного артефакта на изменения другого: чисто фронтовая фича не трогает `pyproject`, чисто бэковая — не трогает `package.json`.
 

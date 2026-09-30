@@ -42,7 +42,7 @@ class ProcrastinateComponent(BaseComponent):
         """
         self._app = ProcrastinateApp(
             connector=PsycopgConnector(
-                conninfo=settings.procrastinate_dsn,
+                conninfo=settings.postgres_libpq_dsn,
                 min_size=settings.PROCRASTINATE_POOL_MIN_SIZE,
                 max_size=settings.PROCRASTINATE_POOL_MAX_SIZE,
             ),

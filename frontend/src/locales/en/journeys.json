@@ -19,7 +19,8 @@
   "map": {
     "loading": "Loading your map…",
     "error": "Couldn't load your journeys",
-    "retry": "Try again"
+    "retry": "Try again",
+    "attribution": "Place names ©"
   },
   "addJourney": {
     "title": "New journey",

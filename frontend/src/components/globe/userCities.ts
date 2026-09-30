@@ -8,13 +8,18 @@
  * — глобус лишь второй потребитель одного queryKey.
  */
 import type { JourneysMapResponse } from "../../api/sdk";
-import type { GlobeCity } from "./cities";
+
+/** Посещённый город без названия: названия глобус запрашивает у geo отдельно. */
+export interface UserCityPoint {
+  readonly id: string;
+  readonly lat: number;
+  readonly lng: number;
+}
 
 /**
  * Разворачивает агрегат карты путешествий в плоский список точек-городов для глобуса.
  *
- * Города разбросаны по странам — собираем их в один список и убираем дубли по имени и
- * координатам (одно место, посещённое в разные годы, приходит одной записью, но подстрахуемся).
+ * Города разбросаны по странам — собираем их в один список без повторов по id места.
  * Годы визитов и статус страны глобусу-фону не нужны — отбрасываем.
  *
  * Ссылку на функцию Query использует как ключ мемоизации `select`, поэтому она модульная:
@@ -25,20 +30,19 @@ import type { GlobeCity } from "./cities";
  *     response: Ответ `/v1/journeys/map` как есть.
  *
  * Returns:
- *     Уникальные города как `GlobeCity` (имя + координаты).
+ *     Уникальные города: id места и координаты.
  */
-export function citiesFromJourneysMap(response: JourneysMapResponse): GlobeCity[] {
+export function citiesFromJourneysMap(response: JourneysMapResponse): UserCityPoint[] {
   const seen = new Set<string>();
-  const cities: GlobeCity[] = [];
+  const cities: UserCityPoint[] = [];
   for (const country of response.countries) {
     for (const city of country.cities) {
-      const key = `${city.name}|${city.latitude}|${city.longitude}`;
-      if (seen.has(key)) {
+      if (seen.has(city.placeId)) {
         continue;
       }
 
-      seen.add(key);
-      cities.push({ name: city.name, lat: city.latitude, lng: city.longitude });
+      seen.add(city.placeId);
+      cities.push({ id: city.placeId, lat: city.latitude, lng: city.longitude });
     }
   }
 

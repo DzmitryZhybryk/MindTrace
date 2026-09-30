@@ -114,7 +114,10 @@ const COUNTRY_NAMES: ReadonlyMap<string, string> = new Map(
 export type CountryStatus = "visited" | "wishlist";
 
 export interface MapCity {
-  name: string;
+  /** Id места в geo. */
+  id: string;
+  /** Название на языке интерфейса; нет, пока названия ещё грузятся. */
+  name?: string;
   lat: number;
   lng: number;
   years: readonly number[];
@@ -221,7 +224,7 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
     const cityDots = countries.flatMap((country) =>
       country.cities.map((city) => {
         const [px, py] = project(city.lng, city.lat);
-        return { key: `${country.id}:${city.name}`, cx: toScreenX(px), cy: toScreenY(py) };
+        return { key: city.id, cx: toScreenX(px), cy: toScreenY(py) };
       }),
     );
 
@@ -272,6 +275,14 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
 
   const hovered = hoveredId ? byId.get(hoveredId) : undefined;
   const hoveredName = hoveredId ? resolveCountryName(hoveredId) : "";
+  // Города без названия (ещё грузятся) в тултип не попадают — показываем их, как только придут.
+  const hoveredCities = useMemo(
+    () =>
+      (hovered?.cities ?? [])
+        .filter((city): city is MapCity & { name: string } => city.name !== undefined)
+        .sort((left, right) => left.name.localeCompare(right.name, i18n.language)),
+    [hovered, i18n.language],
+  );
 
   return (
     <div
@@ -311,15 +322,17 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
           }}
         >
           <span className="world-map__tooltip-title">{hoveredName}</span>
-          {hovered?.status === "visited" && hovered.cities.length > 0 ? (
-            <ul className="world-map__tooltip-cities">
-              {hovered.cities.map((city) => (
-                <li key={city.name}>
-                  <span className="world-map__tooltip-city">{city.name}</span>
-                  <span className="world-map__tooltip-years">{city.years.join(", ")}</span>
-                </li>
-              ))}
-            </ul>
+          {hovered?.status === "visited" ? (
+            hoveredCities.length > 0 && (
+              <ul className="world-map__tooltip-cities">
+                {hoveredCities.map((city) => (
+                  <li key={city.id}>
+                    <span className="world-map__tooltip-city">{city.name}</span>
+                    <span className="world-map__tooltip-years">{city.years.join(", ")}</span>
+                  </li>
+                ))}
+              </ul>
+            )
           ) : (
             <span className="world-map__tooltip-muted">
               {hovered?.status === "wishlist" ? t("map.wishlist") : t("map.notVisited")}

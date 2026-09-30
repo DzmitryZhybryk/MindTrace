@@ -17,7 +17,8 @@
   "journeys": {
     "same_origin_destination": "Departure and destination must be different",
     "date_in_future": "The travel date can't be in the future",
-    "invalid_date": "Invalid travel date"
+    "invalid_date": "Invalid travel date",
+    "unknown_place": "This place wasn't found. Pick it from the suggestions again"
   },
   "validation_error": "Please check the entered data and try again",
   "network": "Network error. Please try again.",

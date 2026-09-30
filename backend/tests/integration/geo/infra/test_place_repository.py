@@ -3,7 +3,8 @@
 
 Покрывают то, что нельзя проверить на фейках: реальный префиксный матч ``lower(name) LIKE
 'q%'`` по btree ``text_pattern_ops`` (en и ru, не подстрока), сортировку по убыванию
-населения, лимит и экранирование LIKE-метасимволов пользовательского ввода.
+населения (места без населения — в конце), лимит, экранирование LIKE-метасимволов
+пользовательского ввода и выборку мест по id.
 """
 
 from uuid import uuid4
@@ -20,6 +21,7 @@ async def test_search_matches_en_prefix_ordered_by_population(db_session: AsyncS
     db_session.add_all(
         [
             GeoPlace(
+                id=uuid4(),
                 external_id="GeoNames:1",
                 kind="city",
                 name_en="Moscow",
@@ -30,6 +32,7 @@ async def test_search_matches_en_prefix_ordered_by_population(db_session: AsyncS
                 population=10_000_000,
             ),
             GeoPlace(
+                id=uuid4(),
                 external_id="GeoNames:2",
                 kind="city",
                 name_en="Mostar",
@@ -40,6 +43,7 @@ async def test_search_matches_en_prefix_ordered_by_population(db_session: AsyncS
                 population=100_000,
             ),
             GeoPlace(
+                id=uuid4(),
                 external_id="GeoNames:3",
                 kind="city",
                 name_en="Berlin",
@@ -75,6 +79,7 @@ async def test_search_matches_ru_prefix(db_session: AsyncSession) -> None:
                 population=10_000_000,
             ),
             GeoPlace(
+                id=uuid4(),
                 external_id="GeoNames:2",
                 kind="city",
                 name_en="Saint Petersburg",
@@ -97,6 +102,7 @@ async def test_search_prefix_does_not_match_substring(db_session: AsyncSession) 
     """search: матч идёт по началу имени — 'York' не находит 'New York'."""
     db_session.add(
         GeoPlace(
+            id=uuid4(),
             external_id="GeoNames:1",
             kind="city",
             name_en="New York",
@@ -131,6 +137,7 @@ async def test_search_escapes_like_metacharacters(db_session: AsyncSession) -> N
                 population=100,
             ),
             GeoPlace(
+                id=uuid4(),
                 external_id="GeoNames:2",
                 kind="city",
                 name_en="AXB",
@@ -153,6 +160,7 @@ async def test_search_respects_limit(db_session: AsyncSession) -> None:
     """search: лимит обрезает выдачу, оставляя самые населённые совпадения."""
     db_session.add_all(
         GeoPlace(
+            id=uuid4(),
             external_id=f"GeoNames:{index}",
             kind="city",
             name_en=f"Mos{index}",
@@ -169,3 +177,78 @@ async def test_search_respects_limit(db_session: AsyncSession) -> None:
     places = await PlaceRepository(session=db_session).search_places_by_name(search_text="Mos", limit=2)
 
     assert [place_entity.population for place_entity in places] == [300, 200]
+
+
+async def test_search_puts_places_without_population_last(db_session: AsyncSession) -> None:
+    """search: место без населения идёт после мест с населением, а не первым (NULLS LAST)."""
+    sea_id, town_id = uuid4(), uuid4()
+    db_session.add_all(
+        [
+            GeoPlace(
+                id=sea_id,
+                external_id="Test:sea",
+                kind="sea",
+                name_en="Mosea",
+                name_ru=None,
+                country_code=None,
+                latitude=0.0,
+                longitude=0.0,
+                population=None,
+            ),
+            GeoPlace(
+                id=town_id,
+                external_id="Test:town",
+                kind="city",
+                name_en="Mostown",
+                name_ru=None,
+                country_code="RU",
+                latitude=0.0,
+                longitude=0.0,
+                population=100,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    places = await PlaceRepository(session=db_session).search_places_by_name(search_text="Mo", limit=10)
+
+    assert [place_entity.place_id for place_entity in places] == [town_id, sea_id]
+    assert places[1].country_code is None
+
+
+async def test_find_places_by_ids_returns_only_existing(db_session: AsyncSession) -> None:
+    """find_places_by_ids: находит места по id, неизвестные id молча пропускает, имена гидрируются."""
+    moscow_id, berlin_id = uuid4(), uuid4()
+    db_session.add_all(
+        [
+            GeoPlace(
+                id=moscow_id,
+                external_id="GeoNames:1",
+                kind="city",
+                name_en="Moscow",
+                name_ru="Москва",
+                country_code="RU",
+                latitude=55.75,
+                longitude=37.62,
+                population=10_000_000,
+            ),
+            GeoPlace(
+                id=berlin_id,
+                external_id="GeoNames:2",
+                kind="city",
+                name_en="Berlin",
+                name_ru="Берлин",
+                country_code="DE",
+                latitude=52.52,
+                longitude=13.4,
+                population=3_000_000,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    places = await PlaceRepository(session=db_session).find_places_by_ids(place_ids=(moscow_id, uuid4()))
+
+    [moscow] = places
+    assert moscow.place_id == moscow_id
+    assert moscow.display_name(language=Language.RU) == "Москва"

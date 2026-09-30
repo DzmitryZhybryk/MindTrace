@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { PlaceResponse } from "../../api/sdk";
+import type { PlaceSearchItem } from "../../api/sdk";
 import {
   altitudeForSeparation,
   apexScale,
@@ -16,7 +16,7 @@ import {
 } from "./route";
 
 // Минск как «реальное» место из автокомплита; координаты переопределяются под кейс.
-function makePlace(overrides: Partial<PlaceResponse> = {}): PlaceResponse {
+function makePlace(overrides: Partial<PlaceSearchItem> = {}): PlaceSearchItem {
   return {
     placeId: "1",
     name: "Minsk",
@@ -166,7 +166,7 @@ describe("routeCameraPov", () => {
   const VILNIUS = makePlace({ placeId: "2", name: "Vilnius", countryCode: "LT", latitude: 54.69, longitude: 25.28 });
   const TOKYO = makePlace({ placeId: "3", name: "Tokyo", countryCode: "JP", latitude: 35.68, longitude: 139.69 });
 
-  function makeRoute(origin: PlaceResponse | null, destination: PlaceResponse | null): GlobeRoute {
+  function makeRoute(origin: PlaceSearchItem | null, destination: PlaceSearchItem | null): GlobeRoute {
     return { origin, destination, transportType: "air", originLabel: "", destinationLabel: "" };
   }
 

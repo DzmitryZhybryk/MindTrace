@@ -228,3 +228,6 @@ ZTODO
 
 # Cursor settings backups
 cursor-settings-*.tgz
+
+# Кеш датасетов газеттира
+backend/.geo-cache/

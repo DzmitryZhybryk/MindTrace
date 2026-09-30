@@ -16,7 +16,11 @@ const TONE: WorldMapTone = {
 };
 
 const COUNTRIES: MapCountry[] = [
-  { id: "RU", status: "visited", cities: [{ name: "Moscow", lat: 55.75, lng: 37.62, years: [2019, 2021] }] },
+  {
+    id: "RU",
+    status: "visited",
+    cities: [{ id: "moscow", name: "Moscow", lat: 55.75, lng: 37.62, years: [2019, 2021] }],
+  },
   { id: "FR", status: "wishlist", cities: [] },
 ];
 
@@ -65,6 +69,41 @@ describe("WorldMap", () => {
     expect(await screen.findByText("Russia")).toBeInTheDocument();
     expect(screen.getByText("Moscow")).toBeInTheDocument();
     expect(screen.getByText("2019, 2021")).toBeInTheDocument();
+  });
+
+  it("в тултипе города посещённой страны идут по алфавиту", async () => {
+    const countries: MapCountry[] = [
+      {
+        id: "GB",
+        status: "visited",
+        cities: [
+          { id: "london", name: "London", lat: 51.5, lng: -0.12, years: [2021] },
+          { id: "bristol", name: "Bristol", lat: 51.45, lng: -2.58, years: [2019] },
+        ],
+      },
+    ];
+    const { container, user } = renderWithProviders(<WorldMap countries={countries} tone={TONE} />);
+
+    await user.hover(pathByFill(container, TONE.visited));
+
+    const cityNames = (await screen.findAllByText(/^(London|Bristol)$/u)).map((element) => element.textContent);
+    expect(cityNames).toEqual(["Bristol", "London"]);
+  });
+
+  it("пока названия городов грузятся, тултип показывает только страну", async () => {
+    const countries: MapCountry[] = [
+      { id: "RU", status: "visited", cities: [{ id: "moscow", lat: 55.75, lng: 37.62, years: [2019] }] },
+    ];
+    const { container, user } = renderWithProviders(<WorldMap countries={countries} tone={TONE} />);
+
+    await user.hover(pathByFill(container, TONE.visited));
+
+    expect(await screen.findByText("Russia")).toBeInTheDocument();
+    // Страна посещена — «ещё не посещено» тут было бы неправдой; годов без имени города тоже нет.
+    expect(screen.queryByText("Not visited yet")).not.toBeInTheDocument();
+    expect(screen.queryByText("2019")).not.toBeInTheDocument();
+    // Точка города на карте есть и без названия.
+    expect(container.querySelectorAll(".world-map__city-dot")).toHaveLength(1);
   });
 
   it("ховер страны из wishlist показывает подпись из списка желаний", async () => {

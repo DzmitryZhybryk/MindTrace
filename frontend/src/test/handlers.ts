@@ -13,15 +13,14 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
-import type { PlaceResponse } from "../api/sdk";
-import type { CurrentUserResponse } from "../api/sdk";
+import type { CurrentUserResponse, PlaceSearchItem } from "../api/sdk";
 
 /**
  * Минимальный газеттир для component-тестов автокомплита (`/v1/geo/places/search`).
  * Имена уже «резолвнуты» (бэк отдаёт их под язык) — хендлер фильтрует по префиксу, как
  * боевой поиск. Тест переопределяет выдачу через `server.use(...)` для пустого/ошибочного кейса.
  */
-export const GEO_PLACES: readonly PlaceResponse[] = [
+export const GEO_PLACES: readonly PlaceSearchItem[] = [
   // placeId — именно UUID: SDK валидирует ответ сгенерированной схемой (`z.uuid()`), и
   // «говорящий» идентификатор из фикстуры её не проходит.
   {
@@ -118,15 +117,30 @@ export const handlers = [
     const items = GEO_PLACES.filter((place) => place.name.toLowerCase().startsWith(query));
     return HttpResponse.json({ items });
   }),
-  // Создание поездки: payload-on-create → 201 без тела (как отдаёт backend).
+  // Названия мест по id: знает только места фикстуры, неизвестные id опускает — как бэк.
+  http.post("/v1/geo/places/resolve", async ({ request }) => {
+    const { placeIds } = (await request.json()) as { placeIds: string[] };
+    const items = GEO_PLACES.filter((place) => placeIds.includes(place.placeId)).map((place) => ({
+      placeId: place.placeId,
+      name: place.name,
+    }));
+    return HttpResponse.json({ items });
+  }),
+  // Создание поездки: 201 без тела (как отдаёт backend).
   http.post("/v1/journeys/", () => new HttpResponse(null, { status: 201 })),
   // Карта путешествий: агрегат посещённых стран (кормит WorldMap). Тест переопределяет
   // на пустой/ошибочный ответ через server.use(...).
   http.get("/v1/journeys/map", () =>
     HttpResponse.json({
       countries: [
-        { countryCode: "RU", cities: [{ name: "Moscow", latitude: 55.75, longitude: 37.62, years: [2020, 2022] }] },
-        { countryCode: "GB", cities: [{ name: "London", latitude: 51.5, longitude: -0.12, years: [2021] }] },
+        {
+          countryCode: "RU",
+          cities: [{ placeId: GEO_PLACES[0].placeId, latitude: 55.75, longitude: 37.62, years: [2020, 2022] }],
+        },
+        {
+          countryCode: "GB",
+          cities: [{ placeId: GEO_PLACES[1].placeId, latitude: 51.5, longitude: -0.12, years: [2021] }],
+        },
       ],
     }),
   ),

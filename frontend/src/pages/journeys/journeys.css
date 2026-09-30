@@ -193,6 +193,21 @@
   opacity: 1;
 }
 
+/* ---- Атрибуция названий мест (CC BY 4.0) — мелко в нижнем-левом углу ------- */
+.journeys-map-attribution {
+  position: absolute;
+  bottom: 8px;
+  left: 32px;
+  z-index: 2;
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.journeys-map-attribution a {
+  color: inherit;
+}
+
 /* ---- Легенда карты — сворачиваемый блок в нижнем-правом углу ------------- */
 .journeys-legend-card {
   position: absolute;
@@ -422,6 +437,11 @@
     min-height: 340px;
     border-radius: 16px;
     overflow: hidden;
+  }
+
+  /* Атрибуция — строкой под картой. */
+  .journeys-map-attribution {
+    position: static;
   }
 
   /* Легенда из углового overlay — обычный блок под картой у правого края. */

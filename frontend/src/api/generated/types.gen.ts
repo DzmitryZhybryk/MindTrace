@@ -9,10 +9,9 @@ export type ClientOptions = {
  *
  * Тело запроса создания поездки.
  *
- * Места приходят снапшотом (``origin``/``destination`` — имя/страна/координаты), бэк их
- * не резолвит. Дата частями: год обязателен, месяц/день опциональны. Семантику даты
- * (month 1..12, day валиден и требует month, не будущее) и инвариант origin≠destination
- * валидирует домен — отсюда консистентные доменные коды ошибок (``journeys.*``), а не 422.
+ * Дата частями: год обязателен, месяц и день — нет. Корректность даты и то, что
+ * отправление не совпадает с назначением, проверяет домен — поэтому ошибки приходят
+ * с кодами ``journeys.*``, а не 422.
  */
 export type CreateJourneyRequest = {
   origin: PlaceRef;
@@ -93,7 +92,7 @@ export type JourneysMapResponse = {
   /**
    * Countries
    */
-  countries: Array<MapCountryResponse>;
+  countries: Array<MapCountry>;
 };
 
 /**
@@ -118,15 +117,15 @@ export type LoginRequest = {
 };
 
 /**
- * MapCityResponse
+ * MapCity
  *
- * Город на карте путешествий: точка (координаты) + годы визитов по возрастанию.
+ * Город на карте путешествий: его ``placeId``, координаты и годы визитов по возрастанию.
  */
-export type MapCityResponse = {
+export type MapCity = {
   /**
-   * Name
+   * Placeid
    */
-  name: string;
+  placeId: string;
   /**
    * Latitude
    */
@@ -142,7 +141,7 @@ export type MapCityResponse = {
 };
 
 /**
- * MapCountryResponse
+ * MapCountry
  *
  * Посещённая страна на карте: код ISO alpha-2 и список посещённых в ней городов.
  *
@@ -150,7 +149,7 @@ export type MapCityResponse = {
  * контракте нет: эндпоинт по смыслу возвращает только посещённые страны (wishlist
  * запрашивается отдельно), поэтому сам факт прихода из journeys = страна посещена.
  */
-export type MapCountryResponse = {
+export type MapCountry = {
   /**
    * Countrycode
    */
@@ -158,7 +157,7 @@ export type MapCountryResponse = {
   /**
    * Cities
    */
-  cities: Array<MapCityResponse>;
+  cities: Array<MapCity>;
 };
 
 export type OptionalDict = {
@@ -166,18 +165,31 @@ export type OptionalDict = {
 } | null;
 
 /**
- * PlaceRef
+ * PlaceName
  *
- * Снапшот места в теле запроса (payload-on-create): имя/страна/координаты.
- *
- * Поездка сохраняет эти данные как есть, ссылки на справочник не шлём. Валидируется
- * только ФОРМА (длины, диапазоны координат) — это HTTP-граница; семантики тут нет.
+ * Название места на языке запроса.
  */
-export type PlaceRef = {
+export type PlaceName = {
+  /**
+   * Placeid
+   */
+  placeId: string;
   /**
    * Name
    */
   name: string;
+};
+
+/**
+ * PlaceRef
+ *
+ * Место из выдачи поиска geo: его ``placeId``, страна и координаты.
+ */
+export type PlaceRef = {
+  /**
+   * Placeid
+   */
+  placeId: string;
   /**
    * Countrycode
    */
@@ -193,15 +205,11 @@ export type PlaceRef = {
 };
 
 /**
- * PlaceResponse
+ * PlaceSearchItem
  *
- * Кандидат автокомплита для фронта.
- *
- * ``place_id`` (наружу ``placeId``) — суррогатный id справочника, стабильный ключ
- * кандидата для выбора/рендера; вендорский ключ источника наружу не отдаётся. На create
- * он НЕ уходит — поездка снапшотит данные места (имя/координаты), не ссылку.
+ * Один вариант в подсказках поиска; по ``placeId`` на место потом можно ссылаться.
  */
-export type PlaceResponse = {
+export type PlaceSearchItem = {
   /**
    * Placeid
    */
@@ -215,7 +223,7 @@ export type PlaceResponse = {
   /**
    * Countrycode
    */
-  countryCode: string;
+  countryCode: string | null;
   /**
    * Latitude
    */
@@ -227,7 +235,7 @@ export type PlaceResponse = {
   /**
    * Population
    */
-  population: number;
+  population: number | null;
 };
 
 /**
@@ -239,7 +247,7 @@ export type PlaceSearchResponse = {
   /**
    * Items
    */
-  items: Array<PlaceResponse>;
+  items: Array<PlaceSearchItem>;
 };
 
 /**
@@ -262,6 +270,31 @@ export type RegisterRequest = {
    * Marketingemailsconsent
    */
   marketingEmailsConsent: boolean;
+};
+
+/**
+ * ResolvePlacesRequest
+ *
+ * Запрос названий мест по их id на нужном языке.
+ */
+export type ResolvePlacesRequest = {
+  /**
+   * Placeids
+   */
+  placeIds: Array<string>;
+  language: Language;
+};
+
+/**
+ * ResolvePlacesResponse
+ *
+ * Названия найденных мест; id, которых нет в газеттире, в ответ не попадают.
+ */
+export type ResolvePlacesResponse = {
+  /**
+   * Items
+   */
+  items: Array<PlaceName>;
 };
 
 /**
@@ -575,7 +608,7 @@ export type SearchPlacesData = {
     /**
      * Searchtext
      *
-     * Поисковый запрос (часть имени).
+     * Поисковый запрос (начало имени).
      */
     searchText: string;
     /**
@@ -617,6 +650,39 @@ export type SearchPlacesResponses = {
 };
 
 export type SearchPlacesResponse = SearchPlacesResponses[keyof SearchPlacesResponses];
+
+export type ResolvePlacesData = {
+  body: ResolvePlacesRequest;
+  path?: never;
+  query?: never;
+  url: '/v1/geo/places/resolve';
+};
+
+export type ResolvePlacesErrors = {
+  /**
+   * Невалидный или истёкший access-токен
+   */
+  401: ErrorResponse;
+  /**
+   * Ошибка валидации запроса
+   */
+  422: ErrorResponse;
+  /**
+   * Внутренняя ошибка сервера
+   */
+  500: ErrorResponse;
+};
+
+export type ResolvePlacesError = ResolvePlacesErrors[keyof ResolvePlacesErrors];
+
+export type ResolvePlacesResponses = {
+  /**
+   * Successful Response
+   */
+  200: ResolvePlacesResponse;
+};
+
+export type ResolvePlacesResponse2 = ResolvePlacesResponses[keyof ResolvePlacesResponses];
 
 export type CreateJourneyData = {
   body: CreateJourneyRequest;

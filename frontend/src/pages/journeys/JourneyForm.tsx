@@ -5,12 +5,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
-import { applyApiError, resolveErrorToken } from "../../api/errors";
+import { ApiError, applyApiError, errorCodeToken, resolveErrorToken } from "../../api/errors";
 import {
   createJourneyMutation,
   getJourneysMapQueryKey,
   zTransportType,
-  type PlaceResponse,
+  type PlaceSearchItem,
+  type PlaceRef,
   type TransportType,
 } from "../../api/sdk";
 import carIcon from "../../assets/emoji/car.svg";
@@ -54,8 +55,8 @@ function SwapVerticalIcon() {
 }
 
 export type JourneyFormValues = {
-  origin: PlaceResponse | null;
-  destination: PlaceResponse | null;
+  origin: PlaceSearchItem | null;
+  destination: PlaceSearchItem | null;
   transport: TransportType | null;
   year: string | null;
   month: string | null;
@@ -63,6 +64,47 @@ export type JourneyFormValues = {
   hasMonth: boolean;
   hasDay: boolean;
 };
+
+const UNKNOWN_PLACE_CODE = "journeys.unknown_place";
+
+/** Место из подсказок → тело запроса: бэк проверяет место по `placeId`. */
+function toPlaceRef(place: PlaceSearchItem): PlaceRef {
+  // Место без страны выбрать нельзя: подсказки поездки — только города. Пустая строка
+  // отсечётся бэком как некорректный ввод, если это когда-нибудь изменится.
+  return { placeId: place.placeId, countryCode: place.countryCode ?? "", latitude: place.latitude, longitude: place.longitude };
+}
+
+/**
+ * Подсвечивает поля с местами, которых бэк не нашёл (`journeys.unknown_place`).
+ *
+ * Бэк возвращает только id ненайденных мест — какое поле подсветить, форма решает сама,
+ * сравнивая их с выбранными местами.
+ *
+ * Returns:
+ *     `true`, если ошибка разобрана и показана у полей.
+ */
+function applyUnknownPlaceError(
+  err: unknown,
+  values: JourneyFormValues,
+  form: UseFormReturnType<JourneyFormValues>,
+): boolean {
+  if (!(err instanceof ApiError) || err.code !== UNKNOWN_PLACE_CODE) {
+    return false;
+  }
+
+  const rawIds = err.details?.place_ids;
+  const missing = new Set(Array.isArray(rawIds) ? rawIds.filter((id): id is string => typeof id === "string") : []);
+  let isApplied = false;
+  for (const field of ["origin", "destination"] as const) {
+    const place = values[field];
+    if (place && missing.has(place.placeId)) {
+      form.setFieldError(field, errorCodeToken(UNKNOWN_PLACE_CODE));
+      isApplied = true;
+    }
+  }
+
+  return isApplied;
+}
 
 interface JourneyFormProps {
   form: UseFormReturnType<JourneyFormValues>;
@@ -106,18 +148,8 @@ export function JourneyForm({ form }: JourneyFormProps) {
     try {
       await submitJourney({
         body: {
-          origin: {
-            name: values.origin.name,
-            countryCode: values.origin.countryCode,
-            latitude: values.origin.latitude,
-            longitude: values.origin.longitude,
-          },
-          destination: {
-            name: values.destination.name,
-            countryCode: values.destination.countryCode,
-            latitude: values.destination.latitude,
-            longitude: values.destination.longitude,
-          },
+          origin: toPlaceRef(values.origin),
+          destination: toPlaceRef(values.destination),
           transportType: values.transport,
           traveledYear: Number(values.year),
           traveledMonth: values.hasMonth && values.month ? Number(values.month) : null,
@@ -126,6 +158,10 @@ export function JourneyForm({ form }: JourneyFormProps) {
       });
       navigate("/journeys");
     } catch (err) {
+      if (applyUnknownPlaceError(err, values, form)) {
+        return;
+      }
+
       // Ошибка операции (не привязана к полю) — на уровне формы, у кнопки сабмита.
       const message = applyApiError(err, form);
       if (message) {

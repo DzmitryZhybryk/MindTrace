@@ -3,7 +3,7 @@
   "info": {
     "title": "MindTrace",
     "description": "Service for managing mindtrace",
-    "version": "1.1.1"
+    "version": "2.0.0"
   },
   "paths": {
     "/healthz": {
@@ -563,12 +563,12 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
+              "minLength": 2,
               "maxLength": 100,
-              "description": "Поисковый запрос (часть имени).",
+              "description": "Поисковый запрос (начало имени).",
               "title": "Searchtext"
             },
-            "description": "Поисковый запрос (часть имени)."
+            "description": "Поисковый запрос (начало имени)."
           },
           {
             "name": "language",
@@ -649,6 +649,82 @@
         }
       }
     },
+    "/v1/geo/places/resolve": {
+      "post": {
+        "tags": [
+          "geo"
+        ],
+        "summary": "Resolve Places",
+        "operationId": "resolve_places",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolvePlacesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvePlacesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/journeys/": {
       "post": {
         "tags": [
@@ -710,6 +786,14 @@
                       "details": {
                         "field": "year"
                       },
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "journeys.unknown_place": {
+                    "summary": "Места нет в справочнике",
+                    "value": {
+                      "code": "journeys.unknown_place",
+                      "message": "Место не найдено",
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
                   }
@@ -956,7 +1040,7 @@
           "traveledYear"
         ],
         "title": "CreateJourneyRequest",
-        "description": "Тело запроса создания поездки.\n\nМеста приходят снапшотом (``origin``/``destination`` — имя/страна/координаты), бэк их\nне резолвит. Дата частями: год обязателен, месяц/день опциональны. Семантику даты\n(month 1..12, day валиден и требует month, не будущее) и инвариант origin≠destination\nвалидирует домен — отсюда консистентные доменные коды ошибок (``journeys.*``), а не 422."
+        "description": "Тело запроса создания поездки.\n\nДата частями: год обязателен, месяц и день — нет. Корректность даты и то, что\nотправление не совпадает с назначением, проверяет домен — поэтому ошибки приходят\nс кодами ``journeys.*``, а не 422."
       },
       "CurrentUserResponse": {
         "properties": {
@@ -1044,7 +1128,7 @@
         "properties": {
           "countries": {
             "items": {
-              "$ref": "#/components/schemas/MapCountryResponse"
+              "$ref": "#/components/schemas/MapCountry"
             },
             "type": "array",
             "title": "Countries"
@@ -1090,11 +1174,12 @@
         ],
         "title": "LoginRequest"
       },
-      "MapCityResponse": {
+      "MapCity": {
         "properties": {
-          "name": {
+          "placeId": {
             "type": "string",
-            "title": "Name"
+            "format": "uuid",
+            "title": "Placeid"
           },
           "latitude": {
             "type": "number",
@@ -1114,15 +1199,15 @@
         },
         "type": "object",
         "required": [
-          "name",
+          "placeId",
           "latitude",
           "longitude",
           "years"
         ],
-        "title": "MapCityResponse",
-        "description": "Город на карте путешествий: точка (координаты) + годы визитов по возрастанию."
+        "title": "MapCity",
+        "description": "Город на карте путешествий: его ``placeId``, координаты и годы визитов по возрастанию."
       },
-      "MapCountryResponse": {
+      "MapCountry": {
         "properties": {
           "countryCode": {
             "type": "string",
@@ -1130,7 +1215,7 @@
           },
           "cities": {
             "items": {
-              "$ref": "#/components/schemas/MapCityResponse"
+              "$ref": "#/components/schemas/MapCity"
             },
             "type": "array",
             "title": "Cities"
@@ -1141,7 +1226,7 @@
           "countryCode",
           "cities"
         ],
-        "title": "MapCountryResponse",
+        "title": "MapCountry",
         "description": "Посещённая страна на карте: код ISO alpha-2 и список посещённых в ней городов.\n\nИмя страны не отдаём — фронт резолвит из кода через ``Intl.DisplayNames``. Статуса в\nконтракте нет: эндпоинт по смыслу возвращает только посещённые страны (wishlist\nзапрашивается отдельно), поэтому сам факт прихода из journeys = страна посещена."
       },
       "OptionalDict": {
@@ -1155,13 +1240,32 @@
           }
         ]
       },
-      "PlaceRef": {
+      "PlaceName": {
         "properties": {
+          "placeId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Placeid"
+          },
           "name": {
             "type": "string",
-            "maxLength": 200,
-            "minLength": 1,
             "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "placeId",
+          "name"
+        ],
+        "title": "PlaceName",
+        "description": "Название места на языке запроса."
+      },
+      "PlaceRef": {
+        "properties": {
+          "placeId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Placeid"
           },
           "countryCode": {
             "type": "string",
@@ -1184,15 +1288,15 @@
         },
         "type": "object",
         "required": [
-          "name",
+          "placeId",
           "countryCode",
           "latitude",
           "longitude"
         ],
         "title": "PlaceRef",
-        "description": "Снапшот места в теле запроса (payload-on-create): имя/страна/координаты.\n\nПоездка сохраняет эти данные как есть, ссылки на справочник не шлём. Валидируется\nтолько ФОРМА (длины, диапазоны координат) — это HTTP-граница; семантики тут нет."
+        "description": "Место из выдачи поиска geo: его ``placeId``, страна и координаты."
       },
-      "PlaceResponse": {
+      "PlaceSearchItem": {
         "properties": {
           "placeId": {
             "type": "string",
@@ -1205,7 +1309,14 @@
             "description": "Имя места, резолвнутое под язык запроса (параметр language)."
           },
           "countryCode": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Countrycode"
           },
           "latitude": {
@@ -1217,7 +1328,14 @@
             "title": "Longitude"
           },
           "population": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Population"
           }
         },
@@ -1230,14 +1348,14 @@
           "longitude",
           "population"
         ],
-        "title": "PlaceResponse",
-        "description": "Кандидат автокомплита для фронта.\n\n``place_id`` (наружу ``placeId``) — суррогатный id справочника, стабильный ключ\nкандидата для выбора/рендера; вендорский ключ источника наружу не отдаётся. На create\nон НЕ уходит — поездка снапшотит данные места (имя/координаты), не ссылку."
+        "title": "PlaceSearchItem",
+        "description": "Один вариант в подсказках поиска; по ``placeId`` на место потом можно ссылаться."
       },
       "PlaceSearchResponse": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/PlaceResponse"
+              "$ref": "#/components/schemas/PlaceSearchItem"
             },
             "type": "array",
             "title": "Items"
@@ -1290,6 +1408,47 @@
           "marketingEmailsConsent"
         ],
         "title": "RegisterRequest"
+      },
+      "ResolvePlacesRequest": {
+        "properties": {
+          "placeIds": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Placeids"
+          },
+          "language": {
+            "$ref": "#/components/schemas/Language"
+          }
+        },
+        "type": "object",
+        "required": [
+          "placeIds",
+          "language"
+        ],
+        "title": "ResolvePlacesRequest",
+        "description": "Запрос названий мест по их id на нужном языке."
+      },
+      "ResolvePlacesResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceName"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ResolvePlacesResponse",
+        "description": "Названия найденных мест; id, которых нет в газеттире, в ответ не попадают."
       },
       "TokenResponse": {
         "properties": {

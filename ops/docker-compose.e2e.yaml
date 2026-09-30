@@ -104,8 +104,27 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      geo-load:
+        condition: service_completed_successfully
       worker:
         condition: service_healthy
+
+  # One-shot: грузит газеттир после миграций. Кеш общий с дев-стеком (хост).
+  geo-load:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    command: sh -c "uv run python -m app.geo.infra.datasets"
+    env_file: .env
+    volumes:
+      - ./backend/app:/src/app
+      - ./backend/pyproject.toml:/src/pyproject.toml:ro
+      - ./backend/.geo-cache:/src/.geo-cache
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
 
   # Единственный проброшенный наружу порт (5273 ≠ дев-5173). Playwright бьёт сюда (E2E_BASE_URL),
   # /v1 проксируется на app внутри сети проекта. dev-CMD сам делает npm install (named-volume

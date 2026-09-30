@@ -72,6 +72,22 @@ services:
       - default
     logging: *default-logging
 
+  # One-shot: грузит газеттир после миграций. Кеш во /tmp (образ работает под nonroot).
+  mindtrace_geo_load:
+    <<: *backend-image
+    container_name: mindtrace_geo_load
+    command: python -m app.geo.infra.datasets
+    env_file: .env
+    environment:
+      GEO_DATASETS_CACHE_DIR: /tmp/geo-datasets
+    depends_on:
+      mindtrace_migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    networks:
+      - default
+    logging: *default-logging
+
   app:
     <<: *backend-image
     container_name: mindtrace_app
@@ -85,6 +101,8 @@ services:
       mindtrace_pg:
         condition: service_healthy
       mindtrace_migrate:
+        condition: service_completed_successfully
+      mindtrace_geo_load:
         condition: service_completed_successfully
     healthcheck:
       # slim-образ без curl — пробуем /healthz через python; не-200 бросает исключение -> unhealthy.

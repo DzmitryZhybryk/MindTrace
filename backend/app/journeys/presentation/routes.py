@@ -10,7 +10,7 @@ from app.journeys.presentation.responses import CREATE_JOURNEY_RESPONSES, JOURNE
 from app.journeys.presentation.schemas import (
     CreateJourneyRequest,
     JourneysMapResponse,
-    MapCountryResponse,
+    MapCountry,
 )
 from app.shared.infra.jwt import current_user_id_dependency
 
@@ -30,13 +30,13 @@ async def create_journey(
     command = CreateJourneyCommand(
         user_id=user_id,
         origin=PlaceSnapshot(
-            name=body.origin.name,
+            place_id=body.origin.place_id,
             country_code=body.origin.country_code,
             latitude=body.origin.latitude,
             longitude=body.origin.longitude,
         ),
         destination=PlaceSnapshot(
-            name=body.destination.name,
+            place_id=body.destination.place_id,
             country_code=body.destination.country_code,
             latitude=body.destination.latitude,
             longitude=body.destination.longitude,
@@ -60,5 +60,5 @@ async def get_journeys_map(
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> JourneysMapResponse:
     result = await journey_service.get_journeys_map(user_id=user_id)
-    countries = [MapCountryResponse.model_validate(country, from_attributes=True) for country in result.countries]
+    countries = [MapCountry.model_validate(country, from_attributes=True) for country in result.countries]
     return JourneysMapResponse(countries=countries)

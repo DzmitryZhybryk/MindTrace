@@ -50,19 +50,12 @@ _.ADMIN
 # (vulture не всегда отслеживает self.* через цепочку вызовов).
 _._model
 
-# SQLAlchemy ORM mapped-колонки journeys/geo: маппер читает их при INSERT/SELECT, но прямого
-# чтения model.<col> в app-коде пока нет (read-models journeys вне скоупа, geo.kind пишется
-# офлайн-загрузкой). Это persisted-схема, не мёртвый код.
+# geo_places.kind пишет только загрузчик датасетов, в app-коде колонку никто не читает.
 _.kind
-_.origin_name
-_.origin_country_code
-_.origin_latitude
-_.origin_longitude
-_.destination_name
-_.destination_country_code
-_.destination_latitude
-_.destination_longitude
-_.traveled_on_precision
+
+# geo_dataset_loads: загрузчик работает с таблицей сырым SQL, ORM-модель нужна только метадате.
+_.GeoDatasetLoad
+_.loaded_at
 
 # TransportType: варианты выбираются из значений тела запроса/БД во время выполнения.
 _.LAND

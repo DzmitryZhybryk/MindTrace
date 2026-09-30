@@ -30,19 +30,19 @@ export const zLoginRequest = z.object({
 });
 
 /**
- * MapCityResponse
+ * MapCity
  *
- * Город на карте путешествий: точка (координаты) + годы визитов по возрастанию.
+ * Город на карте путешествий: его ``placeId``, координаты и годы визитов по возрастанию.
  */
-export const zMapCityResponse = z.object({
-  name: z.string(),
+export const zMapCity = z.object({
+  placeId: z.uuid(),
   latitude: z.number(),
   longitude: z.number(),
   years: z.array(z.int())
 });
 
 /**
- * MapCountryResponse
+ * MapCountry
  *
  * Посещённая страна на карте: код ISO alpha-2 и список посещённых в ней городов.
  *
@@ -50,9 +50,9 @@ export const zMapCityResponse = z.object({
  * контракте нет: эндпоинт по смыслу возвращает только посещённые страны (wishlist
  * запрашивается отдельно), поэтому сам факт прихода из journeys = страна посещена.
  */
-export const zMapCountryResponse = z.object({
+export const zMapCountry = z.object({
   countryCode: z.string(),
-  cities: z.array(zMapCityResponse)
+  cities: z.array(zMapCity)
 });
 
 /**
@@ -61,7 +61,7 @@ export const zMapCountryResponse = z.object({
  * Ответ карты путешествий: посещённые страны с городами и годами визитов.
  */
 export const zJourneysMapResponse = z.object({
-  countries: z.array(zMapCountryResponse)
+  countries: z.array(zMapCountry)
 });
 
 export const zOptionalDict = z.record(z.string(), z.unknown()).nullable();
@@ -81,36 +81,39 @@ export const zErrorResponse = z.object({
 });
 
 /**
+ * PlaceName
+ *
+ * Название места на языке запроса.
+ */
+export const zPlaceName = z.object({
+  placeId: z.uuid(),
+  name: z.string()
+});
+
+/**
  * PlaceRef
  *
- * Снапшот места в теле запроса (payload-on-create): имя/страна/координаты.
- *
- * Поездка сохраняет эти данные как есть, ссылки на справочник не шлём. Валидируется
- * только ФОРМА (длины, диапазоны координат) — это HTTP-граница; семантики тут нет.
+ * Место из выдачи поиска geo: его ``placeId``, страна и координаты.
  */
 export const zPlaceRef = z.object({
-  name: z.string().min(1).max(200),
+  placeId: z.uuid(),
   countryCode: z.string().length(2),
   latitude: z.number().gte(-90).lte(90),
   longitude: z.number().gte(-180).lte(180)
 });
 
 /**
- * PlaceResponse
+ * PlaceSearchItem
  *
- * Кандидат автокомплита для фронта.
- *
- * ``place_id`` (наружу ``placeId``) — суррогатный id справочника, стабильный ключ
- * кандидата для выбора/рендера; вендорский ключ источника наружу не отдаётся. На create
- * он НЕ уходит — поездка снапшотит данные места (имя/координаты), не ссылку.
+ * Один вариант в подсказках поиска; по ``placeId`` на место потом можно ссылаться.
  */
-export const zPlaceResponse = z.object({
+export const zPlaceSearchItem = z.object({
   placeId: z.uuid(),
   name: z.string(),
-  countryCode: z.string(),
+  countryCode: z.string().nullable(),
   latitude: z.number(),
   longitude: z.number(),
-  population: z.int()
+  population: z.int().nullable()
 });
 
 /**
@@ -119,7 +122,7 @@ export const zPlaceResponse = z.object({
  * Ответ автокомплита — упорядоченная выдача кандидатов (по убыванию населения).
  */
 export const zPlaceSearchResponse = z.object({
-  items: z.array(zPlaceResponse)
+  items: z.array(zPlaceSearchItem)
 });
 
 /**
@@ -130,6 +133,25 @@ export const zRegisterRequest = z.object({
   email: z.email().max(254),
   termsAccepted: z.boolean(),
   marketingEmailsConsent: z.boolean()
+});
+
+/**
+ * ResolvePlacesRequest
+ *
+ * Запрос названий мест по их id на нужном языке.
+ */
+export const zResolvePlacesRequest = z.object({
+  placeIds: z.array(z.uuid()).min(1).max(1000),
+  language: zLanguage
+});
+
+/**
+ * ResolvePlacesResponse
+ *
+ * Названия найденных мест; id, которых нет в газеттире, в ответ не попадают.
+ */
+export const zResolvePlacesResponse = z.object({
+  items: z.array(zPlaceName)
 });
 
 /**
@@ -159,10 +181,9 @@ export const zTransportType = z.enum([
  *
  * Тело запроса создания поездки.
  *
- * Места приходят снапшотом (``origin``/``destination`` — имя/страна/координаты), бэк их
- * не резолвит. Дата частями: год обязателен, месяц/день опциональны. Семантику даты
- * (month 1..12, day валиден и требует month, не будущее) и инвариант origin≠destination
- * валидирует домен — отсюда консистентные доменные коды ошибок (``journeys.*``), а не 422.
+ * Дата частями: год обязателен, месяц и день — нет. Корректность даты и то, что
+ * отправление не совпадает с назначением, проверяет домен — поэтому ошибки приходят
+ * с кодами ``journeys.*``, а не 422.
  */
 export const zCreateJourneyRequest = z.object({
   origin: zPlaceRef,
@@ -231,7 +252,7 @@ export const zVerifyEmailBody = zVerifyEmailRequest;
 export const zVerifyEmailResponse = z.void();
 
 export const zSearchPlacesQuery = z.object({
-  searchText: z.string().min(1).max(100),
+  searchText: z.string().min(2).max(100),
   language: zLanguage,
   limit: z.int().gte(1).lte(50).optional().default(10)
 });
@@ -240,6 +261,13 @@ export const zSearchPlacesQuery = z.object({
  * Successful Response
  */
 export const zSearchPlacesResponse = zPlaceSearchResponse;
+
+export const zResolvePlacesBody = zResolvePlacesRequest;
+
+/**
+ * Successful Response
+ */
+export const zResolvePlacesResponse2 = zResolvePlacesResponse;
 
 export const zCreateJourneyBody = zCreateJourneyRequest;
 

@@ -79,7 +79,7 @@ depends_on = ["app.journeys.domain", "app.shared"]
 
 [[modules]]
 path = "app.journeys.infra"
-depends_on = ["app.journeys.domain", "app.journeys.application", "app.shared"]
+depends_on = ["app.journeys.domain", "app.journeys.application", "app.shared", "app.geo.application"]
 
 [[modules]]
 path = "app.journeys.presentation"
@@ -88,6 +88,8 @@ depends_on = [
     "app.journeys.infra",
     "app.journeys.domain",
     "app.shared",
+    "app.geo.application",
+    "app.geo.presentation",
 ]
 
 [[modules]]

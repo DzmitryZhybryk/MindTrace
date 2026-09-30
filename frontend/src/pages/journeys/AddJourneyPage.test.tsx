@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getJourneysMapQueryKey } from "../../api/sdk";
 import { useGlobeScene } from "../../components/globe/globeScene";
-import { server } from "../../test/handlers";
+import { GEO_PLACES, server } from "../../test/handlers";
 import { createTestQueryClient, renderRoutes, renderWithProviders, screen, waitFor, within } from "../../test/render";
 import { AddJourneyPage } from "./AddJourneyPage";
 
@@ -83,8 +83,33 @@ async function pickOption(options: { user: UserEvent; trigger: HTMLElement; opti
   await user.click(await screen.findByRole("option", { name: option, hidden: true }));
 }
 
+const [MOSCOW, LONDON] = GEO_PLACES;
+
+const UNKNOWN_PLACE_TEXT = "This place wasn't found. Pick it from the suggestions again";
+
+/** Бэк не нашёл места с этими id — отвечает `journeys.unknown_place`. */
+function respondUnknownPlaces(placeIds: string[]): void {
+  server.use(
+    http.post("/v1/journeys/", () =>
+      HttpResponse.json(
+        { code: "journeys.unknown_place", message: "ru", details: { place_ids: placeIds } },
+        { status: 400 },
+      ),
+    ),
+  );
+}
+
+/** Заполняет форму Moscow → London, самолёт, 2020 и отправляет её. */
+async function submitMoscowToLondon(user: UserEvent): Promise<void> {
+  await pickPlace({ user, label: "From", query: "Mos", option: /Moscow/iu });
+  await pickPlace({ user, label: "To", query: "Lon", option: /London/iu });
+  await pickOption({ user, trigger: screen.getByPlaceholderText("Choose transport"), option: "Air" });
+  await pickOption({ user, trigger: screen.getByPlaceholderText("Select year"), option: "2020" });
+  await user.click(screen.getByRole("button", { name: "Add journey" }));
+}
+
 describe("AddJourneyPage", () => {
-  it("создаёт поездку payload-on-create и ведёт в список поездок", async () => {
+  it("создаёт поездку с id выбранных мест и ведёт в список поездок", async () => {
     let body: unknown = null;
     server.use(
       http.post("/v1/journeys/", async ({ request }) => {
@@ -103,8 +128,8 @@ describe("AddJourneyPage", () => {
 
     expect(await screen.findByText("journeys-landing")).toBeInTheDocument();
     expect(body).toEqual({
-      origin: { name: "Moscow", countryCode: "RU", latitude: 55.75, longitude: 37.62 },
-      destination: { name: "London", countryCode: "GB", latitude: 51.5, longitude: -0.12 },
+      origin: { placeId: MOSCOW.placeId, countryCode: "RU", latitude: 55.75, longitude: 37.62 },
+      destination: { placeId: LONDON.placeId, countryCode: "GB", latitude: 51.5, longitude: -0.12 },
       transportType: "air",
       traveledYear: 2020,
       traveledMonth: null,
@@ -170,8 +195,8 @@ describe("AddJourneyPage", () => {
 
     expect(await screen.findByText("journeys-landing")).toBeInTheDocument();
     expect(body).toMatchObject({
-      origin: { name: "London", countryCode: "GB" },
-      destination: { name: "Moscow", countryCode: "RU" },
+      origin: { placeId: LONDON.placeId, countryCode: "GB" },
+      destination: { placeId: MOSCOW.placeId, countryCode: "RU" },
     });
   });
 
@@ -302,6 +327,39 @@ describe("AddJourneyPage", () => {
 
     expect(await screen.findByText("The travel date can't be in the future")).toBeInTheDocument();
     expect(screen.queryByText("journeys-landing")).not.toBeInTheDocument();
+  });
+
+  it("место, которого бэк не нашёл, подсвечивается под своим полем", async () => {
+    respondUnknownPlaces([LONDON.placeId]);
+    const { user } = renderAddJourney();
+
+    await submitMoscowToLondon(user);
+
+    const destinationError = await screen.findByText(UNKNOWN_PLACE_TEXT);
+    expect(screen.getAllByText(UNKNOWN_PLACE_TEXT)).toHaveLength(1);
+    // Ошибка стоит у поля «To» — его описание ссылается на текст ошибки.
+    expect(screen.getByLabelText("To")).toHaveAccessibleDescription(destinationError.textContent ?? "");
+    expect(screen.queryByText("journeys-landing")).not.toBeInTheDocument();
+  });
+
+  it("если бэк не нашёл оба места, подсвечиваются оба поля", async () => {
+    respondUnknownPlaces([MOSCOW.placeId, LONDON.placeId]);
+    const { user } = renderAddJourney();
+
+    await submitMoscowToLondon(user);
+
+    await waitFor(() => expect(screen.getAllByText(UNKNOWN_PLACE_TEXT)).toHaveLength(2));
+  });
+
+  it("ненайденный id не из формы — ошибка уровня формы, а не тишина", async () => {
+    respondUnknownPlaces(["99999999-9999-4999-8999-999999999999"]);
+    const { user } = renderAddJourney();
+
+    await submitMoscowToLondon(user);
+
+    expect(await screen.findByText(UNKNOWN_PLACE_TEXT)).toBeInTheDocument();
+    expect(screen.getByLabelText("From")).not.toHaveAccessibleDescription();
+    expect(screen.getByLabelText("To")).not.toHaveAccessibleDescription();
   });
 
   it("требует обязательные поля и не отправляет запрос при пустой форме", async () => {

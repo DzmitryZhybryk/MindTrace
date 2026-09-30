@@ -14,7 +14,8 @@
   "map": {
     "aria": "World map highlighting visited countries",
     "notVisited": "Not visited yet",
-    "wishlist": "On your wishlist"
+    "wishlist": "On your wishlist",
+    "unknownPlace": "Unknown place"
   },
   "greeting": "Hello, {{name}}",
   "badge": {

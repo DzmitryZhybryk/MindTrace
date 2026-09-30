@@ -50,8 +50,7 @@ export function AddJourneyPage() {
         if (!value) {
           return "journeys:addJourney.validation.destinationRequired";
         }
-        // Идентичность места — placeId справочника: предвалидируем тот же город ещё на
-        // фронте (бэк всё равно проверит по координатам). placeId на create не уходит.
+        // Тот же город отсекаем ещё на фронте; бэк проверит то же самое по placeId.
         if (values.origin && values.origin.placeId === value.placeId) {
           return "journeys:addJourney.validation.sameCity";
         }

@@ -59,8 +59,8 @@ class JourneyEntity(TimestampedEntityMixin):
 
         Args:
             user_id: Владелец поездки
-            origin: Снапшот места отправления
-            destination: Снапшот места назначения
+            origin: Место отправления
+            destination: Место назначения
             transport_type: Среда передвижения
             traveled_on: Приблизительная дата поездки
 
@@ -84,19 +84,16 @@ class JourneyEntity(TimestampedEntityMixin):
     @staticmethod
     def _ensure_distinct_endpoints(*, origin: GeoPoint, destination: GeoPoint) -> None:
         """
-        Проверяет инвариант «origin ≠ destination»: одно и то же место запрещено.
-
-        Идентичность места — координаты: для одинакового выбора они совпадают побитово
-        (обе точки из одного снапшота-источника), у разных мест различаются.
+        Проверяет, что поездка не начинается и не заканчивается в одном и том же месте.
 
         Args:
-            origin: Снапшот места отправления
-            destination: Снапшот места назначения
+            origin: Место отправления
+            destination: Место назначения
 
         Raises:
-            SameOriginAndDestinationError: широта и долгота точек совпадают
+            SameOriginAndDestinationError: отправление и назначение — одно место
         """
-        if origin.latitude == destination.latitude and origin.longitude == destination.longitude:
+        if origin.place_id == destination.place_id:
             raise SameOriginAndDestinationError()
 
     @staticmethod
@@ -108,8 +105,8 @@ class JourneyEntity(TimestampedEntityMixin):
         схематичной карты поездок этого достаточно.
 
         Args:
-            origin: Снапшот места отправления
-            destination: Снапшот места назначения
+            origin: Место отправления
+            destination: Место назначения
 
         Returns:
             Расстояние между точками маршрута в километрах, округлённое до ближайшего целого

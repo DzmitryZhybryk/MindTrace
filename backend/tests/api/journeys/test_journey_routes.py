@@ -16,13 +16,13 @@ import pytest
 from httpx import AsyncClient
 
 from app.journeys.domain.enums import TransportType
-from tests.builders import make_approximate_date, make_geo_point, make_journey
-from tests.fakes import FakeJourneyRepository, FakeJourneyUnitOfWork
+from tests.builders import LONDON_PLACE_ID, MOSCOW_PLACE_ID, make_approximate_date, make_geo_point, make_journey
+from tests.fakes import FakeJourneyRepository, FakeJourneyUnitOfWork, FakePlacesClient
 
 _CREATE_PATH = "/v1/journeys/"
 _MAP_PATH = "/v1/journeys/map"
-_MOSCOW = {"name": "Moscow", "countryCode": "RU", "latitude": 55.75, "longitude": 37.62}
-_LONDON = {"name": "London", "countryCode": "GB", "latitude": 51.5, "longitude": -0.12}
+_MOSCOW = {"placeId": str(MOSCOW_PLACE_ID), "countryCode": "RU", "latitude": 55.75, "longitude": 37.62}
+_LONDON = {"placeId": str(LONDON_PLACE_ID), "countryCode": "GB", "latitude": 51.5, "longitude": -0.12}
 _VALID_BODY: dict[str, Any] = {
     "origin": _MOSCOW,
     "destination": _LONDON,
@@ -54,8 +54,8 @@ async def test_create_journey_returns_201_and_persists(
     assert len(fake_journey_repository.journeys) == 1
     journey_entity = fake_journey_repository.journeys[0]
     assert journey_entity.user_id == user_id
-    assert journey_entity.origin.name == "Moscow"
-    assert journey_entity.destination.name == "London"
+    assert journey_entity.origin.place_id == MOSCOW_PLACE_ID
+    assert journey_entity.destination.place_id == LONDON_PLACE_ID
     assert journey_entity.transport_type is TransportType.AIR
     fake_journey_uow.commit_mock.assert_awaited_once()
 
@@ -102,6 +102,28 @@ async def test_create_journey_domain_errors_return_400(
     assert fake_journey_repository.journeys == []
 
 
+async def test_create_journey_unknown_place_returns_400_with_missing_ids(
+    client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    fake_places_client: FakePlacesClient,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """400: места нет в geo → journeys.unknown_place, ненайденные id в details.place_ids, поездка не создана."""
+    fake_places_client.existing_place_ids.discard(LONDON_PLACE_ID)
+
+    response = await client.post(
+        _CREATE_PATH,
+        json=_VALID_BODY,
+        headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"},
+    )
+
+    assert response.status_code == 400
+    body = response.json()
+    assert body["code"] == "journeys.unknown_place"
+    assert body["details"] == {"place_ids": [str(LONDON_PLACE_ID)]}
+    assert fake_journey_repository.journeys == []
+
+
 async def test_create_journey_out_of_range_coordinate_returns_422(
     client: AsyncClient,
     mint_access_token: Callable[..., str],
@@ -127,8 +149,8 @@ async def test_get_journeys_map_returns_aggregated_countries(
     fake_journey_repository.journeys.append(
         make_journey(
             user_id=user_id,
-            origin=make_geo_point(name="Moscow", country_code="RU", latitude=55.75, longitude=37.62),
-            destination=make_geo_point(name="London", country_code="GB", latitude=51.5, longitude=-0.12),
+            origin=make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.75, longitude=37.62),
+            destination=make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
             traveled_on=make_approximate_date(year=2020),
         )
     )
@@ -139,7 +161,8 @@ async def test_get_journeys_map_returns_aggregated_countries(
     body = response.json()
     assert [country["countryCode"] for country in body["countries"]] == ["GB", "RU"]
     london = body["countries"][0]["cities"][0]
-    assert london["name"] == "London"
+    assert london["placeId"] == str(LONDON_PLACE_ID)
+    assert set(london) == {"placeId", "latitude", "longitude", "years"}
     assert london["years"] == [2020]
     assert london["latitude"] == pytest.approx(51.5)
     assert london["longitude"] == pytest.approx(-0.12)

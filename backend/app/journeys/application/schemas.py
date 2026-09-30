@@ -17,23 +17,17 @@ __all__ = [
 
 
 # Промежуточные структуры свёртки ``JourneyService.get_journeys_map`` (наружу не отдаются):
-# города одной страны — имя без учёта регистра (casefold) → накопленные визиты.
-type VisitsByCity = dict[str, CityVisitAccumulator]
+# города одной страны — id места → накопленные визиты.
+type VisitsByCity = dict[UUID, CityVisitAccumulator]
 # страны пользователя — ISO alpha-2 код → города этой страны.
 type VisitsByCountry = dict[str, VisitsByCity]
 
 
 @dataclass(frozen=True, slots=True)
 class PlaceSnapshot:
-    """
-    Снапшот места из тела запроса (payload-on-create) — данные для одной точки маршрута.
+    """Место отправления или назначения, выбранное пользователем в справочнике geo."""
 
-    Поездка сохраняет именно эти данные (имя/страна/координаты), а не резолвит их по id из
-    справочника. Транспортный объект без валидации/семантических типов → dataclass (см. DTO
-    conventions); форму (длины/диапазоны координат) валидирует presentation на HTTP-границе.
-    """
-
-    name: str
+    place_id: UUID
     country_code: str
     latitude: float
     longitude: float
@@ -42,11 +36,9 @@ class PlaceSnapshot:
 @dataclass(frozen=True, slots=True)
 class CreateJourneyCommand:
     """
-    Намерение «создать поездку» — вход ``JourneyService.create_journey``.
+    Данные для создания поездки.
 
-    Места приходят снапшотом в теле запроса (``origin``/``destination`` — ``PlaceSnapshot``),
-    дата — частями (год обяз., месяц/день опц.; дефолты живут на ``CreateJourneyRequest``,
-    сюда значение всегда приходит из него). Транспортный объект без валидации → dataclass.
+    Дата приходит частями: год обязателен, месяц и день — нет.
     """
 
     user_id: UUID
@@ -61,15 +53,13 @@ class CreateJourneyCommand:
 @dataclass(frozen=True, slots=True)
 class MapCityVisit:
     """
-    Посещённый город как точка на карте путешествий — выход ``JourneyService.get_journeys_map``.
+    Посещённый город на карте путешествий.
 
-    ``years`` — отсортированные по возрастанию годы визитов в этот город (по всем поездкам,
-    где он был origin или destination). Имя города отдаётся как сохранённый снапшот; локаль
-    топонима фронт не резолвит (стандартного кода у городов нет, см. country-code-contract).
-    Транспортный объект без валидации/семантических типов → dataclass.
+    ``years`` — годы поездок, в которых город был отправлением или назначением, по возрастанию.
+    Названия нет: фронт запрашивает его у geo по ``place_id``.
     """
 
-    name: str
+    place_id: UUID
     latitude: float
     longitude: float
     years: tuple[int, ...]

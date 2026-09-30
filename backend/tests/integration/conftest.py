@@ -45,7 +45,15 @@ from tests.builders import make_user_credentials
 
 _POSTGRES_IMAGE = "postgres:17-alpine"
 # Порядок не важен: ``TRUNCATE ... CASCADE`` снимает FK-зависимости разом.
-_ALL_TABLES = ("users", "user_credentials", "refresh_tokens", "challenges", "geo_places", "journeys")
+_ALL_TABLES = (
+    "users",
+    "user_credentials",
+    "refresh_tokens",
+    "challenges",
+    "geo_places",
+    "geo_dataset_loads",
+    "journeys",
+)
 
 
 @pytest.fixture(scope="session")
