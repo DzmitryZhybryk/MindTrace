@@ -1,3 +1,6 @@
+from collections.abc import Collection
+from uuid import UUID
+
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,15 +16,20 @@ _LIKE_ESCAPE = "\\"
 
 
 class PlaceRepository(BaseDBRepository[GeoPlace], PlaceRepositoryPort):
-    """Read-only поиск мест по газеттиру: префиксный матч ``lower(name) LIKE 'q%'``."""
+    """Чтение мест из газеттира: поиск по началу имени и выборка по id."""
 
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session=session, model=GeoPlace)
 
     async def search_places_by_name(self, *, search_text: str, limit: int) -> list[PlaceEntity]:
         query = self._prefix_query(search_text=search_text)
-        # Места ранжируем по убыванию населения, затем стабильный tie-break по external_id.
-        query = query.order_by(GeoPlace.population.desc(), GeoPlace.external_id).limit(limit)
+        # По убыванию населения (без населения — в конце), tie-break по external_id.
+        query = query.order_by(GeoPlace.population.desc().nulls_last(), GeoPlace.external_id).limit(limit)
+        result = await self._session.execute(query)
+        return [self._to_entity(place_model=place_model) for place_model in result.scalars()]
+
+    async def find_places_by_ids(self, *, place_ids: Collection[UUID]) -> list[PlaceEntity]:
+        query = select(GeoPlace).where(GeoPlace.id.in_(place_ids))
         result = await self._session.execute(query)
         return [self._to_entity(place_model=place_model) for place_model in result.scalars()]
 

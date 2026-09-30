@@ -4,8 +4,8 @@ import * as z from 'zod';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateJourneyData, CreateJourneyErrors, CreateJourneyResponses, GetCurrentUserData, GetCurrentUserErrors, GetCurrentUserResponses, GetJourneysMapData, GetJourneysMapErrors, GetJourneysMapResponses, HealthzData, HealthzResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, RefreshData, RefreshErrors, RefreshResponses, RegisterData, RegisterErrors, RegisterResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses, SendEmailVerificationData, SendEmailVerificationErrors, SendEmailVerificationResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
-import { zCreateJourneyBody, zGetCurrentUserResponse, zGetJourneysMapResponse, zLoginBody, zLoginResponse, zLogoutResponse, zRefreshResponse, zRegisterBody, zRegisterResponse, zSearchPlacesQuery, zSearchPlacesResponse, zVerifyEmailBody, zVerifyEmailResponse } from './zod.gen';
+import type { CreateJourneyData, CreateJourneyErrors, CreateJourneyResponses, GetCurrentUserData, GetCurrentUserErrors, GetCurrentUserResponses, GetJourneysMapData, GetJourneysMapErrors, GetJourneysMapResponses, HealthzData, HealthzResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, RefreshData, RefreshErrors, RefreshResponses, RegisterData, RegisterErrors, RegisterResponses, ResolvePlacesData, ResolvePlacesErrors, ResolvePlacesResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses, SendEmailVerificationData, SendEmailVerificationErrors, SendEmailVerificationResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
+import { zCreateJourneyBody, zGetCurrentUserResponse, zGetJourneysMapResponse, zLoginBody, zLoginResponse, zLogoutResponse, zRefreshResponse, zRegisterBody, zRegisterResponse, zResolvePlacesBody, zResolvePlacesResponse2, zSearchPlacesQuery, zSearchPlacesResponse, zVerifyEmailBody, zVerifyEmailResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
   /**
@@ -163,6 +163,26 @@ export const searchPlaces = <ThrowOnError extends boolean = false>(options: Opti
   security: [{ scheme: 'bearer', type: 'http' }],
   url: '/v1/geo/places/search/',
   ...options
+});
+
+/**
+ * Resolve Places
+ */
+export const resolvePlaces = <ThrowOnError extends boolean = false>(options: Options<ResolvePlacesData, ThrowOnError>): RequestResult<ResolvePlacesResponses, ResolvePlacesErrors, ThrowOnError, 'data'> => (options.client ?? client).post<ResolvePlacesResponses, ResolvePlacesErrors, ThrowOnError, 'data'>({
+  requestValidator: async (data) => await z.object({
+    body: zResolvePlacesBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zResolvePlacesResponse2.parseAsync(data),
+  responseStyle: 'data',
+  security: [{ scheme: 'bearer', type: 'http' }],
+  url: '/v1/geo/places/resolve',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
 });
 
 /**

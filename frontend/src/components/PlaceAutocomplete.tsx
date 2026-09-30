@@ -4,15 +4,16 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { searchPlacesOptions, type PlaceResponse } from "../api/sdk";
+import { searchPlacesOptions, type PlaceSearchItem } from "../api/sdk";
 import pinIcon from "../assets/emoji/pin.svg";
+import { toApiLanguage } from "../i18n/apiLanguage";
 
 const PIN_ICON_SIZE = 20;
 // Стабильная ссылка на пустую выдачу: эффект «подсветить первую подсказку» завязан на
 // идентичность `options` и на новом `[]` каждый рендер гонялся бы вхолостую.
-const NO_OPTIONS: PlaceResponse[] = [];
+const NO_OPTIONS: PlaceSearchItem[] = [];
 
-// Префиксный поиск (btree) отрабатывает и на 1 символе, но порог 2 режет флуд запросов.
+// Бэк принимает запрос от 2 символов.
 const MIN_LENGTH = 2;
 const DEBOUNCE_MS = 250;
 const RESULT_LIMIT = 20;
@@ -22,8 +23,8 @@ const DROPDOWN_MAX_HEIGHT = 320;
 interface PlaceAutocompleteProps {
   label: string;
   placeholder: string;
-  value: PlaceResponse | null;
-  onChange: (place: PlaceResponse | null) => void;
+  value: PlaceSearchItem | null;
+  onChange: (place: PlaceSearchItem | null) => void;
   error?: ReactNode;
 }
 
@@ -51,7 +52,7 @@ function focusNextFormControl(current: HTMLElement | null): void {
  * Поле выбора места с автокомплитом по газеттиру (`/v1/geo/places/search`).
  *
  * Набор → debounce → запрос (устаревшие отменяются `AbortController`) → выпадающий
- * список кандидатов; выбор кладёт `PlaceResponse` (с `placeId`) в `value`. Пока место
+ * список кандидатов; выбор кладёт `PlaceSearchItem` (с `placeId`) в `value`. Пока место
  * не выбрано, `value` держится `null` (форма требует выбранный кандидат). При пустой
  * выдаче подсказка ведёт пользователя попробовать другое написание/английское имя
  * (страховка от дырявого `name_ru`).
@@ -70,7 +71,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
   // Последнее значение, которое МЫ САМИ отдали через onChange. Если родитель пришлёт
   // другой `value` (например, swap «Откуда»/«Куда» в форме), значит смена внешняя —
   // и видимый текст надо подтянуть под неё (см. эффект ниже).
-  const lastEmittedRef = useRef<PlaceResponse | null>(value);
+  const lastEmittedRef = useRef<PlaceSearchItem | null>(value);
 
   // Внешняя установка `value` (swap городов в форме) → синхронизируем видимый текст и
   // «якорь» имени. Свой выбор/правка уже выставили `lastEmittedRef`, поэтому условие
@@ -85,7 +86,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
     setSearch(value?.name ?? "");
   }, [value]);
 
-  const language = i18n.language.startsWith("ru") ? "ru" : "en";
+  const language = toApiLanguage(i18n.language);
   // Бэк отдаёт ISO alpha-2 (BY/RU), имя страны резолвит фронт через CLDR под язык UI
   // (контракт проекта — см. docs/architecture.md); неизвестный код → показываем сам код.
   const countryNames = useMemo(() => new Intl.DisplayNames([language], { type: "region", fallback: "none" }), [language]);
@@ -183,16 +184,19 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
           <Combobox.Options>
             <ScrollArea.Autosize mah={DROPDOWN_MAX_HEIGHT} type="scroll">
               {options.map((place) => {
-                const country = countryNames.of(place.countryCode) ?? place.countryCode;
+                // У мест вроде моря страны нет — тогда подпись со страной не показываем.
+                const country = place.countryCode ? (countryNames.of(place.countryCode) ?? place.countryCode) : null;
                 return (
                   <Combobox.Option value={place.placeId} key={place.placeId}>
                     <Group gap="xs" wrap="nowrap">
                       <img src={pinIcon} width={PIN_ICON_SIZE} height={PIN_ICON_SIZE} alt="" />
                       <div>
                         <Text size="sm">{place.name}</Text>
-                        <Text size="xs" c="var(--text-muted)">
-                          {country}
-                        </Text>
+                        {country && (
+                          <Text size="xs" c="var(--text-muted)">
+                            {country}
+                          </Text>
+                        )}
                       </div>
                     </Group>
                   </Combobox.Option>

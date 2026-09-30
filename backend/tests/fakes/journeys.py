@@ -42,9 +42,11 @@ class FakeJourneyUnitOfWork(JourneyUnitOfWorkPort):
     def __init__(self, *, journey_repository: JourneyRepositoryPort) -> None:
         self.journey_repository = journey_repository
         self.commit_mock = AsyncMock()
+        self.transactions_started = 0
 
     @asynccontextmanager
     async def transaction(self) -> AsyncIterator[None]:
+        self.transactions_started += 1
         yield
 
     async def commit(self) -> None:

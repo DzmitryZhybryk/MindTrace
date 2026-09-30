@@ -1,10 +1,12 @@
-"""Фейк ``UsersClientPort``: записывает вызовы ``create_user`` для state-ассертов."""
+"""Фейки клиентов к другим доменам: записывают вызовы для state-ассертов."""
 
 import datetime as dt
+from collections.abc import Collection
 from dataclasses import dataclass
 from uuid import UUID
 
 from app.auth.application.ports import UsersClientPort
+from app.journeys.application.ports import PlacesClientPort
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,3 +53,15 @@ class FakeUsersClient(UsersClientPort):
                 terms_accepted_at=terms_accepted_at,
             ),
         )
+
+
+class FakePlacesClient(PlacesClientPort):
+    """Фейк клиента journeys → geo: знает набор существующих мест и записывает вызовы."""
+
+    def __init__(self, *, existing_place_ids: Collection[UUID] = ()) -> None:
+        self.existing_place_ids = set(existing_place_ids)
+        self.calls: list[tuple[UUID, ...]] = []
+
+    async def get_missing_place_ids(self, *, place_ids: Collection[UUID]) -> frozenset[UUID]:
+        self.calls.append(tuple(place_ids))
+        return frozenset(place_ids) - self.existing_place_ids

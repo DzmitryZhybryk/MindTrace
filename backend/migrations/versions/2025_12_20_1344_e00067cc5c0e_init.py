@@ -1,5 +1,6 @@
 """
-Migration name: initial schema — users, user_credentials, refresh_tokens, challenges, geo_places, journeys
+Migration name: initial schema — users, user_credentials, refresh_tokens, challenges, geo_places,
+geo_dataset_loads, journeys
 
 Revision ID: e00067cc5c0e
 Revises: None
@@ -92,9 +93,7 @@ def upgrade() -> None:
         postgresql_where=sa.text("used_at IS NULL"),
     )
 
-    # Газеттир мест — read-only справочник-кэш для автокомплита поездки (наполняется офлайн
-    # bulk-загрузкой; газеттир cities-only). id — суррогатный UUID (вендор-нейтральный, наружу);
-    # external_id — вендорский ключ источника ("GeoNames:524901" → завтра "Google:..."), внутренний.
+    # Газеттир мест: id выводит из external_id загрузчик датасетов (uuid5), база его не генерирует.
     op.create_table(
         "geo_places",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -102,10 +101,10 @@ def upgrade() -> None:
         sa.Column("kind", sa.String(length=20), nullable=False),
         sa.Column("name_en", sa.String(length=200), nullable=False),
         sa.Column("name_ru", sa.String(length=200), nullable=True),
-        sa.Column("country_code", sa.String(length=2), nullable=False),
+        sa.Column("country_code", sa.String(length=2), nullable=True),
         sa.Column("latitude", sa.REAL(), nullable=False),
         sa.Column("longitude", sa.REAL(), nullable=False),
-        sa.Column("population", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("population", sa.Integer(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("external_id", name="uq_geo_places_external_id"),
     )
@@ -121,12 +120,19 @@ def upgrade() -> None:
         "geo_places",
         [sa.text("lower(name_ru) text_pattern_ops")],
     )
-    # btree по country_code — фильтр/сужение выдачи автокомплита по стране.
-    op.create_index("ix_geo_places_country_code", "geo_places", ["country_code"])
 
-    # Поездка пользователя — плоский снапшот маршрута (без JSONB, без ссылки на справочник):
-    # origin/destination денормализованы колонками (имя/страна/координаты), идентичность места
-    # = координаты. user_id — без FK (другой домен), проиндексирован под выборки поездок юзера.
+    # Журнал загрузок датасетов газеттира.
+    op.create_table(
+        "geo_dataset_loads",
+        sa.Column("name", sa.String(length=100), nullable=False),
+        sa.Column("version", sa.String(length=50), nullable=False),
+        sa.Column("sha256", sa.String(length=64), nullable=False),
+        sa.Column("loaded_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("name"),
+    )
+
+    # Поездки пользователей. Места — ссылки на справочник geo, без внешних ключей на geo и users:
+    # это другие домены.
     op.create_table(
         "journeys",
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
@@ -134,11 +140,11 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Uuid(), nullable=False),
-        sa.Column("origin_name", sa.String(length=200), nullable=False),
+        sa.Column("origin_place_id", sa.Uuid(), nullable=False),
         sa.Column("origin_country_code", sa.String(length=2), nullable=False),
         sa.Column("origin_latitude", sa.REAL(), nullable=False),
         sa.Column("origin_longitude", sa.REAL(), nullable=False),
-        sa.Column("destination_name", sa.String(length=200), nullable=False),
+        sa.Column("destination_place_id", sa.Uuid(), nullable=False),
         sa.Column("destination_country_code", sa.String(length=2), nullable=False),
         sa.Column("destination_latitude", sa.REAL(), nullable=False),
         sa.Column("destination_longitude", sa.REAL(), nullable=False),
@@ -152,10 +158,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # journeys и geo_places создаются последними в upgrade — дропаются первыми.
+    # journeys и таблицы geo создаются последними в upgrade — дропаются первыми.
     op.drop_index("ix_journeys_user_id", table_name="journeys")
     op.drop_table("journeys")
-    op.drop_index("ix_geo_places_country_code", table_name="geo_places")
+    op.drop_table("geo_dataset_loads")
     op.drop_index("ix_geo_places_name_ru_prefix", table_name="geo_places")
     op.drop_index("ix_geo_places_name_en_prefix", table_name="geo_places")
     op.drop_table("geo_places")

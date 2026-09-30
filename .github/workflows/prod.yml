@@ -79,10 +79,24 @@ jobs:
       - name: Provide .env for ephemeral e2e stack (test-only values)
         run: cp ops/.env.e2e .env
 
+      # geo-load e2e-стека берёт датасет мест из backend/.geo-cache и качает с GitHub Releases
+      # только при промахе. Ключ — манифест: новый датасет = новый ключ.
+      - name: Cache geo datasets
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: backend/.geo-cache
+          key: geo-datasets-${{ hashFiles('backend/app/geo/infra/datasets/manifest.toml') }}
+
       # make test-e2e (из корня) сам поднимает одноразовый стек (ops/docker-compose.e2e.yaml),
       # гоняет Playwright (config CI-aware: retries=1, workers=2) и сносит стек с -v.
       - name: E2E (ephemeral stack + Playwright)
         run: make test-e2e
+
+      # Контейнер пишет кеш от root с правами 0600 — без смены владельца пост-шаг кеша
+      # не прочитает файл и молча ничего не сохранит.
+      - name: Hand geo cache back to runner user
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" backend/.geo-cache || true
 
   # ── Сборка образов: только push main И только после зелёных тяжёлых тестов (строгая связка) ──
   build-push:

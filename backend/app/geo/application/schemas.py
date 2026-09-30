@@ -3,7 +3,14 @@ from uuid import UUID
 
 from app.geo.domain.enums import Language
 
-__all__ = ["PlaceSearchItem", "PlaceSearchResult", "SearchPlacesCommand"]
+__all__ = [
+    "PlaceSearchItem",
+    "PlaceSearchResult",
+    "ResolvePlacesCommand",
+    "ResolvePlacesResult",
+    "ResolvedPlace",
+    "SearchPlacesCommand",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,20 +29,14 @@ class SearchPlacesCommand:
 
 @dataclass(frozen=True, slots=True)
 class PlaceSearchItem:
-    """
-    Один кандидат автокомплита — имя уже резолвнуто под язык запроса.
-
-    ``place_id`` — суррогатный id справочника (UUID), стабильный ключ кандидата для фронта
-    (выбор/React-key); вендорский ключ источника наружу не отдаётся. На create этот id НЕ
-    уходит — поездка снапшотит данные места (имя/координаты), не ссылку на справочник.
-    """
+    """Один вариант в подсказках поиска; имя — на языке запроса."""
 
     place_id: UUID
     name: str
-    country_code: str
+    country_code: str | None
     latitude: float
     longitude: float
-    population: int
+    population: int | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,3 +44,26 @@ class PlaceSearchResult:
     """Результат поиска — упорядоченная выдача кандидатов."""
 
     items: tuple[PlaceSearchItem, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvePlacesCommand:
+    """Запрос названий мест по их id на нужном языке."""
+
+    place_ids: tuple[UUID, ...]
+    language: Language
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedPlace:
+    """Название места на языке запроса."""
+
+    place_id: UUID
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvePlacesResult:
+    """Названия найденных мест."""
+
+    items: tuple[ResolvedPlace, ...]

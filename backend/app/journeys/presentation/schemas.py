@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 
 from pydantic import Field
 
@@ -7,14 +8,9 @@ from app.shared.schemas import CamelModel
 
 
 class PlaceRef(CamelModel):
-    """
-    Снапшот места в теле запроса (payload-on-create): имя/страна/координаты.
+    """Место из выдачи поиска geo: его ``placeId``, страна и координаты."""
 
-    Поездка сохраняет эти данные как есть, ссылки на справочник не шлём. Валидируется
-    только ФОРМА (длины, диапазоны координат) — это HTTP-граница; семантики тут нет.
-    """
-
-    name: Annotated[str, Field(min_length=1, max_length=200)]
+    place_id: UUID
     country_code: Annotated[str, Field(min_length=2, max_length=2)]
     latitude: Annotated[float, Field(ge=-90, le=90)]
     longitude: Annotated[float, Field(ge=-180, le=180)]
@@ -24,10 +20,9 @@ class CreateJourneyRequest(CamelModel):
     """
     Тело запроса создания поездки.
 
-    Места приходят снапшотом (``origin``/``destination`` — имя/страна/координаты), бэк их
-    не резолвит. Дата частями: год обязателен, месяц/день опциональны. Семантику даты
-    (month 1..12, day валиден и требует month, не будущее) и инвариант origin≠destination
-    валидирует домен — отсюда консистентные доменные коды ошибок (``journeys.*``), а не 422.
+    Дата частями: год обязателен, месяц и день — нет. Корректность даты и то, что
+    отправление не совпадает с назначением, проверяет домен — поэтому ошибки приходят
+    с кодами ``journeys.*``, а не 422.
     """
 
     origin: PlaceRef
@@ -38,16 +33,16 @@ class CreateJourneyRequest(CamelModel):
     traveled_day: int | None = None
 
 
-class MapCityResponse(CamelModel):
-    """Город на карте путешествий: точка (координаты) + годы визитов по возрастанию."""
+class MapCity(CamelModel):
+    """Город на карте путешествий: его ``placeId``, координаты и годы визитов по возрастанию."""
 
-    name: str
+    place_id: UUID
     latitude: float
     longitude: float
     years: list[int]
 
 
-class MapCountryResponse(CamelModel):
+class MapCountry(CamelModel):
     """
     Посещённая страна на карте: код ISO alpha-2 и список посещённых в ней городов.
 
@@ -57,10 +52,10 @@ class MapCountryResponse(CamelModel):
     """
 
     country_code: str
-    cities: list[MapCityResponse]
+    cities: list[MapCity]
 
 
 class JourneysMapResponse(CamelModel):
     """Ответ карты путешествий: посещённые страны с городами и годами визитов."""
 
-    countries: list[MapCountryResponse]
+    countries: list[MapCountry]

@@ -22,8 +22,9 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
         """
         Возвращает все неудалённые поездки пользователя, упорядоченные по дате поездки.
 
-        Soft-deleted записи (``deleted_at IS NOT NULL``) отфильтрованы. Порядок по
-        ``traveled_on`` детерминирован для стабильной агрегации карты на стороне сервиса.
+        Soft-deleted записи (``deleted_at IS NOT NULL``) отфильтрованы. Поездки с одной датой
+        упорядочены по времени добавления: без этого порядок городов карты и координаты их
+        точек могли бы меняться от запроса к запросу.
 
         Args:
             user_id: Владелец поездок
@@ -34,7 +35,7 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
         query = (
             select(Journey)
             .where(Journey.user_id == user_id, Journey.deleted_at.is_(None))
-            .order_by(Journey.traveled_on)
+            .order_by(Journey.traveled_on, Journey.created_at, Journey.id)
         )
         result = await self._session.execute(query)
         return [self._to_entity(journey_model=journey_model) for journey_model in result.scalars()]
@@ -44,13 +45,13 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
             journey_id=journey_model.id,
             user_id=journey_model.user_id,
             origin=GeoPoint(
-                name=journey_model.origin_name,
+                place_id=journey_model.origin_place_id,
                 country_code=journey_model.origin_country_code,
                 latitude=journey_model.origin_latitude,
                 longitude=journey_model.origin_longitude,
             ),
             destination=GeoPoint(
-                name=journey_model.destination_name,
+                place_id=journey_model.destination_place_id,
                 country_code=journey_model.destination_country_code,
                 latitude=journey_model.destination_latitude,
                 longitude=journey_model.destination_longitude,
@@ -69,11 +70,11 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
         return Journey(
             id=journey_entity.journey_id,
             user_id=journey_entity.user_id,
-            origin_name=journey_entity.origin.name,
+            origin_place_id=journey_entity.origin.place_id,
             origin_country_code=journey_entity.origin.country_code,
             origin_latitude=journey_entity.origin.latitude,
             origin_longitude=journey_entity.origin.longitude,
-            destination_name=journey_entity.destination.name,
+            destination_place_id=journey_entity.destination.place_id,
             destination_country_code=journey_entity.destination.country_code,
             destination_latitude=journey_entity.destination.latitude,
             destination_longitude=journey_entity.destination.longitude,

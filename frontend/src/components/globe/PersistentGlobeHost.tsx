@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router";
 
+import { placeLabel, usePlaceNames } from "../../api/placeNames";
 import { getJourneysMapOptions } from "../../api/sdk";
 import { useAuth } from "../../auth/useAuth";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -9,7 +11,7 @@ import type { GlobePov } from "./GlobeCanvas";
 import { useGlobeScene, type GlobeSlot } from "./globeScene";
 import { CAMERA_MAX_ALTITUDE, isRealPlace, ROUTE_FADE_MS, routeCameraPov, type GlobeRoute } from "./route";
 import { ROUTE_ARCS, ROUTE_CITIES, type GlobeCity } from "./routes";
-import { citiesFromJourneysMap } from "./userCities";
+import { citiesFromJourneysMap, type UserCityPoint } from "./userCities";
 import "./persistent-globe.css";
 
 /*
@@ -30,6 +32,7 @@ type Screen = "landing" | "signup" | "login" | "home" | "journeyAdd";
 // Стабильная ссылка на «точек нет»: `react-globe.gl` сравнивает данные слоя по идентичности,
 // и новый `[]` на каждом рендере заставлял бы его пересобирать слой подписей впустую.
 const NO_CITIES: GlobeCity[] = [];
+const NO_USER_CITIES: UserCityPoint[] = [];
 
 // Точка обзора камеры для каждой грани: разные стороны планеты, чтобы переход читался
 // «перелётом». `home` — грань дашборда (наследует прежний HomeGlobe), отдельная от login,
@@ -172,12 +175,28 @@ export function PersistentGlobeHost() {
   // Тот же queryKey, что у 2D-карты (`JourneysMapView`), но своя свежесть: фон снимок
   // не обновляет — новая поездка доезжает сюда инвалидацией из формы, а не рефетчем по
   // маунту. Ошибку намеренно не разбираем: без точек глобус остаётся глобусом.
-  const { data: userCities = NO_CITIES } = useQuery({
+  const { data: userCityPoints = NO_USER_CITIES } = useQuery({
     ...getJourneysMapOptions(),
     enabled: isAuthenticated,
     staleTime: Infinity,
     select: citiesFromJourneysMap,
   });
+
+  // Названия городов — тот же запрос и кэш, что у 2D-карты. Город, чьё название ещё
+  // грузится или не пришло из-за сбоя, — точка без подписи; город, которого geo не знает, —
+  // подписан как неизвестный.
+  const { t } = useTranslation("common");
+  const unknownLabel = t("map.unknownPlace");
+  const nameOf = usePlaceNames(userCityPoints.map((city) => city.id));
+  const userCities = useMemo(() => {
+    const cities: GlobeCity[] = userCityPoints.map((city) => ({
+      name: placeLabel(nameOf(city.id), unknownLabel),
+      lat: city.lat,
+      lng: city.lng,
+    }));
+
+    return cities.length > 0 ? cities : NO_CITIES;
+  }, [userCityPoints, nameOf, unknownLabel]);
 
   // На грани формы — только маршрут, посещённые города не рисуем.
   let labelCities = isAuthenticated ? userCities : ROUTE_CITIES;

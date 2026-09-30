@@ -7,6 +7,9 @@ In-memory фейк geo-репозитория поверх ``list[PlaceEntity]``
 фейк годился и на api-уровне через ``app.dependency_overrides``.
 """
 
+from collections.abc import Collection
+from uuid import UUID
+
 from app.geo.application.ports import PlaceRepositoryPort
 from app.geo.domain.entities import PlaceEntity
 from app.geo.domain.enums import Language
@@ -25,8 +28,11 @@ class FakePlaceRepository(PlaceRepositoryPort):
             for place_entity in self.places
             if self._matches_prefix(place_entity=place_entity, prefix=prefix)
         ]
-        matched.sort(key=lambda place_entity: place_entity.population, reverse=True)
+        matched.sort(key=lambda place_entity: (place_entity.population is None, -(place_entity.population or 0)))
         return matched[:limit]
+
+    async def find_places_by_ids(self, *, place_ids: Collection[UUID]) -> list[PlaceEntity]:
+        return [place_entity for place_entity in self.places if place_entity.place_id in place_ids]
 
     @staticmethod
     def _matches_prefix(*, place_entity: PlaceEntity, prefix: str) -> bool:

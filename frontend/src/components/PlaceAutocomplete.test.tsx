@@ -10,7 +10,7 @@ import { PlaceAutocomplete } from "./PlaceAutocomplete";
 const DEBOUNCE_SETTLE_MS = 400;
 
 describe("PlaceAutocomplete", () => {
-  it("ищет места по префиксу и кладёт выбранный PlaceResponse в onChange", async () => {
+  it("ищет места по префиксу и кладёт выбранное место в onChange", async () => {
     const onChange = vi.fn();
     const { user } = renderWithProviders(
       <PlaceAutocomplete label="From" placeholder="City" value={null} onChange={onChange} />,
@@ -92,5 +92,35 @@ describe("PlaceAutocomplete", () => {
       await screen.findByText("Nothing found — try another spelling or the English name."),
     ).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("у места без страны подпись страны не показывается", async () => {
+    server.use(
+      http.get("/v1/geo/places/search/", () =>
+        HttpResponse.json({
+          items: [
+            {
+              placeId: "44444444-4444-4444-8444-444444444444",
+              name: "Black Sea",
+              countryCode: null,
+              latitude: 43.4,
+              longitude: 34.3,
+              population: null,
+            },
+            GEO_PLACES[0],
+          ],
+        }),
+      ),
+    );
+    const { user } = renderWithProviders(
+      <PlaceAutocomplete label="From" placeholder="City" value={null} onChange={vi.fn()} />,
+    );
+
+    await user.type(screen.getByLabelText("From"), "Bl");
+
+    const sea = await screen.findByRole("option", { name: "Black Sea", hidden: true });
+    // У моря в опции только название; у города — название и страна.
+    expect(sea).toHaveTextContent(/^Black Sea$/u);
+    expect(screen.getByRole("option", { name: /Moscow/iu, hidden: true })).toHaveTextContent("Russia");
   });
 });

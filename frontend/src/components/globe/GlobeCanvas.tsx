@@ -90,7 +90,7 @@ const htmlElementAccessor = (d: object): HTMLElement => {
   }
 
   const city = d as GlobeCity;
-  return createGlobeLabel(city.name, `${city.name}|${city.lat}|${city.lng}`);
+  return createGlobeLabel(city.name, `${city.name ?? ""}|${city.lat}|${city.lng}`);
 };
 // Окклюзия дальней стороны: подписи гаснут прозрачностью, маршрут прячется мгновенно (как было).
 const htmlVisibilityModifier = (el: HTMLElement, isVisible: boolean): void => {

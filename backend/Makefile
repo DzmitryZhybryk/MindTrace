@@ -1,4 +1,4 @@
-.PHONY: help format format-check lint typecheck dead-code audit arch check check-ci test coverage test-unit test-integration test-api test-auth test-users test-shared test-journeys test-geo test-health openapi-dump migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current
+.PHONY: help format format-check lint typecheck dead-code audit arch check check-ci test coverage test-unit test-integration test-api test-auth test-users test-shared test-journeys test-geo test-health openapi-dump migrate-create migrate-upgrade migrate-downgrade migrate-history migrate-current geo-load
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -147,3 +147,7 @@ migrate-history: ## Show migration history
 migrate-current: ## Show current migration version
 	@echo "${GREEN}INFO :  ${AZURE}Current migration version${RESET}"
 	@docker exec -it mindtrace_app uv run alembic current
+
+geo-load: ## Load missing gazetteer datasets (manifest.toml) into the dev DB; no-op when already loaded
+	@echo "${GREEN}INFO :  ${AZURE}Loading gazetteer datasets${RESET}"
+	@docker exec mindtrace_app uv run python -m app.geo.infra.datasets

@@ -9,7 +9,9 @@ application-слою, а ``infra`` его **реализует** (``infra`` им
 Зависит только от ``domain`` — модуль остаётся листом графа импортов без циклов.
 """
 
+from collections.abc import Collection
 from typing import Protocol
+from uuid import UUID
 
 from app.geo.domain.entities import PlaceEntity
 
@@ -31,5 +33,19 @@ class PlaceRepositoryPort(Protocol):
 
         Returns:
             Список мест, отсортированный по убыванию населения
+        """
+        ...
+
+    async def find_places_by_ids(self, *, place_ids: Collection[UUID]) -> list[PlaceEntity]:
+        """
+        Находит места по id; несуществующие id пропускаются.
+
+        Нужен, чтобы отдать названия мест по id и проверить, что места с такими id существуют.
+
+        Args:
+            place_ids: Id мест
+
+        Returns:
+            Найденные места в произвольном порядке
         """
         ...

@@ -35,6 +35,8 @@ services:
       - ./backend/migrations:/src/migrations
       - ./backend/alembic.ini:/src/alembic.ini:ro
       - ./backend/pyproject.toml:/src/pyproject.toml:ro
+      # Кеш датасетов газеттира (make be-geo-load), общий с e2e-стеком.
+      - ./backend/.geo-cache:/src/.geo-cache
     depends_on:
       mindtrace_pg:
         condition: service_healthy

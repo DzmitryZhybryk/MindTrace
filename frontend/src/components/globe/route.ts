@@ -1,4 +1,4 @@
-import type { PlaceResponse, TransportType } from "../../api/sdk";
+import type { PlaceSearchItem, TransportType } from "../../api/sdk";
 import type { GlobePov } from "./GlobeCanvas";
 import { centralAngleRad } from "./geo";
 
@@ -39,8 +39,8 @@ export type TrailPoint = { lat: number; lng: number; alt: number };
 
 /** Маршрут поездки, который форма добавления отдаёт глобусу. */
 export interface GlobeRoute {
-  origin: PlaceResponse | null;
-  destination: PlaceResponse | null;
+  origin: PlaceSearchItem | null;
+  destination: PlaceSearchItem | null;
   transportType: TransportType | null;
   originLabel: string;
   destinationLabel: string;
@@ -137,7 +137,7 @@ export function buildTrail(
 }
 
 /** Место «реальное» (выбрано из автокомплита), если у него есть координаты. */
-export function isRealPlace(place: PlaceResponse | null): place is PlaceResponse {
+export function isRealPlace(place: PlaceSearchItem | null): place is PlaceSearchItem {
   return place !== null && (place.latitude !== 0 || place.longitude !== 0);
 }
 

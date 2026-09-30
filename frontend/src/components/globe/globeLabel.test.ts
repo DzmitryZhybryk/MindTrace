@@ -26,6 +26,13 @@ describe("createGlobeLabel", () => {
   it("не падает на пустом названии", () => {
     expect(createGlobeLabel("", "пусто|0|0").querySelector(".globe-label__name")?.textContent).toBe("");
   });
+
+  it("без названия — только точка, без подписи", () => {
+    const label = createGlobeLabel(undefined, "|0|0");
+
+    expect(label.querySelector(".globe-label__dot")).not.toBeNull();
+    expect(label.querySelector(".globe-label__name")).toBeNull();
+  });
 });
 
 describe("applyLabelVisibility", () => {

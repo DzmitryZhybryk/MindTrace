@@ -39,12 +39,14 @@ for _key, _value in _TEST_ENV_DEFAULTS.items():
 # синглтон ``settings``, которому нужны заполненные env-поля (E402 осознанно).
 from app.auth.application.settings import EmailVerificationConfig  # noqa: E402
 from app.shared.infra.crypto import Sha256DeterministicHasher  # noqa: E402
+from tests.builders import LONDON_PLACE_ID, MOSCOW_PLACE_ID  # noqa: E402
 from tests.fakes import (  # noqa: E402
     FakeAuthUnitOfWork,
     FakeChallengeRepository,
     FakeJourneyRepository,
     FakeJourneyUnitOfWork,
     FakePlaceRepository,
+    FakePlacesClient,
     FakeRefreshTokenRepository,
     FakeSaltedHasher,
     FakeTaskBus,
@@ -168,6 +170,11 @@ def deterministic_hasher() -> Sha256DeterministicHasher:
 @pytest.fixture
 def fake_place_repository() -> FakePlaceRepository:
     return FakePlaceRepository()
+
+
+@pytest.fixture
+def fake_places_client() -> FakePlacesClient:
+    return FakePlacesClient(existing_place_ids=(MOSCOW_PLACE_ID, LONDON_PLACE_ID))
 
 
 @pytest.fixture

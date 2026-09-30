@@ -9,11 +9,11 @@ application-слою, а реализация живёт в ``infra``: репо�
 между реальной реализацией и фейком. Зависит только от ``domain`` — модуль остаётся
 листом графа импортов без внутренних циклов.
 
-Кросс-доменного порта к ``geo`` тут НЕТ: поездка снапшотит данные места из тела запроса
-(payload-on-create), а не резолвит их по id из справочника, поэтому journeys на geo не
-ходит ни на чтение, ни на запись.
+В geo journeys ходит только за одним: проверить при создании поездки, что места существуют
+(``PlacesClientPort``).
 """
 
+from collections.abc import Collection
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 from uuid import UUID
@@ -27,6 +27,25 @@ class JourneyRepositoryPort(Protocol):
     async def insert_journey(self, journey_entity: JourneyEntity) -> None: ...
 
     async def find_journeys_by_user_id(self, *, user_id: UUID) -> list[JourneyEntity]: ...
+
+
+class PlacesClientPort(Protocol):
+    """Исходящий вызов в geo, справочник мест."""
+
+    async def get_missing_place_ids(self, *, place_ids: Collection[UUID]) -> frozenset[UUID]:
+        """
+        Возвращает те id из переданных, которых нет в справочнике geo.
+
+        Нужен при создании поездки: места отправления и назначения проверяются одним вызовом,
+        чтобы поездка не ссылалась на несуществующее место.
+
+        Args:
+            place_ids: Id мест для проверки
+
+        Returns:
+            Id ненайденных мест; пусто, если все на месте
+        """
+        ...
 
 
 class JourneyUnitOfWorkPort(Protocol):

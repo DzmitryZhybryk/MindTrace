@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Loader, Text } from "@mantine/core";
 
+import { placeLabel, usePlaceNames } from "../../api/placeNames";
 import { getJourneysMapOptions, type JourneysMapResponse } from "../../api/sdk";
 import type { MapCountry } from "../../components/WorldMap";
 import { WorldMap } from "../../components/WorldMap";
@@ -24,7 +26,7 @@ function toMapCountries(response: JourneysMapResponse): MapCountry[] {
     id: country.countryCode,
     status: "visited",
     cities: country.cities.map((city) => ({
-      name: city.name,
+      id: city.placeId,
       lat: city.latitude,
       lng: city.longitude,
       years: city.years,
@@ -39,6 +41,7 @@ function toMapCountries(response: JourneysMapResponse): MapCountry[] {
  */
 export function JourneysMapView() {
   const { t } = useTranslation("journeys");
+  const { t: tCommon } = useTranslation("common");
   // `staleTime: 0` — своя свежесть поверх общего с глобусом-фоном queryKey: вкладку карты
   // открывают, чтобы увидеть актуальные поездки, поэтому на каждый маунт идём за данными.
   const { data, isPending, isError, isFetching, refetch } = useQuery({
@@ -47,9 +50,21 @@ export function JourneysMapView() {
     select: toMapCountries,
   });
 
+  const countries = data ?? NO_COUNTRIES;
+  const nameOf = usePlaceNames(countries.flatMap((country) => country.cities.map((city) => city.id)));
+  const unknownLabel = tCommon("map.unknownPlace");
+  const namedCountries = useMemo(
+    () =>
+      countries.map((country) => ({
+        ...country,
+        cities: country.cities.map((city) => ({ ...city, name: placeLabel(nameOf(city.id), unknownLabel) })),
+      })),
+    [countries, nameOf, unknownLabel],
+  );
+
   return (
     <>
-      <WorldMap className="journeys-map" countries={data ?? NO_COUNTRIES} tone={MAP_TONE} />
+      <WorldMap className="journeys-map" countries={namedCountries} tone={MAP_TONE} />
       {isPending && (
         <output className="journeys-map-status">
           <Loader size="sm" color="gray" />
@@ -71,6 +86,17 @@ export function JourneysMapView() {
         </div>
       )}
       <JourneysLegendCard />
+      {/* Условие лицензии CC BY 4.0: названия мест взяты из GeoNames. */}
+      <p className="journeys-map-attribution">
+        {t("map.attribution")}{" "}
+        <a href="https://www.geonames.org" target="_blank" rel="noreferrer">
+          GeoNames
+        </a>
+        ,{" "}
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+          CC BY 4.0
+        </a>
+      </p>
     </>
   );
 }

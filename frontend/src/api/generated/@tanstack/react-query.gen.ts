@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { createJourney, getCurrentUser, getJourneysMap, healthz, login, logout, type Options, refresh, register, searchPlaces, sendEmailVerification, verifyEmail } from '../sdk.gen';
-import type { CreateJourneyData, CreateJourneyError, GetCurrentUserData, GetCurrentUserError, GetCurrentUserResponse, GetJourneysMapData, GetJourneysMapError, GetJourneysMapResponse, HealthzData, LoginData, LoginError, LoginResponse, LogoutData, LogoutError, LogoutResponse, RefreshData, RefreshError, RefreshResponse, RegisterData, RegisterError, RegisterResponse, SearchPlacesData, SearchPlacesError, SearchPlacesResponse, SendEmailVerificationData, SendEmailVerificationError, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
+import { createJourney, getCurrentUser, getJourneysMap, healthz, login, logout, type Options, refresh, register, resolvePlaces, searchPlaces, sendEmailVerification, verifyEmail } from '../sdk.gen';
+import type { CreateJourneyData, CreateJourneyError, GetCurrentUserData, GetCurrentUserError, GetCurrentUserResponse, GetJourneysMapData, GetJourneysMapError, GetJourneysMapResponse, HealthzData, LoginData, LoginError, LoginResponse, LogoutData, LogoutError, LogoutResponse, RefreshData, RefreshError, RefreshResponse, RegisterData, RegisterError, RegisterResponse, ResolvePlacesData, ResolvePlacesError, ResolvePlacesResponse2, SearchPlacesData, SearchPlacesError, SearchPlacesResponse, SendEmailVerificationData, SendEmailVerificationError, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
   Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -163,6 +163,20 @@ export const searchPlacesOptions = (options: Options<SearchPlacesData>) => query
   }),
   queryKey: searchPlacesQueryKey(options)
 });
+
+/**
+ * Resolve Places
+ */
+export const resolvePlacesMutation = (options?: Partial<Options<ResolvePlacesData>>): UseMutationOptions<ResolvePlacesResponse2, ResolvePlacesError, Options<ResolvePlacesData>> => {
+  const mutationOptions: UseMutationOptions<ResolvePlacesResponse2, ResolvePlacesError, Options<ResolvePlacesData>> = {
+    mutationFn: async (fnOptions) => await resolvePlaces({
+      ...options,
+      ...fnOptions,
+      throwOnError: true
+    })
+  };
+  return mutationOptions;
+};
 
 /**
  * Create Journey
