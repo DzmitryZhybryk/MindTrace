@@ -61,3 +61,9 @@ _.loaded_at
 _.LAND
 _.AIR
 _.WATER
+
+# DTO карты путешествий: поле читает pydantic через from_attributes при сборке ответа.
+_.cities
+
+# journeys.traveled_on_precision пишет создание поездки; выборки карт читают только дату.
+_.traveled_on_precision

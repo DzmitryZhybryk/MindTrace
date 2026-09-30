@@ -4,14 +4,14 @@ import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router";
 
 import { placeLabel, usePlaceNames } from "../../api/placeNames";
-import { getJourneysMapOptions } from "../../api/sdk";
+import { getJourneysGlobeOptions } from "../../api/sdk";
 import { useAuth } from "../../auth/useAuth";
 import { ErrorBoundary } from "../ErrorBoundary";
 import type { GlobePov } from "./GlobeCanvas";
 import { useGlobeScene, type GlobeSlot } from "./globeScene";
 import { CAMERA_MAX_ALTITUDE, isRealPlace, ROUTE_FADE_MS, routeCameraPov, type GlobeRoute } from "./route";
 import { ROUTE_ARCS, ROUTE_CITIES, type GlobeCity } from "./routes";
-import { citiesFromJourneysMap, type UserCityPoint } from "./userCities";
+import { citiesFromJourneysGlobe, type UserCityPoint } from "./userCities";
 import "./persistent-globe.css";
 
 /*
@@ -172,14 +172,13 @@ export function PersistentGlobeHost() {
     canvasRoute = fadingRoute;
   }
 
-  // Тот же queryKey, что у 2D-карты (`JourneysMapView`), но своя свежесть: фон снимок
-  // не обновляет — новая поездка доезжает сюда инвалидацией из формы, а не рефетчем по
-  // маунту. Ошибку намеренно не разбираем: без точек глобус остаётся глобусом.
+  // Фон снимок не обновляет — новая поездка доезжает сюда инвалидацией из формы, а не
+  // рефетчем по маунту. Ошибку намеренно не разбираем: без точек глобус остаётся глобусом.
   const { data: userCityPoints = NO_USER_CITIES } = useQuery({
-    ...getJourneysMapOptions(),
+    ...getJourneysGlobeOptions(),
     enabled: isAuthenticated,
     staleTime: Infinity,
-    select: citiesFromJourneysMap,
+    select: citiesFromJourneysGlobe,
   });
 
   // Названия городов — тот же запрос и кэш, что у 2D-карты. Город, чьё название ещё

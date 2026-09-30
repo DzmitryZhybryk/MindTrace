@@ -276,11 +276,15 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
   const hovered = hoveredId ? byId.get(hoveredId) : undefined;
   const hoveredName = hoveredId ? resolveCountryName(hoveredId) : "";
   // Города без названия (ещё грузятся) в тултип не попадают — показываем их, как только придут.
+  // Порядок — по году первого визита (годы приходят по возрастанию), в одном году — по названию.
   const hoveredCities = useMemo(
     () =>
       (hovered?.cities ?? [])
         .filter((city): city is MapCity & { name: string } => city.name !== undefined)
-        .sort((left, right) => left.name.localeCompare(right.name, i18n.language)),
+        .sort(
+          (left, right) =>
+            left.years[0] - right.years[0] || left.name.localeCompare(right.name, i18n.language),
+        ),
     [hovered, i18n.language],
   );
 

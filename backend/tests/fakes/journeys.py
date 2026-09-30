@@ -1,39 +1,55 @@
 """
-In-memory фейки journeys: репозиторий поверх ``list`` и UoW с мокнутым commit.
+In-memory фейки journeys: репозиторий поверх ``list``/``dict`` и UoW с мокнутым commit.
 
 Каждый фейк реализует соответствующий порт из ``app.journeys.application.ports`` — тот же
 контракт, что и боевые реализации, поэтому ``ty`` ловит расхождение сигнатур. ``transaction``
 у UoW — no-op область (rollback реальной сессии проверяется в integration), ``commit`` —
 ``AsyncMock`` (``commit_mock``) для проверки факта фиксации. Те же фейки переиспользуются на
 api-уровне через ``app.dependency_overrides``.
+
+Выборки мест фейк не вычисляет из поездок, а отдаёт то, что задал тест: их правила (годы,
+фильтры, порядок) живут в SQL и проверяются integration-тестами репозитория — пересчёт в
+Python продублировал бы их.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Collection
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
 from uuid import UUID
 
 from app.journeys.application.ports import JourneyRepositoryPort, JourneyUnitOfWorkPort
+from app.journeys.application.schemas import MovementConnection, VisitedPlace
 from app.journeys.domain.entities import JourneyEntity
+from app.journeys.domain.enums import TransportType
 
 
 class FakeJourneyRepository(JourneyRepositoryPort):
-    """Фейк хранилища поездок поверх ``list``: собирает вставки, отдаёт чтение как боевой репо."""
+    """Фейк хранилища поездок: собирает вставки, выборки мест отдаёт заданными тестом."""
 
     def __init__(self) -> None:
         self.journeys: list[JourneyEntity] = []
+        self.visited_places_by_user_id: dict[UUID, list[VisitedPlace]] = {}
+        self.movement_connections_by_user_id: dict[UUID, list[MovementConnection]] = {}
+        self.year_bounds_by_user_id: dict[UUID, tuple[int, int]] = {}
 
     async def insert_journey(self, journey_entity: JourneyEntity) -> None:
         self.journeys.append(journey_entity)
 
-    async def find_journeys_by_user_id(self, *, user_id: UUID) -> list[JourneyEntity]:
-        # Повторяет боевую выборку: только свои неудалённые поездки, по дате поездки (см. SQL-репо).
-        matching = [
-            journey_entity
-            for journey_entity in self.journeys
-            if journey_entity.user_id == user_id and journey_entity.deleted_at is None
-        ]
-        return sorted(matching, key=lambda journey_entity: journey_entity.traveled_on.value)
+    async def find_visited_places_by_user_id(self, *, user_id: UUID) -> list[VisitedPlace]:
+        return self.visited_places_by_user_id.get(user_id, [])
+
+    async def find_movement_connections_by_user_id(
+        self,
+        *,
+        user_id: UUID,
+        year_from: int | None,
+        year_to: int | None,
+        transport_types: Collection[TransportType] | None,
+    ) -> list[MovementConnection]:
+        return self.movement_connections_by_user_id.get(user_id, [])
+
+    async def find_journey_year_bounds_by_user_id(self, *, user_id: UUID) -> tuple[int, int] | None:
+        return self.year_bounds_by_user_id.get(user_id)
 
 
 class FakeJourneyUnitOfWork(JourneyUnitOfWorkPort):

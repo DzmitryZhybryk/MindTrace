@@ -84,9 +84,23 @@ export type ErrorResponse = {
 };
 
 /**
+ * JourneysGlobeResponse
+ *
+ * Ответ глобуса: места, где пользователь побывал, каждое ровно один раз.
+ */
+export type JourneysGlobeResponse = {
+  /**
+   * Places
+   */
+  places: Array<MapPoint>;
+};
+
+/**
  * JourneysMapResponse
  *
  * Ответ карты путешествий: посещённые страны с городами и годами визитов.
+ *
+ * Каждое место встречается ровно один раз, в одной стране.
  */
 export type JourneysMapResponse = {
   /**
@@ -158,6 +172,59 @@ export type MapCountry = {
    * Cities
    */
   cities: Array<MapCity>;
+};
+
+/**
+ * MapPoint
+ *
+ * Место на глобусе или карте перемещений: его ``placeId`` и координаты, без названия.
+ */
+export type MapPoint = {
+  /**
+   * Placeid
+   */
+  placeId: string;
+  /**
+   * Latitude
+   */
+  latitude: number;
+  /**
+   * Longitude
+   */
+  longitude: number;
+};
+
+/**
+ * MovementConnection
+ *
+ * Стрелка на карте перемещений: откуда и куда пользователь ездил.
+ */
+export type MovementConnection = {
+  origin: MapPoint;
+  destination: MapPoint;
+};
+
+/**
+ * MovementsMapResponse
+ *
+ * Ответ карты перемещений: маршруты поездок в окне фильтров, каждый «откуда → куда» один раз.
+ *
+ * ``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта фильтров;
+ * ``null``, если поездок нет.
+ */
+export type MovementsMapResponse = {
+  /**
+   * Firstyear
+   */
+  firstYear: number | null;
+  /**
+   * Lastyear
+   */
+  lastYear: number | null;
+  /**
+   * Connections
+   */
+  connections: Array<MovementConnection>;
 };
 
 export type OptionalDict = {
@@ -747,6 +814,81 @@ export type GetJourneysMapResponses = {
 };
 
 export type GetJourneysMapResponse = GetJourneysMapResponses[keyof GetJourneysMapResponses];
+
+export type GetJourneysGlobeData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/v1/journeys/globe';
+};
+
+export type GetJourneysGlobeErrors = {
+  /**
+   * Невалидный или истёкший access-токен
+   */
+  401: ErrorResponse;
+  /**
+   * Внутренняя ошибка сервера
+   */
+  500: ErrorResponse;
+};
+
+export type GetJourneysGlobeError = GetJourneysGlobeErrors[keyof GetJourneysGlobeErrors];
+
+export type GetJourneysGlobeResponses = {
+  /**
+   * Successful Response
+   */
+  200: JourneysGlobeResponse;
+};
+
+export type GetJourneysGlobeResponse = GetJourneysGlobeResponses[keyof GetJourneysGlobeResponses];
+
+export type GetMovementsMapData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Yearfrom
+     */
+    yearFrom?: number | null;
+    /**
+     * Yearto
+     */
+    yearTo?: number | null;
+    /**
+     * Transporttype
+     */
+    transportType?: Array<TransportType> | null;
+  };
+  url: '/v1/journeys/movements';
+};
+
+export type GetMovementsMapErrors = {
+  /**
+   * Невалидный или истёкший access-токен
+   */
+  401: ErrorResponse;
+  /**
+   * Ошибка валидации запроса
+   */
+  422: ErrorResponse;
+  /**
+   * Внутренняя ошибка сервера
+   */
+  500: ErrorResponse;
+};
+
+export type GetMovementsMapError = GetMovementsMapErrors[keyof GetMovementsMapErrors];
+
+export type GetMovementsMapResponses = {
+  /**
+   * Successful Response
+   */
+  200: MovementsMapResponse;
+};
+
+export type GetMovementsMapResponse = GetMovementsMapResponses[keyof GetMovementsMapResponses];
 
 export type GetCurrentUserData = {
   body?: never;

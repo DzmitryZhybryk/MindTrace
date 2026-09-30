@@ -144,6 +144,15 @@ export const handlers = [
       ],
     }),
   ),
+  // Места для глобуса: те же города, что у карты, без стран и годов.
+  http.get("/v1/journeys/globe", () =>
+    HttpResponse.json({
+      places: [
+        { placeId: GEO_PLACES[0].placeId, latitude: 55.75, longitude: 37.62 },
+        { placeId: GEO_PLACES[1].placeId, latitude: 51.5, longitude: -0.12 },
+      ],
+    }),
+  ),
   // Профиль текущего пользователя: кормит CurrentUserProvider при любом залогиненном рендере.
   http.get("/v1/users/me", () => HttpResponse.json(TEST_CURRENT_USER)),
 ];

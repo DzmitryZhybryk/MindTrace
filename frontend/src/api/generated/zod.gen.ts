@@ -59,9 +59,55 @@ export const zMapCountry = z.object({
  * JourneysMapResponse
  *
  * Ответ карты путешествий: посещённые страны с городами и годами визитов.
+ *
+ * Каждое место встречается ровно один раз, в одной стране.
  */
 export const zJourneysMapResponse = z.object({
   countries: z.array(zMapCountry)
+});
+
+/**
+ * MapPoint
+ *
+ * Место на глобусе или карте перемещений: его ``placeId`` и координаты, без названия.
+ */
+export const zMapPoint = z.object({
+  placeId: z.uuid(),
+  latitude: z.number(),
+  longitude: z.number()
+});
+
+/**
+ * JourneysGlobeResponse
+ *
+ * Ответ глобуса: места, где пользователь побывал, каждое ровно один раз.
+ */
+export const zJourneysGlobeResponse = z.object({
+  places: z.array(zMapPoint)
+});
+
+/**
+ * MovementConnection
+ *
+ * Стрелка на карте перемещений: откуда и куда пользователь ездил.
+ */
+export const zMovementConnection = z.object({
+  origin: zMapPoint,
+  destination: zMapPoint
+});
+
+/**
+ * MovementsMapResponse
+ *
+ * Ответ карты перемещений: маршруты поездок в окне фильтров, каждый «откуда → куда» один раз.
+ *
+ * ``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта фильтров;
+ * ``null``, если поездок нет.
+ */
+export const zMovementsMapResponse = z.object({
+  firstYear: z.int().nullable(),
+  lastYear: z.int().nullable(),
+  connections: z.array(zMovementConnection)
 });
 
 export const zOptionalDict = z.record(z.string(), z.unknown()).nullable();
@@ -275,6 +321,22 @@ export const zCreateJourneyBody = zCreateJourneyRequest;
  * Successful Response
  */
 export const zGetJourneysMapResponse = zJourneysMapResponse;
+
+/**
+ * Successful Response
+ */
+export const zGetJourneysGlobeResponse = zJourneysGlobeResponse;
+
+export const zGetMovementsMapQuery = z.object({
+  yearFrom: z.int().nullish(),
+  yearTo: z.int().nullish(),
+  transportType: z.array(zTransportType).nullish()
+});
+
+/**
+ * Successful Response
+ */
+export const zGetMovementsMapResponse = zMovementsMapResponse;
 
 /**
  * Successful Response

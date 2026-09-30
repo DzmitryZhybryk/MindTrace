@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getJourneysMapQueryKey } from "../../api/sdk";
+import { getJourneysGlobeQueryKey } from "../../api/sdk";
 import { GEO_PLACES, server } from "../../test/handlers";
 import { act, createTestQueryClient, makeAuthValue, renderWithProviders, screen, waitFor } from "../../test/render";
 import type { AuthContextValue } from "../../auth/useAuth";
@@ -142,12 +142,12 @@ describe("PersistentGlobeHost — источник данных глобуса",
     expect(globe).toHaveAttribute("data-paused", "false");
   });
 
-  it("залогиненный получает реальные города без дуг (fade-in по приходе /journeys/map)", async () => {
+  it("залогиненный получает реальные города без дуг (fade-in по приходе /journeys/globe)", async () => {
     renderWithProviders(<PersistentGlobeHost />, { route: "/home", authValue: authedValue("user-1") });
 
     const globe = await screen.findByTestId("globe-canvas");
 
-    // Дуг у авторизованного нет; города приезжают асинхронно из journeys/map (Moscow + London).
+    // Дуг у авторизованного нет; города приезжают асинхронно из journeys/globe (Moscow + London).
     expect(globe).toHaveAttribute("data-arcs", "0");
     // Дашборд — единственная грань, где холсту передан interactive (драг-вращение).
     expect(globe).toHaveAttribute("data-interactive", "true");
@@ -164,16 +164,11 @@ describe("PersistentGlobeHost — источник данных глобуса",
 
   it("место, которого geo не знает, подписано как неизвестное, а не пропадает", async () => {
     server.use(
-      http.get("/v1/journeys/map", () =>
+      http.get("/v1/journeys/globe", () =>
         HttpResponse.json({
-          countries: [
-            {
-              countryCode: "RU",
-              cities: [
-                { placeId: GEO_PLACES[0].placeId, latitude: 55.75, longitude: 37.62, years: [2020] },
-                { placeId: "99999999-9999-4999-8999-999999999999", latitude: 1, longitude: 2, years: [2021] },
-              ],
-            },
+          places: [
+            { placeId: GEO_PLACES[0].placeId, latitude: 55.75, longitude: 37.62 },
+            { placeId: "99999999-9999-4999-8999-999999999999", latitude: 1, longitude: 2 },
           ],
         }),
       ),
@@ -192,7 +187,7 @@ describe("PersistentGlobeHost — источник данных глобуса",
         return HttpResponse.json({ items: [] });
       }),
     );
-    // Запрос названий уходит, только когда точки карты уже получены — ждём именно его.
+    // Запрос названий уходит, только когда точки глобуса уже получены — ждём именно его.
     let resolveRequests = 0;
     server.events.on("request:start", ({ request }) => {
       if (new URL(request.url).pathname === "/v1/geo/places/resolve") {
@@ -219,7 +214,7 @@ describe("PersistentGlobeHost — источник данных глобуса",
   });
 
   it("ошибка загрузки городов не роняет глобус — остаётся без точек", async () => {
-    server.use(http.get("/v1/journeys/map", () => HttpResponse.error()));
+    server.use(http.get("/v1/journeys/globe", () => HttpResponse.error()));
 
     renderWithProviders(<PersistentGlobeHost />, { route: "/home", authValue: authedValue("user-1") });
 
@@ -239,27 +234,21 @@ describe("PersistentGlobeHost — источник данных глобуса",
 
 describe("PersistentGlobeHost — свежесть данных фона", () => {
   /**
-   * Считает обращения к карте и отдаёт города с заданными названиями. Места берутся из
+   * Считает обращения к глобусу и отдаёт города с заданными названиями. Места берутся из
    * фикстуры газеттира — их id знает фейковый `resolve`, так что у точек будут названия.
    */
-  function countMapRequests(cityNames: string[]): () => number {
+  function countGlobeRequests(cityNames: string[]): () => number {
     let requests = 0;
     const places = cityNames.map((name) => GEO_PLACES.find((place) => place.name === name));
     server.use(
-      http.get("/v1/journeys/map", () => {
+      http.get("/v1/journeys/globe", () => {
         requests += 1;
         return HttpResponse.json({
-          countries: [
-            {
-              countryCode: "RU",
-              cities: places.map((place) => ({
-                placeId: place?.placeId,
-                latitude: place?.latitude,
-                longitude: place?.longitude,
-                years: [2020],
-              })),
-            },
-          ],
+          places: places.map((place) => ({
+            placeId: place?.placeId,
+            latitude: place?.latitude,
+            longitude: place?.longitude,
+          })),
         });
       }),
     );
@@ -267,8 +256,8 @@ describe("PersistentGlobeHost — свежесть данных фона", () =>
     return () => requests;
   }
 
-  it("возврат на грань не перезапрашивает карту — фон живёт со снимка (staleTime: Infinity)", async () => {
-    const requestCount = countMapRequests(["Moscow", "Paris"]);
+  it("возврат на грань не перезапрашивает места — фон живёт со снимка (staleTime: Infinity)", async () => {
+    const requestCount = countGlobeRequests(["Moscow", "Paris"]);
     const queryClient = createTestQueryClient();
     const options = { route: "/home", authValue: authedValue("user-1"), queryClient };
 
@@ -283,10 +272,10 @@ describe("PersistentGlobeHost — свежесть данных фона", () =>
     expect(requestCount()).toBe(1);
   });
 
-  it("инвалидация ключа карты обновляет фон, несмотря на бесконечную свежесть", async () => {
+  it("инвалидация ключа глобуса обновляет фон, несмотря на бесконечную свежесть", async () => {
     // Так до глобуса доезжает поездка, добавленная в форме: `staleTime: Infinity` сам по себе
-    // не обновился бы никогда, поэтому мутация инвалидирует общий ключ.
-    const requestCount = countMapRequests(["Moscow"]);
+    // не обновился бы никогда, поэтому мутация инвалидирует ключ глобуса.
+    const requestCount = countGlobeRequests(["Moscow"]);
     const queryClient = createTestQueryClient();
     renderWithProviders(<PersistentGlobeHost />, {
       route: "/home",
@@ -295,9 +284,9 @@ describe("PersistentGlobeHost — свежесть данных фона", () =>
     });
     await waitFor(() => expect(screen.getByTestId("globe-canvas")).toHaveAttribute("data-cities", "1"));
 
-    countMapRequests(["Moscow", "London"]);
+    countGlobeRequests(["Moscow", "London"]);
     await act(async () => {
-      await queryClient.invalidateQueries({ queryKey: getJourneysMapQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: getJourneysGlobeQueryKey() });
     });
 
     await waitFor(() => expect(screen.getByTestId("globe-canvas")).toHaveAttribute("data-cities", "2"));
@@ -305,7 +294,7 @@ describe("PersistentGlobeHost — свежесть данных фона", () =>
   });
 
   it("аноним карту не запрашивает вовсе", async () => {
-    const requestCount = countMapRequests(["Moscow"]);
+    const requestCount = countGlobeRequests(["Moscow"]);
 
     renderWithProviders(<PersistentGlobeHost />, { route: "/", authValue: makeAuthValue() });
 
@@ -406,13 +395,8 @@ describe("PersistentGlobeHost — грань формы поездки", () => {
 
   it("на грани формы — только маршрут: посещённые города не рисуются", async () => {
     const queryClient = createTestQueryClient();
-    queryClient.setQueryData(getJourneysMapQueryKey(), {
-      countries: [
-        {
-          countryCode: "RU",
-          cities: [{ placeId: GEO_PLACES[2].placeId, latitude: 48.85, longitude: 2.35, years: [2020] }],
-        },
-      ],
+    queryClient.setQueryData(getJourneysGlobeQueryKey(), {
+      places: [{ placeId: GEO_PLACES[2].placeId, latitude: 48.85, longitude: 2.35 }],
     });
     renderJourneyAdd({ queryClient });
 

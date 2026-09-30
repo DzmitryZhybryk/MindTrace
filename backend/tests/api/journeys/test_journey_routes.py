@@ -16,15 +16,14 @@ import pytest
 from httpx import AsyncClient
 
 from app.geo.presentation.dependencies import place_repository_dependency
+from app.journeys.application.schemas import VisitedPlace
 from app.journeys.domain.enums import TransportType
 from app.journeys.presentation.dependencies import places_client_dependency
 from app.shared.schemas.base import BFastAPI
 from tests.builders import (
     LONDON_PLACE_ID,
     MOSCOW_PLACE_ID,
-    make_approximate_date,
     make_geo_point,
-    make_journey,
     make_place,
 )
 from tests.fakes import FakeJourneyRepository, FakeJourneyUnitOfWork, FakePlaceRepository, FakePlacesClient
@@ -180,14 +179,16 @@ async def test_get_journeys_map_returns_aggregated_countries(
 ) -> None:
     """200: агрегат карты сериализуется в camelCase — страны по коду, города с координатами и годами."""
     user_id = uuid4()
-    fake_journey_repository.journeys.append(
-        make_journey(
-            user_id=user_id,
-            origin=make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.75, longitude=37.62),
-            destination=make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
-            traveled_on=make_approximate_date(year=2020),
-        )
-    )
+    fake_journey_repository.visited_places_by_user_id[user_id] = [
+        VisitedPlace(
+            place=make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
+            years=(2020,),
+        ),
+        VisitedPlace(
+            place=make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.75, longitude=37.62),
+            years=(2020,),
+        ),
+    ]
 
     response = await client.get(_MAP_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id)}"})
 

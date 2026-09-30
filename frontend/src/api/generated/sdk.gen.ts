@@ -4,8 +4,8 @@ import * as z from 'zod';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateJourneyData, CreateJourneyErrors, CreateJourneyResponses, GetCurrentUserData, GetCurrentUserErrors, GetCurrentUserResponses, GetJourneysMapData, GetJourneysMapErrors, GetJourneysMapResponses, HealthzData, HealthzResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, RefreshData, RefreshErrors, RefreshResponses, RegisterData, RegisterErrors, RegisterResponses, ResolvePlacesData, ResolvePlacesErrors, ResolvePlacesResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses, SendEmailVerificationData, SendEmailVerificationErrors, SendEmailVerificationResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
-import { zCreateJourneyBody, zGetCurrentUserResponse, zGetJourneysMapResponse, zLoginBody, zLoginResponse, zLogoutResponse, zRefreshResponse, zRegisterBody, zRegisterResponse, zResolvePlacesBody, zResolvePlacesResponse2, zSearchPlacesQuery, zSearchPlacesResponse, zVerifyEmailBody, zVerifyEmailResponse } from './zod.gen';
+import type { CreateJourneyData, CreateJourneyErrors, CreateJourneyResponses, GetCurrentUserData, GetCurrentUserErrors, GetCurrentUserResponses, GetJourneysGlobeData, GetJourneysGlobeErrors, GetJourneysGlobeResponses, GetJourneysMapData, GetJourneysMapErrors, GetJourneysMapResponses, GetMovementsMapData, GetMovementsMapErrors, GetMovementsMapResponses, HealthzData, HealthzResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, RefreshData, RefreshErrors, RefreshResponses, RegisterData, RegisterErrors, RegisterResponses, ResolvePlacesData, ResolvePlacesErrors, ResolvePlacesResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses, SendEmailVerificationData, SendEmailVerificationErrors, SendEmailVerificationResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
+import { zCreateJourneyBody, zGetCurrentUserResponse, zGetJourneysGlobeResponse, zGetJourneysMapResponse, zGetMovementsMapQuery, zGetMovementsMapResponse, zLoginBody, zLoginResponse, zLogoutResponse, zRefreshResponse, zRegisterBody, zRegisterResponse, zResolvePlacesBody, zResolvePlacesResponse2, zSearchPlacesQuery, zSearchPlacesResponse, zVerifyEmailBody, zVerifyEmailResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
   /**
@@ -217,6 +217,38 @@ export const getJourneysMap = <ThrowOnError extends boolean = false>(options?: O
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
   url: '/v1/journeys/map',
+  ...options
+});
+
+/**
+ * Get Journeys Globe
+ */
+export const getJourneysGlobe = <ThrowOnError extends boolean = false>(options?: Options<GetJourneysGlobeData, ThrowOnError>): RequestResult<GetJourneysGlobeResponses, GetJourneysGlobeErrors, ThrowOnError, 'data'> => (options?.client ?? client).get<GetJourneysGlobeResponses, GetJourneysGlobeErrors, ThrowOnError, 'data'>({
+  requestValidator: async (data) => await z.object({
+    body: z.never().optional(),
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zGetJourneysGlobeResponse.parseAsync(data),
+  responseStyle: 'data',
+  security: [{ scheme: 'bearer', type: 'http' }],
+  url: '/v1/journeys/globe',
+  ...options
+});
+
+/**
+ * Get Movements Map
+ */
+export const getMovementsMap = <ThrowOnError extends boolean = false>(options?: Options<GetMovementsMapData, ThrowOnError>): RequestResult<GetMovementsMapResponses, GetMovementsMapErrors, ThrowOnError, 'data'> => (options?.client ?? client).get<GetMovementsMapResponses, GetMovementsMapErrors, ThrowOnError, 'data'>({
+  requestValidator: async (data) => await z.object({
+    body: z.never().optional(),
+    path: z.never().optional(),
+    query: zGetMovementsMapQuery.optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zGetMovementsMapResponse.parseAsync(data),
+  responseStyle: 'data',
+  security: [{ scheme: 'bearer', type: 'http' }],
+  url: '/v1/journeys/movements',
   ...options
 });
 

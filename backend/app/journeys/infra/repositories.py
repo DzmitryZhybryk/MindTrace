@@ -1,12 +1,15 @@
+from collections.abc import Collection
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Integer, Subquery, cast, extract, func, select, union_all
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.journeys.application.ports import JourneyRepositoryPort
+from app.journeys.application.schemas import MovementConnection, VisitedPlace
 from app.journeys.domain.entities import JourneyEntity
-from app.journeys.domain.enums import DatePrecision, TransportType
-from app.journeys.domain.value_objects import ApproximateDate, GeoPoint
+from app.journeys.domain.enums import TransportType
+from app.journeys.domain.value_objects import GeoPoint
 from app.journeys.infra.models import Journey
 from app.shared.repositories.base_repository import BaseDBRepository
 
@@ -18,53 +21,154 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
     async def insert_journey(self, journey_entity: JourneyEntity) -> None:
         await self.insert(data=self._to_model(journey_entity=journey_entity))
 
-    async def find_journeys_by_user_id(self, *, user_id: UUID) -> list[JourneyEntity]:
+    async def find_visited_places_by_user_id(self, *, user_id: UUID) -> list[VisitedPlace]:
         """
-        Возвращает все неудалённые поездки пользователя, упорядоченные по дате поездки.
+        Возвращает места, где пользователь побывал, — по одному на место.
 
-        Soft-deleted записи (``deleted_at IS NOT NULL``) отфильтрованы. Поездки с одной датой
-        упорядочены по времени добавления: без этого порядок городов карты и координаты их
-        точек могли бы меняться от запроса к запросу.
+        Soft-deleted поездки не учитываются. Годы — всех поездок с местом, по возрастанию.
+        Порядок — по коду страны, затем по ``place_id``.
 
         Args:
             user_id: Владелец поездок
 
         Returns:
-            Список доменных сущностей поездок (пустой, если поездок нет)
+            Посещённые места (пустой список, если поездок нет)
         """
+        visits = self._place_visits(user_id=user_id)
+        visit_year = cast(extract("year", visits.c.traveled_on), Integer)
+        # Поездки копируют страну и координаты места из справочника, копии одного места могут
+        # слегка разойтись после его обновления — берём любую, min() лишь делает выбор стабильным.
+        country_code = func.min(visits.c.country_code).label("country_code")
         query = (
-            select(Journey)
-            .where(Journey.user_id == user_id, Journey.deleted_at.is_(None))
-            .order_by(Journey.traveled_on, Journey.created_at, Journey.id)
+            select(
+                visits.c.place_id,
+                country_code,
+                func.min(visits.c.latitude).label("latitude"),
+                func.min(visits.c.longitude).label("longitude"),
+                func.array_agg(aggregate_order_by(visit_year.distinct(), visit_year)).label("years"),
+            )
+            .group_by(visits.c.place_id)
+            .order_by(country_code, visits.c.place_id)
         )
         result = await self._session.execute(query)
-        return [self._to_entity(journey_model=journey_model) for journey_model in result.scalars()]
+        return [
+            VisitedPlace(
+                place=GeoPoint(
+                    place_id=row.place_id,
+                    country_code=row.country_code,
+                    latitude=row.latitude,
+                    longitude=row.longitude,
+                ),
+                years=tuple(row.years),
+            )
+            for row in result
+        ]
 
-    def _to_entity(self, *, journey_model: Journey) -> JourneyEntity:
-        return JourneyEntity(
-            journey_id=journey_model.id,
-            user_id=journey_model.user_id,
-            origin=GeoPoint(
-                place_id=journey_model.origin_place_id,
-                country_code=journey_model.origin_country_code,
-                latitude=journey_model.origin_latitude,
-                longitude=journey_model.origin_longitude,
-            ),
-            destination=GeoPoint(
-                place_id=journey_model.destination_place_id,
-                country_code=journey_model.destination_country_code,
-                latitude=journey_model.destination_latitude,
-                longitude=journey_model.destination_longitude,
-            ),
-            transport_type=TransportType(journey_model.transport_type),
-            traveled_on=ApproximateDate(
-                value=journey_model.traveled_on,
-                precision=DatePrecision(journey_model.traveled_on_precision),
-            ),
-            created_at=journey_model.created_at,
-            updated_at=journey_model.updated_at,
-            deleted_at=journey_model.deleted_at,
+    async def find_movement_connections_by_user_id(
+        self,
+        *,
+        user_id: UUID,
+        year_from: int | None,
+        year_to: int | None,
+        transport_types: Collection[TransportType] | None,
+    ) -> list[MovementConnection]:
+        """
+        Возвращает маршруты поездок пользователя — по одному на пару «откуда → куда».
+
+        Учитываются неудалённые поездки из окна лет (границы включительные) на указанных видах
+        транспорта; ``None`` в фильтре — без ограничения. Страна и координаты места — любая из
+        его копий в поездках маршрута. Порядок — по ``place_id`` отправления, затем назначения.
+
+        Args:
+            user_id: Владелец поездок
+            year_from: Первый год окна
+            year_to: Последний год окна
+            transport_types: Виды транспорта, поездки на которых учитываются
+
+        Returns:
+            Маршруты с координатами отправления и назначения (пустой список, если поездок нет)
+        """
+        traveled_year = cast(extract("year", Journey.traveled_on), Integer)
+        filters = [Journey.user_id == user_id, Journey.deleted_at.is_(None)]
+        if year_from is not None:
+            filters.append(traveled_year >= year_from)
+
+        if year_to is not None:
+            filters.append(traveled_year <= year_to)
+
+        if transport_types is not None:
+            filters.append(Journey.transport_type.in_(transport_types))
+
+        query = (
+            select(
+                Journey.origin_place_id,
+                func.min(Journey.origin_country_code).label("origin_country_code"),
+                func.min(Journey.origin_latitude).label("origin_latitude"),
+                func.min(Journey.origin_longitude).label("origin_longitude"),
+                Journey.destination_place_id,
+                func.min(Journey.destination_country_code).label("destination_country_code"),
+                func.min(Journey.destination_latitude).label("destination_latitude"),
+                func.min(Journey.destination_longitude).label("destination_longitude"),
+            )
+            .where(*filters)
+            .group_by(Journey.origin_place_id, Journey.destination_place_id)
+            .order_by(Journey.origin_place_id, Journey.destination_place_id)
         )
+        result = await self._session.execute(query)
+        return [
+            MovementConnection(
+                origin=GeoPoint(
+                    place_id=row.origin_place_id,
+                    country_code=row.origin_country_code,
+                    latitude=row.origin_latitude,
+                    longitude=row.origin_longitude,
+                ),
+                destination=GeoPoint(
+                    place_id=row.destination_place_id,
+                    country_code=row.destination_country_code,
+                    latitude=row.destination_latitude,
+                    longitude=row.destination_longitude,
+                ),
+            )
+            for row in result
+        ]
+
+    async def find_journey_year_bounds_by_user_id(self, *, user_id: UUID) -> tuple[int, int] | None:
+        """
+        Возвращает годы первой и последней неудалённой поездки пользователя.
+
+        Args:
+            user_id: Владелец поездок
+
+        Returns:
+            Первый и последний год; ``None``, если поездок нет
+        """
+        query = select(func.min(Journey.traveled_on), func.max(Journey.traveled_on)).where(
+            Journey.user_id == user_id,
+            Journey.deleted_at.is_(None),
+        )
+        first_traveled_on, last_traveled_on = (await self._session.execute(query)).one()
+        return (first_traveled_on.year, last_traveled_on.year) if first_traveled_on else None
+
+    @staticmethod
+    def _place_visits(*, user_id: UUID) -> Subquery:
+        """Визиты мест: каждая неудалённая поездка пользователя даёт два — отправление и назначение."""
+        is_user_journey = (Journey.user_id == user_id, Journey.deleted_at.is_(None))
+        origins = select(
+            Journey.origin_place_id.label("place_id"),
+            Journey.origin_country_code.label("country_code"),
+            Journey.origin_latitude.label("latitude"),
+            Journey.origin_longitude.label("longitude"),
+            Journey.traveled_on,
+        ).where(*is_user_journey)
+        destinations = select(
+            Journey.destination_place_id,
+            Journey.destination_country_code,
+            Journey.destination_latitude,
+            Journey.destination_longitude,
+            Journey.traveled_on,
+        ).where(*is_user_journey)
+        return union_all(origins, destinations).subquery("visits")
 
     def _to_model(self, journey_entity: JourneyEntity) -> Journey:
         return Journey(

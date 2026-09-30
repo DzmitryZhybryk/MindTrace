@@ -8,6 +8,7 @@ import { useNavigate } from "react-router";
 import { ApiError, applyApiError, errorCodeToken, resolveErrorToken } from "../../api/errors";
 import {
   createJourneyMutation,
+  getJourneysGlobeQueryKey,
   getJourneysMapQueryKey,
   zTransportType,
   type PlaceSearchItem,
@@ -127,11 +128,15 @@ export function JourneyForm({ form }: JourneyFormProps) {
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Новая поездка меняет агрегат карты — инвалидируем его общий queryKey. Без этого
-  // глобус-фон (`staleTime: Infinity`) не увидел бы её до перезагрузки страницы.
+  // Новая поездка меняет и карту, и глобус — инвалидируем оба. Без этого глобус-фон
+  // (`staleTime: Infinity`) не увидел бы её до перезагрузки страницы.
   const { mutateAsync: submitJourney, isPending: submitting } = useMutation({
     ...createJourneyMutation(),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: getJourneysMapQueryKey() }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: getJourneysMapQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getJourneysGlobeQueryKey() }),
+      ]),
   });
 
   // Меняем «откуда»/«куда» местами. Глобус развернёт маршрут и иконку транспорта сам —

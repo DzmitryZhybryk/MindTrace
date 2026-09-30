@@ -905,6 +905,182 @@
         ]
       }
     },
+    "/v1/journeys/globe": {
+      "get": {
+        "tags": [
+          "journeys"
+        ],
+        "summary": "Get Journeys Globe",
+        "operationId": "get_journeys_globe",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneysGlobeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/journeys/movements": {
+      "get": {
+        "tags": [
+          "journeys"
+        ],
+        "summary": "Get Movements Map",
+        "operationId": "get_movements_map",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "yearFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Yearfrom"
+            }
+          },
+          {
+            "name": "yearTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Yearto"
+            }
+          },
+          {
+            "name": "transportType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "$ref": "#/components/schemas/TransportType"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Transporttype"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementsMapResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/users/me": {
       "get": {
         "tags": [
@@ -1124,6 +1300,23 @@
           "timestamp": "2024-01-01T12:00:00Z"
         }
       },
+      "JourneysGlobeResponse": {
+        "properties": {
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/MapPoint"
+            },
+            "type": "array",
+            "title": "Places"
+          }
+        },
+        "type": "object",
+        "required": [
+          "places"
+        ],
+        "title": "JourneysGlobeResponse",
+        "description": "Ответ глобуса: места, где пользователь побывал, каждое ровно один раз."
+      },
       "JourneysMapResponse": {
         "properties": {
           "countries": {
@@ -1139,7 +1332,7 @@
           "countries"
         ],
         "title": "JourneysMapResponse",
-        "description": "Ответ карты путешествий: посещённые страны с городами и годами визитов."
+        "description": "Ответ карты путешествий: посещённые страны с городами и годами визитов.\n\nКаждое место встречается ровно один раз, в одной стране."
       },
       "Language": {
         "type": "string",
@@ -1228,6 +1421,89 @@
         ],
         "title": "MapCountry",
         "description": "Посещённая страна на карте: код ISO alpha-2 и список посещённых в ней городов.\n\nИмя страны не отдаём — фронт резолвит из кода через ``Intl.DisplayNames``. Статуса в\nконтракте нет: эндпоинт по смыслу возвращает только посещённые страны (wishlist\nзапрашивается отдельно), поэтому сам факт прихода из journeys = страна посещена."
+      },
+      "MapPoint": {
+        "properties": {
+          "placeId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Placeid"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          }
+        },
+        "type": "object",
+        "required": [
+          "placeId",
+          "latitude",
+          "longitude"
+        ],
+        "title": "MapPoint",
+        "description": "Место на глобусе или карте перемещений: его ``placeId`` и координаты, без названия."
+      },
+      "MovementConnection": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/MapPoint"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/MapPoint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "origin",
+          "destination"
+        ],
+        "title": "MovementConnection",
+        "description": "Стрелка на карте перемещений: откуда и куда пользователь ездил."
+      },
+      "MovementsMapResponse": {
+        "properties": {
+          "firstYear": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firstyear"
+          },
+          "lastYear": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastyear"
+          },
+          "connections": {
+            "items": {
+              "$ref": "#/components/schemas/MovementConnection"
+            },
+            "type": "array",
+            "title": "Connections"
+          }
+        },
+        "type": "object",
+        "required": [
+          "firstYear",
+          "lastYear",
+          "connections"
+        ],
+        "title": "MovementsMapResponse",
+        "description": "Ответ карты перемещений: маршруты поездок в окне фильтров, каждый «откуда → куда» один раз.\n\n``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта фильтров;\n``null``, если поездок нет."
       },
       "OptionalDict": {
         "anyOf": [
