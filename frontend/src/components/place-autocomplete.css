@@ -1,0 +1,22 @@
+/* Чуть плотнее обычного текста — у всех пунктов, а не только у выбранного: иначе при
+   наведении текст менял бы ширину и строки дёргались. */
+.place-option {
+  font-weight: 500;
+}
+
+.place-option__country {
+  color: var(--text-muted);
+}
+
+/*
+ * Выбранный пункт Mantine заливает акцентом (`--accent`), а по нему светлый текст «плывёт»:
+ * серая страна пропадала совсем. На заливке — тёмная метка, страна чуть тише названия.
+ */
+.place-option[data-combobox-selected] {
+  color: var(--on-accent);
+}
+
+.place-option[data-combobox-selected] .place-option__country {
+  color: var(--on-accent);
+  opacity: 0.72;
+}

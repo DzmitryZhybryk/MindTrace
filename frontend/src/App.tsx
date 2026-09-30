@@ -33,6 +33,9 @@ const JourneysLayout = lazy(() =>
 const JourneysMapView = lazy(() =>
   import("./pages/journeys/JourneysMapView").then((m) => ({ default: m.JourneysMapView })),
 );
+const MovementsMapView = lazy(() =>
+  import("./pages/journeys/MovementsMapView").then((m) => ({ default: m.MovementsMapView })),
+);
 const LoginPage = lazy(() => import("./pages/LoginPage").then((m) => ({ default: m.LoginPage })));
 const SignUpPage = lazy(() => import("./pages/SignUpPage").then((m) => ({ default: m.SignUpPage })));
 
@@ -127,8 +130,8 @@ export default function App() {
                 />
                 {/*
                  * Раздел Journeys — общий каркас (шапка + панель) с под-вкладками через
-                 * <Outlet/>. Индексный маршрут показывает карту, «add» — форму добавления
-                 * поездки; movements/all/wishlist пока заглушки (element={null}) — маршруты
+                 * <Outlet/>. Индексный маршрут показывает карту, «movements» — карту перемещений,
+                 * «add» — форму добавления поездки; all/wishlist пока заглушки (element={null}) — маршруты
                  * заведены, чтобы навигация в панели подсвечивалась, контент появится по мере готовности.
                  */}
                 <Route
@@ -140,7 +143,7 @@ export default function App() {
                   }
                 >
                   <Route index element={<JourneysMapView />} />
-                  <Route path="movements" element={null} />
+                  <Route path="movements" element={<MovementsMapView />} />
                   <Route path="all" element={null} />
                   <Route path="wishlist" element={null} />
                   <Route path="add" element={<AddJourneyPage />} />

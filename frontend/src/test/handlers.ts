@@ -153,6 +153,24 @@ export const handlers = [
       ],
     }),
   ),
+  // Карта перемещений: Москва → Лондон и обратно (одна дуга, стрелки на обоих концах) и
+  // Лондон → Париж. Тест переопределяет на пустой/ошибочный ответ через server.use(...).
+  http.get("/v1/journeys/movements", () => {
+    const [moscow, london, paris] = GEO_PLACES.map(({ placeId, latitude, longitude }) => ({
+      placeId,
+      latitude,
+      longitude,
+    }));
+    return HttpResponse.json({
+      firstYear: 2019,
+      lastYear: 2022,
+      connections: [
+        { origin: moscow, destination: london },
+        { origin: london, destination: moscow },
+        { origin: london, destination: paris },
+      ],
+    });
+  }),
   // Профиль текущего пользователя: кормит CurrentUserProvider при любом залогиненном рендере.
   http.get("/v1/users/me", () => HttpResponse.json(TEST_CURRENT_USER)),
 ];

@@ -12,6 +12,44 @@
   overflow: hidden;
   display: flex;
   justify-content: center;
+  /* Жесты над картой — её масштаб и сдвиг (useMapZoom). Щипок браузеру не отдаём, а
+     вертикальный свайп — отдаём, пока карта не приближена: иначе на телефоне страницу
+     было бы не прокрутить, начав жест на карте. */
+  touch-action: pan-y;
+  user-select: none;
+}
+
+/* Приближенную карту двигают перетаскиванием; края области растворяются, а не
+   обрываются линией (в виде на весь мир у краёв океан, и граница не видна). */
+.world-map-wrap--zoomed .world-map-canvas {
+  --world-map-edge-fade: 48px;
+  touch-action: none;
+  cursor: grab;
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent,
+      #000 var(--world-map-edge-fade),
+      #000 calc(100% - var(--world-map-edge-fade)),
+      transparent
+    ),
+    linear-gradient(
+      to bottom,
+      transparent,
+      #000 var(--world-map-edge-fade),
+      #000 calc(100% - var(--world-map-edge-fade)),
+      transparent
+    );
+  mask-composite: intersect;
+}
+
+.world-map-wrap--zoomed .world-map-canvas:active {
+  cursor: grabbing;
+}
+
+/* У приближенной карты курсор «рука» и над странами — иначе его перебил бы pointer страны. */
+.world-map-wrap--zoomed .world-map__country {
+  cursor: inherit;
 }
 
 .world-map {
@@ -36,8 +74,18 @@
   filter: brightness(0.9);
 }
 
-/* Точки городов не перехватывают мышь — hover всегда попадает в страну под ними. */
-.world-map__cities {
+/* Статичная карта: страна под курсором не подсвечивается и не выглядит кликабельной. */
+.world-map-wrap--static .world-map__country {
+  cursor: default;
+}
+
+.world-map-wrap--static .world-map__country:hover {
+  filter: none;
+}
+
+/* Точки городов и слой поверх стран не перехватывают мышь — hover всегда попадает в страну. */
+.world-map__cities,
+.world-map__overlay {
   pointer-events: none;
 }
 

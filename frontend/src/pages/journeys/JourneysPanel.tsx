@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
 
@@ -9,7 +10,7 @@ import { SoonBadge } from "../../components/SoonBadge";
 // с бейджем «Soon» вместо перехода в пустой маршрут.
 const NAV_ITEMS = [
   { key: "map", to: "/journeys", end: true, soon: false },
-  { key: "movements", to: "/journeys/movements", end: false, soon: true },
+  { key: "movements", to: "/journeys/movements", end: false, soon: false },
   { key: "all", to: "/journeys/all", end: false, soon: true },
   { key: "wishlist", to: "/journeys/wishlist", end: false, soon: true },
 ] as const;
@@ -18,11 +19,16 @@ const NAV_ITEMS = [
  * Левое боковое меню раздела Journeys: заголовок и под-навигация. Легенда карты
  * вынесена из меню в отдельный угловой блок (см. JourneysMapView).
  */
-export function JourneysPanel() {
+interface JourneysPanelProps {
+  /** Нужен карте: она не прячет под панелью то, что показывает на старте. */
+  ref?: Ref<HTMLElement>;
+}
+
+export function JourneysPanel({ ref }: JourneysPanelProps) {
   const { t } = useTranslation("journeys");
 
   return (
-    <section className="journeys-panel journeys-card" aria-label={t("controls")}>
+    <section ref={ref} className="journeys-panel journeys-card" aria-label={t("controls")}>
       <span className="journeys-panel__label">{t("title")}</span>
 
       <nav className="journeys-nav">

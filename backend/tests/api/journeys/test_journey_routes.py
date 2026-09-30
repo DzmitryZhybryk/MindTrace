@@ -1,10 +1,12 @@
 """
-api-тесты роутов journeys (``POST /v1/journeys/`` и ``GET /v1/journeys/map``) на ASGI-приложении.
+api-тесты роутов journeys (``POST /v1/journeys/``, ``GET /v1/journeys/map``, ``/globe``,
+``/movements``) на ASGI-приложении.
 
 Реальная проводка ``journey_service`` поверх фейк-UoW, реальный декод Bearer-токена
 (``mint_access_token`` подписывает settings-секретом; ``sub`` токена становится ``user_id``
-поездки). Пиннят 201-payload-on-create, 401 без токена, доменные 400-коды, 422 формы и
-сериализацию агрегата карты (страны/города/годы, camelCase).
+поездки). Пиннят 201-payload-on-create, 401 без токена, доменные 400-коды, 422 формы,
+сериализацию ответов карт (camelCase, без лишних полей) и то, что фильтры карты перемещений
+из query доходят до репозитория.
 """
 
 import datetime as dt
@@ -16,7 +18,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.geo.presentation.dependencies import place_repository_dependency
-from app.journeys.application.schemas import VisitedPlace
+from app.journeys.application.schemas import MovementConnection, VisitedPlace
 from app.journeys.domain.enums import TransportType
 from app.journeys.presentation.dependencies import places_client_dependency
 from app.shared.schemas.base import BFastAPI
@@ -26,10 +28,18 @@ from tests.builders import (
     make_geo_point,
     make_place,
 )
-from tests.fakes import FakeJourneyRepository, FakeJourneyUnitOfWork, FakePlaceRepository, FakePlacesClient
+from tests.fakes import (
+    FakeJourneyRepository,
+    FakeJourneyUnitOfWork,
+    FakePlaceRepository,
+    FakePlacesClient,
+    MovementConnectionQuery,
+)
 
 _CREATE_PATH = "/v1/journeys/"
 _MAP_PATH = "/v1/journeys/map"
+_GLOBE_PATH = "/v1/journeys/globe"
+_MOVEMENTS_PATH = "/v1/journeys/movements"
 _MOSCOW = {"placeId": str(MOSCOW_PLACE_ID), "countryCode": "RU", "latitude": 55.75, "longitude": 37.62}
 _LONDON = {"placeId": str(LONDON_PLACE_ID), "countryCode": "GB", "latitude": 51.5, "longitude": -0.12}
 _VALID_BODY: dict[str, Any] = {
@@ -220,3 +230,127 @@ async def test_get_journeys_map_without_journeys_returns_empty(
 
     assert response.status_code == 200
     assert response.json() == {"countries": []}
+
+
+async def test_get_journeys_globe_returns_places_without_country(
+    client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """200: глобус получает места в camelCase — id и координаты, без страны и годов."""
+    user_id = uuid4()
+    fake_journey_repository.visited_places_by_user_id[user_id] = [
+        VisitedPlace(
+            place=make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
+            years=(2020,),
+        ),
+    ]
+
+    response = await client.get(_GLOBE_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id)}"})
+
+    assert response.status_code == 200
+    [place] = response.json()["places"]
+    assert set(place) == {"placeId", "latitude", "longitude"}
+    assert place["placeId"] == str(LONDON_PLACE_ID)
+    assert place["latitude"] == pytest.approx(51.5)
+
+
+async def test_get_journeys_globe_without_journeys_returns_empty(
+    client: AsyncClient,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """200: у пользователя без поездок глобус отдаёт пустой список мест."""
+    response = await client.get(_GLOBE_PATH, headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"})
+
+    assert response.status_code == 200
+    assert response.json() == {"places": []}
+
+
+@pytest.mark.parametrize("path", [_GLOBE_PATH, _MOVEMENTS_PATH])
+async def test_get_projection_without_token_returns_401(client: AsyncClient, path: str) -> None:
+    """401: глобус и карта перемещений без Bearer-токена отклоняются кодом auth.invalid_access_token."""
+    response = await client.get(path)
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "auth.invalid_access_token"
+
+
+async def test_get_movements_map_returns_routes_and_year_bounds(
+    client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """200: маршруты и годы в camelCase — у мест id и координаты, без страны."""
+    user_id = uuid4()
+    fake_journey_repository.year_bounds_by_user_id[user_id] = (2018, 2022)
+    fake_journey_repository.movement_connections_by_user_id[user_id] = [
+        MovementConnection(
+            origin=make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.75, longitude=37.62),
+            destination=make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
+        ),
+    ]
+
+    response = await client.get(_MOVEMENTS_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id)}"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["firstYear"] == 2018
+    assert body["lastYear"] == 2022
+    [connection] = body["connections"]
+    assert set(connection) == {"origin", "destination"}
+    assert set(connection["origin"]) == {"placeId", "latitude", "longitude"}
+    assert connection["origin"]["placeId"] == str(MOSCOW_PLACE_ID)
+    assert connection["destination"]["placeId"] == str(LONDON_PLACE_ID)
+
+
+async def test_get_movements_map_passes_filters_from_query(
+    client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """Окно лет и повторяющийся transportType доходят до запроса маршрутов; без параметров — без фильтров."""
+    user_id = uuid4()
+    fake_journey_repository.year_bounds_by_user_id[user_id] = (2018, 2022)
+    headers = {"Authorization": f"Bearer {mint_access_token(user_id)}"}
+
+    filtered = await client.get(
+        _MOVEMENTS_PATH,
+        params=[("yearFrom", "2019"), ("yearTo", "2021"), ("transportType", "air"), ("transportType", "water")],
+        headers=headers,
+    )
+    unfiltered = await client.get(_MOVEMENTS_PATH, headers=headers)
+
+    assert filtered.status_code == 200
+    assert unfiltered.status_code == 200
+    assert fake_journey_repository.movement_connection_queries == [
+        MovementConnectionQuery(
+            user_id=user_id,
+            year_from=2019,
+            year_to=2021,
+            transport_types=frozenset({TransportType.AIR, TransportType.WATER}),
+        ),
+        MovementConnectionQuery(user_id=user_id, year_from=None, year_to=None, transport_types=None),
+    ]
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        pytest.param({"yearFrom": 2022, "yearTo": 2021}, id="inverted-year-range"),
+        pytest.param({"transportType": "rocket"}, id="unknown-transport"),
+    ],
+)
+async def test_get_movements_map_invalid_filters_return_422(
+    client: AsyncClient,
+    mint_access_token: Callable[..., str],
+    params: dict[str, Any],
+) -> None:
+    """422: перевёрнутое окно лет и неизвестный транспорт — ошибка формы запроса validation_error."""
+    response = await client.get(
+        _MOVEMENTS_PATH,
+        params=params,
+        headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "validation_error"

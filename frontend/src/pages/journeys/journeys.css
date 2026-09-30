@@ -61,6 +61,36 @@
   transform: translateX(72px);
 }
 
+/* ---- Карта перемещений: дуги маршрутов и точки мест поверх стран ---------- */
+.movement-line {
+  fill: none;
+  stroke: var(--movement-line);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.movement-arrow {
+  fill: var(--movement-line);
+}
+
+/* Обводка цветом фона отделяет точку от линий, сходящихся в ней. */
+.movement-dot {
+  fill: var(--movement-line);
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+
+/* Название места: обводка цветом фона под текстом (paint-order) держит его читаемым поверх
+   линий и границ стран. Размер и толщину обводки задаёт компонент — они зависят от масштаба. */
+.movement-label {
+  fill: var(--text);
+  stroke: var(--surface);
+  stroke-linejoin: round;
+  paint-order: stroke;
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
 /*
  * Оверлей состояния карты (загрузка / ошибка) — по центру области карты, поверх неё.
  * Контейнер прозрачен для кликов (pointer-events:none), чтобы карта под ним оставалась

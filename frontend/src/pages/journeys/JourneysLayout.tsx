@@ -1,8 +1,15 @@
+import { useMemo, useRef, type RefObject } from "react";
 import { Outlet, useLocation } from "react-router";
 
 import { AppHeader } from "../../components/AppHeader";
 import { JourneysPanel } from "./JourneysPanel";
 import "./journeys.css";
+
+/** Что каркас передаёт под-вкладкам через `<Outlet context>`. */
+export interface JourneysOutletContext {
+  /** Панель навигации: на десктопе она лежит поверх левой части карты. */
+  panelRef: RefObject<HTMLElement | null>;
+}
 
 /**
  * Каркас раздела Journeys: общая шапка и постоянная левая панель под-навигации.
@@ -19,14 +26,16 @@ export function JourneysLayout() {
   const shellClassName = pathname.startsWith("/journeys/add")
     ? "app-shell journeys-shell journeys-shell--globe"
     : "app-shell journeys-shell";
+  const panelRef = useRef<HTMLElement>(null);
+  const outletContext = useMemo<JourneysOutletContext>(() => ({ panelRef }), []);
 
   return (
     <div className={shellClassName} data-globe-passthrough>
       <AppHeader />
 
       <main className="journeys-stage">
-        <JourneysPanel />
-        <Outlet />
+        <JourneysPanel ref={panelRef} />
+        <Outlet context={outletContext} />
       </main>
     </div>
   );

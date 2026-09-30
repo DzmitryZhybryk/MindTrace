@@ -14,6 +14,7 @@ Python продублировал бы их.
 
 from collections.abc import AsyncIterator, Collection
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from unittest.mock import AsyncMock
 from uuid import UUID
 
@@ -21,6 +22,16 @@ from app.journeys.application.ports import JourneyRepositoryPort, JourneyUnitOfW
 from app.journeys.application.schemas import MovementConnection, VisitedPlace
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
+
+
+@dataclass(frozen=True, slots=True)
+class MovementConnectionQuery:
+    """Фильтры одного запроса маршрутов к фейку — чтобы тест проверил, что сервис их передал."""
+
+    user_id: UUID
+    year_from: int | None
+    year_to: int | None
+    transport_types: frozenset[TransportType] | None
 
 
 class FakeJourneyRepository(JourneyRepositoryPort):
@@ -31,6 +42,8 @@ class FakeJourneyRepository(JourneyRepositoryPort):
         self.visited_places_by_user_id: dict[UUID, list[VisitedPlace]] = {}
         self.movement_connections_by_user_id: dict[UUID, list[MovementConnection]] = {}
         self.year_bounds_by_user_id: dict[UUID, tuple[int, int]] = {}
+        # Фильтры, с которыми спрашивали маршруты: сами фильтры фейк не применяет (их правила — в SQL).
+        self.movement_connection_queries: list[MovementConnectionQuery] = []
 
     async def insert_journey(self, journey_entity: JourneyEntity) -> None:
         self.journeys.append(journey_entity)
@@ -46,6 +59,14 @@ class FakeJourneyRepository(JourneyRepositoryPort):
         year_to: int | None,
         transport_types: Collection[TransportType] | None,
     ) -> list[MovementConnection]:
+        self.movement_connection_queries.append(
+            MovementConnectionQuery(
+                user_id=user_id,
+                year_from=year_from,
+                year_to=year_to,
+                transport_types=frozenset(transport_types) if transport_types is not None else None,
+            )
+        )
         return self.movement_connections_by_user_id.get(user_id, [])
 
     async def find_journey_year_bounds_by_user_id(self, *, user_id: UUID) -> tuple[int, int] | None:

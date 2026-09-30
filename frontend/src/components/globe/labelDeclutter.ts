@@ -38,8 +38,8 @@ function distanceSqToCenter(box: LabelBox, center: DiskCenter): number {
   return dx * dx + dy * dy;
 }
 
-/** Пересекаются ли прямоугольники, если раздуть их на `gap` px с каждой стороны. */
-function boxesIntersect(a: LabelBox, b: LabelBox, gap: number): boolean {
+/** Пересекаются ли прямоугольники, если раздуть их на `gap` с каждой стороны. */
+export function boxesIntersect(a: LabelBox, b: LabelBox, gap: number): boolean {
   return (
     a.left < b.left + b.width + gap &&
     b.left < a.left + a.width + gap &&

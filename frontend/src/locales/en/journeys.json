@@ -22,6 +22,9 @@
     "retry": "Try again",
     "attribution": "Place names ©"
   },
+  "movements": {
+    "empty": "No journeys yet — add one and your routes will show up here"
+  },
   "addJourney": {
     "title": "New journey",
     "subtitle": "Where and when did you travel?",
