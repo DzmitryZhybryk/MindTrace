@@ -21,6 +21,10 @@ function distance(from: ScreenPosition, to: ScreenPosition): number {
   return Math.hypot(to.x - from.x, to.y - from.y);
 }
 
+function isSameView(left: ViewBox, right: ViewBox): boolean {
+  return left.x === right.x && left.y === right.y && left.width === right.width && left.height === right.height;
+}
+
 /**
  * Масштаб и сдвиг карты жестами — только над самой картой, остальная страница на месте.
  *
@@ -30,7 +34,8 @@ function distance(from: ScreenPosition, to: ScreenPosition): number {
  * свайп достаются странице.
  *
  * Жесты слушаются на `canvasRef`; по размеру `svgRef` на экране пиксели переводятся в
- * единицы холста. Новый `initialView` сбрасывает масштаб. Возвращает текущую видимую область.
+ * единицы холста. Новый `initialView` подменяет вид, только пока пользователь его не менял.
+ * Возвращает текущую видимую область.
  */
 export function useMapZoom(
   canvasRef: RefObject<HTMLElement | null>,
@@ -41,7 +46,10 @@ export function useMapZoom(
   const [view, setView] = useState(initialView);
   if (trackedInitialView !== initialView) {
     setTrackedInitialView(initialView);
-    setView(initialView);
+    // Вид, который пользователь успел поменять, новый стартовый (например, после ресайза) не затирает.
+    if (isSameView(view, trackedInitialView)) {
+      setView(initialView);
+    }
   }
 
   // Обработчики подписаны один раз, а текущий и стартовый вид читают отсюда.

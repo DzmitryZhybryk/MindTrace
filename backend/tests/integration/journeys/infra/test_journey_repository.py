@@ -129,9 +129,9 @@ async def test_find_visited_places_orders_by_country_then_place_id(db_session: A
 
 
 async def test_find_visited_places_diverging_copies_of_place_give_one_row(db_session: AsyncSession) -> None:
-    """Копии места с разными координатами (справочник обновился) — всё равно одна строка, координаты одной из копий."""
+    """Копии места с разными координатами (справочник обновился) — одна строка, координаты одной копии целиком."""
     user_id = uuid4()
-    shifted_moscow = make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.7, longitude=37.6)
+    shifted_moscow = make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.7, longitude=37.7)
     repository = await _insert(
         db_session,
         make_journey(user_id=user_id, origin=_MOSCOW, destination=_LONDON),
@@ -142,8 +142,11 @@ async def test_find_visited_places_diverging_copies_of_place_give_one_row(db_ses
 
     moscow_rows = [visited_place for visited_place in visited_places if visited_place.place.place_id == MOSCOW_PLACE_ID]
     assert len(moscow_rows) == 1
-    assert moscow_rows[0].place.latitude == pytest.approx(55.7, abs=0.001)
-    assert moscow_rows[0].place.longitude == pytest.approx(37.6, abs=0.001)
+    point = (moscow_rows[0].place.latitude, moscow_rows[0].place.longitude)
+    assert point in [
+        (pytest.approx(_MOSCOW.latitude, abs=0.001), pytest.approx(_MOSCOW.longitude, abs=0.001)),
+        (pytest.approx(55.7, abs=0.001), pytest.approx(37.7, abs=0.001)),
+    ]
 
 
 async def test_find_visited_places_skips_deleted_and_other_users_journeys(db_session: AsyncSession) -> None:

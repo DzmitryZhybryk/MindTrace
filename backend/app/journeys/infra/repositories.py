@@ -2,7 +2,7 @@ from collections.abc import Collection
 from uuid import UUID
 
 from sqlalchemy import Integer, Subquery, cast, extract, func, select, union_all
-from sqlalchemy.dialects.postgresql import aggregate_order_by
+from sqlalchemy.dialects.postgresql import aggregate_order_by, distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.journeys.application.ports import JourneyRepositoryPort
@@ -37,18 +37,31 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
         visits = self._place_visits(user_id=user_id)
         visit_year = cast(extract("year", visits.c.traveled_on), Integer)
         # Поездки копируют страну и координаты места из справочника, копии одного места могут
-        # слегка разойтись после его обновления — берём любую, min() лишь делает выбор стабильным.
-        country_code = func.min(visits.c.country_code).label("country_code")
-        query = (
+        # слегка разойтись после его обновления — берём одну копию целиком, первую попавшуюся.
+        place_copies = (
+            select(visits.c.place_id, visits.c.country_code, visits.c.latitude, visits.c.longitude)
+            .ext(distinct_on(visits.c.place_id))
+            .order_by(visits.c.place_id, visits.c.latitude, visits.c.longitude)
+            .subquery("place_copies")
+        )
+        place_years = (
             select(
                 visits.c.place_id,
-                country_code,
-                func.min(visits.c.latitude).label("latitude"),
-                func.min(visits.c.longitude).label("longitude"),
                 func.array_agg(aggregate_order_by(visit_year.distinct(), visit_year)).label("years"),
             )
             .group_by(visits.c.place_id)
-            .order_by(country_code, visits.c.place_id)
+            .subquery("place_years")
+        )
+        query = (
+            select(
+                place_copies.c.place_id,
+                place_copies.c.country_code,
+                place_copies.c.latitude,
+                place_copies.c.longitude,
+                place_years.c.years,
+            )
+            .join(place_years, place_years.c.place_id == place_copies.c.place_id)
+            .order_by(place_copies.c.country_code, place_copies.c.place_id)
         )
         result = await self._session.execute(query)
         return [
@@ -74,8 +87,9 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
         Возвращает маршруты поездок пользователя — по одному на пару «откуда → куда».
 
         Учитываются неудалённые поездки на указанных видах транспорта (``None`` — на всех).
-        У маршрута — годы его поездок, по возрастанию. Страна и координаты места — любая из его
-        копий в поездках маршрута. Порядок — по ``place_id`` отправления, затем назначения.
+        У маршрута — годы его поездок, по возрастанию. Страна, широта и долгота места берутся
+        независимо (``min``), поэтому при разошедшихся копиях точка может не совпасть ни с одной из них.
+        Порядок — по ``place_id`` отправления, затем назначения.
 
         Args:
             user_id: Владелец поездок

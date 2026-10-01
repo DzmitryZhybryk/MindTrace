@@ -711,6 +711,22 @@
     display: none;
   }
 
+  /* Тап-цели ≥44px: чипы транспорта выше, а год получает невидимую зону нажатия — вниз,
+     чтобы не перекрыть ручки ползунка над ним. */
+  .movements-controls__chip .mantine-Chip-label {
+    height: 44px;
+  }
+
+  .movements-controls__year {
+    position: relative;
+  }
+
+  .movements-controls__year::after {
+    content: "";
+    position: absolute;
+    inset: 0 -4px -27px;
+  }
+
   /* Добавление поездки: форма во всю ширину, декоративный глобус скрыт (как в auth). */
   .add-journey {
     position: static;

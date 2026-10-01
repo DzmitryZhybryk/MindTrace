@@ -18,7 +18,7 @@ Two orthogonal axes: **test type** (speed + dependencies) and **module/feature**
 
 The **bulk of value is in `unit`** (the `api`/`auth` logic modules). Keep component thin (forms,
 dialogs, the banner) and e2e thinnest — only the critical happy paths. Current e2e surface:
-`e2e/auth/{signup,login,logout,session,email-verification}.spec.ts` и `e2e/journeys/map.spec.ts`.
+`e2e/auth/{signup,login,logout,session,email-verification}.spec.ts` и `e2e/journeys/{map,movements}.spec.ts`.
 Флоу помечены кодами (A/B/D/K/L…), коды живут в докстрингах самих спеков — отдельного
 плана-файла НЕТ.
 

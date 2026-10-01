@@ -56,13 +56,12 @@ export function stubOffsetLayout(boxesByClass: Readonly<Record<string, OffsetBox
   vi.spyOn(Element.prototype, "clientHeight", "get").mockImplementation(function clientHeightOf(this: Element) {
     return this instanceof HTMLElement ? size(this, "height") : 0;
   });
-  Element.prototype.setPointerCapture = vi.fn();
 }
 
 /**
  * Задаёт экранные прямоугольники элементам по их CSS-классу: в jsdom нет раскладки, и
  * `getBoundingClientRect` у всех возвращает нули. Элемент без класса из карты — нулевой.
- * Заодно заглушает захват указателя, которого в jsdom нет. Снимается `vi.restoreAllMocks()`.
+ * Снимается `vi.restoreAllMocks()`.
  */
 export function stubScreenLayout(rectsByClass: Readonly<Record<string, ScreenRect>>): void {
   vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function rectOf(this: Element) {
@@ -70,5 +69,4 @@ export function stubScreenLayout(rectsByClass: Readonly<Record<string, ScreenRec
     const { left, top, width, height } = known ?? { left: 0, top: 0, width: 0, height: 0 };
     return DOMRect.fromRect({ x: left, y: top, width, height });
   });
-  Element.prototype.setPointerCapture = vi.fn();
 }

@@ -395,6 +395,26 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
     expect(viewBoxOf(occluded.container)).toEqual(occludedView);
   });
 
+  it("новый стартовый вид не затирает масштаб, который пользователь уже выставил", () => {
+    const first: ViewBox = { x: 400, y: 180, width: 200, height: 20 };
+    const second: ViewBox = { x: 300, y: 160, width: 300, height: 30 };
+    const { container, rerender } = renderWithProviders(
+      <OccludedMap fitBounds={first} occluderClass="occluder-above-map" />,
+    );
+
+    // Нетронутый вид переезжает на новый стартовый.
+    rerender(<OccludedMap fitBounds={second} occluderClass="occluder-above-map" />);
+    const untouchedView = viewBoxOf(container);
+    expect(untouchedView.width).toBeLessThan(WORLD_VIEW_BOX.width);
+
+    fireEvent.wheel(canvasOf(container), { ctrlKey: true, deltaY: ZOOM_IN_TWICE_DELTA, clientX: 250, clientY: 100 });
+    const zoomedView = viewBoxOf(container);
+    rerender(<OccludedMap fitBounds={first} occluderClass="occluder-above-map" />);
+
+    expect(zoomedView.width).toBeLessThan(untouchedView.width);
+    expect(viewBoxOf(container)).toEqual(zoomedView);
+  });
+
   it("карта растворяется к кромке панели поверх неё — и только когда панель действительно поверх", () => {
     const bounds: ViewBox = { x: 400, y: 180, width: 200, height: 20 };
 
