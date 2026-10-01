@@ -29,6 +29,7 @@ from app.geo.infra.datasets.wikidata.disputes import (
     RuNameDispute,
     apply_decisions,
     find_disputes,
+    merge_decisions,
     read_decisions,
     record_verdicts,
     write_decisions,
@@ -92,7 +93,7 @@ def main() -> None:
     if args.record:
         verdicts = [ArbiterVerdict(**entry) for entry in json.loads(args.record.read_text(encoding="utf-8"))]
         recorded = record_verdicts(verdicts=verdicts, rows=rows, disputes=disputes)
-        decisions |= {decision.external_id: decision for decision in recorded}
+        decisions = merge_decisions(decisions=decisions, recorded=recorded)
         write_decisions(decisions=decisions.values())
 
     decided, unresolved, disputes_report = apply_decisions(rows=rows, disputes=disputes, decisions=decisions)
@@ -128,6 +129,7 @@ def main() -> None:
         disputes_resolved=disputes_report.resolved,
         disputes_unresolved=disputes_report.unresolved,
         corrected=disputes_report.corrected,
+        stale_decisions=disputes_report.stale,
     )
 
 

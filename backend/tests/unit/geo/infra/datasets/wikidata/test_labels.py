@@ -128,9 +128,10 @@ def test_fetch_ru_labels_batches_ids_and_groups_labels() -> None:
     assert labels == {"1": frozenset({"Москва", "Москва (город)"})}
 
 
-def test_fetch_ru_labels_retries_transient_error() -> None:
-    """fetch_ru_labels: сервис временно перегружен (503) → запрос повторяется и результат приходит."""
-    statuses = iter([503, 200])
+@pytest.mark.parametrize("status", [429, 502, 503, 504])
+def test_fetch_ru_labels_retries_transient_error(status: int) -> None:
+    """fetch_ru_labels: сервис временно перегружен или ограничил частоту → запрос повторяется и результат приходит."""
+    statuses = iter([status, 200])
     body = json.dumps({"results": {"bindings": [{"gn": {"value": "1"}, "label": {"value": "Москва"}}]}})
     transport = httpx.MockTransport(lambda request: httpx.Response(next(statuses), content=body))
 
