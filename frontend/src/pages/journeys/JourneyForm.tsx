@@ -8,24 +8,17 @@ import { useNavigate } from "react-router";
 import { ApiError, applyApiError, errorCodeToken, resolveErrorToken } from "../../api/errors";
 import {
   createJourneyMutation,
+  getJourneysGlobeQueryKey,
   getJourneysMapQueryKey,
+  getMovementsMapQueryKey,
   zTransportType,
   type PlaceSearchItem,
   type PlaceRef,
   type TransportType,
 } from "../../api/sdk";
-import carIcon from "../../assets/emoji/car.svg";
-import planeIcon from "../../assets/emoji/plane.svg";
-import shipIcon from "../../assets/emoji/ship.svg";
 import { PlaceAutocomplete } from "../../components/PlaceAutocomplete";
+import { TRANSPORT_ICONS } from "../../components/transportIcons";
 import { JourneyDateField } from "./JourneyDateField";
-
-// Иконка среды передвижения для select транспорта (метка — из i18n, картинка — Noto-эмодзи SVG).
-const TRANSPORT_ICONS: Record<TransportType, string> = {
-  land: carIcon,
-  air: planeIcon,
-  water: shipIcon,
-};
 
 const TRANSPORT_ICON_SIZE = 22;
 
@@ -127,11 +120,17 @@ export function JourneyForm({ form }: JourneyFormProps) {
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Новая поездка меняет агрегат карты — инвалидируем его общий queryKey. Без этого
-  // глобус-фон (`staleTime: Infinity`) не увидел бы её до перезагрузки страницы.
+  // Новая поездка меняет и карту, и глобус — инвалидируем оба. Без этого глобус-фон
+  // (`staleTime: Infinity`) не увидел бы её до перезагрузки страницы.
   const { mutateAsync: submitJourney, isPending: submitting } = useMutation({
     ...createJourneyMutation(),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: getJourneysMapQueryKey() }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: getJourneysMapQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getJourneysGlobeQueryKey() }),
+        // Ключ без фильтров совпадает с ключами для любых фильтров — сбрасываются все варианты карты.
+        queryClient.invalidateQueries({ queryKey: getMovementsMapQueryKey() }),
+      ]),
   });
 
   // Меняем «откуда»/«куда» местами. Глобус развернёт маршрут и иконку транспорта сам —

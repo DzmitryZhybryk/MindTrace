@@ -4,10 +4,14 @@ import { renderWithProviders, screen } from "../../test/render";
 import { JourneysPanel } from "./JourneysPanel";
 
 describe("JourneysPanel", () => {
-  it("реализованные пункты — ссылки: «Journeys map» и «+ Add journey» ведут на свои маршруты", () => {
+  it("реализованные пункты — ссылки: «Journeys map», «Movements map» и «+ Add journey» ведут на свои маршруты", () => {
     renderWithProviders(<JourneysPanel />);
 
     expect(screen.getByRole("link", { name: "Journeys map" })).toHaveAttribute("href", "/journeys");
+    expect(screen.getByRole("link", { name: "Movements map" })).toHaveAttribute(
+      "href",
+      "/journeys/movements",
+    );
     expect(screen.getByRole("link", { name: /Add journey/u })).toHaveAttribute(
       "href",
       "/journeys/add",
@@ -17,7 +21,7 @@ describe("JourneysPanel", () => {
   it("нереализованные разделы не навигируют: не ссылки, помечены «Soon», aria-disabled", () => {
     renderWithProviders(<JourneysPanel />);
 
-    for (const label of ["Movements map", "All journeys", "Wishlist"]) {
+    for (const label of ["All journeys", "Wishlist"]) {
       // Главный инвариант патча: пункт не ссылка → в пустой маршрут не ведёт.
       expect(screen.queryByRole("link", { name: new RegExp(label, "u") })).toBeNull();
       const item = screen.getByText(label);

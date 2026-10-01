@@ -65,6 +65,9 @@ globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserv
 // вызывает его на активной опции.
 Element.prototype.scrollIntoView = () => {};
 
+// setPointerCapture: нет в jsdom; перетаскивание карточки и жесты карт захватывают им указатель.
+Element.prototype.setPointerCapture = () => {};
+
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 
 afterEach(() => {

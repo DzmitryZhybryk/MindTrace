@@ -6,8 +6,8 @@ application-слою, а реализация живёт в ``infra``: репо�
 ``infra`` импортирует порт отсюда, не наоборот.
 
 На эти же порты опираются in-memory фейки в тестах — ``ty`` ловит расхождение сигнатур
-между реальной реализацией и фейком. Зависит только от ``domain`` — модуль остаётся
-листом графа импортов без внутренних циклов.
+между реальной реализацией и фейком. Зависит только от ``domain`` и типов выдачи из
+``application.schemas`` — модуль остаётся листом графа импортов без внутренних циклов.
 
 В geo journeys ходит только за одним: проверить при создании поездки, что места существуют
 (``PlacesClientPort``).
@@ -18,7 +18,9 @@ from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 from uuid import UUID
 
+from app.journeys.application.schemas import MovementConnection, VisitedPlace
 from app.journeys.domain.entities import JourneyEntity
+from app.journeys.domain.enums import TransportType
 
 
 class JourneyRepositoryPort(Protocol):
@@ -26,7 +28,54 @@ class JourneyRepositoryPort(Protocol):
 
     async def insert_journey(self, journey_entity: JourneyEntity) -> None: ...
 
-    async def find_journeys_by_user_id(self, *, user_id: UUID) -> list[JourneyEntity]: ...
+    async def find_visited_places_by_user_id(self, *, user_id: UUID) -> list[VisitedPlace]:
+        """
+        Возвращает места, где пользователь побывал, — по одному на место.
+
+        Место — отправление или назначение любой неудалённой поездки пользователя. Порядок —
+        по коду страны, внутри страны по ``place_id``: места одной страны идут подряд.
+
+        Args:
+            user_id: Владелец поездок
+
+        Returns:
+            Места со страной, координатами и годами визитов
+        """
+        ...
+
+    async def find_movement_connections_by_user_id(
+        self,
+        *,
+        user_id: UUID,
+        transport_types: Collection[TransportType] | None,
+    ) -> list[MovementConnection]:
+        """
+        Возвращает маршруты поездок пользователя — по одному на пару «откуда → куда».
+
+        Учитываются неудалённые поездки на указанных видах транспорта (``None`` — на всех).
+        У маршрута — годы его поездок, по возрастанию. Порядок — по ``place_id`` отправления,
+        затем назначения.
+
+        Args:
+            user_id: Владелец поездок
+            transport_types: Виды транспорта, поездки на которых учитываются
+
+        Returns:
+            Маршруты с координатами отправления и назначения и годами поездок
+        """
+        ...
+
+    async def find_journey_year_bounds_by_user_id(self, *, user_id: UUID) -> tuple[int, int] | None:
+        """
+        Возвращает годы первой и последней неудалённой поездки пользователя.
+
+        Args:
+            user_id: Владелец поездок
+
+        Returns:
+            Первый и последний год; ``None``, если поездок нет
+        """
+        ...
 
 
 class PlacesClientPort(Protocol):

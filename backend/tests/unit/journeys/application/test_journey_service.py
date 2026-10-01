@@ -2,8 +2,8 @@
 Unit-тесты ``JourneyService`` на фейк-UoW.
 
 ``create_journey`` — снапшот мест, фиксация, проброс доменных ошибок.
-``get_journeys_map`` — свёртка поездок в карту: origin+destination, схлопывание городов,
-годы визитов (уникальные, по возрастанию), сортировка стран и порядок первого визита городов.
+``get_journeys_map`` / ``get_journeys_globe`` — сборка ответа из мест репозитория.
+``get_movements_map`` — маршруты и годы, передача фильтров, пустой ответ без поездок.
 """
 
 import datetime as dt
@@ -11,7 +11,16 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.journeys.application.schemas import CreateJourneyCommand, JourneysMapResult, PlaceSnapshot
+from app.journeys.application.schemas import (
+    CreateJourneyCommand,
+    GetMovementsMapCommand,
+    JourneysMapResult,
+    MapCityVisit,
+    MapCountryVisits,
+    MovementConnection,
+    MovementsMapResult,
+    VisitedPlace,
+)
 from app.journeys.application.services import JourneyService
 from app.journeys.domain.enums import DatePrecision, TransportType
 from app.journeys.exceptions import (
@@ -20,11 +29,11 @@ from app.journeys.exceptions import (
     SameOriginAndDestinationError,
     UnknownPlaceError,
 )
-from tests.builders import LONDON_PLACE_ID, MOSCOW_PLACE_ID, make_approximate_date, make_geo_point, make_journey
-from tests.fakes import FakeJourneyRepository, FakeJourneyUnitOfWork, FakePlacesClient
+from tests.builders import LONDON_PLACE_ID, MOSCOW_PLACE_ID, make_geo_point
+from tests.fakes import FakeJourneyRepository, FakeJourneyUnitOfWork, FakePlacesClient, MovementConnectionQuery
 
-_MOSCOW = PlaceSnapshot(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.75, longitude=37.62)
-_LONDON = PlaceSnapshot(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12)
+_MOSCOW = make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.75, longitude=37.62)
+_LONDON = make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12)
 
 
 async def test_create_journey_snapshots_places_and_commits(
@@ -167,125 +176,105 @@ async def test_get_journeys_map_no_journeys_returns_empty(journey_service: Journ
     assert result == JourneysMapResult(countries=())
 
 
-async def test_get_journeys_map_counts_both_origin_and_destination(
+async def test_get_journeys_map_groups_places_by_country(
     journey_service: JourneyService,
     fake_journey_repository: FakeJourneyRepository,
 ) -> None:
-    """get_journeys_map: поездка A→B делает посещёнными оба города, год визита = год поездки."""
+    """get_journeys_map: места, идущие по стране подряд, собираются в страны с городами и годами."""
     user_id = uuid4()
-    fake_journey_repository.journeys.append(
-        make_journey(
-            user_id=user_id,
-            origin=make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.75, longitude=37.62),
-            destination=make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
-            traveled_on=make_approximate_date(year=2020),
+    paris_id = uuid4()
+    fake_journey_repository.visited_places_by_user_id[user_id] = [
+        VisitedPlace(
+            place=make_geo_point(place_id=paris_id, country_code="FR", latitude=48.85, longitude=2.35), years=(2021,)
+        ),
+        VisitedPlace(place=_LONDON, years=(2019, 2021)),
+        VisitedPlace(place=_MOSCOW, years=(2019,)),
+    ]
+
+    result = await journey_service.get_journeys_map(user_id=user_id)
+
+    assert result == JourneysMapResult(
+        countries=(
+            MapCountryVisits(
+                country_code="FR",
+                cities=(MapCityVisit(place_id=paris_id, latitude=48.85, longitude=2.35, years=(2021,)),),
+            ),
+            MapCountryVisits(
+                country_code="GB",
+                cities=(MapCityVisit(place_id=LONDON_PLACE_ID, latitude=51.5, longitude=-0.12, years=(2019, 2021)),),
+            ),
+            MapCountryVisits(
+                country_code="RU",
+                cities=(MapCityVisit(place_id=MOSCOW_PLACE_ID, latitude=55.75, longitude=37.62, years=(2019,)),),
+            ),
         )
     )
 
-    result = await journey_service.get_journeys_map(user_id=user_id)
 
-    assert [country.country_code for country in result.countries] == ["GB", "RU"]
-    gb, ru = result.countries
-    assert [city.place_id for city in gb.cities] == [LONDON_PLACE_ID]
-    assert gb.cities[0].years == (2020,)
-    assert gb.cities[0].latitude == pytest.approx(51.5)
-    assert gb.cities[0].longitude == pytest.approx(-0.12)
-    assert [city.place_id for city in ru.cities] == [MOSCOW_PLACE_ID]
-    assert ru.cities[0].years == (2020,)
-
-
-async def test_get_journeys_map_merges_city_visits_with_sorted_unique_years(
+async def test_get_journeys_map_keeps_several_cities_of_one_country_together(
     journey_service: JourneyService,
     fake_journey_repository: FakeJourneyRepository,
 ) -> None:
-    """get_journeys_map: город из origin/destination разных поездок → одна точка, годы уникальны и сортированы."""
+    """get_journeys_map: два города одной страны — одна страна с двумя городами в порядке репозитория."""
     user_id = uuid4()
-    london = make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12)
-    fake_journey_repository.journeys.extend(
-        [
-            make_journey(
-                user_id=user_id,
-                origin=make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.75, longitude=37.62),
-                destination=london,
-                traveled_on=make_approximate_date(year=2022),
-            ),
-            make_journey(
-                user_id=user_id,
-                origin=london,
-                destination=make_geo_point(place_id=uuid4(), country_code="FR", latitude=48.85, longitude=2.35),
-                traveled_on=make_approximate_date(year=2019),
-            ),
-            make_journey(
-                user_id=user_id,
-                origin=make_geo_point(place_id=uuid4(), country_code="DE", latitude=52.52, longitude=13.4),
-                destination=london,
-                traveled_on=make_approximate_date(year=2019),
-            ),
-        ]
-    )
+    petersburg_id = uuid4()
+    petersburg = make_geo_point(place_id=petersburg_id, country_code="RU", latitude=59.94, longitude=30.31)
+    fake_journey_repository.visited_places_by_user_id[user_id] = [
+        VisitedPlace(place=_MOSCOW, years=(2020,)),
+        VisitedPlace(place=petersburg, years=(2021,)),
+    ]
 
     result = await journey_service.get_journeys_map(user_id=user_id)
 
-    gb = next(country for country in result.countries if country.country_code == "GB")
-    assert [city.place_id for city in gb.cities] == [LONDON_PLACE_ID]
-    assert gb.cities[0].years == (2019, 2022)
+    assert [country.country_code for country in result.countries] == ["RU"]
+    assert [city.place_id for city in result.countries[0].cities] == [MOSCOW_PLACE_ID, petersburg_id]
 
 
-async def test_get_journeys_map_groups_by_id_despite_changed_coordinates(
+async def test_get_journeys_globe_returns_places_without_years(
     journey_service: JourneyService,
     fake_journey_repository: FakeJourneyRepository,
 ) -> None:
-    """get_journeys_map: один place_id с изменёнными координатами схлопывается с координатами первого визита."""
+    """get_journeys_globe: те же места, что у карты, каждое по одному разу."""
     user_id = uuid4()
-    fake_journey_repository.journeys.extend(
-        [
-            make_journey(
-                user_id=user_id,
-                origin=make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.75, longitude=37.62),
-                destination=make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=52.0, longitude=0.0),
-                traveled_on=make_approximate_date(year=2020),
-            ),
-            make_journey(
-                user_id=user_id,
-                origin=make_geo_point(place_id=uuid4(), country_code="FR", latitude=48.85, longitude=2.35),
-                destination=make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
-                traveled_on=make_approximate_date(year=2021),
-            ),
-        ]
-    )
+    fake_journey_repository.visited_places_by_user_id[user_id] = [
+        VisitedPlace(place=_LONDON, years=(2019, 2021)),
+        VisitedPlace(place=_MOSCOW, years=(2019,)),
+    ]
 
-    result = await journey_service.get_journeys_map(user_id=user_id)
+    result = await journey_service.get_journeys_globe(user_id=user_id)
 
-    gb = next(country for country in result.countries if country.country_code == "GB")
-    assert len(gb.cities) == 1
-    assert gb.cities[0].years == (2020, 2021)
-    assert gb.cities[0].latitude == 52.0
-    assert gb.cities[0].longitude == 0.0
+    assert [place.place_id for place in result.places] == [LONDON_PLACE_ID, MOSCOW_PLACE_ID]
+    assert result.places[1].latitude == pytest.approx(55.75)
 
 
-async def test_get_journeys_map_preserves_first_visit_order_for_distinct_ids(
+async def test_get_movements_map_returns_connections_and_year_bounds(
     journey_service: JourneyService,
     fake_journey_repository: FakeJourneyRepository,
 ) -> None:
-    """get_journeys_map: разные id с одними координатами остаются точками в порядке первого визита."""
+    """get_movements_map: маршруты с годами и годы первой и последней поездки; транспорт доходит до запроса."""
     user_id = uuid4()
-    first = make_geo_point(place_id=LONDON_PLACE_ID)
-    second = make_geo_point(place_id=MOSCOW_PLACE_ID)
-    third = make_geo_point(place_id=uuid4())
-    fake_journey_repository.journeys.extend(
-        [
-            make_journey(
-                user_id=user_id, origin=second, destination=third, traveled_on=make_approximate_date(year=2022)
-            ),
-            make_journey(
-                user_id=user_id, origin=first, destination=second, traveled_on=make_approximate_date(year=2019)
-            ),
-        ]
-    )
+    connection = MovementConnection(origin=_MOSCOW, destination=_LONDON, years=(2019, 2021))
+    fake_journey_repository.year_bounds_by_user_id[user_id] = (2017, 2022)
+    fake_journey_repository.movement_connections_by_user_id[user_id] = [connection]
+    command = GetMovementsMapCommand(user_id=user_id, transport_types=frozenset({TransportType.AIR}))
 
-    result = await journey_service.get_journeys_map(user_id=user_id)
+    result = await journey_service.get_movements_map(command=command)
 
-    [country] = result.countries
-    assert country.country_code == "RU"
-    assert [city.place_id for city in country.cities] == [first.place_id, second.place_id, third.place_id]
-    assert [city.years for city in country.cities] == [(2019,), (2019, 2022), (2022,)]
+    assert result == MovementsMapResult(first_year=2017, last_year=2022, connections=(connection,))
+    assert fake_journey_repository.movement_connection_queries == [
+        MovementConnectionQuery(user_id=user_id, transport_types=frozenset({TransportType.AIR}))
+    ]
+
+
+async def test_get_movements_map_without_journeys_skips_connections_query(
+    journey_service: JourneyService,
+    fake_journey_repository: FakeJourneyRepository,
+) -> None:
+    """get_movements_map: поездок нет → пустой ответ без годов, маршруты не запрашиваются."""
+    user_id = uuid4()
+    command = GetMovementsMapCommand(user_id=user_id, transport_types=None)
+
+    result = await journey_service.get_movements_map(command=command)
+
+    assert result == MovementsMapResult(first_year=None, last_year=None, connections=())
+    assert fake_journey_repository.movement_connection_queries == []

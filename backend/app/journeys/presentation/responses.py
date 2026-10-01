@@ -78,3 +78,45 @@ JOURNEYS_MAP_RESPONSES: Final[dict[int | str, DictStrAny]] = {
         },
     },
 }
+
+JOURNEYS_GLOBE_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+    401: {
+        "description": "Невалидный или истёкший access-токен",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": error_response_example(InvalidAccessTokenError),
+            }
+        },
+    },
+    500: {
+        "description": "Внутренняя ошибка сервера",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": error_response_example(InternalError),
+            }
+        },
+    },
+}
+
+MOVEMENTS_MAP_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+    401: {
+        "description": "Невалидный или истёкший access-токен",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": error_response_example(InvalidAccessTokenError),
+            }
+        },
+    },
+    500: {
+        "description": "Внутренняя ошибка сервера",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": error_response_example(InternalError),
+            }
+        },
+    },
+}

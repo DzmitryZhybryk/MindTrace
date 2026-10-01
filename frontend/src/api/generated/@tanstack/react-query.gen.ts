@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { createJourney, getCurrentUser, getJourneysMap, healthz, login, logout, type Options, refresh, register, resolvePlaces, searchPlaces, sendEmailVerification, verifyEmail } from '../sdk.gen';
-import type { CreateJourneyData, CreateJourneyError, GetCurrentUserData, GetCurrentUserError, GetCurrentUserResponse, GetJourneysMapData, GetJourneysMapError, GetJourneysMapResponse, HealthzData, LoginData, LoginError, LoginResponse, LogoutData, LogoutError, LogoutResponse, RefreshData, RefreshError, RefreshResponse, RegisterData, RegisterError, RegisterResponse, ResolvePlacesData, ResolvePlacesError, ResolvePlacesResponse2, SearchPlacesData, SearchPlacesError, SearchPlacesResponse, SendEmailVerificationData, SendEmailVerificationError, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
+import { createJourney, getCurrentUser, getJourneysGlobe, getJourneysMap, getMovementsMap, healthz, login, logout, type Options, refresh, register, resolvePlaces, searchPlaces, sendEmailVerification, verifyEmail } from '../sdk.gen';
+import type { CreateJourneyData, CreateJourneyError, GetCurrentUserData, GetCurrentUserError, GetCurrentUserResponse, GetJourneysGlobeData, GetJourneysGlobeError, GetJourneysGlobeResponse, GetJourneysMapData, GetJourneysMapError, GetJourneysMapResponse, GetMovementsMapData, GetMovementsMapError, GetMovementsMapResponse, HealthzData, LoginData, LoginError, LoginResponse, LogoutData, LogoutError, LogoutResponse, RefreshData, RefreshError, RefreshResponse, RegisterData, RegisterError, RegisterResponse, ResolvePlacesData, ResolvePlacesError, ResolvePlacesResponse2, SearchPlacesData, SearchPlacesError, SearchPlacesResponse, SendEmailVerificationData, SendEmailVerificationError, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
   Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -205,6 +205,36 @@ export const getJourneysMapOptions = (options?: Options<GetJourneysMapData>) => 
     throwOnError: true
   }),
   queryKey: getJourneysMapQueryKey(options)
+});
+
+export const getJourneysGlobeQueryKey = (options?: Options<GetJourneysGlobeData>) => createQueryKey('getJourneysGlobe', options);
+
+/**
+ * Get Journeys Globe
+ */
+export const getJourneysGlobeOptions = (options?: Options<GetJourneysGlobeData>) => queryOptions<GetJourneysGlobeResponse, GetJourneysGlobeError, GetJourneysGlobeResponse, ReturnType<typeof getJourneysGlobeQueryKey>>({
+  queryFn: async ({ queryKey, signal }) => await getJourneysGlobe({
+    ...options,
+    ...queryKey[0],
+    signal,
+    throwOnError: true
+  }),
+  queryKey: getJourneysGlobeQueryKey(options)
+});
+
+export const getMovementsMapQueryKey = (options?: Options<GetMovementsMapData>) => createQueryKey('getMovementsMap', options);
+
+/**
+ * Get Movements Map
+ */
+export const getMovementsMapOptions = (options?: Options<GetMovementsMapData>) => queryOptions<GetMovementsMapResponse, GetMovementsMapError, GetMovementsMapResponse, ReturnType<typeof getMovementsMapQueryKey>>({
+  queryFn: async ({ queryKey, signal }) => await getMovementsMap({
+    ...options,
+    ...queryKey[0],
+    signal,
+    throwOnError: true
+  }),
+  queryKey: getMovementsMapQueryKey(options)
 });
 
 export const getCurrentUserQueryKey = (options?: Options<GetCurrentUserData>) => createQueryKey('getCurrentUser', options);

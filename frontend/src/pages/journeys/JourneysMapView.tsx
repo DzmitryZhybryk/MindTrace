@@ -7,6 +7,7 @@ import { placeLabel, usePlaceNames } from "../../api/placeNames";
 import { getJourneysMapOptions, type JourneysMapResponse } from "../../api/sdk";
 import type { MapCountry } from "../../components/WorldMap";
 import { WorldMap } from "../../components/WorldMap";
+import { GeoNamesAttribution } from "./GeoNamesAttribution";
 import { JourneysLegendCard } from "./JourneysLegendCard";
 import { MAP_TONE } from "./journeys-data";
 
@@ -86,17 +87,7 @@ export function JourneysMapView() {
         </div>
       )}
       <JourneysLegendCard />
-      {/* Условие лицензии CC BY 4.0: названия мест взяты из GeoNames. */}
-      <p className="journeys-map-attribution">
-        {t("map.attribution")}{" "}
-        <a href="https://www.geonames.org" target="_blank" rel="noreferrer">
-          GeoNames
-        </a>
-        ,{" "}
-        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
-          CC BY 4.0
-        </a>
-      </p>
+      <GeoNamesAttribution />
     </>
   );
 }

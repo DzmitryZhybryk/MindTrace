@@ -29,6 +29,10 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5173,
+    // В Docker на macOS события файлов из bind-mount до контейнера доходят не всегда, и Vite
+    // раздаёт устаревший модуль. Опрос включает тот же флаг, что задан в ops/docker-compose.yaml;
+    // здесь он выставлен явно, а не через переменную окружения самого chokidar.
+    watch: { usePolling: process.env.CHOKIDAR_USEPOLLING === "true" },
     proxy: {
       "/v1": {
         target: apiProxyTarget,

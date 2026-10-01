@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { searchPlacesOptions, type PlaceSearchItem } from "../api/sdk";
 import pinIcon from "../assets/emoji/pin.svg";
 import { toApiLanguage } from "../i18n/apiLanguage";
+import "./place-autocomplete.css";
 
 const PIN_ICON_SIZE = 20;
 // Стабильная ссылка на пустую выдачу: эффект «подсветить первую подсказку» завязан на
@@ -187,13 +188,13 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
                 // У мест вроде моря страны нет — тогда подпись со страной не показываем.
                 const country = place.countryCode ? (countryNames.of(place.countryCode) ?? place.countryCode) : null;
                 return (
-                  <Combobox.Option value={place.placeId} key={place.placeId}>
+                  <Combobox.Option className="place-option" value={place.placeId} key={place.placeId}>
                     <Group gap="xs" wrap="nowrap">
                       <img src={pinIcon} width={PIN_ICON_SIZE} height={PIN_ICON_SIZE} alt="" />
                       <div>
                         <Text size="sm">{place.name}</Text>
                         {country && (
-                          <Text size="xs" c="var(--text-muted)">
+                          <Text size="xs" className="place-option__country">
                             {country}
                           </Text>
                         )}

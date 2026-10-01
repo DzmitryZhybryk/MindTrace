@@ -13,7 +13,7 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
-import type { CurrentUserResponse, PlaceSearchItem } from "../api/sdk";
+import type { CurrentUserResponse, MovementsMapResponse, PlaceSearchItem } from "../api/sdk";
 
 /**
  * Минимальный газеттир для component-тестов автокомплита (`/v1/geo/places/search`).
@@ -95,6 +95,26 @@ export const TEST_CURRENT_USER: CurrentUserResponse = {
 
 const successTokenBody = { accessToken: TEST_ACCESS_TOKEN, tokenType: "bearer" };
 
+const [MOSCOW_POINT, LONDON_POINT, PARIS_POINT] = GEO_PLACES.map(({ placeId, latitude, longitude }) => ({
+  placeId,
+  latitude,
+  longitude,
+}));
+
+/**
+ * Карта перемещений без фильтра транспорта: Москва → Лондон в 2019 и 2021, обратно в 2020 (одна
+ * дуга, стрелки на обоих концах) и Лондон → Париж в 2022 — поездки с 2019 по 2022 год.
+ */
+export const MOVEMENTS_RESPONSE: MovementsMapResponse = {
+  firstYear: 2019,
+  lastYear: 2022,
+  connections: [
+    { origin: MOSCOW_POINT, destination: LONDON_POINT, years: [2019, 2021] },
+    { origin: LONDON_POINT, destination: MOSCOW_POINT, years: [2020] },
+    { origin: LONDON_POINT, destination: PARIS_POINT, years: [2022] },
+  ],
+};
+
 export const handlers = [
   http.post("/v1/auth/register/", () => HttpResponse.json(successTokenBody, { status: 201 })),
   http.post("/v1/auth/login/", () => HttpResponse.json(successTokenBody, { status: 200 })),
@@ -144,6 +164,18 @@ export const handlers = [
       ],
     }),
   ),
+  // Места для глобуса: те же города, что у карты, без стран и годов.
+  http.get("/v1/journeys/globe", () =>
+    HttpResponse.json({
+      places: [
+        { placeId: GEO_PLACES[0].placeId, latitude: 55.75, longitude: 37.62 },
+        { placeId: GEO_PLACES[1].placeId, latitude: 51.5, longitude: -0.12 },
+      ],
+    }),
+  ),
+  // Карта перемещений без фильтров. Тест переопределяет на пустой/ошибочный/фильтрованный
+  // ответ через server.use(...).
+  http.get("/v1/journeys/movements", () => HttpResponse.json(MOVEMENTS_RESPONSE)),
   // Профиль текущего пользователя: кормит CurrentUserProvider при любом залогиненном рендере.
   http.get("/v1/users/me", () => HttpResponse.json(TEST_CURRENT_USER)),
 ];

@@ -1,36 +1,20 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from uuid import UUID
 
 from app.journeys.domain.enums import TransportType
 from app.journeys.domain.value_objects import GeoPoint
 
 __all__ = [
-    "CityVisitAccumulator",
     "CreateJourneyCommand",
+    "GetMovementsMapCommand",
+    "JourneysGlobeResult",
     "JourneysMapResult",
     "MapCityVisit",
     "MapCountryVisits",
-    "PlaceSnapshot",
-    "VisitsByCity",
-    "VisitsByCountry",
+    "MovementConnection",
+    "MovementsMapResult",
+    "VisitedPlace",
 ]
-
-
-# Промежуточные структуры свёртки ``JourneyService.get_journeys_map`` (наружу не отдаются):
-# города одной страны — id места → накопленные визиты.
-type VisitsByCity = dict[UUID, CityVisitAccumulator]
-# страны пользователя — ISO alpha-2 код → города этой страны.
-type VisitsByCountry = dict[str, VisitsByCity]
-
-
-@dataclass(frozen=True, slots=True)
-class PlaceSnapshot:
-    """Место отправления или назначения, выбранное пользователем в справочнике geo."""
-
-    place_id: UUID
-    country_code: str
-    latitude: float
-    longitude: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,8 +26,8 @@ class CreateJourneyCommand:
     """
 
     user_id: UUID
-    origin: PlaceSnapshot
-    destination: PlaceSnapshot
+    origin: GeoPoint
+    destination: GeoPoint
     transport_type: TransportType
     traveled_year: int
     traveled_month: int | None
@@ -86,16 +70,60 @@ class JourneysMapResult:
     countries: tuple[MapCountryVisits, ...]
 
 
-@dataclass(slots=True)
-class CityVisitAccumulator:
-    """
-    Мутабельный накопитель визитов в один город при свёртке поездок в карту.
+@dataclass(frozen=True, slots=True)
+class JourneysGlobeResult:
+    """Посещённые места для глобуса, каждое по одному разу."""
 
-    В отличие от остальных схем модуля — **не** frozen: ``years`` пополняется по мере обхода
-    поездок (один город встречается как origin/destination разных поездок). Внутренний тип
-    агрегации ``JourneyService.get_journeys_map``, наружу не отдаётся — итог свёртки
-    складывается во frozen ``MapCityVisit``.
+    places: tuple[GeoPoint, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class VisitedPlace:
+    """
+    Место, где пользователь побывал, — строка выдачи репозитория.
+
+    ``years`` — годы всех поездок с местом, по возрастанию.
     """
 
-    point: GeoPoint
-    years: set[int] = field(default_factory=set)
+    place: GeoPoint
+    years: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class GetMovementsMapCommand:
+    """
+    Фильтр карты перемещений.
+
+    ``transport_types`` — виды транспорта, поездки на которых учитываются; ``None`` — все.
+    Окна лет здесь нет: годы маршрутов уходят на фронт, и окно он применяет сам.
+    """
+
+    user_id: UUID
+    transport_types: frozenset[TransportType] | None
+
+
+@dataclass(frozen=True, slots=True)
+class MovementConnection:
+    """
+    Стрелка на карте перемещений: откуда и куда пользователь ездил, без повторов.
+
+    ``years`` — годы поездок по этому маршруту, по возрастанию.
+    """
+
+    origin: GeoPoint
+    destination: GeoPoint
+    years: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class MovementsMapResult:
+    """
+    Карта перемещений: маршруты поездок на выбранном транспорте, с годами поездок.
+
+    ``first_year`` и ``last_year`` — годы первой и последней поездки пользователя без учёта
+    транспорта, ``None`` — поездок нет.
+    """
+
+    first_year: int | None
+    last_year: int | None
+    connections: tuple[MovementConnection, ...]

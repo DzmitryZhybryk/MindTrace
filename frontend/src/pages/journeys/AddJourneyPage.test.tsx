@@ -4,11 +4,12 @@ import { http, HttpResponse } from "msw";
 import { Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getJourneysMapQueryKey } from "../../api/sdk";
+import { getJourneysGlobeQueryKey, getJourneysMapQueryKey } from "../../api/sdk";
 import { useGlobeScene } from "../../components/globe/globeScene";
 import { GEO_PLACES, server } from "../../test/handlers";
 import { createTestQueryClient, renderRoutes, renderWithProviders, screen, waitFor, within } from "../../test/render";
 import { AddJourneyPage } from "./AddJourneyPage";
+import { movementsQueryOptions } from "./movements/movementsQuery";
 
 /**
  * Зонд канала сцены — то, что на проде читает `PersistentGlobeHost`. Стоит ВНЕ роутов, чтобы
@@ -137,11 +138,17 @@ describe("AddJourneyPage", () => {
     });
   });
 
-  it("успешное создание помечает карту устаревшей — и 2D-карта, и глобус-фон перечитают её", async () => {
+  it("успешное создание помечает устаревшими карту, глобус и карту перемещений при любых фильтрах", async () => {
     server.use(http.post("/v1/journeys/", () => new HttpResponse(null, { status: 201 })));
     const queryClient = createTestQueryClient();
-    // Карта уже в кэше — как после захода на /journeys перед добавлением поездки.
+    // Всё уже в кэше — как после захода на вкладки перед добавлением поездки. Карта
+    // перемещений — в двух вариантах: без фильтра и с одним видом транспорта.
+    const filteredMovementsKey = movementsQueryOptions(["air"]).queryKey;
+    const noMovements = { firstYear: null, lastYear: null, connections: [] };
     queryClient.setQueryData(getJourneysMapQueryKey(), { countries: [] });
+    queryClient.setQueryData(getJourneysGlobeQueryKey(), { places: [] });
+    queryClient.setQueryData(movementsQueryOptions().queryKey, noMovements);
+    queryClient.setQueryData(filteredMovementsKey, noMovements);
     const { user } = renderAddJourney(queryClient);
 
     await pickPlace({ user, label: "From", query: "Mos", option: /Moscow/iu });
@@ -152,6 +159,9 @@ describe("AddJourneyPage", () => {
 
     expect(await screen.findByText("journeys-landing")).toBeInTheDocument();
     expect(queryClient.getQueryState(getJourneysMapQueryKey())?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(getJourneysGlobeQueryKey())?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(movementsQueryOptions().queryKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(filteredMovementsKey)?.isInvalidated).toBe(true);
   });
 
   it("провал создания карту не трогает — инвалидировать нечего", async () => {

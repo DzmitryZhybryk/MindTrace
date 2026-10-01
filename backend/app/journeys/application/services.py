@@ -1,19 +1,18 @@
-from collections import defaultdict
+from itertools import groupby
 from uuid import UUID
 
 from app.journeys.application.ports import JourneyUnitOfWorkPort, PlacesClientPort
 from app.journeys.application.schemas import (
-    CityVisitAccumulator,
     CreateJourneyCommand,
+    GetMovementsMapCommand,
+    JourneysGlobeResult,
     JourneysMapResult,
     MapCityVisit,
     MapCountryVisits,
-    PlaceSnapshot,
-    VisitsByCity,
-    VisitsByCountry,
+    MovementsMapResult,
 )
 from app.journeys.domain.entities import JourneyEntity
-from app.journeys.domain.value_objects import ApproximateDate, GeoPoint
+from app.journeys.domain.value_objects import ApproximateDate
 from app.journeys.exceptions import UnknownPlaceError
 
 
@@ -44,8 +43,8 @@ class JourneyService:
         )
         journey_entity = JourneyEntity.create(
             user_id=command.user_id,
-            origin=self._to_geo_point(point=command.origin),
-            destination=self._to_geo_point(point=command.destination),
+            origin=command.origin,
+            destination=command.destination,
             transport_type=command.transport_type,
             traveled_on=traveled_on,
         )
@@ -73,47 +72,62 @@ class JourneyService:
             user_id: Владелец поездок
 
         Returns:
-            Посещённые страны (по коду) с городами (в порядке первого визита) и годами визитов
+            Посещённые страны (по коду) с городами и годами визитов
         """
-        journeys = await self._uow.journey_repository.find_journeys_by_user_id(user_id=user_id)
-
-        visits_by_country: VisitsByCountry = defaultdict(dict)
-        for journey_entity in journeys:
-            year = journey_entity.traveled_on.value.year
-            for point in (journey_entity.origin, journey_entity.destination):
-                cities = visits_by_country[point.country_code]
-                visit = cities.get(point.place_id)
-                if visit is None:
-                    visit = CityVisitAccumulator(point=point)
-                    cities[point.place_id] = visit
-
-                visit.years.add(year)
-
+        visited_places = await self._uow.journey_repository.find_visited_places_by_user_id(user_id=user_id)
+        # Репозиторий отдаёт места упорядоченными по стране — groupby собирает каждую страну целиком.
         countries = tuple(
-            MapCountryVisits(country_code=country_code, cities=self._to_map_cities(visits=cities))
-            for country_code, cities in sorted(visits_by_country.items())
+            MapCountryVisits(
+                country_code=country_code,
+                cities=tuple(
+                    MapCityVisit(
+                        place_id=visited_place.place.place_id,
+                        latitude=visited_place.place.latitude,
+                        longitude=visited_place.place.longitude,
+                        years=visited_place.years,
+                    )
+                    for visited_place in country_places
+                ),
+            )
+            for country_code, country_places in groupby(
+                visited_places, key=lambda visited_place: visited_place.place.country_code
+            )
         )
         return JourneysMapResult(countries=countries)
 
-    @staticmethod
-    def _to_map_cities(*, visits: VisitsByCity) -> tuple[MapCityVisit, ...]:
-        """Собирает города страны в кортеж DTO карты в порядке первого визита."""
-        return tuple(
-            MapCityVisit(
-                place_id=place_id,
-                latitude=visit.point.latitude,
-                longitude=visit.point.longitude,
-                years=tuple(sorted(visit.years)),
-            )
-            for place_id, visit in visits.items()
-        )
+    async def get_journeys_globe(self, *, user_id: UUID) -> JourneysGlobeResult:
+        """
+        Собирает места для глобуса: где пользователь побывал, каждое место по одному разу.
 
-    @staticmethod
-    def _to_geo_point(*, point: PlaceSnapshot) -> GeoPoint:
-        """Собирает доменную точку маршрута из входного DTO."""
-        return GeoPoint(
-            place_id=point.place_id,
-            country_code=point.country_code,
-            latitude=point.latitude,
-            longitude=point.longitude,
+        Args:
+            user_id: Владелец поездок
+
+        Returns:
+            Посещённые места с координатами
+        """
+        visited_places = await self._uow.journey_repository.find_visited_places_by_user_id(user_id=user_id)
+        return JourneysGlobeResult(places=tuple(visited_place.place for visited_place in visited_places))
+
+    async def get_movements_map(self, command: GetMovementsMapCommand) -> MovementsMapResult:
+        """
+        Собирает карту перемещений: маршруты поездок пользователя с их годами.
+
+        Годы первой и последней поездки считаются по всем поездкам, без фильтра транспорта: по
+        ним фронт строит шкалу лет, и она не должна меняться от выбранного транспорта.
+
+        Args:
+            command: Владелец поездок и виды транспорта
+
+        Returns:
+            Маршруты поездок и годы первой и последней поездки
+        """
+        year_bounds = await self._uow.journey_repository.find_journey_year_bounds_by_user_id(user_id=command.user_id)
+        if year_bounds is None:
+            return MovementsMapResult(first_year=None, last_year=None, connections=())
+
+        first_year, last_year = year_bounds
+        connections = await self._uow.journey_repository.find_movement_connections_by_user_id(
+            user_id=command.user_id,
+            transport_types=command.transport_types,
         )
+        return MovementsMapResult(first_year=first_year, last_year=last_year, connections=tuple(connections))

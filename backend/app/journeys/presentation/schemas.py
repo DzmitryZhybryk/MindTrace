@@ -56,6 +56,57 @@ class MapCountry(CamelModel):
 
 
 class JourneysMapResponse(CamelModel):
-    """Ответ карты путешествий: посещённые страны с городами и годами визитов."""
+    """
+    Ответ карты путешествий: посещённые страны с городами и годами визитов.
+
+    Каждое место встречается ровно один раз, в одной стране.
+    """
 
     countries: list[MapCountry]
+
+
+class MapPoint(CamelModel):
+    """Место на глобусе или карте перемещений: его ``placeId`` и координаты, без названия."""
+
+    place_id: UUID
+    latitude: float
+    longitude: float
+
+
+class JourneysGlobeResponse(CamelModel):
+    """Ответ глобуса: места, где пользователь побывал, каждое ровно один раз."""
+
+    places: list[MapPoint]
+
+
+class MovementsMapFilterRequest(CamelModel):
+    """
+    Фильтр карты перемещений (query-параметры).
+
+    ``transportType`` повторяется по разу на вид транспорта; без него учитываются все.
+    Окна лет нет: годы приходят в каждом маршруте, окно применяет фронт.
+    """
+
+    transport_type: frozenset[TransportType] | None = None
+
+
+class MovementConnection(CamelModel):
+    """Стрелка на карте перемещений: откуда и куда пользователь ездил и в какие годы, по возрастанию."""
+
+    origin: MapPoint
+    destination: MapPoint
+    years: list[int]
+
+
+class MovementsMapResponse(CamelModel):
+    """
+    Ответ карты перемещений: маршруты поездок на выбранном транспорте, каждый «откуда → куда»
+    один раз, с годами поездок.
+
+    ``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта транспорта;
+    ``null``, если поездок нет.
+    """
+
+    first_year: int | None
+    last_year: int | None
+    connections: list[MovementConnection]
