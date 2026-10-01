@@ -68,6 +68,8 @@ const PAGES: readonly Page[] = [
 
 const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as Manifest;
 
+// Размеры — свой gzip уровня 9, а не цифры из вывода `vite build`: Vite жмёт другим компрессором,
+// и его gz-колонка расходится с этой на 1–3 %. Лимиты сверять только с выводом этого скрипта.
 const gzipSizes = new Map<string, number>();
 function gzipSize(file: string): number {
   let size = gzipSizes.get(file);
