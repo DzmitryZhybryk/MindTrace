@@ -64,6 +64,12 @@ frontend/src/
 e2e/                            # Playwright: e2e/<домен>/<флоу>.spec.ts + e2e/helpers/, e2e/fixtures.ts
 ```
 
+**Split a heavy component's tests by scenario: `<Module>.<topic>.test.tsx`** (e.g.
+`AddJourneyPage.errors.test.tsx`). Vitest runs files in parallel but the tests inside one file
+in sequence, so a file whose tests each take a second (a full form fill through Mantine and the
+autocomplete debounce) sets the wall time of the whole run. The helpers such files share live in
+`src/test/` (e.g. `src/test/addJourney.tsx`), not copied into each file.
+
 ## Philosophy: classicist + mock only the network
 
 - **State-based (classicist), not interaction-based (mockist).** Assert on what the user sees / the

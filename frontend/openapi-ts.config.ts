@@ -5,7 +5,7 @@ export default defineConfig({
   output: "src/api/generated",
   plugins: [
     "@hey-api/client-fetch",
-    "zod",
+    { name: "zod", compatibilityVersion: "mini" },
     "@tanstack/react-query",
     {
       name: "@hey-api/sdk",

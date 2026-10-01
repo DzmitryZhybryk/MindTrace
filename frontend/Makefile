@@ -1,4 +1,4 @@
-.PHONY: help typecheck lint lint-fix audit test test-unit test-component coverage check test-e2e generate-api
+.PHONY: help typecheck lint lint-fix audit test test-unit test-component coverage check test-e2e generate-api generate-world budget
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -49,6 +49,14 @@ coverage: ## Run tests with coverage report
 generate-api: ## Regenerate src/api/generated from backend/openapi.json (run after make be-openapi-dump)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}openapi-ts${AZURE}' codegen${RESET}"
 	@npm run generate:api
+
+generate-world: ## Rebuild src/data/world-countries.topo.json from data/world-countries.geo.json
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}build-world-topology${AZURE}' codegen${RESET}"
+	@npm run generate:world
+
+budget: ## Production build + bundle budget check per page (limits — .claude/rules/web/performance.md)
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}vite build${AZURE}' + bundle budget${RESET}"
+	@npm run budget
 
 audit: ## Scan npm dependencies for known vulnerabilities (high+)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}npm audit${AZURE}' security scan${RESET}"

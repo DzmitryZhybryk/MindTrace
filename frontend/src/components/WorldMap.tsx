@@ -10,8 +10,11 @@ import {
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
+import type { Feature, MultiPolygon, Polygon, Position } from "geojson";
+import { feature } from "topojson-client";
+import type { GeometryCollection, Topology } from "topojson-specification";
 
-import worldData from "../data/world-countries.geo.json";
+import worldTopology from "../data/world-countries.topo.json";
 import { fitView } from "./fitView";
 import { useMapZoom } from "./useMapZoom";
 import { ANTIMERIDIAN_JUMP, WORLD_VIEW_BOX, isWorldView, projectToScreen, type ViewBox } from "./worldProjection";
@@ -27,23 +30,17 @@ import "./world-map.css";
  */
 
 // --- Разбор geo-данных в SVG-пути (один раз при импорте модуля) ------------
-type Position = [number, number];
-type LinearRing = Position[];
-type GeoGeometry =
-  | { type: "Polygon"; coordinates: LinearRing[] }
-  | { type: "MultiPolygon"; coordinates: LinearRing[][] };
+type CountryGeometry = Polygon | MultiPolygon;
 
-interface CountryFeature {
-  id: string;
-  properties: { name: string };
-  geometry: GeoGeometry;
+interface CountryProperties {
+  name: string;
 }
 
-interface WorldCollection {
-  features: CountryFeature[];
-}
+type CountryFeature = Feature<CountryGeometry, CountryProperties> & { id: string };
 
-function ringToPath(ring: LinearRing): string {
+type WorldTopology = Topology<{ countries: GeometryCollection<CountryProperties> }>;
+
+function ringToPath(ring: Position[]): string {
   const segments: string[] = [];
   let prevLng: number | null = null;
   for (const [lng, lat] of ring) {
@@ -57,7 +54,7 @@ function ringToPath(ring: LinearRing): string {
   return segments.length > 0 ? `${segments.join("")}Z` : "";
 }
 
-function geometryToPath(geometry: GeoGeometry): string {
+function geometryToPath(geometry: CountryGeometry): string {
   if (geometry.type === "Polygon") {
     return geometry.coordinates.map(ringToPath).join("");
   }
@@ -71,12 +68,15 @@ interface CountryShape {
   path: string;
 }
 
-const COUNTRY_SHAPES: readonly CountryShape[] = (
-  worldData as unknown as WorldCollection
-).features.map((feature) => ({
-  id: feature.id,
-  name: feature.properties.name,
-  path: geometryToPath(feature.geometry),
+// Топологию собирает scripts/build-world-topology.ts из стран-полигонов, у каждой есть
+// строковый id и имя, — поэтому раскрытые обратно фичи и есть CountryFeature.
+const WORLD = worldTopology as unknown as WorldTopology;
+const COUNTRY_FEATURES = feature(WORLD, WORLD.objects.countries).features as CountryFeature[];
+
+const COUNTRY_SHAPES: readonly CountryShape[] = COUNTRY_FEATURES.map((country) => ({
+  id: country.id,
+  name: country.properties.name,
+  path: geometryToPath(country.geometry),
 }));
 
 const COUNTRY_NAMES: ReadonlyMap<string, string> = new Map(
@@ -206,7 +206,7 @@ export function WorldMap({
   );
 
   // Имя страны резолвим из ISO-кода через CLDR по активному языку; безкодовые
-  // территории (id=имя) и неизвестные коды → fallback на имя из geojson.
+  // территории (id=имя) и неизвестные коды → fallback на имя из данных границ.
   const countryNames = useMemo(
     () => new Intl.DisplayNames([i18n.language], { type: "region", fallback: "none" }),
     [i18n.language],

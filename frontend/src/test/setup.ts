@@ -1,7 +1,7 @@
 /**
  * Глобальный setup для Vitest (подключён через `test.setupFiles` в `vite.config.ts`).
  *
- * Делает четыре вещи:
+ * Делает четыре вещи (плюс общий таймаут ожиданий Testing Library — см. ниже):
  *  1. i18n — синхронно подгружает `en`-бандлы на тот же singleton-инстанс, что
  *     использует код (в приложении локали грузятся лениво через dynamic `import()`,
  *     поэтому без этого `i18n.t(...)` вернул бы сам ключ). Так `messageForCode` и UI
@@ -16,7 +16,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
 
 import { clearAccessToken } from "../auth/tokenStore";
@@ -33,6 +33,12 @@ i18n.addResourceBundle("en", "errors", enErrors, true, true);
 i18n.addResourceBundle("en", "journeys", enJourneys, true, true);
 
 void i18n.changeLanguage("en");
+
+// findBy*/waitFor по умолчанию ждут 1 с. Первый выбор места в файле — холодный рендер формы,
+// debounce автокомплита 250 мс и ответ MSW — под coverage и полной загрузкой ядер занимает до
+// ~0.8 с, и дефолт изредка не дожидался. Прошедшее ожидание возвращается сразу, так что запас
+// замедляет только падающий тест.
+configure({ asyncUtilTimeout: 3000 });
 
 // matchMedia: Mantine (Menu/Modal/визуальные хуки) обращается к нему, в jsdom его нет.
 // Ставим прямым присваиванием (не через vi.stubGlobal), чтобы `vi.unstubAllGlobals()`

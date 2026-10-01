@@ -62,6 +62,8 @@ make typecheck                             # tsc -b
 make test                                  # vitest run (один прогон)
 make coverage                              # vitest run --coverage
 make check                                 # lint + typecheck + audit + test (CI-стиль; тот же таргет гоняет CI)
+make budget                                # прод-сборка + бюджет бандла по страницам (.claude/rules/web/performance.md)
+make generate-world                        # границы стран: data/world-countries.geo.json → src/data/world-countries.topo.json
 
 # Контракт API: бэк → backend/openapi.json → frontend/src/api/generated/ (оба коммитятся)
 make be-openapi-dump                       # схема приложения изменилась → перезаписать openapi.json
@@ -281,6 +283,11 @@ compiler API вовсе. Снять, когда TS 7 поедет в стаби�
 Оттуда же `overrides` на `js-yaml` в `frontend/package.json`: парсер схемы у предрелиза тянет
 версию из уязвимого диапазона, и `make check` краснеет на `npm audit`. Override поднимает
 только этот транзитивный пакет; снимается вместе с пином.
+
+Тот же приём — для границ стран плоских карт: источник `frontend/data/world-countries.geo.json`
+(контракт и провенанс — в `frontend/data/README.md`), производный
+`frontend/src/data/world-countries.topo.json`, пересборка `make fe-generate-world`, гейт — шаг CI
+с `git diff --exit-code`. `topojson-server` запинен точной версией: от него зависит вывод.
 
 ## Always-follow rules
 

@@ -72,6 +72,19 @@ describe("AuthProvider", () => {
     expect(await screen.findByRole("button", { name: "Send code" })).toBeInTheDocument();
   });
 
+  it("диалог подтверждения email закрывается и открывается повторно", async () => {
+    const { user } = renderAuth();
+    await screen.findByText("bootstrapping: false");
+    act(() => emit("verify-required", undefined));
+    await user.click(await screen.findByRole("button", { name: "Later" }));
+
+    expect(screen.queryByRole("button", { name: "Send code" })).not.toBeInTheDocument();
+
+    act(() => emit("verify-required", undefined));
+
+    expect(await screen.findByRole("button", { name: "Send code" })).toBeInTheDocument();
+  });
+
   it("событие auth-required сбрасывает сессию", async () => {
     withLiveSession();
     renderAuth();

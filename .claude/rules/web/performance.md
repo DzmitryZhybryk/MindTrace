@@ -18,23 +18,35 @@
 | Landing | < 200kb | < 40kb |
 | App page | < 300kb | < 50kb |
 
-Цифры для лендинга подняты со 150/30 после замера (2026-07-19): пол стека — **~116 kb** и он
-несжимаем без смены архитектуры. Из чего он состоит:
+The numbers are a working agreement, not a physical limit. They were set by eye, raised for the
+landing from 150/30 after a measurement (2026-07-19), and re-checked on 2026-10-01. Going over
+is a reason to look at what grew, not an alarm: if nothing removable is found, raise the limit
+and write down why.
 
-| часть | gz | устранимо? |
+Landing composition at the 2026-10-01 check (~185 kb, shares attributed per package):
+
+| part | gz | removable? |
 |---|---|---|
-| react-dom | 56.4 kb | нет |
-| i18n-стек | 23.8 kb | нет, копирайт лендинга в i18n |
-| zod | 17.4 kb | нет, валидация ответов API на границе |
-| react-router | 15.0 kb | нет |
-| код приложения | ~4 kb | — |
+| react + react-dom | ~63 kb | no |
+| Mantine (+ floating-ui) | ~51 kb | not worth it, see below |
+| i18n stack | ~22 kb | no — the landing copy lives in i18n |
+| react-router | ~15 kb | no |
+| app code | ~15 kb | — |
+| TanStack Query | ~10 kb | no — the root providers use it |
+| zod (`zod/mini`) | ~8 kb | already minimal — API responses are validated at the boundary |
 
-Сверху ложится Mantine. Лендинг ни одного его компонента не использует, но `MantineProvider`
-смонтирован в корне, а `PublicHeader` тянет переключатель языка на Mantine `Menu`
-(`FocusTrap` + `Popover` + `Input` ≈ 24 kb). Уложиться в 150 kb можно только вынеся провайдер
-из корня и переписав переключатель — при том что `/login` и `/signup` живут в том же лейауте
-и Mantine им нужен по-настоящему. Разменивать перекройку провайдерного дерева на 35 kb
-сочли невыгодным.
+Mantine is the only large removable block, and removing it is not worth it. The landing itself
+uses no Mantine component, but `MantineProvider` sits at the root and `PublicHeader` renders the
+language switcher on Mantine `Menu`. Moving it off the landing means pulling the provider out of
+the root and rewriting the switcher with its keyboard and focus handling — and `/login` and
+`/signup`, the landing's next step, load the same chunks anyway. The bytes would only move one
+navigation later.
+
+What did pay off was dead weight on every page: the email-verification dialog imported
+statically into the root `AuthProvider` (−14 kb, now `lazy`), and the generated SDK validators on
+classic zod (−18 kb, now `zod/mini` via the `@hey-api/openapi-ts` zod plugin option). Before
+optimizing, check for the same kind of thing — something on the critical path that the page
+never renders.
 
 > **Бюджет, который нельзя выполнить, не дисциплинирует, а приучает игнорировать таблицу.**
 > Если меняешь цифры — меняй вместе с обоснованием, почему новая достижима.
@@ -42,6 +54,11 @@
 Замерять критический путь по ГРАФУ СТАТИЧЕСКИХ ИМПОРТОВ собранных чанков, а не по размеру
 entry: динамический `import()` попадает в манифест предзагрузки и легко читается как
 статическая зависимость.
+
+**Check it with `make fe-budget`, not by hand.** It builds with the Vite manifest, walks each
+route's static import graph (entry + lazy layout + page) and fails when a page exceeds its
+limit. The limits are duplicated in `frontend/scripts/check-bundle-budget.ts` — change both
+together. A new lazy route has to be added to that script's page list, or it goes unmeasured.
 
 ## Loading Strategy
 
