@@ -12,7 +12,7 @@ import { CurrentUserProvider } from "./user/CurrentUserContext";
 
 // Страницы грузятся лениво (dynamic import → отдельный chunk на маршрут), поэтому
 // главный бандл несёт только каркас (router + провайдеры + Mantine-база). Тяжёлое —
-// 3D-глобусы (three/react-globe.gl) и geojson-карта (~257 kB) — уезжает в chunk той
+// 3D-глобусы (three/react-globe.gl) и границы стран для плоских карт — уезжает в chunk той
 // страницы, где реально нужно, и не грузится, например, на /login.
 const HomePage = lazy(() => import("./pages/HomePage").then((m) => ({ default: m.HomePage })));
 // Публичная зона: лейаут с персистентным глобусом-фоном + лендинг. Глобус тяжёлый

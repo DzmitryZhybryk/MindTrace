@@ -68,5 +68,14 @@ jobs:
           git diff --exit-code -- src/api/generated \
             || { echo "::error::SDK устарел — прогони 'make fe-generate-api' и закоммить результат"; exit 1; }
 
+      - name: Codegen drift (src/data/world-countries.topo.json == data/world-countries.geo.json)
+        run: |
+          make generate-world
+          git diff --exit-code -- src/data/world-countries.topo.json \
+            || { echo "::error::Границы стран устарели — прогони 'make fe-generate-world' и закоммить результат"; exit 1; }
+
       - name: Quality gate (lint, typecheck, unit+component)
         run: make check
+
+      - name: Bundle budget (prod build, static import graph per page)
+        run: make budget

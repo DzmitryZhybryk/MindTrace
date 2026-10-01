@@ -79,6 +79,10 @@ banner), not transient errors.
 
 Schema validation via **Zod** at boundaries (HTTP, forms); the type is inferred from the schema — `z.infer<typeof schema>`.
 
+Import it as `import * as z from "zod/mini"`, never from `"zod"`. The generated SDK validators are
+`zod/mini` too (`compatibilityVersion: "mini"` in `openapi-ts.config.ts`); a single classic
+import puts the full zod (~18 kb gz) back on every page.
+
 ## No `console.log`
 
 `console.log` is forbidden in production code.

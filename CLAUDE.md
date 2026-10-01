@@ -62,6 +62,8 @@ make typecheck                             # tsc -b
 make test                                  # vitest run (один прогон)
 make coverage                              # vitest run --coverage
 make check                                 # lint + typecheck + audit + test (CI-стиль; тот же таргет гоняет CI)
+make budget                                # прод-сборка + бюджет бандла по страницам (.claude/rules/web/performance.md)
+make generate-world                        # границы стран: data/world-countries.geo.json → src/data/world-countries.topo.json
 
 # Контракт API: бэк → backend/openapi.json → frontend/src/api/generated/ (оба коммитятся)
 make be-openapi-dump                       # схема приложения изменилась → перезаписать openapi.json
@@ -276,11 +278,23 @@ CHANGELOG — **один** файл в корне. Новые записи гр�
 Генератор запинен **точной** версией: `@hey-api/openapi-ts` пре-1.0, минорные релизы меняют
 вывод. Пин на предрелизной ветке (`0.0.0-next-*`) — вынужденный: стабильная линия падает на
 TypeScript 7 (`ts.SyntaxKind` отсутствует в нативном компиляторе), предрелизная не зависит от
-compiler API вовсе. Снять, когда TS 7 поедет в стабильном релизе.
+compiler API вовсе. Снять, когда TS 7 поедет в стабильном релизе (проверено 2026-10-01: стабильная
+0.99.0 всё ещё падает на `ts.SyntaxKind`).
+
+Побочный эффект пина: по semver `0.0.0-next-*` меньше любой стабильной версии, поэтому dependabot
+считает уязвимым каждый advisory с диапазоном «`< X.Y.Z`», даже когда исправление уже в
+предрелизе. Проверять по коду: уязвимый код генератора копируется в
+`frontend/src/api/generated/`, там и смотреть (так закрыт GHSA-hhx9-57xq-r5rw: слоты в
+`core/params.gen.ts` уже на `Object.create(null)`, PoC из advisory прототип не подменяет).
 
 Оттуда же `overrides` на `js-yaml` в `frontend/package.json`: парсер схемы у предрелиза тянет
 версию из уязвимого диапазона, и `make check` краснеет на `npm audit`. Override поднимает
 только этот транзитивный пакет; снимается вместе с пином.
+
+Тот же приём — для границ стран плоских карт: источник `frontend/data/world-countries.geo.json`
+(контракт и провенанс — в `frontend/data/README.md`), производный
+`frontend/src/data/world-countries.topo.json`, пересборка `make fe-generate-world`, гейт — шаг CI
+с `git diff --exit-code`. `topojson-server` запинен точной версией: от него зависит вывод.
 
 ## Always-follow rules
 

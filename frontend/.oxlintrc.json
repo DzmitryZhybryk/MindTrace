@@ -34,6 +34,12 @@
         "react/only-export-components": "off",
         "vitest/require-mock-type-parameters": "off"
       }
+    },
+    {
+      "files": ["scripts/**/*.ts"],
+      "rules": {
+        "no-console": "off"
+      }
     }
   ]
 }

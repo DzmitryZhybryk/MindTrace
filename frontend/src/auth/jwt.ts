@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 
 const accessTokenClaimsSchema = z.object({
   sub: z.string(),
