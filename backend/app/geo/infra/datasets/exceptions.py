@@ -23,6 +23,13 @@ class DatasetColumnsError(DatasetFormatError):
         super().__init__(f"Unexpected dataset columns: {sorted(columns)}")
 
 
+class UnknownVerdictPlaceError(Exception):
+    """Вердикт арбитра ссылается на место, которого нет в датасете."""
+
+    def __init__(self, *, external_id: str) -> None:
+        super().__init__(f"Arbiter verdict references a place missing from the dataset: {external_id}")
+
+
 class MissingEnglishNameError(DatasetFormatError):
     """У места нет имени на ``en`` — фолбэка отображения для любого языка."""
 

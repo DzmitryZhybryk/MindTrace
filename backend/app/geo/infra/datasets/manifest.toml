@@ -1,5 +1,5 @@
 [[dataset]]
 name = "geonames-cities"
-version = "2026-09-29"
-url = "https://github.com/DzmitryZhybryk/MindTrace/releases/download/geo-data-v1/geonames-cities.csv.gz"
-sha256 = "367bf1d21e23aea73309b2575c098b9b1709a0c0c10e9675ab83e890da604ca3"
+version = "2026-10-01"
+url = "https://github.com/DzmitryZhybryk/MindTrace/releases/download/geo-data-v2/geonames-cities.csv.gz"
+sha256 = "430c52341c6eda5ad65f6b90ca12a16ddafd42adae1f059f3909fa632c024e02"
