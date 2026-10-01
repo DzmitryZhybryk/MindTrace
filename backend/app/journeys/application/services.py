@@ -110,13 +110,13 @@ class JourneyService:
 
     async def get_movements_map(self, command: GetMovementsMapCommand) -> MovementsMapResult:
         """
-        Собирает карту перемещений: маршруты поездок пользователя в окне фильтров.
+        Собирает карту перемещений: маршруты поездок пользователя с их годами.
 
-        Годы первой и последней поездки считаются по всем поездкам, без фильтров: по ним фронт
-        строит шкалу лет.
+        Годы первой и последней поездки считаются по всем поездкам, без фильтра транспорта: по
+        ним фронт строит шкалу лет, и она не должна меняться от выбранного транспорта.
 
         Args:
-            command: Владелец поездок и фильтры (окно лет, виды транспорта)
+            command: Владелец поездок и виды транспорта
 
         Returns:
             Маршруты поездок и годы первой и последней поездки
@@ -128,8 +128,6 @@ class JourneyService:
         first_year, last_year = year_bounds
         connections = await self._uow.journey_repository.find_movement_connections_by_user_id(
             user_id=command.user_id,
-            year_from=command.year_from,
-            year_to=command.year_to,
             transport_types=command.transport_types,
         )
         return MovementsMapResult(first_year=first_year, last_year=last_year, connections=tuple(connections))

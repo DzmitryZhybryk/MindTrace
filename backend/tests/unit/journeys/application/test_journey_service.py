@@ -251,28 +251,18 @@ async def test_get_movements_map_returns_connections_and_year_bounds(
     journey_service: JourneyService,
     fake_journey_repository: FakeJourneyRepository,
 ) -> None:
-    """get_movements_map: маршруты из репозитория и годы первой и последней поездки; фильтры доходят до запроса."""
+    """get_movements_map: маршруты с годами и годы первой и последней поездки; транспорт доходит до запроса."""
     user_id = uuid4()
-    connection = MovementConnection(origin=_MOSCOW, destination=_LONDON)
+    connection = MovementConnection(origin=_MOSCOW, destination=_LONDON, years=(2019, 2021))
     fake_journey_repository.year_bounds_by_user_id[user_id] = (2017, 2022)
     fake_journey_repository.movement_connections_by_user_id[user_id] = [connection]
-    command = GetMovementsMapCommand(
-        user_id=user_id,
-        year_from=2019,
-        year_to=2021,
-        transport_types=frozenset({TransportType.AIR}),
-    )
+    command = GetMovementsMapCommand(user_id=user_id, transport_types=frozenset({TransportType.AIR}))
 
     result = await journey_service.get_movements_map(command=command)
 
     assert result == MovementsMapResult(first_year=2017, last_year=2022, connections=(connection,))
     assert fake_journey_repository.movement_connection_queries == [
-        MovementConnectionQuery(
-            user_id=user_id,
-            year_from=2019,
-            year_to=2021,
-            transport_types=frozenset({TransportType.AIR}),
-        )
+        MovementConnectionQuery(user_id=user_id, transport_types=frozenset({TransportType.AIR}))
     ]
 
 
@@ -282,7 +272,7 @@ async def test_get_movements_map_without_journeys_skips_connections_query(
 ) -> None:
     """get_movements_map: поездок нет → пустой ответ без годов, маршруты не запрашиваются."""
     user_id = uuid4()
-    command = GetMovementsMapCommand(user_id=user_id, year_from=None, year_to=None, transport_types=None)
+    command = GetMovementsMapCommand(user_id=user_id, transport_types=None)
 
     result = await journey_service.get_movements_map(command=command)
 

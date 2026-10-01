@@ -394,4 +394,21 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
     fireEvent.doubleClick(canvasOf(occluded.container));
     expect(viewBoxOf(occluded.container)).toEqual(occludedView);
   });
+
+  it("карта растворяется к кромке панели поверх неё — и только когда панель действительно поверх", () => {
+    const bounds: ViewBox = { x: 400, y: 180, width: 200, height: 20 };
+
+    const over = renderWithProviders(<OccludedMap fitBounds={bounds} occluderClass="occluder-over-map" />);
+    // Растворение начинается у кромки панели: закрыто ровно столько, сколько она занимает.
+    expect(over.container.querySelector(".world-map-wrap--occluded")).not.toBeNull();
+    expect(canvasOf(over.container).style.getPropertyValue("--map-occluded-left")).toBe(
+      `${SCREEN_RECTS["occluder-over-map"].width}px`,
+    );
+    over.unmount();
+
+    // Панель над картой (мобильная раскладка) ничего не закрывает — растворять нечего.
+    const above = renderWithProviders(<OccludedMap fitBounds={bounds} occluderClass="occluder-above-map" />);
+    expect(above.container.querySelector(".world-map-wrap--occluded")).toBeNull();
+    expect(canvasOf(above.container).style.getPropertyValue("--map-occluded-left")).toBe("");
+  });
 });

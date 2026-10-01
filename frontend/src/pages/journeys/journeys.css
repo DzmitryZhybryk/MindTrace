@@ -37,6 +37,8 @@
 
 /* ---- Карта во всю ширину + плавающая панель ------------------------------ */
 .journeys-stage {
+  /* Ширина левой колонки: панель навигации и карточка фильтров перемещений — одной ширины. */
+  --journeys-column-width: 260px;
   position: relative;
   flex: 1;
   display: flex;
@@ -119,7 +121,7 @@
   top: var(--content-offset-top);
   left: 32px;
   z-index: 2;
-  width: 260px;
+  width: var(--journeys-column-width);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -236,6 +238,219 @@
 
 .journeys-map-attribution a {
   color: inherit;
+}
+
+/* ---- Фильтры карты перемещений — карточка в нижнем-правом углу ----------- */
+/* По умолчанию — левый нижний угол над подписью GeoNames. Пользователь может утащить карточку
+   за ручку куда угодно (useDraggableCard задаёт left/top инлайн). */
+.movements-controls {
+  position: absolute;
+  bottom: 32px;
+  left: 32px;
+  z-index: 3;
+  /* Ширина — как у панели навигации: карточка стоит в той же колонке. */
+  width: var(--journeys-column-width);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 14px 12px;
+}
+
+.movements-controls__single-year {
+  font: 500 var(--fs-11) / 1 var(--font-mono);
+  color: var(--text-muted);
+}
+
+.movements-controls__transport {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Выбранность чипа видна по обводке и заливке — галочка лишь раздувала бы строку. Отступы
+   выбранного равны обычным, иначе чип менял бы ширину при щелчке. */
+.movements-controls__chip .mantine-Chip-iconWrapper {
+  display: none;
+}
+
+/* Виды транспорта — одни иконки, три чипа делят строку поровну, иконка по центру. */
+.movements-controls__chip .mantine-Chip-label {
+  --chip-padding: 0;
+  --chip-checked-padding: 0;
+  width: 100%;
+  justify-content: center;
+  /* Mantine обрезает строку по высоте заглавных (text-box-trim), чтобы центрировать текст, — а
+     текста тут нет, и иконку эта обрезка поднимала вверх. */
+  text-box-trim: none;
+}
+
+.movements-controls__icon {
+  display: block;
+}
+
+/* Машинка в эмодзи Noto «стоит на земле»: центр рисунка на 17% ниже центра квадрата (замер
+   getBBox: 85.8 из 128; у самолёта и корабля — почти по центру). Поднимаем на столько же. */
+.movements-controls__icon--land {
+  transform: translateY(-17%);
+}
+
+/* Цели касания ≥ 44px — только для пальца: мышью мелкие контролы точнее и компактнее. */
+/*
+ * Ползунок окна лет: тонкая дорожка, выбранный отрезок цветом маршрутов, компактные ручки.
+ * Кольцо цветом фона отделяет ручку от дорожки; свечение — отклик на наведение и захват.
+ * Отпущенная ручка доезжает до своего года плавно; пока её тянут — без задержки.
+ */
+.movements-controls__slider {
+  padding-top: 6px;
+}
+
+.movements-controls__slider .mantine-RangeSlider-root {
+  --slider-track-bg: rgb(var(--ink-on-dark-rgb) / 0.12);
+}
+
+.movements-controls__slider .mantine-RangeSlider-thumb {
+  width: 16px;
+  height: 16px;
+  border: 3px solid var(--surface);
+  background-color: var(--movement-line);
+  box-shadow: 0 0 0 1px rgb(var(--glow-rgb) / 0.35);
+  transition:
+    left 180ms ease,
+    box-shadow var(--dur-fast) ease,
+    transform var(--dur-fast) ease;
+}
+
+.movements-controls__slider .mantine-RangeSlider-thumb:hover,
+.movements-controls__slider .mantine-RangeSlider-thumb:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 6px rgb(var(--glow-rgb) / 0.18);
+}
+
+.movements-controls__slider .mantine-RangeSlider-thumb[data-dragging] {
+  transform: translate(-50%, -50%) scale(1.15);
+  box-shadow: 0 0 0 8px rgb(var(--glow-rgb) / 0.2);
+}
+
+.movements-controls__slider .mantine-RangeSlider-bar {
+  transition:
+    inset-inline-start 180ms ease,
+    width 180ms ease;
+}
+
+/* Пока ручку тянут, анимация доезда мешала бы: ручка отставала бы от указателя. */
+.movements-controls__slider:has([data-dragging]) .mantine-RangeSlider-thumb,
+.movements-controls__slider:has([data-dragging]) .mantine-RangeSlider-bar {
+  transition: none;
+}
+
+/* Года — тонкие засечки на дорожке, а не кружки. */
+.movements-controls__slider .mantine-RangeSlider-mark {
+  border: 0;
+  background-color: rgb(var(--ink-rgb) / 0.6);
+  transform: scale(0.5);
+}
+
+/* Годы под ручками: слой той же ширины, что ползунок, подпись — по центру под своей ручкой. */
+.movements-controls__years {
+  position: relative;
+  height: 22px;
+  margin-top: 4px;
+}
+
+.movements-controls__year-group {
+  position: absolute;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transform: translateX(-50%);
+  /* Крупнее штемпельного размера: рядом с иконками транспорта мелкие цифры терялись. */
+  font: 600 var(--fs-13) / 1 var(--font-mono);
+  color: var(--text-muted);
+  white-space: nowrap;
+  /* Отпущенная ручка доезжает до года — подпись едет вместе с ней, а не прыгает. */
+  transition: left 180ms ease;
+}
+
+.movements-controls__slider:has([data-dragging]) .movements-controls__year-group {
+  transition: none;
+}
+
+/* Год можно вписать руками: на наведении он ярче и подчёркнут — видно, что он нажимается. */
+.movements-controls__year {
+  padding: 2px 3px;
+  border-radius: 4px;
+  font: inherit;
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: text;
+}
+
+.movements-controls__year:hover,
+.movements-controls__year:focus-visible {
+  color: var(--text);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.movements-controls__year-input {
+  width: calc(4ch + 8px);
+  border: 1px solid rgb(var(--glow-rgb) / 0.5);
+  background: rgb(var(--ink-rgb) / 0.6);
+  color: var(--text);
+  text-align: center;
+  outline: none;
+}
+
+.movements-controls__year-input:focus {
+  box-shadow: 0 0 0 3px rgb(var(--glow-rgb) / 0.18);
+}
+/*
+ * Ушко — полоска точек в правом верхнем углу карточки, в её верхнем отступе (поэтому он
+ * больше нижнего). За него карточку и таскают.
+ */
+.movements-controls__handle {
+  position: absolute;
+  top: 4px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 16px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: grab;
+  /* Жест на ушке — перетаскивание карточки, а не прокрутка страницы. */
+  touch-action: none;
+}
+
+.movements-controls__handle:hover,
+.movements-controls__handle:focus-visible {
+  color: var(--text);
+}
+
+.movements-controls__handle:active {
+  cursor: grabbing;
+}
+
+@media (pointer: coarse) {
+  .movements-controls__chip .mantine-Chip-label {
+    min-height: 44px;
+  }
+
+  /* Ушко остаётся маленьким на вид, а под палец — невидимая зона 44px вокруг него. */
+  .movements-controls__handle::before {
+    content: "";
+    position: absolute;
+    inset: -14px -6px;
+  }
+
+  .movements-controls__slider .mantine-RangeSlider-thumb {
+    width: 26px;
+    height: 26px;
+  }
 }
 
 /* ---- Легенда карты — сворачиваемый блок в нижнем-правом углу ------------- */
@@ -480,6 +695,20 @@
     bottom: auto;
     right: auto;
     align-self: flex-end;
+  }
+
+  /* Фильтры перемещений — под картой во всю ширину, а не поверх неё; таскать здесь нечего. */
+  .movements-controls {
+    position: static;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    /* Ушка нет — верхний отступ под него не нужен. */
+    padding-top: 12px;
+  }
+
+  .movements-controls__handle {
+    display: none;
   }
 
   /* Добавление поездки: форма во всю ширину, декоративный глобус скрыт (как в auth). */

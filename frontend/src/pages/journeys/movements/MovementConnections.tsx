@@ -3,13 +3,15 @@ import { useMemo } from "react";
 import type { MapPoint } from "../../../api/sdk";
 import { projectToScreen } from "../../../components/worldProjection";
 import { placeLabels } from "./labelPlacement";
-import { arcPath, type ArcPieces } from "./movementGeometry";
+import { fadeAlong, piecePath, type ArcPieces } from "./movementGeometry";
 
 /** Маршрут «откуда → куда» с уже спроецированной дугой. */
 export interface ProjectedConnection {
   key: string;
   origin: MapPoint;
   destination: MapPoint;
+  /** Годы поездок по маршруту, по возрастанию: по ним маршрут попадает в окно лет или нет. */
+  years: readonly number[];
   arc: ArcPieces;
 }
 
@@ -32,6 +34,8 @@ const LABEL_FONT_SIZE = 8;
 const LABEL_GAP = 2;
 const LABEL_CLEARANCE = 1.2;
 const LABEL_HALO_WIDTH = 2.4;
+// Дуга через край мира гаснет у разреза на этой длине — а не обрывается посреди океана.
+const EDGE_FADE_LENGTH = 40;
 // Один маркер на слой: на странице одна карта перемещений.
 const ARROW_MARKER_ID = "movement-arrow";
 
@@ -106,15 +110,59 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
         ))}
       </g>
       <g>
-        {connections.map((connection) => (
-          <path
-            key={connection.key}
-            className="movement-line"
-            d={arcPath(connection.arc)}
-            markerEnd={`url(#${ARROW_MARKER_ID})`}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
+        {connections.map((connection, connectionIndex) => {
+          const [first, second] = connection.arc;
+          if (!second) {
+            return (
+              <path
+                key={connection.key}
+                className="movement-line"
+                d={piecePath(first)}
+                markerEnd={`url(#${ARROW_MARKER_ID})`}
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          }
+
+          // Дуга через край мира — два куска: первый гаснет к разрезу, второй из него проявляется.
+          const fadeLength = EDGE_FADE_LENGTH * unitScale;
+          const pieces = [
+            { piece: first, fade: fadeAlong(first, "end", fadeLength), hasArrow: false },
+            { piece: second, fade: fadeAlong(second, "start", fadeLength), hasArrow: true },
+          ];
+          return (
+            <g key={connection.key}>
+              {pieces.map(({ piece, fade: [[innerX, innerY], [edgeX, edgeY]], hasArrow }, pieceIndex) => {
+                const gradientId = `movement-edge-fade-${connectionIndex}-${pieceIndex}`;
+                return (
+                  <g key={gradientId}>
+                    <defs>
+                      <linearGradient
+                        id={gradientId}
+                        gradientUnits="userSpaceOnUse"
+                        x1={innerX}
+                        y1={innerY}
+                        x2={edgeX}
+                        y2={edgeY}
+                      >
+                        <stop offset="0" style={{ stopColor: "var(--movement-line)", stopOpacity: 1 }} />
+                        <stop offset="1" style={{ stopColor: "var(--movement-line)", stopOpacity: 0 }} />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      className="movement-line"
+                      // Инлайн, а не атрибутом: stroke из CSS-класса линии перебил бы атрибут.
+                      style={{ stroke: `url(#${gradientId})` }}
+                      d={piecePath(piece)}
+                      markerEnd={hasArrow ? `url(#${ARROW_MARKER_ID})` : undefined}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </g>
+                );
+              })}
+            </g>
+          );
+        })}
       </g>
       {/* Подписи — поверх линий: если места без пересечения нет, дуга не перечёркивает название. */}
       <g>

@@ -101,8 +101,6 @@ async def get_movements_map(
 ) -> MovementsMapResponse:
     command = GetMovementsMapCommand(
         user_id=user_id,
-        year_from=filters.year_from,
-        year_to=filters.year_to,
         transport_types=filters.transport_type,
     )
     result = await journey_service.get_movements_map(command=command)

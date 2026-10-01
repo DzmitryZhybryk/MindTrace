@@ -197,19 +197,24 @@ export type MapPoint = {
 /**
  * MovementConnection
  *
- * Стрелка на карте перемещений: откуда и куда пользователь ездил.
+ * Стрелка на карте перемещений: откуда и куда пользователь ездил и в какие годы, по возрастанию.
  */
 export type MovementConnection = {
   origin: MapPoint;
   destination: MapPoint;
+  /**
+   * Years
+   */
+  years: Array<number>;
 };
 
 /**
  * MovementsMapResponse
  *
- * Ответ карты перемещений: маршруты поездок в окне фильтров, каждый «откуда → куда» один раз.
+ * Ответ карты перемещений: маршруты поездок на выбранном транспорте, каждый «откуда → куда»
+ * один раз, с годами поездок.
  *
- * ``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта фильтров;
+ * ``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта транспорта;
  * ``null``, если поездок нет.
  */
 export type MovementsMapResponse = {
@@ -848,14 +853,6 @@ export type GetMovementsMapData = {
   body?: never;
   path?: never;
   query?: {
-    /**
-     * Yearfrom
-     */
-    yearFrom?: number | null;
-    /**
-     * Yearto
-     */
-    yearTo?: number | null;
     /**
      * Transporttype
      */

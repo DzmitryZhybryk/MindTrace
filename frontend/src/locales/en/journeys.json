@@ -23,7 +23,13 @@
     "attribution": "Place names ©"
   },
   "movements": {
-    "empty": "No journeys yet — add one and your routes will show up here"
+    "empty": "No journeys yet — add one and your routes will show up here",
+    "controls": "Movements filters",
+    "yearFrom": "From year",
+    "yearTo": "To year",
+    "move": "Drag to move · double-click to reset",
+    "transport": "Transport",
+    "noTransport": "Choose at least one transport"
   },
   "addJourney": {
     "title": "New journey",

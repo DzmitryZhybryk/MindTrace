@@ -43,6 +43,45 @@
   mask-composite: intersect;
 }
 
+/*
+ * Панель поверх левой части карты: карта растворяется к её кромке, а не обрывается под ней —
+ * линии маршрутов проявляются там, где начинается видимая карта, а не выныривают из-под панели.
+ * Ширину закрытой полосы WorldMap кладёт в --map-occluded-left.
+ */
+.world-map-wrap--occluded .world-map-canvas {
+  --world-map-panel-fade: 48px;
+  mask-image: linear-gradient(
+    to right,
+    transparent var(--map-occluded-left),
+    #000 calc(var(--map-occluded-left) + var(--world-map-panel-fade))
+  );
+}
+
+/* Приближена и закрыта панелью — обе маски сразу: края области и кромка панели. */
+.world-map-wrap--zoomed.world-map-wrap--occluded .world-map-canvas {
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent,
+      #000 var(--world-map-edge-fade),
+      #000 calc(100% - var(--world-map-edge-fade)),
+      transparent
+    ),
+    linear-gradient(
+      to bottom,
+      transparent,
+      #000 var(--world-map-edge-fade),
+      #000 calc(100% - var(--world-map-edge-fade)),
+      transparent
+    ),
+    linear-gradient(
+      to right,
+      transparent var(--map-occluded-left),
+      #000 calc(var(--map-occluded-left) + var(--world-map-panel-fade))
+    );
+  mask-composite: intersect;
+}
+
 .world-map-wrap--zoomed .world-map-canvas:active {
   cursor: grabbing;
 }

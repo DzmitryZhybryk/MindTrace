@@ -68,34 +68,24 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
         self,
         *,
         user_id: UUID,
-        year_from: int | None,
-        year_to: int | None,
         transport_types: Collection[TransportType] | None,
     ) -> list[MovementConnection]:
         """
         Возвращает маршруты поездок пользователя — по одному на пару «откуда → куда».
 
-        Учитываются неудалённые поездки из окна лет (границы включительные) на указанных видах
-        транспорта; ``None`` в фильтре — без ограничения. Страна и координаты места — любая из
-        его копий в поездках маршрута. Порядок — по ``place_id`` отправления, затем назначения.
+        Учитываются неудалённые поездки на указанных видах транспорта (``None`` — на всех).
+        У маршрута — годы его поездок, по возрастанию. Страна и координаты места — любая из его
+        копий в поездках маршрута. Порядок — по ``place_id`` отправления, затем назначения.
 
         Args:
             user_id: Владелец поездок
-            year_from: Первый год окна
-            year_to: Последний год окна
             transport_types: Виды транспорта, поездки на которых учитываются
 
         Returns:
-            Маршруты с координатами отправления и назначения (пустой список, если поездок нет)
+            Маршруты с координатами и годами поездок (пустой список, если поездок нет)
         """
         traveled_year = cast(extract("year", Journey.traveled_on), Integer)
         filters = [Journey.user_id == user_id, Journey.deleted_at.is_(None)]
-        if year_from is not None:
-            filters.append(traveled_year >= year_from)
-
-        if year_to is not None:
-            filters.append(traveled_year <= year_to)
-
         if transport_types is not None:
             filters.append(Journey.transport_type.in_(transport_types))
 
@@ -109,6 +99,7 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
                 func.min(Journey.destination_country_code).label("destination_country_code"),
                 func.min(Journey.destination_latitude).label("destination_latitude"),
                 func.min(Journey.destination_longitude).label("destination_longitude"),
+                func.array_agg(aggregate_order_by(traveled_year.distinct(), traveled_year)).label("years"),
             )
             .where(*filters)
             .group_by(Journey.origin_place_id, Journey.destination_place_id)
@@ -129,6 +120,7 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
                     latitude=row.destination_latitude,
                     longitude=row.destination_longitude,
                 ),
+                years=tuple(row.years),
             )
             for row in result
         ]

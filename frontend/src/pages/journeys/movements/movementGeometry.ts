@@ -41,11 +41,31 @@ export function projectArc(origin: Coordinates, destination: Coordinates): ArcPi
   return pieces;
 }
 
-/** SVG-путь дуги: каждый кусок начинается своим `M`, конец пути — в точке назначения. */
-export function arcPath(pieces: ArcPieces): string {
-  return pieces
-    .map((piece) =>
-      piece.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`).join(""),
-    )
-    .join("");
+/** SVG-путь куска дуги. */
+export function piecePath(piece: readonly ScreenPoint[]): string {
+  return piece.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`).join("");
+}
+
+/**
+ * Отрезок, вдоль которого кусок дуги гаснет у своего края — там, где дуга ушла за край мира.
+ *
+ * Начало отрезка — в точке куска, отстоящей от края на `length` вдоль дуги (или в дальнем конце
+ * куска, если он короче), конец — на самом краю. По нему кладётся градиент прозрачности линии.
+ */
+export function fadeAlong(
+  piece: readonly ScreenPoint[],
+  edge: "start" | "end",
+  length: number,
+): readonly [ScreenPoint, ScreenPoint] {
+  const points = edge === "end" ? [...piece].reverse() : piece;
+  const tip = points[0];
+  let travelled = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    travelled += Math.hypot(points[index][0] - points[index - 1][0], points[index][1] - points[index - 1][1]);
+    if (travelled >= length) {
+      return [points[index], tip];
+    }
+  }
+
+  return [points[points.length - 1], tip];
 }

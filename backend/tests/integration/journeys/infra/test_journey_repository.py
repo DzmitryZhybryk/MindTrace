@@ -180,9 +180,7 @@ async def test_find_movement_connections_one_row_per_directed_route(db_session: 
         make_journey(user_id=user_id, origin=_LONDON, destination=_PARIS),
     )
 
-    connections = await repository.find_movement_connections_by_user_id(
-        user_id=user_id, year_from=None, year_to=None, transport_types=None
-    )
+    connections = await repository.find_movement_connections_by_user_id(user_id=user_id, transport_types=None)
 
     routes = [(connection.origin.place_id, connection.destination.place_id) for connection in connections]
     assert routes == sorted(
@@ -193,46 +191,65 @@ async def test_find_movement_connections_one_row_per_directed_route(db_session: 
     assert moscow_to_london.destination.country_code == "GB"
 
 
-async def test_find_movement_connections_year_window_is_inclusive(db_session: AsyncSession) -> None:
-    """Окно лет включает обе границы и отсекает поездки за ними; граница None — без ограничения."""
+async def test_find_movement_connections_carry_distinct_sorted_years(db_session: AsyncSession) -> None:
+    """У маршрута — годы его поездок без повторов и по возрастанию; годы обратного маршрута — его собственные."""
     user_id = uuid4()
     repository = await _insert(
         db_session,
+        make_journey(
+            user_id=user_id, origin=_MOSCOW, destination=_LONDON, traveled_on=make_approximate_date(year=2021)
+        ),
         make_journey(
             user_id=user_id, origin=_MOSCOW, destination=_LONDON, traveled_on=make_approximate_date(year=2018)
         ),
         make_journey(
             user_id=user_id,
-            origin=_LONDON,
-            destination=_PARIS,
-            traveled_on=make_approximate_date(year=2019, month=1, day=1),
-        ),
-        make_journey(
-            user_id=user_id,
-            origin=_PARIS,
-            destination=_MOSCOW,
+            origin=_MOSCOW,
+            destination=_LONDON,
             traveled_on=make_approximate_date(year=2021, month=12, day=31),
         ),
         make_journey(
-            user_id=user_id, origin=_LONDON, destination=_MOSCOW, traveled_on=make_approximate_date(year=2022)
+            user_id=user_id, origin=_LONDON, destination=_MOSCOW, traveled_on=make_approximate_date(year=2019)
         ),
     )
 
-    async def routes(*, year_from: int | None, year_to: int | None) -> set[tuple[UUID, UUID]]:
-        connections = await repository.find_movement_connections_by_user_id(
-            user_id=user_id, year_from=year_from, year_to=year_to, transport_types=None
-        )
-        return {(connection.origin.place_id, connection.destination.place_id) for connection in connections}
+    connections = await repository.find_movement_connections_by_user_id(user_id=user_id, transport_types=None)
 
-    assert await routes(year_from=2019, year_to=2021) == {
-        (LONDON_PLACE_ID, _PARIS_PLACE_ID),
-        (_PARIS_PLACE_ID, MOSCOW_PLACE_ID),
+    years_by_route = {
+        (connection.origin.place_id, connection.destination.place_id): connection.years for connection in connections
     }
-    assert await routes(year_from=2021, year_to=None) == {
-        (_PARIS_PLACE_ID, MOSCOW_PLACE_ID),
-        (LONDON_PLACE_ID, MOSCOW_PLACE_ID),
+    assert years_by_route == {
+        (MOSCOW_PLACE_ID, LONDON_PLACE_ID): (2018, 2021),
+        (LONDON_PLACE_ID, MOSCOW_PLACE_ID): (2019,),
     }
-    assert await routes(year_from=None, year_to=2018) == {(MOSCOW_PLACE_ID, LONDON_PLACE_ID)}
+
+
+async def test_find_movement_connections_years_only_from_selected_transport(db_session: AsyncSession) -> None:
+    """Годы маршрута — только из поездок на выбранном транспорте: другие виды их не добавляют."""
+    user_id = uuid4()
+    repository = await _insert(
+        db_session,
+        make_journey(
+            user_id=user_id,
+            origin=_MOSCOW,
+            destination=_LONDON,
+            transport_type=TransportType.AIR,
+            traveled_on=make_approximate_date(year=2019),
+        ),
+        make_journey(
+            user_id=user_id,
+            origin=_MOSCOW,
+            destination=_LONDON,
+            transport_type=TransportType.LAND,
+            traveled_on=make_approximate_date(year=2022),
+        ),
+    )
+
+    [connection] = await repository.find_movement_connections_by_user_id(
+        user_id=user_id, transport_types=frozenset({TransportType.AIR})
+    )
+
+    assert connection.years == (2019,)
 
 
 async def test_find_movement_connections_filters_by_transport(db_session: AsyncSession) -> None:
@@ -247,7 +264,7 @@ async def test_find_movement_connections_filters_by_transport(db_session: AsyncS
 
     async def destinations(transport_types: frozenset[TransportType] | None) -> set[UUID]:
         connections = await repository.find_movement_connections_by_user_id(
-            user_id=user_id, year_from=None, year_to=None, transport_types=transport_types
+            user_id=user_id, transport_types=transport_types
         )
         return {connection.destination.place_id for connection in connections}
 
@@ -265,9 +282,7 @@ async def test_find_movement_connections_skips_deleted_and_other_users_journeys(
         make_journey(user_id=uuid4(), origin=_PARIS, destination=_MOSCOW),
     )
 
-    connections = await repository.find_movement_connections_by_user_id(
-        user_id=user_id, year_from=None, year_to=None, transport_types=None
-    )
+    connections = await repository.find_movement_connections_by_user_id(user_id=user_id, transport_types=None)
 
     assert [(connection.origin.place_id, connection.destination.place_id) for connection in connections] == [
         (MOSCOW_PLACE_ID, LONDON_PLACE_ID)
@@ -277,7 +292,7 @@ async def test_find_movement_connections_skips_deleted_and_other_users_journeys(
 async def test_find_movement_connections_without_journeys_returns_empty(db_session: AsyncSession) -> None:
     """У пользователя без поездок маршрутов нет."""
     connections = await JourneyRepository(session=db_session).find_movement_connections_by_user_id(
-        user_id=uuid4(), year_from=None, year_to=None, transport_types=None
+        user_id=uuid4(), transport_types=None
     )
 
     assert connections == []

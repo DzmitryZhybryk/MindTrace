@@ -26,11 +26,9 @@ from app.journeys.domain.enums import TransportType
 
 @dataclass(frozen=True, slots=True)
 class MovementConnectionQuery:
-    """Фильтры одного запроса маршрутов к фейку — чтобы тест проверил, что сервис их передал."""
+    """Фильтр одного запроса маршрутов к фейку — чтобы тест проверил, что сервис его передал."""
 
     user_id: UUID
-    year_from: int | None
-    year_to: int | None
     transport_types: frozenset[TransportType] | None
 
 
@@ -42,7 +40,7 @@ class FakeJourneyRepository(JourneyRepositoryPort):
         self.visited_places_by_user_id: dict[UUID, list[VisitedPlace]] = {}
         self.movement_connections_by_user_id: dict[UUID, list[MovementConnection]] = {}
         self.year_bounds_by_user_id: dict[UUID, tuple[int, int]] = {}
-        # Фильтры, с которыми спрашивали маршруты: сами фильтры фейк не применяет (их правила — в SQL).
+        # С каким фильтром спрашивали маршруты: сам фильтр фейк не применяет (его правило — в SQL).
         self.movement_connection_queries: list[MovementConnectionQuery] = []
 
     async def insert_journey(self, journey_entity: JourneyEntity) -> None:
@@ -55,15 +53,11 @@ class FakeJourneyRepository(JourneyRepositoryPort):
         self,
         *,
         user_id: UUID,
-        year_from: int | None,
-        year_to: int | None,
         transport_types: Collection[TransportType] | None,
     ) -> list[MovementConnection]:
         self.movement_connection_queries.append(
             MovementConnectionQuery(
                 user_id=user_id,
-                year_from=year_from,
-                year_to=year_to,
                 transport_types=frozenset(transport_types) if transport_types is not None else None,
             )
         )

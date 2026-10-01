@@ -1,8 +1,7 @@
-from typing import Annotated, Self
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import Field, model_validator
-from pydantic_core import PydanticCustomError
+from pydantic import Field
 
 from app.journeys.domain.enums import TransportType
 from app.shared.schemas import CamelModel
@@ -82,48 +81,29 @@ class JourneysGlobeResponse(CamelModel):
 
 class MovementsMapFilterRequest(CamelModel):
     """
-    Фильтры карты перемещений (query-параметры).
+    Фильтр карты перемещений (query-параметры).
 
-    Границы лет включительные, без параметра — без границы. ``transportType`` повторяется
-    по разу на вид транспорта; без него учитываются все.
+    ``transportType`` повторяется по разу на вид транспорта; без него учитываются все.
+    Окна лет нет: годы приходят в каждом маршруте, окно применяет фронт.
     """
 
-    year_from: int | None = None
-    year_to: int | None = None
     transport_type: frozenset[TransportType] | None = None
-
-    @model_validator(mode="after")
-    def validate_year_range(self) -> Self:
-        """
-        Проверяет, что окно лет не перевёрнуто.
-
-        Порядок границ — свойство самого запроса, поэтому ошибка — общая ``validation_error``
-        (422), без доменного кода.
-
-        Returns:
-            Сам валидируемый объект (контракт ``model_validator(mode="after")``)
-
-        Raises:
-            PydanticCustomError: ``yearFrom`` больше ``yearTo``
-        """
-        if self.year_from is not None and self.year_to is not None and self.year_from > self.year_to:
-            raise PydanticCustomError("inverted_year_range", "yearFrom не может быть больше yearTo")
-
-        return self
 
 
 class MovementConnection(CamelModel):
-    """Стрелка на карте перемещений: откуда и куда пользователь ездил."""
+    """Стрелка на карте перемещений: откуда и куда пользователь ездил и в какие годы, по возрастанию."""
 
     origin: MapPoint
     destination: MapPoint
+    years: list[int]
 
 
 class MovementsMapResponse(CamelModel):
     """
-    Ответ карты перемещений: маршруты поездок в окне фильтров, каждый «откуда → куда» один раз.
+    Ответ карты перемещений: маршруты поездок на выбранном транспорте, каждый «откуда → куда»
+    один раз, с годами поездок.
 
-    ``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта фильтров;
+    ``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта транспорта;
     ``null``, если поездок нет.
     """
 

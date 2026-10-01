@@ -89,19 +89,21 @@ export const zJourneysGlobeResponse = z.object({
 /**
  * MovementConnection
  *
- * Стрелка на карте перемещений: откуда и куда пользователь ездил.
+ * Стрелка на карте перемещений: откуда и куда пользователь ездил и в какие годы, по возрастанию.
  */
 export const zMovementConnection = z.object({
   origin: zMapPoint,
-  destination: zMapPoint
+  destination: zMapPoint,
+  years: z.array(z.int())
 });
 
 /**
  * MovementsMapResponse
  *
- * Ответ карты перемещений: маршруты поездок в окне фильтров, каждый «откуда → куда» один раз.
+ * Ответ карты перемещений: маршруты поездок на выбранном транспорте, каждый «откуда → куда»
+ * один раз, с годами поездок.
  *
- * ``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта фильтров;
+ * ``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта транспорта;
  * ``null``, если поездок нет.
  */
 export const zMovementsMapResponse = z.object({
@@ -328,8 +330,6 @@ export const zGetJourneysMapResponse = zJourneysMapResponse;
 export const zGetJourneysGlobeResponse = zJourneysGlobeResponse;
 
 export const zGetMovementsMapQuery = z.object({
-  yearFrom: z.int().nullish(),
-  yearTo: z.int().nullish(),
   transportType: z.array(zTransportType).nullish()
 });
 

@@ -92,33 +92,36 @@ class VisitedPlace:
 @dataclass(frozen=True, slots=True)
 class GetMovementsMapCommand:
     """
-    Фильтры карты перемещений.
+    Фильтр карты перемещений.
 
-    Границы окна лет включительные. ``transport_types`` — виды транспорта, поездки на которых
-    учитываются. ``None`` в любом фильтре — без ограничения.
+    ``transport_types`` — виды транспорта, поездки на которых учитываются; ``None`` — все.
+    Окна лет здесь нет: годы маршрутов уходят на фронт, и окно он применяет сам.
     """
 
     user_id: UUID
-    year_from: int | None
-    year_to: int | None
     transport_types: frozenset[TransportType] | None
 
 
 @dataclass(frozen=True, slots=True)
 class MovementConnection:
-    """Стрелка на карте перемещений: откуда и куда пользователь ездил, без повторов."""
+    """
+    Стрелка на карте перемещений: откуда и куда пользователь ездил, без повторов.
+
+    ``years`` — годы поездок по этому маршруту, по возрастанию.
+    """
 
     origin: GeoPoint
     destination: GeoPoint
+    years: tuple[int, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class MovementsMapResult:
     """
-    Карта перемещений: маршруты поездок в окне фильтров.
+    Карта перемещений: маршруты поездок на выбранном транспорте, с годами поездок.
 
     ``first_year`` и ``last_year`` — годы первой и последней поездки пользователя без учёта
-    фильтров, ``None`` — поездок нет.
+    транспорта, ``None`` — поездок нет.
     """
 
     first_year: int | None

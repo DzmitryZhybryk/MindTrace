@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type MouseEvent,
   type ReactNode,
   type RefObject,
@@ -125,7 +126,10 @@ interface WorldMapProps {
   overlay?: (view: ViewBox) => ReactNode;
   /** Что показать на старте (в единицах холста); без него карта открывается всем миром. */
   fitBounds?: ViewBox | null;
-  /** Элемент поверх левой части карты (панель): стартовый вид подгоняется в незакрытую часть. */
+  /**
+   * Элемент поверх левой части карты (панель): стартовый вид подгоняется в незакрытую часть, а
+   * карта растворяется к его кромке — линии не выныривают из-под него.
+   */
   occluderRef?: RefObject<HTMLElement | null>;
   /** `false` — страны не подсвечиваются под курсором и тултипа нет; масштаб при этом работает. */
   isInteractive?: boolean;
@@ -154,13 +158,15 @@ export function WorldMap({
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Стартовый вид зависит от размера области карты и того, что её закрывает, — пересчитываем
-  // до отрисовки и при каждом изменении размера.
+  // Сколько пикселей слева закрывает панель и каким быть стартовому виду — зависит от размера
+  // области карты, поэтому пересчитываем до отрисовки и при каждом изменении размера.
   const [initialView, setInitialView] = useState<ViewBox>(WORLD_VIEW_BOX);
+  const [occludedLeft, setOccludedLeft] = useState(0);
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
-    if (!fitBounds || !canvas) {
+    if ((!fitBounds && !occluderRef) || !canvas) {
       setInitialView(WORLD_VIEW_BOX);
+      setOccludedLeft(0);
       return;
     }
 
@@ -174,8 +180,9 @@ export function WorldMap({
         occluderRect.right > canvasRect.left &&
         occluderRect.top < canvasRect.bottom &&
         occluderRect.bottom > canvasRect.top;
-      const occludedLeft = isOverlapping ? occluderRect.right - canvasRect.left : 0;
-      setInitialView(fitView(fitBounds, canvasRect, occludedLeft));
+      const occluded = isOverlapping ? occluderRect.right - canvasRect.left : 0;
+      setOccludedLeft(occluded);
+      setInitialView(fitBounds ? fitView(fitBounds, canvasRect, occluded) : WORLD_VIEW_BOX);
     };
 
     measure();
@@ -310,6 +317,7 @@ export function WorldMap({
     "world-map-wrap",
     isInteractive ? null : "world-map-wrap--static",
     isZoomed ? "world-map-wrap--zoomed" : null,
+    occludedLeft > 0 ? "world-map-wrap--occluded" : null,
     className,
   ]
     .filter(Boolean)
@@ -326,7 +334,11 @@ export function WorldMap({
       {/* Карта всегда заполняет высоту (height:100%/width:auto в CSS), выступ по
           ширине обрезается canvas'ом — верх/низ карты прижаты к padding и не
           зависят от пропорций окна. Тултип лежит вне canvas, чтобы не обрезаться. */}
-      <div ref={canvasRef} className="world-map-canvas">
+      <div
+        ref={canvasRef}
+        className="world-map-canvas"
+        style={occludedLeft > 0 ? ({ "--map-occluded-left": `${occludedLeft}px` } as CSSProperties) : undefined}
+      >
         {/* Доступное имя через aria-label, НЕ <title>: <title> браузер рисует как
             нативный tooltip, который налезает на наш кастомный (role="img" тут
             ловит jsx-a11y/prefer-tag-over-role, поэтому просто aria-label). */}

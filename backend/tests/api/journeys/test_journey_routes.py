@@ -280,13 +280,14 @@ async def test_get_movements_map_returns_routes_and_year_bounds(
     fake_journey_repository: FakeJourneyRepository,
     mint_access_token: Callable[..., str],
 ) -> None:
-    """200: маршруты и годы в camelCase — у мест id и координаты, без страны."""
+    """200: маршруты с годами и годы первой и последней поездки в camelCase — у мест id и координаты, без страны."""
     user_id = uuid4()
     fake_journey_repository.year_bounds_by_user_id[user_id] = (2018, 2022)
     fake_journey_repository.movement_connections_by_user_id[user_id] = [
         MovementConnection(
             origin=make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.75, longitude=37.62),
             destination=make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
+            years=(2018, 2021),
         ),
     ]
 
@@ -297,25 +298,27 @@ async def test_get_movements_map_returns_routes_and_year_bounds(
     assert body["firstYear"] == 2018
     assert body["lastYear"] == 2022
     [connection] = body["connections"]
-    assert set(connection) == {"origin", "destination"}
+    assert set(connection) == {"origin", "destination", "years"}
     assert set(connection["origin"]) == {"placeId", "latitude", "longitude"}
     assert connection["origin"]["placeId"] == str(MOSCOW_PLACE_ID)
     assert connection["destination"]["placeId"] == str(LONDON_PLACE_ID)
+    assert connection["years"] == [2018, 2021]
 
 
-async def test_get_movements_map_passes_filters_from_query(
+async def test_get_movements_map_passes_transport_from_query(
     client: AsyncClient,
     fake_journey_repository: FakeJourneyRepository,
     mint_access_token: Callable[..., str],
 ) -> None:
-    """Окно лет и повторяющийся transportType доходят до запроса маршрутов; без параметров — без фильтров."""
+    """Повторяющийся transportType доходит до запроса маршрутов; без параметра — без фильтра; окна лет в запросе нет."""
     user_id = uuid4()
     fake_journey_repository.year_bounds_by_user_id[user_id] = (2018, 2022)
     headers = {"Authorization": f"Bearer {mint_access_token(user_id)}"}
 
     filtered = await client.get(
         _MOVEMENTS_PATH,
-        params=[("yearFrom", "2019"), ("yearTo", "2021"), ("transportType", "air"), ("transportType", "water")],
+        # Прежний параметр окна лет игнорируется: окно применяет фронт.
+        params=[("transportType", "air"), ("transportType", "water"), ("yearFrom", "2019")],
         headers=headers,
     )
     unfiltered = await client.get(_MOVEMENTS_PATH, headers=headers)
@@ -323,32 +326,19 @@ async def test_get_movements_map_passes_filters_from_query(
     assert filtered.status_code == 200
     assert unfiltered.status_code == 200
     assert fake_journey_repository.movement_connection_queries == [
-        MovementConnectionQuery(
-            user_id=user_id,
-            year_from=2019,
-            year_to=2021,
-            transport_types=frozenset({TransportType.AIR, TransportType.WATER}),
-        ),
-        MovementConnectionQuery(user_id=user_id, year_from=None, year_to=None, transport_types=None),
+        MovementConnectionQuery(user_id=user_id, transport_types=frozenset({TransportType.AIR, TransportType.WATER})),
+        MovementConnectionQuery(user_id=user_id, transport_types=None),
     ]
 
 
-@pytest.mark.parametrize(
-    "params",
-    [
-        pytest.param({"yearFrom": 2022, "yearTo": 2021}, id="inverted-year-range"),
-        pytest.param({"transportType": "rocket"}, id="unknown-transport"),
-    ],
-)
-async def test_get_movements_map_invalid_filters_return_422(
+async def test_get_movements_map_unknown_transport_returns_422(
     client: AsyncClient,
     mint_access_token: Callable[..., str],
-    params: dict[str, Any],
 ) -> None:
-    """422: перевёрнутое окно лет и неизвестный транспорт — ошибка формы запроса validation_error."""
+    """422: неизвестный вид транспорта — ошибка формы запроса validation_error."""
     response = await client.get(
         _MOVEMENTS_PATH,
-        params=params,
+        params={"transportType": "rocket"},
         headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"},
     )
 

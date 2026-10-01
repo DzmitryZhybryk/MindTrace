@@ -142,8 +142,8 @@ describe("AddJourneyPage", () => {
     server.use(http.post("/v1/journeys/", () => new HttpResponse(null, { status: 201 })));
     const queryClient = createTestQueryClient();
     // Всё уже в кэше — как после захода на вкладки перед добавлением поездки. Карта
-    // перемещений — в двух вариантах: без фильтров и с окном лет.
-    const filteredMovementsKey = movementsQueryOptions({ yearFrom: 2019, yearTo: 2020 }).queryKey;
+    // перемещений — в двух вариантах: без фильтра и с одним видом транспорта.
+    const filteredMovementsKey = movementsQueryOptions(["air"]).queryKey;
     const noMovements = { firstYear: null, lastYear: null, connections: [] };
     queryClient.setQueryData(getJourneysMapQueryKey(), { countries: [] });
     queryClient.setQueryData(getJourneysGlobeQueryKey(), { places: [] });

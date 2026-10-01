@@ -3,7 +3,7 @@
   "info": {
     "title": "MindTrace",
     "description": "Service for managing mindtrace",
-    "version": "2.0.0"
+    "version": "2.1.0"
   },
   "paths": {
     "/healthz": {
@@ -975,38 +975,6 @@
         ],
         "parameters": [
           {
-            "name": "yearFrom",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Yearfrom"
-            }
-          },
-          {
-            "name": "yearTo",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Yearto"
-            }
-          },
-          {
             "name": "transportType",
             "in": "query",
             "required": false,
@@ -1454,15 +1422,23 @@
           },
           "destination": {
             "$ref": "#/components/schemas/MapPoint"
+          },
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Years"
           }
         },
         "type": "object",
         "required": [
           "origin",
-          "destination"
+          "destination",
+          "years"
         ],
         "title": "MovementConnection",
-        "description": "Стрелка на карте перемещений: откуда и куда пользователь ездил."
+        "description": "Стрелка на карте перемещений: откуда и куда пользователь ездил и в какие годы, по возрастанию."
       },
       "MovementsMapResponse": {
         "properties": {
@@ -1503,7 +1479,7 @@
           "connections"
         ],
         "title": "MovementsMapResponse",
-        "description": "Ответ карты перемещений: маршруты поездок в окне фильтров, каждый «откуда → куда» один раз.\n\n``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта фильтров;\n``null``, если поездок нет."
+        "description": "Ответ карты перемещений: маршруты поездок на выбранном транспорте, каждый «откуда → куда»\nодин раз, с годами поездок.\n\n``firstYear`` / ``lastYear`` — годы первой и последней поездки без учёта транспорта;\n``null``, если поездок нет."
       },
       "OptionalDict": {
         "anyOf": [
