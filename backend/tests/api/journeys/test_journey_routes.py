@@ -94,6 +94,40 @@ async def test_create_journey_current_year_returns_201(
     assert fake_journey_repository.journeys[0].traveled_year == _CURRENT_YEAR
 
 
+async def test_create_journey_ignores_legacy_month_and_day(
+    client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """201: присланные старым клиентом traveledMonth/traveledDay игнорируются, сохраняется только год."""
+    response = await client.post(
+        _CREATE_PATH,
+        json={**_VALID_BODY, "traveledMonth": 6, "traveledDay": 15},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
+    )
+
+    assert response.status_code == 201
+    assert fake_journey_repository.journeys[0].traveled_year == 2020
+
+
+async def test_create_journey_distinct_place_ids_with_same_coordinates_returns_201(
+    client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """201: разные placeId с одинаковыми координатами — разные места, поездка создаётся."""
+    destination = {**_LONDON, "latitude": _MOSCOW["latitude"], "longitude": _MOSCOW["longitude"]}
+
+    response = await client.post(
+        _CREATE_PATH,
+        json={**_VALID_BODY, "destination": destination},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
+    )
+
+    assert response.status_code == 201
+    assert len(fake_journey_repository.journeys) == 1
+
+
 async def test_create_journey_without_token_returns_401(client: AsyncClient) -> None:
     """401: запрос без Bearer-токена отклоняется с доменным кодом auth.invalid_access_token."""
     response = await client.post(_CREATE_PATH, json=_VALID_BODY)
@@ -106,6 +140,11 @@ async def test_create_journey_without_token_returns_401(client: AsyncClient) -> 
     ("overrides", "expected_code", "expected_field"),
     [
         ({"destination": _MOSCOW}, "journeys.same_origin_destination", None),
+        (
+            {"destination": {**_MOSCOW, "latitude": 51.5, "longitude": -0.12}},
+            "journeys.same_origin_destination",
+            None,
+        ),
         ({"traveledYear": _CURRENT_YEAR + 1}, "journeys.date_in_future", "year"),
     ],
 )

@@ -69,7 +69,7 @@ export function AddJourneyPage() {
   const { origin, destination, transport } = form.getValues();
 
   // Identity маршрута — по его полям, а не по рендеру: controlled-форма перерисовывается
-  // на каждый ввод (дата, чекбоксы), и новый объект на каждом рендере гонял бы хост впустую.
+  // на каждый ввод (например, выбор года), и новый объект на каждом рендере гонял бы хост впустую.
   const route = useMemo<GlobeRoute>(
     () => ({
       origin,

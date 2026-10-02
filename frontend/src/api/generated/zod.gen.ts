@@ -230,8 +230,7 @@ export const zTransportType = z.enum([
  * Тело запроса создания поездки.
  *
  * Год не может быть в будущем (по UTC), отправление не может совпадать с назначением. Нарушения —
- * ошибки с кодами ``journeys.*``, а не 422: pydantic превращает в 422 только ``ValueError``,
- * ``AssertionError`` и ``PydanticCustomError``, остальные исключения доходят до общего обработчика.
+ * ошибки с кодами ``journeys.*``, а не 422.
  */
 export const zCreateJourneyRequest = z.object({
   origin: zPlaceRef,

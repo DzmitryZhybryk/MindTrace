@@ -23,8 +23,7 @@ class CreateJourneyRequest(CamelModel):
     Тело запроса создания поездки.
 
     Год не может быть в будущем (по UTC), отправление не может совпадать с назначением. Нарушения —
-    ошибки с кодами ``journeys.*``, а не 422: pydantic превращает в 422 только ``ValueError``,
-    ``AssertionError`` и ``PydanticCustomError``, остальные исключения доходят до общего обработчика.
+    ошибки с кодами ``journeys.*``, а не 422.
     """
 
     origin: PlaceRef
@@ -35,6 +34,13 @@ class CreateJourneyRequest(CamelModel):
     @field_validator("traveled_year")
     @classmethod
     def validate_year_not_in_future(cls, traveled_year: int) -> int:
+        """
+        Отклоняет год из будущего.
+
+        Бросает доменную ошибку, а не ``ValueError``: pydantic превращает в 422 только ``ValueError``,
+        ``AssertionError`` и ``PydanticCustomError``, остальные исключения доходят до общего обработчика
+        со своим кодом.
+        """
         if traveled_year > dt.datetime.now(tz=dt.UTC).year:
             raise JourneyDateInFutureError()
 
@@ -42,6 +48,7 @@ class CreateJourneyRequest(CamelModel):
 
     @model_validator(mode="after")
     def validate_distinct_endpoints(self) -> Self:
+        """Отклоняет поездку в то же место; места сравниваются по ``placeId``, не по координатам."""
         if self.origin.place_id == self.destination.place_id:
             raise SameOriginAndDestinationError()
 
