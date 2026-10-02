@@ -39,6 +39,7 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
 
     async def find_active_challenge_for_update(
         self,
+        *,
         user_id: UUID,
         challenge_type: ChallengeType,
     ) -> ChallengeEntity | None:

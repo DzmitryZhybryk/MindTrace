@@ -7,7 +7,7 @@ from app.shared.models import BaseDBModel
 class BaseDBRepository[ModelT: BaseDBModel]:
     """Базовый асинхронный репозиторий поверх SQLAlchemy-сессии."""
 
-    def __init__(self, session: AsyncSession, model: type[ModelT]) -> None:
+    def __init__(self, *, session: AsyncSession, model: type[ModelT]) -> None:
         """
         Инициализирует репозиторий.
 

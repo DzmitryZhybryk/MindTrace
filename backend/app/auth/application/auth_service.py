@@ -30,6 +30,7 @@ _DUMMY_PASSWORD_HASH: Final[str] = get_argon2_salted_hasher().hash(secret="timin
 class AuthService:
     def __init__(
         self,
+        *,
         uow: AuthUnitOfWorkPort,
         users_client: UsersClientPort,
         salted_hasher: SaltedHasherPort,
@@ -44,6 +45,7 @@ class AuthService:
 
     async def register(
         self,
+        *,
         registration: RegistrationCommand,
         client_metadata: ClientMetadata,
     ) -> TokenPairResult:
@@ -88,7 +90,7 @@ class AuthService:
             refresh_token_entity=refresh_token_entity,
         )
 
-    async def login(self, command: LoginCommand, client_metadata: ClientMetadata) -> TokenPairResult:
+    async def login(self, *, command: LoginCommand, client_metadata: ClientMetadata) -> TokenPairResult:
         """
         Аутентифицирует пользователя по email/username и паролю.
 
@@ -172,7 +174,7 @@ class AuthService:
             )
             await self._uow.commit()
 
-    async def refresh(self, refresh_secret: str, client_metadata: ClientMetadata) -> TokenPairResult:
+    async def refresh(self, *, refresh_secret: str, client_metadata: ClientMetadata) -> TokenPairResult:
         """
         Ротация refresh-токена с reuse detection (OAuth 2.1).
 
@@ -239,7 +241,7 @@ class AuthService:
             refresh_token_entity=new_refresh_token_entity,
         )
 
-    async def _ensure_credentials_unique(self, email: str, username: str) -> None:
+    async def _ensure_credentials_unique(self, *, email: str, username: str) -> None:
         """
         Проверяет уникальность email и username.
 

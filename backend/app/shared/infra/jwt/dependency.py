@@ -15,6 +15,7 @@ def jwt_service_dependency() -> JWTService:
 
 
 def current_user_id_dependency(
+    *,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     jwt_service: Annotated[JWTService, Depends(jwt_service_dependency)],
 ) -> UUID:

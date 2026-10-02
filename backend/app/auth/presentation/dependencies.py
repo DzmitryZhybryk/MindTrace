@@ -102,6 +102,7 @@ def required_refresh_secret_dependency(request: Request) -> str:
 
 
 def email_verification_service_dependency(
+    *,
     uow: Annotated[AuthUnitOfWork, Depends(auth_uow_dependency)],
     salted_hasher: Annotated[SaltedHasherPort, Depends(salted_hasher_dependency)],
     task_bus: Annotated[TaskBusPort, Depends(task_bus_dependency)],
@@ -116,6 +117,7 @@ def email_verification_service_dependency(
 
 
 def token_issuer_dependency(
+    *,
     deterministic_hasher: Annotated[DeterministicHasherPort, Depends(deterministic_hasher_dependency)],
     jwt_service: Annotated[JWTService, Depends(jwt_service_dependency)],
 ) -> TokenIssuer:
@@ -127,6 +129,7 @@ def token_issuer_dependency(
 
 
 def auth_service_dependency(
+    *,
     uow: Annotated[AuthUnitOfWork, Depends(auth_uow_dependency)],
     users_client: Annotated[InternalUsersClient, Depends(users_client_dependency)],
     salted_hasher: Annotated[SaltedHasherPort, Depends(salted_hasher_dependency)],

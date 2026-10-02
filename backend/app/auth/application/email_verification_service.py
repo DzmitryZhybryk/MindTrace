@@ -17,6 +17,7 @@ from app.shared.infra.procrastinate import TaskBusPort
 class EmailVerificationService:
     def __init__(
         self,
+        *,
         uow: AuthUnitOfWorkPort,
         salted_hasher: SaltedHasherPort,
         task_bus: TaskBusPort,
@@ -87,7 +88,7 @@ class EmailVerificationService:
             )
             await self._uow.commit()
 
-    async def verify_email(self, user_id: UUID, code: str) -> None:
+    async def verify_email(self, *, user_id: UUID, code: str) -> None:
         """
         Проверяет одноразовый код и помечает email пользователя подтверждённым.
 

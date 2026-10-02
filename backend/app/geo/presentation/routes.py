@@ -26,6 +26,7 @@ geo_router = APIRouter()
     dependencies=[Depends(current_user_id_dependency)],
 )
 async def search_places(
+    *,
     place_service: Annotated[PlaceService, Depends(place_service_dependency)],
     search_text: Annotated[
         str,
@@ -47,6 +48,7 @@ async def search_places(
     dependencies=[Depends(current_user_id_dependency)],
 )
 async def resolve_places(
+    *,
     body: ResolvePlacesRequest,
     place_service: Annotated[PlaceService, Depends(place_service_dependency)],
 ) -> ResolvePlacesResponse:

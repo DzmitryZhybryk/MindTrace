@@ -106,8 +106,8 @@ async def client(app: BFastAPI, make_async_client: Callable[[BFastAPI], AsyncCli
 
 
 @pytest.fixture
-def find_set_cookie() -> Callable[[Response, str], str | None]:
-    def _find(response: Response, name: str) -> str | None:
+def find_set_cookie() -> Callable[..., str | None]:
+    def _find(*, response: Response, name: str) -> str | None:
         for header in response.headers.get_list("set-cookie"):
             if header.startswith(f"{name}="):
                 return header
@@ -133,7 +133,7 @@ def mint_access_token() -> Callable[..., str]:
     """
     jwt_service = get_jwt_service()
 
-    def _mint(user_id: UUID, *, role: str = "free", email_verified: bool = False) -> str:
+    def _mint(*, user_id: UUID, role: str = "free", email_verified: bool = False) -> str:
         return jwt_service.create_access_token(user_id=user_id, role=role, email_verified=email_verified)
 
     return _mint

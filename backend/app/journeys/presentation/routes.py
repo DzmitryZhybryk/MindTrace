@@ -34,6 +34,7 @@ journey_router = APIRouter()
     responses=CREATE_JOURNEY_RESPONSES,
 )
 async def create_journey(
+    *,
     body: CreateJourneyRequest,
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
@@ -67,6 +68,7 @@ async def create_journey(
     responses=JOURNEYS_MAP_RESPONSES,
 )
 async def get_journeys_map(
+    *,
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> JourneysMapResponse:
@@ -81,6 +83,7 @@ async def get_journeys_map(
     responses=JOURNEYS_GLOBE_RESPONSES,
 )
 async def get_journeys_globe(
+    *,
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> JourneysGlobeResponse:
@@ -95,6 +98,7 @@ async def get_journeys_globe(
     responses=MOVEMENTS_MAP_RESPONSES,
 )
 async def get_movements_map(
+    *,
     filters: Annotated[MovementsMapFilterRequest, Query()],
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
