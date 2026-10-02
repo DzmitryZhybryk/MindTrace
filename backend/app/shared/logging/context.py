@@ -35,6 +35,7 @@ def extract_request_context(request: Request) -> DictStrAny:
 
 
 def build_log_context(
+    *,
     request: Request,
     status_code: int,
     process_time: float,
@@ -68,6 +69,7 @@ def build_log_context(
 
 
 def build_error_log_context(
+    *,
     request: Request,
     exc: Exception,
     process_time: float,
@@ -87,7 +89,12 @@ def build_error_log_context(
     """
     status_code = get_status_code_from_exception(exc)
 
-    log_context = build_log_context(request, status_code, process_time, context)
+    log_context = build_log_context(
+        request=request,
+        status_code=status_code,
+        process_time=process_time,
+        context=context,
+    )
 
     log_context["error_type"] = type(exc).__name__
 

@@ -10,7 +10,7 @@ import datetime as dt
 from collections.abc import Callable
 
 import pytest
-from httpx import AsyncClient, Response
+from httpx import AsyncClient
 
 from app.shared.infra.crypto import Sha256DeterministicHasher
 from tests.builders import make_password, make_refresh_token, make_user_credentials
@@ -27,7 +27,7 @@ from tests.fakes import (
 async def test_register_valid_body_returns_201_with_token_and_cookie(
     client: AsyncClient,
     fake_users_client: FakeUsersClient,
-    find_set_cookie: Callable[[Response, str], str | None],
+    find_set_cookie: Callable[..., str | None],
 ) -> None:
     """register с валидным телом → 201, access-токен в теле и refresh в HttpOnly-cookie."""
     response = await client.post(
@@ -47,7 +47,7 @@ async def test_register_valid_body_returns_201_with_token_and_cookie(
     assert body["tokenType"] == "bearer"
     assert len(fake_users_client.created) == 1
 
-    set_cookie = find_set_cookie(response, "refresh_token")
+    set_cookie = find_set_cookie(response=response, name="refresh_token")
     assert set_cookie is not None
     assert "httponly" in set_cookie.lower()
     assert "secure" in set_cookie.lower()
@@ -165,7 +165,7 @@ async def test_login_valid_credentials_returns_200_with_token_and_cookie(
     client: AsyncClient,
     fake_user_credentials_repository: FakeUserCredentialsRepository,
     fake_salted_hasher: FakeSaltedHasher,
-    find_set_cookie: Callable[[Response, str], str | None],
+    find_set_cookie: Callable[..., str | None],
 ) -> None:
     """login с верными кредами → 200, access-токен в теле и refresh в HttpOnly-cookie."""
     secret = "password123"
@@ -182,7 +182,7 @@ async def test_login_valid_credentials_returns_200_with_token_and_cookie(
     body = response.json()
     assert body["accessToken"]
     assert body["tokenType"] == "bearer"
-    assert find_set_cookie(response, "refresh_token") is not None
+    assert find_set_cookie(response=response, name="refresh_token") is not None
 
 
 async def test_login_wrong_password_returns_401(
@@ -226,7 +226,7 @@ async def test_logout_revokes_token_and_clears_cookie(
     client: AsyncClient,
     fake_refresh_token_repository: FakeRefreshTokenRepository,
     deterministic_hasher: Sha256DeterministicHasher,
-    find_set_cookie: Callable[[Response, str], str | None],
+    find_set_cookie: Callable[..., str | None],
 ) -> None:
     """logout с активным refresh-токеном → 204, токен отозван, cookie очищена (Max-Age=0)."""
     secret = "active-refresh-secret"
@@ -237,20 +237,20 @@ async def test_logout_revokes_token_and_clears_cookie(
 
     assert response.status_code == 204
     assert refresh_token_entity.is_revoked
-    set_cookie = find_set_cookie(response, "refresh_token")
+    set_cookie = find_set_cookie(response=response, name="refresh_token")
     assert set_cookie is not None
     assert "max-age=0" in set_cookie.lower()
 
 
 async def test_logout_without_cookie_returns_204(
     client: AsyncClient,
-    find_set_cookie: Callable[[Response, str], str | None],
+    find_set_cookie: Callable[..., str | None],
 ) -> None:
     """logout без cookie → 204 (идемпотентно), всё равно отдаёт очищающую cookie."""
     response = await client.post("/v1/auth/logout/")
 
     assert response.status_code == 204
-    assert find_set_cookie(response, "refresh_token") is not None
+    assert find_set_cookie(response=response, name="refresh_token") is not None
 
 
 async def test_logout_unknown_secret_returns_204(client: AsyncClient) -> None:
@@ -268,7 +268,7 @@ async def test_refresh_rotates_token_and_sets_new_cookie(
     fake_user_credentials_repository: FakeUserCredentialsRepository,
     fake_refresh_token_repository: FakeRefreshTokenRepository,
     deterministic_hasher: Sha256DeterministicHasher,
-    find_set_cookie: Callable[[Response, str], str | None],
+    find_set_cookie: Callable[..., str | None],
 ) -> None:
     """refresh с валидным токеном → 200, старый токен отозван, в cookie новый секрет."""
     secret = "old-refresh-secret"
@@ -286,7 +286,7 @@ async def test_refresh_rotates_token_and_sets_new_cookie(
     assert refresh_token_entity.is_revoked
     assert len(fake_refresh_token_repository.by_hash) == 2
 
-    set_cookie = find_set_cookie(response, "refresh_token")
+    set_cookie = find_set_cookie(response=response, name="refresh_token")
     assert set_cookie is not None
     new_secret = set_cookie.split(";")[0].split("=", 1)[1]
     assert new_secret

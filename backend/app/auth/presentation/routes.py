@@ -35,6 +35,7 @@ auth_router = APIRouter()
     responses=REGISTER_RESPONSES,
 )
 async def register(
+    *,
     response: Response,
     body: RegisterRequest,
     client_metadata: Annotated[ClientMetadata, Depends(client_metadata_dependency)],
@@ -53,6 +54,7 @@ async def register(
     responses=LOGIN_RESPONSES,
 )
 async def login(
+    *,
     response: Response,
     body: LoginRequest,
     client_metadata: Annotated[ClientMetadata, Depends(client_metadata_dependency)],
@@ -70,6 +72,7 @@ async def login(
     responses=LOGOUT_RESPONSES,
 )
 async def logout(
+    *,
     response: Response,
     refresh_secret: Annotated[str | None, Depends(optional_refresh_secret_dependency)],
     auth_service: Annotated[AuthService, Depends(auth_service_dependency)],
@@ -85,6 +88,7 @@ async def logout(
     responses=REFRESH_RESPONSES,
 )
 async def refresh(
+    *,
     response: Response,
     refresh_secret: Annotated[str, Depends(required_refresh_secret_dependency)],
     client_metadata: Annotated[ClientMetadata, Depends(client_metadata_dependency)],
@@ -101,6 +105,7 @@ async def refresh(
     responses=SEND_EMAIL_VERIFICATION_RESPONSES,
 )
 async def send_email_verification(
+    *,
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
     email_verification_service: Annotated[EmailVerificationService, Depends(email_verification_service_dependency)],
 ) -> Response:
@@ -117,6 +122,7 @@ async def send_email_verification(
     responses=VERIFY_EMAIL_RESPONSES,
 )
 async def verify_email(
+    *,
     body: VerifyEmailRequest,
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
     email_verification_service: Annotated[EmailVerificationService, Depends(email_verification_service_dependency)],

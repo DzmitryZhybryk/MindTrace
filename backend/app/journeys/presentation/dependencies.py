@@ -24,6 +24,7 @@ def places_client_dependency(
 
 
 def journey_service_dependency(
+    *,
     uow: Annotated[JourneyUnitOfWork, Depends(journey_uow_dependency)],
     places_client: Annotated[InternalPlacesClient, Depends(places_client_dependency)],
 ) -> JourneyService:

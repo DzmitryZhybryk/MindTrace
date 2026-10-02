@@ -8,6 +8,7 @@ from app.shared.domain.domain_mixins import TimestampedEntityMixin
 class RefreshTokenEntity(TimestampedEntityMixin):
     def __init__(
         self,
+        *,
         token_id: UUID,
         user_id: UUID,
         token_hash: str,
@@ -29,6 +30,7 @@ class RefreshTokenEntity(TimestampedEntityMixin):
     @classmethod
     def create(
         cls,
+        *,
         user_id: UUID,
         token_hash: str,
         ttl_days: int,

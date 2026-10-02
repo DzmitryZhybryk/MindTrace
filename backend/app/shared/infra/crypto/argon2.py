@@ -29,7 +29,7 @@ class Argon2SaltedHasher:
         """
         return self._hasher.hash(secret)
 
-    def verify(self, secret: str, hashed: str) -> bool:
+    def verify(self, *, secret: str, hashed: str) -> bool:
         """
         Проверяет соответствие секрета хешу.
 

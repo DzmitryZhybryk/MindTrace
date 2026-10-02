@@ -7,7 +7,7 @@ _COOKIE_PATH = "/"
 _COOKIE_SAMESITE = "lax"
 
 
-def set_refresh_token_cookie(response: Response, token_pair: TokenPairResult) -> None:
+def set_refresh_token_cookie(*, response: Response, token_pair: TokenPairResult) -> None:
     """
     Устанавливает refresh-токен в HttpOnly Secure cookie.
 

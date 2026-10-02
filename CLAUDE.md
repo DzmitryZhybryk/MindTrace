@@ -112,6 +112,7 @@ DDD с **доменной** организацией модулей (`auth`, `us
 - **jwt** (`infra/jwt/`) — `JWTService` + `JWTDecodeError`, а также request-аутентификация: `current_user_id_dependency` (Bearer → UUID) + `InvalidAccessTokenError` (код `auth.invalid_access_token` сохранён как внешний контракт). Вертикаль shared, чтобы presentation-слои доменов не зависели от `auth.presentation`. Импорт: `from app.shared.infra.jwt import JWTService, current_user_id_dependency`.
 - **crypto** (`infra/crypto/`) — два независимых Protocol'а: `SaltedHasherPort` (с реализацией `Argon2SaltedHasher` — для паролей и других плейнтекст-секретов, где требуется уникальная соль и timing-safe verify) и `DeterministicHasherPort` (с реализацией `Sha256DeterministicHasher` — для refresh-token lookup'а по индексу). Импорт: `from app.shared.infra.crypto import SaltedHasherPort, Argon2SaltedHasher, DeterministicHasherPort, Sha256DeterministicHasher`.
 - **logging** (`logging/`) — `configure_logging`, `get_logger`, `HTTPLoggingMiddleware` + helper-модули (`events`, `classify`, `context`). Импорт: `from app.shared.logging import get_logger`.
+- **pagination** (`pagination/`) — курсорная (keyset) пагинация для любого списка: `CursorPageRequest` / `CursorPageResponse[ItemT]` на HTTP-границе (запрос списка наследует первый и добавляет фильтры, ответ — наследник второго), `PageQuery` / `CursorPage[ItemT]` в application (`PageQuery` — поле команды списка), `encode_cursor` / `decode_cursor` / `split_page` для репозитория (курсор — непрозрачная строка с ключом сортировки последней строки; кривой курсор → `InvalidCursorError`, код `invalid_cursor`). Импорт: `from app.shared.pagination import CursorPageRequest, PageQuery, split_page`.
 - **BaseDBRepository[ModelT]** (`repositories/base_repository.py`) — generic async repository с `_fetch_one` (выполнить SELECT и вернуть одну модель или `None`) и `insert` (добавить модель в сессию без коммита). Доменные репозитории наследуются и добавляют собственные SELECT'ы поверх `_fetch_one`.
 - **Exception hierarchy** (`exceptions/`) — `BaseDomainError` базовый класс. Исключения **транспортно-нейтральны**: НЕ несут HTTP-статус, а классифицируются нейтральной `ErrorCategory` (`INVALID_INPUT`, `UNAUTHENTICATED`, `NOT_FOUND`, ...). Базовые подклассы (`InvalidInputError`, `UnauthenticatedError`, `PermissionDeniedError`, `NotFoundError`, `ConflictError`, `GoneError`, `UnprocessableError`, `RateLimitedError`, `InternalError`) задают `category` + дефолтный `code`/`message`. Перевод категории в HTTP-статус живёт единственным маппингом `resolve_http_status` в HTTP-адаптере (`mappings.py`), его переиспользуют и handler, и логирование; для другого транспорта (gRPC) заводится отдельный адаптер, домен не трогается. `code` — стабильный машинный идентификатор и часть внешнего API-контракта (фронт мапит его в текст). Global handler в `handlers.py` конвертирует доменные исключения в `ErrorResponse`.
 - **Settings** (`settings.py`) — pydantic-settings loading из `.env`, frozen model. Доступ через cached `settings` singleton.
@@ -177,6 +178,26 @@ User(id=user_entity.user_id, email=user_entity.email)
 Password(user_model.password)
 User(user_entity.user_id, user_entity.email)
 ```
+
+The declaring side enforces it: a function, method or constructor with **more than one**
+parameter makes them all keyword-only with `*`. A single parameter may stay positional.
+`self` / `cls` are not counted.
+
+```python
+# correct
+def decode_cursor(*, cursor: str, parsers: Sequence[CursorParser]) -> tuple[object, ...]: ...
+def find_journey_years_by_user_id(self, user_id: UUID) -> list[int]: ...
+
+# wrong — two parameters, the first one still positional
+def decode_cursor(cursor: str, *, parsers: Sequence[CursorParser]) -> tuple[object, ...]: ...
+```
+
+Exempt are only signatures that something else calls **positionally**: framework hooks
+(pydantic validators, Starlette exception handlers and middleware `dispatch`, procrastinate
+`pass_context` tasks), pytest test functions and fixtures (pytest injects them by name; fakes and
+helpers under `tests/` still follow the rule), dunder protocol methods (`__eq__`, `__aexit__`; `__init__` is not
+exempt), callbacks passed to `map`/`sorted`/`key=`, and `Protocol` methods mirroring a
+third-party API.
 
 ### Self return type
 

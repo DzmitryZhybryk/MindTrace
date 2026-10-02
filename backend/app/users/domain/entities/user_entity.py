@@ -9,6 +9,7 @@ from app.users.exceptions import UserDeletedError
 class UserEntity(TimestampedEntityMixin):
     def __init__(
         self,
+        *,
         user_id: UUID,
         username: str,
         email: str,
@@ -28,6 +29,7 @@ class UserEntity(TimestampedEntityMixin):
     @classmethod
     def create(
         cls,
+        *,
         user_id: UUID,
         username: str,
         email: str,

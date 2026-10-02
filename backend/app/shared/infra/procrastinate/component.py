@@ -53,7 +53,7 @@ class ProcrastinateComponent(BaseComponent):
 
     async def startup(self, registry: ComponentRegistry) -> None:
         await self._app.open_async()
-        registry.set(ProcrastinateApp, self._app)
+        registry.set(key=ProcrastinateApp, value=self._app)
 
     async def shutdown(self) -> None:
         await self._app.close_async()

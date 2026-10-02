@@ -65,7 +65,7 @@ async def test_create_journey_returns_201_and_persists(
     response = await client.post(
         _CREATE_PATH,
         json=_VALID_BODY,
-        headers={"Authorization": f"Bearer {mint_access_token(user_id)}"},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=user_id)}"},
     )
 
     assert response.status_code == 201
@@ -111,7 +111,7 @@ async def test_create_journey_domain_errors_return_400(
     response = await client.post(
         _CREATE_PATH,
         json={**_VALID_BODY, **overrides},
-        headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
     )
 
     body = response.json()
@@ -133,7 +133,7 @@ async def test_create_journey_unknown_place_returns_400_with_missing_ids(
     response = await client.post(
         _CREATE_PATH,
         json=_VALID_BODY,
-        headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
     )
 
     assert response.status_code == 400
@@ -159,7 +159,7 @@ async def test_create_journey_checks_places_through_real_geo_wiring(
         response = await client.post(
             _CREATE_PATH,
             json=_VALID_BODY,
-            headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"},
+            headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
         )
 
     assert response.status_code == 400
@@ -175,7 +175,7 @@ async def test_create_journey_out_of_range_coordinate_returns_422(
     response = await client.post(
         _CREATE_PATH,
         json={**_VALID_BODY, "origin": {**_MOSCOW, "latitude": 200.0}},
-        headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
     )
 
     assert response.status_code == 422
@@ -200,7 +200,7 @@ async def test_get_journeys_map_returns_aggregated_countries(
         ),
     ]
 
-    response = await client.get(_MAP_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id)}"})
+    response = await client.get(_MAP_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id=user_id)}"})
 
     assert response.status_code == 200
     body = response.json()
@@ -226,7 +226,7 @@ async def test_get_journeys_map_without_journeys_returns_empty(
     mint_access_token: Callable[..., str],
 ) -> None:
     """200: у пользователя без поездок карта отдаёт пустой список стран."""
-    response = await client.get(_MAP_PATH, headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"})
+    response = await client.get(_MAP_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"})
 
     assert response.status_code == 200
     assert response.json() == {"countries": []}
@@ -246,7 +246,7 @@ async def test_get_journeys_globe_returns_places_without_country(
         ),
     ]
 
-    response = await client.get(_GLOBE_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id)}"})
+    response = await client.get(_GLOBE_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id=user_id)}"})
 
     assert response.status_code == 200
     [place] = response.json()["places"]
@@ -260,7 +260,7 @@ async def test_get_journeys_globe_without_journeys_returns_empty(
     mint_access_token: Callable[..., str],
 ) -> None:
     """200: у пользователя без поездок глобус отдаёт пустой список мест."""
-    response = await client.get(_GLOBE_PATH, headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"})
+    response = await client.get(_GLOBE_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"})
 
     assert response.status_code == 200
     assert response.json() == {"places": []}
@@ -291,7 +291,9 @@ async def test_get_movements_map_returns_routes_and_year_bounds(
         ),
     ]
 
-    response = await client.get(_MOVEMENTS_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id)}"})
+    response = await client.get(
+        _MOVEMENTS_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id=user_id)}"}
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -313,7 +315,7 @@ async def test_get_movements_map_passes_transport_from_query(
     """Повторяющийся transportType доходит до запроса маршрутов; без параметра — без фильтра; окна лет в запросе нет."""
     user_id = uuid4()
     fake_journey_repository.year_bounds_by_user_id[user_id] = (2018, 2022)
-    headers = {"Authorization": f"Bearer {mint_access_token(user_id)}"}
+    headers = {"Authorization": f"Bearer {mint_access_token(user_id=user_id)}"}
 
     filtered = await client.get(
         _MOVEMENTS_PATH,
@@ -339,7 +341,7 @@ async def test_get_movements_map_unknown_transport_returns_422(
     response = await client.get(
         _MOVEMENTS_PATH,
         params={"transportType": "rocket"},
-        headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
     )
 
     assert response.status_code == 422

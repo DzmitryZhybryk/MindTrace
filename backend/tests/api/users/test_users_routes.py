@@ -29,7 +29,7 @@ async def test_get_current_user_returns_camelcase_profile(
 
     response = await client.get(
         _ME_PATH,
-        headers={"Authorization": f"Bearer {mint_access_token(user_entity.user_id)}"},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=user_entity.user_id)}"},
     )
 
     assert response.status_code == 200
@@ -47,7 +47,7 @@ async def test_get_current_user_without_display_name_returns_null(
 
     response = await client.get(
         _ME_PATH,
-        headers={"Authorization": f"Bearer {mint_access_token(user_entity.user_id)}"},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=user_entity.user_id)}"},
     )
 
     assert response.status_code == 200
@@ -67,7 +67,7 @@ async def test_get_current_user_unknown_id_returns_404(
     mint_access_token: Callable[..., str],
 ) -> None:
     """404: валидный токен, но пользователя нет в хранилище → users.user_not_found."""
-    response = await client.get(_ME_PATH, headers={"Authorization": f"Bearer {mint_access_token(uuid4())}"})
+    response = await client.get(_ME_PATH, headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"})
 
     assert response.status_code == 404
     assert response.json()["code"] == "users.user_not_found"
@@ -84,7 +84,7 @@ async def test_get_current_user_soft_deleted_returns_410(
 
     response = await client.get(
         _ME_PATH,
-        headers={"Authorization": f"Bearer {mint_access_token(user_entity.user_id)}"},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=user_entity.user_id)}"},
     )
 
     assert response.status_code == 410
