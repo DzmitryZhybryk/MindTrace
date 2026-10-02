@@ -19,12 +19,12 @@ _PARSERS = (dt.date.fromisoformat, dt.datetime.fromisoformat, UUID)
 
 def test_decode_cursor_restores_encoded_values_with_their_types() -> None:
     """Курсор разбирается обратно в те же значения ключа, микросекунды и таймзона не теряются."""
-    traveled_on = dt.date(year=2019, month=5, day=1)
+    sort_date = dt.date(year=2019, month=5, day=1)
     created_at = dt.datetime(year=2024, month=3, day=2, hour=10, minute=4, second=5, microsecond=678, tzinfo=dt.UTC)
-    journey_id = UUID("6f1c0d6e-0f4e-4d5b-9a51-2f6b1c3d4e5f")
-    cursor = encode_cursor([traveled_on.isoformat(), created_at.isoformat(), str(journey_id)])
+    row_id = UUID("6f1c0d6e-0f4e-4d5b-9a51-2f6b1c3d4e5f")
+    cursor = encode_cursor([sort_date.isoformat(), created_at.isoformat(), str(row_id)])
 
-    assert decode_cursor(cursor=cursor, parsers=_PARSERS) == (traveled_on, created_at, journey_id)
+    assert decode_cursor(cursor=cursor, parsers=_PARSERS) == (sort_date, created_at, row_id)
 
 
 def test_encode_cursor_is_url_safe_without_padding() -> None:
@@ -41,7 +41,7 @@ def test_encode_cursor_is_url_safe_without_padding() -> None:
         pytest.param("!!!", id="not-base64"),
         pytest.param(base64.urlsafe_b64encode(b"\xff\xfe").decode(), id="not-utf8"),
         pytest.param(base64.urlsafe_b64encode(b"{not json").decode(), id="not-json"),
-        pytest.param(base64.urlsafe_b64encode(b'{"traveled_on": "2019-01-01"}').decode(), id="object-not-list"),
+        pytest.param(base64.urlsafe_b64encode(b'{"sort_date": "2019-01-01"}').decode(), id="object-not-list"),
         pytest.param(
             base64.urlsafe_b64encode(b'["2019-01-01", "2024-01-01T00:00:00+00:00", 7]').decode(),
             id="non-string-value",

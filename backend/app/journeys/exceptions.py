@@ -16,13 +16,6 @@ class UnknownPlaceError(InvalidInputError):
 
 class JourneyDateInFutureError(InvalidInputError):
     code = "journeys.date_in_future"
-    message = "Дата поездки не может быть в будущем"
-    # ``field`` — имя поля ФОРМЫ (фронтовый routing-хинт для setFieldError), а не имя
-    # поля wire-пейлоада (traveled_year): на форме дата привязана к полю ``year``.
-    default_details: ClassVar[OptionalDict] = {"field": "year"}
-
-
-class InvalidJourneyDateError(InvalidInputError):
-    code = "journeys.invalid_date"
-    message = "Некорректная дата поездки"
+    message = "Год поездки не может быть в будущем"
+    # Фронт показывает ошибку под полем формы с этим именем; в форме год называется `year`, не `traveledYear`.
     default_details: ClassVar[OptionalDict] = {"field": "year"}

@@ -1,7 +1,7 @@
 from collections.abc import Collection
 from uuid import UUID
 
-from sqlalchemy import Integer, Subquery, cast, extract, func, select, union_all
+from sqlalchemy import Subquery, func, select, union_all
 from sqlalchemy.dialects.postgresql import aggregate_order_by, distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,7 +35,7 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
             Посещённые места (пустой список, если поездок нет)
         """
         visits = self._place_visits(user_id=user_id)
-        visit_year = cast(extract("year", visits.c.traveled_on), Integer)
+        visit_year = visits.c.traveled_year
         # Поездки копируют страну и координаты места из справочника, копии одного места могут
         # слегка разойтись после его обновления — берём одну копию целиком, первую попавшуюся.
         place_copies = (
@@ -98,7 +98,7 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
         Returns:
             Маршруты с координатами и годами поездок (пустой список, если поездок нет)
         """
-        traveled_year = cast(extract("year", Journey.traveled_on), Integer)
+        traveled_year = Journey.traveled_year
         filters = [Journey.user_id == user_id, Journey.deleted_at.is_(None)]
         if transport_types is not None:
             filters.append(Journey.transport_type.in_(transport_types))
@@ -149,12 +149,12 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
         Returns:
             Первый и последний год; ``None``, если поездок нет
         """
-        query = select(func.min(Journey.traveled_on), func.max(Journey.traveled_on)).where(
+        query = select(func.min(Journey.traveled_year), func.max(Journey.traveled_year)).where(
             Journey.user_id == user_id,
             Journey.deleted_at.is_(None),
         )
-        first_traveled_on, last_traveled_on = (await self._session.execute(query)).one()
-        return (first_traveled_on.year, last_traveled_on.year) if first_traveled_on else None
+        first_year, last_year = (await self._session.execute(query)).one()
+        return (first_year, last_year) if first_year is not None else None
 
     @staticmethod
     def _place_visits(*, user_id: UUID) -> Subquery:
@@ -165,14 +165,14 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
             Journey.origin_country_code.label("country_code"),
             Journey.origin_latitude.label("latitude"),
             Journey.origin_longitude.label("longitude"),
-            Journey.traveled_on,
+            Journey.traveled_year,
         ).where(*is_user_journey)
         destinations = select(
             Journey.destination_place_id,
             Journey.destination_country_code,
             Journey.destination_latitude,
             Journey.destination_longitude,
-            Journey.traveled_on,
+            Journey.traveled_year,
         ).where(*is_user_journey)
         return union_all(origins, destinations).subquery("visits")
 
@@ -190,8 +190,7 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
             destination_longitude=journey_entity.destination.longitude,
             transport_type=journey_entity.transport_type,
             distance_km=journey_entity.distance_km,
-            traveled_on=journey_entity.traveled_on.value,
-            traveled_on_precision=journey_entity.traveled_on.precision,
+            traveled_year=journey_entity.traveled_year,
             created_at=journey_entity.created_at,
             updated_at=journey_entity.updated_at,
             deleted_at=journey_entity.deleted_at,

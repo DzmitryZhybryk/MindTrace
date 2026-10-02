@@ -32,7 +32,7 @@ describe("AddJourneyPage — ошибки бэка", () => {
     expect(screen.queryByText("journeys-landing")).not.toBeInTheDocument();
   });
 
-  it("рендерит доменную ошибку даты под полем года, а не теряет её", async () => {
+  it("рендерит ошибку года под полем года, а не теряет её", async () => {
     // Регресс на два бага аудита разом: (1) код journeys.* замаплен в errors-namespace
     // (иначе был бы generic fallback); (2) details.field='year' ложится на реальное поле
     // формы (раньше слался 'traveled_year' → setFieldError бил в фантомное поле, текст исчезал).
@@ -48,7 +48,7 @@ describe("AddJourneyPage — ошибки бэка", () => {
 
     await submitMoscowToLondon(user);
 
-    expect(await screen.findByText("The travel date can't be in the future")).toBeInTheDocument();
+    expect(await screen.findByText("The travel year can't be in the future")).toBeInTheDocument();
     expect(screen.queryByText("journeys-landing")).not.toBeInTheDocument();
   });
 

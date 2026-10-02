@@ -1,9 +1,11 @@
-from typing import Annotated
+import datetime as dt
+from typing import Annotated, Self
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
 
 from app.journeys.domain.enums import TransportType
+from app.journeys.exceptions import JourneyDateInFutureError, SameOriginAndDestinationError
 from app.shared.schemas import CamelModel
 
 
@@ -20,17 +22,37 @@ class CreateJourneyRequest(CamelModel):
     """
     Тело запроса создания поездки.
 
-    Дата частями: год обязателен, месяц и день — нет. Корректность даты и то, что
-    отправление не совпадает с назначением, проверяет домен — поэтому ошибки приходят
-    с кодами ``journeys.*``, а не 422.
+    Год не может быть в будущем (по UTC), отправление не может совпадать с назначением. Нарушения —
+    ошибки с кодами ``journeys.*``, а не 422.
     """
 
     origin: PlaceRef
     destination: PlaceRef
     transport_type: TransportType
-    traveled_year: int
-    traveled_month: int | None = None
-    traveled_day: int | None = None
+    traveled_year: Annotated[int, Field(ge=1)]
+
+    @field_validator("traveled_year")
+    @classmethod
+    def validate_year_not_in_future(cls, traveled_year: int) -> int:
+        """
+        Отклоняет год из будущего.
+
+        Бросает доменную ошибку, а не ``ValueError``: pydantic превращает в 422 только ``ValueError``,
+        ``AssertionError`` и ``PydanticCustomError``, остальные исключения доходят до общего обработчика
+        со своим кодом.
+        """
+        if traveled_year > dt.datetime.now(tz=dt.UTC).year:
+            raise JourneyDateInFutureError()
+
+        return traveled_year
+
+    @model_validator(mode="after")
+    def validate_distinct_endpoints(self) -> Self:
+        """Отклоняет поездку в то же место; места сравниваются по ``placeId``, не по координатам."""
+        if self.origin.place_id == self.destination.place_id:
+            raise SameOriginAndDestinationError()
+
+        return self
 
 
 class MapCity(CamelModel):

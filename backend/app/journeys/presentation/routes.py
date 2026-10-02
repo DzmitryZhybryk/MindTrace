@@ -55,8 +55,6 @@ async def create_journey(
         ),
         transport_type=body.transport_type,
         traveled_year=body.traveled_year,
-        traveled_month=body.traveled_month,
-        traveled_day=body.traveled_day,
     )
     await journey_service.create_journey(command=command)
     return Response(status_code=status.HTTP_201_CREATED)

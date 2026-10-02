@@ -19,19 +19,13 @@ __all__ = [
 
 @dataclass(frozen=True, slots=True)
 class CreateJourneyCommand:
-    """
-    Данные для создания поездки.
-
-    Дата приходит частями: год обязателен, месяц и день — нет.
-    """
+    """Данные для создания поездки."""
 
     user_id: UUID
     origin: GeoPoint
     destination: GeoPoint
     transport_type: TransportType
     traveled_year: int
-    traveled_month: int | None
-    traveled_day: int | None
 
 
 @dataclass(frozen=True, slots=True)

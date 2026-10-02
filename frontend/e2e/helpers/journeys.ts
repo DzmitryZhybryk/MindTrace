@@ -28,7 +28,7 @@ interface JourneyInput {
 export async function createJourney(request: APIRequestContext, token: string, journey: JourneyInput): Promise<void> {
   const created = await request.post("/v1/journeys/", {
     headers: { Authorization: `Bearer ${token}` },
-    data: { ...journey, traveledMonth: null, traveledDay: null },
+    data: journey,
   });
   expect(created.ok(), `create journey failed: ${created.status()} ${await created.text()}`).toBeTruthy();
 }

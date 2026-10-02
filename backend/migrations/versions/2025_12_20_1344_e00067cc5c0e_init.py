@@ -150,8 +150,7 @@ def upgrade() -> None:
         sa.Column("destination_longitude", sa.REAL(), nullable=False),
         sa.Column("transport_type", sa.String(length=20), nullable=False),
         sa.Column("distance_km", sa.SmallInteger(), nullable=False),
-        sa.Column("traveled_on", sa.Date(), nullable=False),
-        sa.Column("traveled_on_precision", sa.String(length=5), nullable=False),
+        sa.Column("traveled_year", sa.SmallInteger(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_journeys_user_id", "journeys", ["user_id"])

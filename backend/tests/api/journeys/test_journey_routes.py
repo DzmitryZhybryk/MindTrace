@@ -4,7 +4,7 @@ api-тесты роутов journeys (``POST /v1/journeys/``, ``GET /v1/journeys
 
 Реальная проводка ``journey_service`` поверх фейк-UoW, реальный декод Bearer-токена
 (``mint_access_token`` подписывает settings-секретом; ``sub`` токена становится ``user_id``
-поездки). Пиннят 201-payload-on-create, 401 без токена, доменные 400-коды, 422 формы,
+поездки). Пиннят 201-payload-on-create, 401 без токена, 400 неизвестного места, 422 запроса,
 сериализацию ответов карт (camelCase, без лишних полей) и то, что фильтры карты перемещений
 из query доходят до репозитория.
 """
@@ -47,10 +47,8 @@ _VALID_BODY: dict[str, Any] = {
     "destination": _LONDON,
     "transportType": "air",
     "traveledYear": 2020,
-    "traveledMonth": 6,
-    "traveledDay": None,
 }
-_FUTURE_YEAR = dt.datetime.now(tz=dt.UTC).year + 1
+_CURRENT_YEAR = dt.datetime.now(tz=dt.UTC).year
 
 
 async def test_create_journey_returns_201_and_persists(
@@ -76,7 +74,58 @@ async def test_create_journey_returns_201_and_persists(
     assert journey_entity.origin.place_id == MOSCOW_PLACE_ID
     assert journey_entity.destination.place_id == LONDON_PLACE_ID
     assert journey_entity.transport_type is TransportType.AIR
+    assert journey_entity.traveled_year == 2020
     fake_journey_uow.commit_mock.assert_awaited_once()
+
+
+async def test_create_journey_current_year_returns_201(
+    client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """201: текущий год (по UTC) — граница «не в будущем», поездка создаётся."""
+    response = await client.post(
+        _CREATE_PATH,
+        json={**_VALID_BODY, "traveledYear": _CURRENT_YEAR},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
+    )
+
+    assert response.status_code == 201
+    assert fake_journey_repository.journeys[0].traveled_year == _CURRENT_YEAR
+
+
+async def test_create_journey_ignores_legacy_month_and_day(
+    client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """201: присланные старым клиентом traveledMonth/traveledDay игнорируются, сохраняется только год."""
+    response = await client.post(
+        _CREATE_PATH,
+        json={**_VALID_BODY, "traveledMonth": 6, "traveledDay": 15},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
+    )
+
+    assert response.status_code == 201
+    assert fake_journey_repository.journeys[0].traveled_year == 2020
+
+
+async def test_create_journey_distinct_place_ids_with_same_coordinates_returns_201(
+    client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """201: разные placeId с одинаковыми координатами — разные места, поездка создаётся."""
+    destination = {**_LONDON, "latitude": _MOSCOW["latitude"], "longitude": _MOSCOW["longitude"]}
+
+    response = await client.post(
+        _CREATE_PATH,
+        json={**_VALID_BODY, "destination": destination},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
+    )
+
+    assert response.status_code == 201
+    assert len(fake_journey_repository.journeys) == 1
 
 
 async def test_create_journey_without_token_returns_401(client: AsyncClient) -> None:
@@ -91,11 +140,15 @@ async def test_create_journey_without_token_returns_401(client: AsyncClient) -> 
     ("overrides", "expected_code", "expected_field"),
     [
         ({"destination": _MOSCOW}, "journeys.same_origin_destination", None),
-        ({"traveledYear": _FUTURE_YEAR}, "journeys.date_in_future", "year"),
-        ({"traveledMonth": None, "traveledDay": 15}, "journeys.invalid_date", "year"),
+        (
+            {"destination": {**_MOSCOW, "latitude": 51.5, "longitude": -0.12}},
+            "journeys.same_origin_destination",
+            None,
+        ),
+        ({"traveledYear": _CURRENT_YEAR + 1}, "journeys.date_in_future", "year"),
     ],
 )
-async def test_create_journey_domain_errors_return_400(
+async def test_create_journey_rejected_by_request_rules_returns_400(
     client: AsyncClient,
     fake_journey_repository: FakeJourneyRepository,
     mint_access_token: Callable[..., str],
@@ -103,11 +156,7 @@ async def test_create_journey_domain_errors_return_400(
     expected_code: str,
     expected_field: str | None,
 ) -> None:
-    """400: инвариант origin≠destination и валидация даты живут в домене → доменные journeys.*-коды, не 422.
-
-    Date-ошибки несут ``details.field='year'`` — это имя поля ФОРМЫ (фронтовый routing-хинт),
-    а не имя wire-поля ``traveled_year``; контракт пиннится, чтобы фронт-роутинг не отвалился.
-    """
+    """400: правила схемы запроса отдают свой код journeys.*, а не общий 422; поездка не создаётся."""
     response = await client.post(
         _CREATE_PATH,
         json={**_VALID_BODY, **overrides},
@@ -119,6 +168,21 @@ async def test_create_journey_domain_errors_return_400(
     assert body["code"] == expected_code
     assert (body.get("details") or {}).get("field") == expected_field
     assert fake_journey_repository.journeys == []
+
+
+async def test_create_journey_year_below_one_returns_422(
+    client: AsyncClient,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """422: год меньше 1 — ограничение поля, общий validation_error."""
+    response = await client.post(
+        _CREATE_PATH,
+        json={**_VALID_BODY, "traveledYear": 0},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "validation_error"
 
 
 async def test_create_journey_unknown_place_returns_400_with_missing_ids(

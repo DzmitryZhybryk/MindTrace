@@ -1,7 +1,6 @@
-import datetime as dt
 import uuid
 
-from sqlalchemy import REAL, Date, SmallInteger, String, Uuid
+from sqlalchemy import REAL, SmallInteger, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.shared.models import BaseDBModel
@@ -13,8 +12,7 @@ class Journey(DateTimeMixin, BaseDBModel):
     Поездка пользователя: откуда, куда, на чём и когда.
 
     Места — ссылки на справочник geo плюс страна и координаты, названий здесь нет. Внешних
-    ключей на geo и users нет: это другие домены. Дата хранится первым днём известного
-    периода, а её точность (год, месяц или день) — в ``traveled_on_precision``.
+    ключей на geo и users нет: это другие домены. Когда — только год.
     """
 
     __tablename__ = "journeys"
@@ -34,5 +32,4 @@ class Journey(DateTimeMixin, BaseDBModel):
 
     transport_type: Mapped[str] = mapped_column(String(20))
     distance_km: Mapped[int] = mapped_column(SmallInteger)
-    traveled_on: Mapped[dt.date] = mapped_column(Date)
-    traveled_on_precision: Mapped[str] = mapped_column(String(5))
+    traveled_year: Mapped[int] = mapped_column(SmallInteger)

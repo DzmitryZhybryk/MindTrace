@@ -18,7 +18,7 @@ import {
 } from "../../api/sdk";
 import { PlaceAutocomplete } from "../../components/PlaceAutocomplete";
 import { TRANSPORT_ICONS } from "../../components/transportIcons";
-import { JourneyDateField } from "./JourneyDateField";
+import { JourneyYearField } from "./JourneyYearField";
 
 const TRANSPORT_ICON_SIZE = 22;
 
@@ -52,10 +52,6 @@ export type JourneyFormValues = {
   destination: PlaceSearchItem | null;
   transport: TransportType | null;
   year: string | null;
-  month: string | null;
-  day: string | null;
-  hasMonth: boolean;
-  hasDay: boolean;
 };
 
 const UNKNOWN_PLACE_CODE = "journeys.unknown_place";
@@ -109,9 +105,9 @@ interface JourneyFormProps {
 }
 
 /**
- * Форма добавления поездки: откуда/куда (автокомплит), транспорт и приблизительная
- * дата. `form` поднят в AddJourneyPage, чтобы глобус-герой реагировал на ввод
- * вживую. Сабмит строит payload из выбранных мест/транспорта/даты, шлёт POST
+ * Форма добавления поездки: откуда/куда (автокомплит), транспорт и год. `form` поднят в
+ * AddJourneyPage, чтобы глобус-герой реагировал на ввод вживую. Сабмит строит payload из
+ * выбранных мест, транспорта и года, шлёт POST
  * `/v1/journeys` (`createJourney`) и при успехе ведёт на `/journeys`.
  */
 export function JourneyForm({ form }: JourneyFormProps) {
@@ -157,8 +153,6 @@ export function JourneyForm({ form }: JourneyFormProps) {
           destination: toPlaceRef(destination),
           transportType: values.transport,
           traveledYear: Number(values.year),
-          traveledMonth: values.hasMonth && values.month ? Number(values.month) : null,
-          traveledDay: values.hasDay && values.day ? Number(values.day) : null,
         },
       });
       navigate("/journeys");
@@ -243,7 +237,7 @@ export function JourneyForm({ form }: JourneyFormProps) {
           error={resolveErrorToken(form.errors.transport)}
         />
 
-        <JourneyDateField form={form} />
+        <JourneyYearField form={form} />
 
         {formError && (
           <Text size="sm" fw={500} c="var(--text-error)">

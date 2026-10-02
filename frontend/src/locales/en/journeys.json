@@ -49,11 +49,7 @@
     },
     "date": {
       "legend": "When was it?",
-      "yearPlaceholder": "Select year",
-      "addMonth": "Specify month",
-      "addDay": "Specify day",
-      "monthPlaceholder": "Select month",
-      "dayPlaceholder": "Select day"
+      "yearPlaceholder": "Select year"
     },
     "submit": "Add journey",
     "validation": {
@@ -62,9 +58,7 @@
       "sameCity": "Departure and destination must differ",
       "placeWithoutCountry": "This place has no country — choose a city",
       "transportRequired": "Choose a transport type",
-      "yearRequired": "Choose a year",
-      "monthRequired": "Choose a month",
-      "dayRequired": "Choose a day"
+      "yearRequired": "Choose a year"
     }
   }
 }
