@@ -12,7 +12,6 @@ from app.journeys.application.schemas import (
     MovementsMapResult,
 )
 from app.journeys.domain.entities import JourneyEntity
-from app.journeys.domain.value_objects import ApproximateDate
 from app.journeys.exceptions import UnknownPlaceError
 
 
@@ -30,23 +29,18 @@ class JourneyService:
         Перед сохранением спрашивает у geo, существуют ли места отправления и назначения.
 
         Args:
-            command: Данные для создания поездки (места, транспорт, дата)
+            command: Данные для создания поездки (места, транспорт, год)
 
         Raises:
             UnknownPlaceError: какого-то из мест нет в справочнике geo; ненайденные id — в
                 ``details.place_ids``
         """
-        traveled_on = ApproximateDate.from_parts(
-            year=command.traveled_year,
-            month=command.traveled_month,
-            day=command.traveled_day,
-        )
         journey_entity = JourneyEntity.create(
             user_id=command.user_id,
             origin=command.origin,
             destination=command.destination,
             transport_type=command.transport_type,
-            traveled_on=traveled_on,
+            traveled_year=command.traveled_year,
         )
         # Вызов в geo — до транзакции journeys, чтобы при вынесении geo в сервис сетевой вызов не попал
         # внутрь tx. Пока geo в том же процессе, его SELECT идёт в общей сессии запроса и уже открывает

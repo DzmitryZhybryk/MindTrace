@@ -22,7 +22,6 @@ from app.journeys.infra.repositories import JourneyRepository
 from tests.builders import (
     LONDON_PLACE_ID,
     MOSCOW_PLACE_ID,
-    make_approximate_date,
     make_geo_point,
     make_journey,
 )
@@ -44,12 +43,12 @@ async def _insert(db_session: AsyncSession, *journey_entities: JourneyEntity) ->
 
 
 async def test_insert_journey_persists_snapshot(db_session: AsyncSession) -> None:
-    """insert_journey: сущность ложится в плоский снапшот — имена/страны/координаты, дата+точность, distance_km."""
+    """insert_journey: сущность ложится в плоский снапшот — места/страны/координаты, год, distance_km."""
     user_id = uuid4()
     journey_entity = make_journey(
         user_id=user_id,
         transport_type=TransportType.AIR,
-        traveled_on=make_approximate_date(year=2020, month=6),
+        traveled_year=2020,
     )
 
     await JourneyRepository(session=db_session).insert_journey(journey_entity=journey_entity)
@@ -63,8 +62,7 @@ async def test_insert_journey_persists_snapshot(db_session: AsyncSession) -> Non
     assert journey_model.destination_place_id == LONDON_PLACE_ID
     assert journey_model.destination_country_code == "GB"
     assert journey_model.transport_type == "air"
-    assert journey_model.traveled_on == dt.date(2020, 6, 1)
-    assert journey_model.traveled_on_precision == "month"
+    assert journey_model.traveled_year == 2020
     assert journey_model.distance_km == pytest.approx(2500, abs=60)
     assert journey_model.origin_latitude == pytest.approx(55.75, abs=0.01)
 
@@ -90,15 +88,9 @@ async def test_find_visited_places_counts_both_ends_with_distinct_sorted_years(d
     user_id = uuid4()
     repository = await _insert(
         db_session,
-        make_journey(
-            user_id=user_id, origin=_MOSCOW, destination=_LONDON, traveled_on=make_approximate_date(year=2021)
-        ),
-        make_journey(
-            user_id=user_id, origin=_LONDON, destination=_MOSCOW, traveled_on=make_approximate_date(year=2019)
-        ),
-        make_journey(
-            user_id=user_id, origin=_MOSCOW, destination=_LONDON, traveled_on=make_approximate_date(year=2021)
-        ),
+        make_journey(user_id=user_id, origin=_MOSCOW, destination=_LONDON, traveled_year=2021),
+        make_journey(user_id=user_id, origin=_LONDON, destination=_MOSCOW, traveled_year=2019),
+        make_journey(user_id=user_id, origin=_MOSCOW, destination=_LONDON, traveled_year=2021),
     )
 
     visited_places = await repository.find_visited_places_by_user_id(user_id=user_id)
@@ -199,21 +191,15 @@ async def test_find_movement_connections_carry_distinct_sorted_years(db_session:
     user_id = uuid4()
     repository = await _insert(
         db_session,
-        make_journey(
-            user_id=user_id, origin=_MOSCOW, destination=_LONDON, traveled_on=make_approximate_date(year=2021)
-        ),
-        make_journey(
-            user_id=user_id, origin=_MOSCOW, destination=_LONDON, traveled_on=make_approximate_date(year=2018)
-        ),
+        make_journey(user_id=user_id, origin=_MOSCOW, destination=_LONDON, traveled_year=2021),
+        make_journey(user_id=user_id, origin=_MOSCOW, destination=_LONDON, traveled_year=2018),
         make_journey(
             user_id=user_id,
             origin=_MOSCOW,
             destination=_LONDON,
-            traveled_on=make_approximate_date(year=2021, month=12, day=31),
+            traveled_year=2021,
         ),
-        make_journey(
-            user_id=user_id, origin=_LONDON, destination=_MOSCOW, traveled_on=make_approximate_date(year=2019)
-        ),
+        make_journey(user_id=user_id, origin=_LONDON, destination=_MOSCOW, traveled_year=2019),
     )
 
     connections = await repository.find_movement_connections_by_user_id(user_id=user_id, transport_types=None)
@@ -237,14 +223,14 @@ async def test_find_movement_connections_years_only_from_selected_transport(db_s
             origin=_MOSCOW,
             destination=_LONDON,
             transport_type=TransportType.AIR,
-            traveled_on=make_approximate_date(year=2019),
+            traveled_year=2019,
         ),
         make_journey(
             user_id=user_id,
             origin=_MOSCOW,
             destination=_LONDON,
             transport_type=TransportType.LAND,
-            traveled_on=make_approximate_date(year=2022),
+            traveled_year=2022,
         ),
     )
 
@@ -309,11 +295,11 @@ async def test_find_journey_year_bounds_spans_first_and_last_journey(db_session:
     user_id = uuid4()
     repository = await _insert(
         db_session,
-        make_journey(user_id=user_id, traveled_on=make_approximate_date(year=2021)),
-        make_journey(user_id=user_id, traveled_on=make_approximate_date(year=2017, month=3)),
-        make_journey(user_id=user_id, traveled_on=make_approximate_date(year=2019)),
-        make_journey(user_id=user_id, traveled_on=make_approximate_date(year=2023), deleted_at=_DELETED_AT),
-        make_journey(user_id=uuid4(), traveled_on=make_approximate_date(year=2010)),
+        make_journey(user_id=user_id, traveled_year=2021),
+        make_journey(user_id=user_id, traveled_year=2017),
+        make_journey(user_id=user_id, traveled_year=2019),
+        make_journey(user_id=user_id, traveled_year=2023, deleted_at=_DELETED_AT),
+        make_journey(user_id=uuid4(), traveled_year=2010),
     )
 
     assert await repository.find_journey_year_bounds_by_user_id(user_id=user_id) == (2017, 2021)

@@ -12,8 +12,6 @@ const JOURNEY_BODY = {
   destination: { placeId: "22222222-2222-4222-8222-222222222222", countryCode: "GB", latitude: 51.5, longitude: -0.12 },
   transportType: "air",
   traveledYear: 2020,
-  traveledMonth: null,
-  traveledDay: null,
 } as const;
 
 let fetchMock: ReturnType<typeof vi.fn<FetchSignature>>;

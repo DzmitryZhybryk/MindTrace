@@ -29,8 +29,6 @@ test.describe("Journeys map", () => {
         destination: await findPlace(request, bearer, "London"),
         transportType: "air",
         traveledYear: 2020,
-        traveledMonth: null,
-        traveledDay: null,
       },
     });
     expect(created.ok(), `create journey failed: ${created.status()} ${await created.text()}`).toBeTruthy();

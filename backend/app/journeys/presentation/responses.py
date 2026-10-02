@@ -1,11 +1,6 @@
 from typing import Final
 
-from app.journeys.exceptions import (
-    InvalidJourneyDateError,
-    JourneyDateInFutureError,
-    SameOriginAndDestinationError,
-    UnknownPlaceError,
-)
+from app.journeys.exceptions import JourneyDateInFutureError, SameOriginAndDestinationError, UnknownPlaceError
 from app.shared.exceptions import ErrorResponse, InternalError
 from app.shared.exceptions.examples import error_response_example
 from app.shared.infra.jwt import InvalidAccessTokenError
@@ -23,12 +18,8 @@ CREATE_JOURNEY_RESPONSES: Final[dict[int | str, DictStrAny]] = {
                         "value": error_response_example(SameOriginAndDestinationError),
                     },
                     "journeys.date_in_future": {
-                        "summary": "Дата поездки в будущем",
+                        "summary": "Год поездки в будущем",
                         "value": error_response_example(JourneyDateInFutureError),
-                    },
-                    "journeys.invalid_date": {
-                        "summary": "Некорректная дата (например 30 февраля или день без месяца)",
-                        "value": error_response_example(InvalidJourneyDateError),
                     },
                     "journeys.unknown_place": {
                         "summary": "Места нет в справочнике",

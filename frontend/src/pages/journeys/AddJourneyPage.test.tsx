@@ -31,8 +31,6 @@ describe("AddJourneyPage — отправка", () => {
       destination: { placeId: LONDON.placeId, countryCode: "GB", latitude: 51.5, longitude: -0.12 },
       transportType: "air",
       traveledYear: 2020,
-      traveledMonth: null,
-      traveledDay: null,
     });
   });
 

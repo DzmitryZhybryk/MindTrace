@@ -36,10 +36,6 @@ export function AddJourneyPage() {
       destination: null,
       transport: null,
       year: null,
-      month: null,
-      day: null,
-      hasMonth: false,
-      hasDay: false,
     },
     // Валидаторы возвращают i18n-ТОКЕН (`journeys:addJourney.validation.*`), а не
     // готовый текст: резолв в строку — при рендере (`resolveErrorToken`), чтобы
@@ -67,8 +63,6 @@ export function AddJourneyPage() {
       },
       transport: (value) => (value ? null : "journeys:addJourney.validation.transportRequired"),
       year: (value) => (value ? null : "journeys:addJourney.validation.yearRequired"),
-      month: (value, values) => (values.hasMonth && !value ? "journeys:addJourney.validation.monthRequired" : null),
-      day: (value, values) => (values.hasDay && !value ? "journeys:addJourney.validation.dayRequired" : null),
     },
   });
 

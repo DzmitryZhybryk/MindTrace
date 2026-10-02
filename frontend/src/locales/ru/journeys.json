@@ -49,11 +49,7 @@
     },
     "date": {
       "legend": "Когда это было?",
-      "yearPlaceholder": "Выберите год",
-      "addMonth": "Указать месяц",
-      "addDay": "Указать день",
-      "monthPlaceholder": "Выберите месяц",
-      "dayPlaceholder": "Выберите день"
+      "yearPlaceholder": "Выберите год"
     },
     "submit": "Добавить путешествие",
     "validation": {
@@ -62,9 +58,7 @@
       "sameCity": "Города отправления и назначения должны отличаться",
       "placeWithoutCountry": "У этого места нет страны — выберите город",
       "transportRequired": "Выберите тип транспорта",
-      "yearRequired": "Выберите год",
-      "monthRequired": "Выберите месяц",
-      "dayRequired": "Выберите день"
+      "yearRequired": "Выберите год"
     }
   }
 }

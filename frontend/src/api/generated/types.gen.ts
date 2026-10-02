@@ -9,9 +9,9 @@ export type ClientOptions = {
  *
  * Тело запроса создания поездки.
  *
- * Дата частями: год обязателен, месяц и день — нет. Корректность даты и то, что
- * отправление не совпадает с назначением, проверяет домен — поэтому ошибки приходят
- * с кодами ``journeys.*``, а не 422.
+ * Год не может быть в будущем (по UTC), отправление не может совпадать с назначением. Нарушения —
+ * ошибки с кодами ``journeys.*``, а не 422: pydantic превращает в 422 только ``ValueError``,
+ * ``AssertionError`` и ``PydanticCustomError``, остальные исключения доходят до общего обработчика.
  */
 export type CreateJourneyRequest = {
   origin: PlaceRef;
@@ -21,14 +21,6 @@ export type CreateJourneyRequest = {
    * Traveledyear
    */
   traveledYear: number;
-  /**
-   * Traveledmonth
-   */
-  traveledMonth?: number | null;
-  /**
-   * Traveledday
-   */
-  traveledDay?: number | null;
 };
 
 /**

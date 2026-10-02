@@ -4,8 +4,7 @@ from typing import Self
 from uuid import UUID, uuid4
 
 from app.journeys.domain.enums import TransportType
-from app.journeys.domain.value_objects import ApproximateDate, GeoPoint
-from app.journeys.exceptions import SameOriginAndDestinationError
+from app.journeys.domain.value_objects import GeoPoint
 from app.shared.domain.domain_mixins import TimestampedEntityMixin
 
 # Средний радиус Земли в километрах для great-circle оценки расстояния поездки.
@@ -14,7 +13,7 @@ EARTH_RADIUS_KM = 6371.0
 
 class JourneyEntity(TimestampedEntityMixin):
     """
-    Поездка пользователя: маршрут origin→destination, среда передвижения, приблизительная дата.
+    Поездка пользователя: маршрут origin→destination, среда передвижения и год.
 
     ``distance_km`` сущность выводит сама из координат точек (haversine) — снаружи его
     передать нельзя, поэтому расстояние всегда консистентно с маршрутом.
@@ -28,7 +27,7 @@ class JourneyEntity(TimestampedEntityMixin):
         origin: GeoPoint,
         destination: GeoPoint,
         transport_type: TransportType,
-        traveled_on: ApproximateDate,
+        traveled_year: int,
         **timestamp_kwargs: dt.datetime | None,
     ) -> None:
         super().__init__(**timestamp_kwargs)
@@ -37,7 +36,7 @@ class JourneyEntity(TimestampedEntityMixin):
         self.origin = origin
         self.destination = destination
         self.transport_type = transport_type
-        self.traveled_on = traveled_on
+        self.traveled_year = traveled_year
         self.distance_km = self._great_circle_km(origin=origin, destination=destination)
 
     @classmethod
@@ -48,10 +47,10 @@ class JourneyEntity(TimestampedEntityMixin):
         origin: GeoPoint,
         destination: GeoPoint,
         transport_type: TransportType,
-        traveled_on: ApproximateDate,
+        traveled_year: int,
     ) -> Self:
         """
-        Создаёт новую поездку с собственным идентификатором, проверяя инвариант «origin ≠ destination».
+        Создаёт новую поездку с собственным идентификатором.
 
         Идентификатор сущность генерирует сама (``uuid4``), как и прочие фабрики домена;
         снаружи он передаётся только при реконституции из БД через ``__init__``. Расстояние
@@ -62,39 +61,19 @@ class JourneyEntity(TimestampedEntityMixin):
             origin: Место отправления
             destination: Место назначения
             transport_type: Среда передвижения
-            traveled_on: Приблизительная дата поездки
+            traveled_year: Год поездки
 
         Returns:
             Новая поездка с вычисленным расстоянием
-
-        Raises:
-            SameOriginAndDestinationError: origin и destination — одно и то же место
         """
-        cls._ensure_distinct_endpoints(origin=origin, destination=destination)
-
         return cls(
             journey_id=uuid4(),
             user_id=user_id,
             origin=origin,
             destination=destination,
             transport_type=transport_type,
-            traveled_on=traveled_on,
+            traveled_year=traveled_year,
         )
-
-    @staticmethod
-    def _ensure_distinct_endpoints(*, origin: GeoPoint, destination: GeoPoint) -> None:
-        """
-        Проверяет, что поездка не начинается и не заканчивается в одном и том же месте.
-
-        Args:
-            origin: Место отправления
-            destination: Место назначения
-
-        Raises:
-            SameOriginAndDestinationError: отправление и назначение — одно место
-        """
-        if origin.place_id == destination.place_id:
-            raise SameOriginAndDestinationError()
 
     @staticmethod
     def _great_circle_km(*, origin: GeoPoint, destination: GeoPoint) -> int:

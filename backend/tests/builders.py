@@ -18,7 +18,7 @@ from app.geo.domain.value_objects import PlaceNames
 from app.geo.infra.datasets.manifest import DatasetSpec
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
-from app.journeys.domain.value_objects import ApproximateDate, GeoPoint
+from app.journeys.domain.value_objects import GeoPoint
 from app.users.domain.entities import UserEntity
 
 # Опорные координаты для детерминированных journeys/geo тестов (Москва→Лондон ≈ 2500 км).
@@ -140,10 +140,6 @@ def make_geo_point(
     return GeoPoint(place_id=place_id, country_code=country_code, latitude=latitude, longitude=longitude)
 
 
-def make_approximate_date(*, year: int = 2020, month: int | None = None, day: int | None = None) -> ApproximateDate:
-    return ApproximateDate.from_parts(year=year, month=month, day=day)
-
-
 def make_journey(
     *,
     journey_id: UUID | None = None,
@@ -151,7 +147,7 @@ def make_journey(
     origin: GeoPoint | None = None,
     destination: GeoPoint | None = None,
     transport_type: TransportType = TransportType.AIR,
-    traveled_on: ApproximateDate | None = None,
+    traveled_year: int = 2020,
     created_at: dt.datetime | None = None,
     updated_at: dt.datetime | None = None,
     deleted_at: dt.datetime | None = None,
@@ -163,7 +159,7 @@ def make_journey(
         destination=destination
         or make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=_LONDON_LAT, longitude=_LONDON_LNG),
         transport_type=transport_type,
-        traveled_on=traveled_on or make_approximate_date(),
+        traveled_year=traveled_year,
         created_at=created_at,
         updated_at=updated_at,
         deleted_at=deleted_at,
