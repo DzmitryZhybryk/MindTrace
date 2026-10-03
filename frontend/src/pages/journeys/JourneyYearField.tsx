@@ -1,5 +1,6 @@
 import { Select, Stack, Text } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { resolveErrorToken } from "../../api/errors";
@@ -16,8 +17,11 @@ export function JourneyYearField({ form }: JourneyYearFieldProps) {
   const { t } = useTranslation("journeys");
   const values = form.getValues();
 
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: YEARS_BACK + 1 }, (_, i) => String(currentYear - i));
+  // Текущий год читается один раз, при появлении поля: чтение часов при каждом рендере нечисто.
+  const [yearOptions] = useState(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: YEARS_BACK + 1 }, (_, i) => String(currentYear - i));
+  });
 
   return (
     <Stack gap="sm">
