@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { projectToScreen } from "../../../components/worldProjection";
-import { fadeAlong, piecePath, projectArc } from "./movementGeometry";
+import { piecePath, projectArc, splitEdgeFade } from "./movementGeometry";
 
 const MOSCOW = { latitude: 55.75, longitude: 37.62 };
 const LONDON = { latitude: 51.5, longitude: -0.12 };
@@ -55,28 +55,72 @@ describe("piecePath", () => {
   });
 });
 
-describe("fadeAlong", () => {
+describe("splitEdgeFade", () => {
   // Прямой кусок вдоль оси x: точки через каждые 10 единиц, от 0 до 100.
   const piece = Array.from({ length: 11 }, (_, index) => [index * 10, 50] as const);
 
-  it("у конца куска гаснет на заданной длине: от точки за этой длиной до самого края", () => {
-    expect(fadeAlong(piece, "end", 30)).toEqual([
-      [70, 50],
-      [100, 50],
+  it("у конца куска гаснет только хвост заданной длины, остальное сплошное", () => {
+    expect(splitEdgeFade(piece, "end", 25)).toEqual({
+      solid: [...piece.slice(0, 8), [75, 50]],
+      fade: [
+        [75, 50],
+        [80, 50],
+        [90, 50],
+        [100, 50],
+      ],
+      fadeAxis: [
+        [75, 50],
+        [100, 50],
+      ],
+    });
+  });
+
+  it("у начала куска — то же с другой стороны, обе части в порядке рисования", () => {
+    expect(splitEdgeFade(piece, "start", 25)).toEqual({
+      solid: [[25, 50], ...piece.slice(3)],
+      fade: [
+        [0, 50],
+        [10, 50],
+        [20, 50],
+        [25, 50],
+      ],
+      fadeAxis: [
+        [25, 50],
+        [0, 50],
+      ],
+    });
+  });
+
+  it("дуга, повернувшая после края, не гаснет: прозрачность ложится только на хвост у края", () => {
+    // От края идёт вправо, затем круто вниз — как дуга Вашингтон → Сингапур над Сибирью.
+    const hooked = [
+      [0, 0],
+      [40, 0],
+      [60, 0],
+      [80, 100],
+    ] as const;
+
+    const split = splitEdgeFade(hooked, "start", 40);
+
+    expect(split.fade).toEqual([
+      [0, 0],
+      [40, 0],
+    ]);
+    expect(split.solid).toEqual([
+      [40, 0],
+      [60, 0],
+      [80, 100],
     ]);
   });
 
-  it("у начала куска — то же с другой стороны", () => {
-    expect(fadeAlong(piece, "start", 30)).toEqual([
-      [30, 50],
-      [0, 50],
-    ]);
-  });
-
-  it("кусок короче длины затухания гаснет целиком — от дальнего конца", () => {
-    expect(fadeAlong(piece, "end", 500)).toEqual([
-      [0, 50],
-      [100, 50],
-    ]);
+  it("кусок короче длины затухания гаснет целиком — от дальнего конца, сплошной части нет", () => {
+    expect(splitEdgeFade(piece, "end", 500)).toEqual({
+      solid: [],
+      fade: piece,
+      fadeAxis: [
+        [0, 50],
+        [100, 50],
+      ],
+    });
   });
 });

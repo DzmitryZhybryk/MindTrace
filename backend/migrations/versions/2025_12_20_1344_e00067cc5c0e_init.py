@@ -151,14 +151,22 @@ def upgrade() -> None:
         sa.Column("transport_type", sa.String(length=20), nullable=False),
         sa.Column("distance_km", sa.SmallInteger(), nullable=False),
         sa.Column("traveled_year", sa.SmallInteger(), nullable=False),
+        sa.Column("sort_key", sa.Text(collation="C"), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_journeys_user_id", "journeys", ["user_id"])
+    # Порядок поездок внутри года: ключ уникален среди неудалённых, индекс обслуживает и ленту.
+    op.create_index(
+        "ix_journeys_active_user_id_year_sort_key",
+        "journeys",
+        ["user_id", sa.text("traveled_year DESC"), "sort_key"],
+        unique=True,
+        postgresql_where=sa.text("deleted_at IS NULL"),
+    )
 
 
 def downgrade() -> None:
     # journeys и таблицы geo создаются последними в upgrade — дропаются первыми.
-    op.drop_index("ix_journeys_user_id", table_name="journeys")
+    op.drop_index("ix_journeys_active_user_id_year_sort_key", table_name="journeys")
     op.drop_table("journeys")
     op.drop_table("geo_dataset_loads")
     op.drop_index("ix_geo_places_name_ru_prefix", table_name="geo_places")

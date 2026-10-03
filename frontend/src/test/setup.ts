@@ -7,8 +7,8 @@
  *     поэтому без этого `i18n.t(...)` вернул бы сам ключ). Так `messageForCode` и UI
  *     резолвят реальные английские тексты — тестируем настоящий маппинг, а не моки.
  *  2. jest-dom — регистрирует матчеры (`toBeInTheDocument` и пр.) в `expect`.
- *  3. jsdom-полифилы — `matchMedia` и `ResizeObserver`, которых нет в jsdom, но к
- *     которым обращаются Mantine (Menu/Modal) и контейнер `GlobeCanvas`.
+ *  3. jsdom-полифилы — `matchMedia`, `ResizeObserver` и `IntersectionObserver`, которых нет
+ *     в jsdom, но к которым обращаются Mantine (Menu/Modal), контейнер `GlobeCanvas` и лента.
  *  4. MSW — сетевой слой component-тестов: listen/reset/close + очистка модульного
  *     состояния (`tokenStore`, `sessionStorage`) и моков после каждого теста.
  *     Unit-тесты ставят собственный `fetch`-мок и MSW минуют (см. `handlers.ts`).
@@ -26,6 +26,7 @@ import enErrors from "../locales/en/errors.json";
 import enJourneys from "../locales/en/journeys.json";
 import { i18n } from "../i18n";
 import { server } from "./handlers";
+import { IntersectionObserverStub } from "./intersection";
 
 i18n.addResourceBundle("en", "common", enCommon, true, true);
 i18n.addResourceBundle("en", "auth", enAuth, true, true);
@@ -66,6 +67,10 @@ class ResizeObserverStub {
 }
 
 globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+
+// IntersectionObserver: нет в jsdom; лента поездок им догружает порции. Заглушка управляемая —
+// пересечение тест вызывает сам (`intersectAllObserved`).
+globalThis.IntersectionObserver = IntersectionObserverStub as unknown as typeof IntersectionObserver;
 
 // scrollIntoView: нет в jsdom; Mantine Combobox (selectFirstOption/навигация стрелками)
 // вызывает его на активной опции.

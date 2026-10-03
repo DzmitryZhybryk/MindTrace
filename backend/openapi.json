@@ -3,7 +3,7 @@
   "info": {
     "title": "MindTrace",
     "description": "Service for managing mindtrace",
-    "version": "3.0.0"
+    "version": "3.1.0"
   },
   "paths": {
     "/healthz": {
@@ -732,15 +732,20 @@
         ],
         "summary": "Create Journey",
         "operationId": "create_journey",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateJourneyRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -755,9 +760,6 @@
             "description": "Ошибка валидации поездки",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
                 "examples": {
                   "journeys.same_origin_destination": {
                     "summary": "Город отправления и назначения совпадают",
@@ -786,6 +788,684 @@
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
                   }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "journeys"
+        ],
+        "summary": "List Journeys",
+        "operationId": "list_journeys",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "yearFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Yearfrom"
+            }
+          },
+          {
+            "name": "yearTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Yearto"
+            }
+          },
+          {
+            "name": "transportType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "$ref": "#/components/schemas/TransportType"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Transporttype"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneysFeedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка запроса ленты",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_cursor": {
+                    "summary": "Курсор испорчен или выдан другим списком",
+                    "value": {
+                      "code": "invalid_cursor",
+                      "message": "Некорректный курсор страницы",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "journeys.invalid_year_range": {
+                    "summary": "Начальный год больше конечного",
+                    "value": {
+                      "code": "journeys.invalid_year_range",
+                      "message": "Начальный год не может быть больше конечного",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{journey_id}": {
+      "put": {
+        "tags": [
+          "journeys"
+        ],
+        "summary": "Update Journey",
+        "operationId": "update_journey",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "journey_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Journey Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateJourneyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Ошибка валидации поездки",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "journeys.same_origin_destination": {
+                    "summary": "Город отправления и назначения совпадают",
+                    "value": {
+                      "code": "journeys.same_origin_destination",
+                      "message": "Город отправления и назначения не могут совпадать",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "journeys.date_in_future": {
+                    "summary": "Год поездки в будущем",
+                    "value": {
+                      "code": "journeys.date_in_future",
+                      "message": "Год поездки не может быть в будущем",
+                      "details": {
+                        "field": "year"
+                      },
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "journeys.unknown_place": {
+                    "summary": "Места нет в справочнике",
+                    "value": {
+                      "code": "journeys.unknown_place",
+                      "message": "Место не найдено",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "У пользователя нет такой поездки или она удалена",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "journeys.journey_not_found",
+                  "message": "Поездка не найдена",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "journeys"
+        ],
+        "summary": "Delete Journey",
+        "operationId": "delete_journey",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "journey_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Journey Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "У пользователя нет такой поездки или она удалена",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "journeys.journey_not_found",
+                  "message": "Поездка не найдена",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{journey_id}/move": {
+      "post": {
+        "tags": [
+          "journeys"
+        ],
+        "summary": "Move Journey",
+        "operationId": "move_journey",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "journey_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Journey Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveJourneyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoveJourneyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Соседа нет у пользователя, он удалён или это сама переносимая поездка",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "journeys.invalid_move_target",
+                  "message": "Некорректная поездка-сосед для переноса",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "У пользователя нет такой поездки или она удалена",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "journeys.journey_not_found",
+                  "message": "Поездка не найдена",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/distance": {
+      "get": {
+        "tags": [
+          "journeys"
+        ],
+        "summary": "Estimate Journey Distance",
+        "operationId": "estimate_journey_distance",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "originLatitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Latitude"
+            }
+          },
+          {
+            "name": "originLongitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Longitude"
+            }
+          },
+          {
+            "name": "destinationLatitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Latitude"
+            }
+          },
+          {
+            "name": "destinationLongitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Longitude"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyDistanceResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "auth.invalid_access_token",
+                  "message": "Невалидный или истёкший access-токен",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/years": {
+      "get": {
+        "tags": [
+          "journeys"
+        ],
+        "summary": "Get Journey Years",
+        "operationId": "get_journey_years",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyYearsResponse"
                 }
               }
             }
@@ -816,16 +1496,6 @@
                   "code": "internal",
                   "message": "Внутренняя ошибка сервера",
                   "timestamp": "2024-01-01T12:00:00Z"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Ошибка валидации запроса",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1152,7 +1822,7 @@
           "traveledYear"
         ],
         "title": "CreateJourneyRequest",
-        "description": "Тело запроса создания поездки.\n\nГод не может быть в будущем (по UTC), отправление не может совпадать с назначением. Нарушения —\nошибки с кодами ``journeys.*``, а не 422."
+        "description": "Тело запроса создания поездки."
       },
       "CurrentUserResponse": {
         "properties": {
@@ -1236,6 +1906,133 @@
           "timestamp": "2024-01-01T12:00:00Z"
         }
       },
+      "JourneyDistanceResponse": {
+        "properties": {
+          "distanceKm": {
+            "type": "integer",
+            "title": "Distancekm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "distanceKm"
+        ],
+        "title": "JourneyDistanceResponse",
+        "description": "Расстояние маршрута по большой окружности, км — то же, что поездка сохранит."
+      },
+      "JourneyFeedEntry": {
+        "properties": {
+          "journeyId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Journeyid"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/JourneyPlace"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/JourneyPlace"
+          },
+          "transportType": {
+            "$ref": "#/components/schemas/TransportType"
+          },
+          "traveledYear": {
+            "type": "integer",
+            "title": "Traveledyear"
+          },
+          "distanceKm": {
+            "type": "integer",
+            "title": "Distancekm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "journeyId",
+          "origin",
+          "destination",
+          "transportType",
+          "traveledYear",
+          "distanceKm"
+        ],
+        "title": "JourneyFeedEntry",
+        "description": "Поездка в ленте."
+      },
+      "JourneyPlace": {
+        "properties": {
+          "placeId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Placeid"
+          },
+          "countryCode": {
+            "type": "string",
+            "title": "Countrycode"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          }
+        },
+        "type": "object",
+        "required": [
+          "placeId",
+          "countryCode",
+          "latitude",
+          "longitude"
+        ],
+        "title": "JourneyPlace",
+        "description": "Место поездки: его ``placeId``, страна и координаты, без названия."
+      },
+      "JourneyYearsResponse": {
+        "properties": {
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Years"
+          }
+        },
+        "type": "object",
+        "required": [
+          "years"
+        ],
+        "title": "JourneyYearsResponse",
+        "description": "Годы, в которые пользователь ездил, по возрастанию, без повторов — без учёта фильтров ленты."
+      },
+      "JourneysFeedResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/JourneyFeedEntry"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "title": "JourneysFeedResponse",
+        "description": "Страница ленты поездок: свежий год сверху, внутри года — порядок пользователя."
+      },
       "JourneysGlobeResponse": {
         "properties": {
           "places": {
@@ -1279,6 +2076,11 @@
         "title": "Language",
         "description": "Язык отображаемого имени места в автокомплите.\n\nЗакрытое множество поддерживаемых языков газеттира: имена импортируются только\nдля ``en``/``ru``. Используется как тип query-параметра ``language`` на границе HTTP\nи как ключ резолва имени в ``PlaceEntity.display_name``."
       },
+      "Latitude": {
+        "type": "number",
+        "maximum": 90.0,
+        "minimum": -90.0
+      },
       "LoginRequest": {
         "properties": {
           "login": {
@@ -1302,6 +2104,11 @@
           "password"
         ],
         "title": "LoginRequest"
+      },
+      "Longitude": {
+        "type": "number",
+        "maximum": 180.0,
+        "minimum": -180.0
       },
       "MapCity": {
         "properties": {
@@ -1382,6 +2189,48 @@
         ],
         "title": "MapPoint",
         "description": "Место на глобусе или карте перемещений: его ``placeId`` и координаты, без названия."
+      },
+      "MoveJourneyRequest": {
+        "properties": {
+          "neighborJourneyId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Neighborjourneyid"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/MovePlacement"
+          }
+        },
+        "type": "object",
+        "required": [
+          "neighborJourneyId",
+          "placement"
+        ],
+        "title": "MoveJourneyRequest",
+        "description": "Куда перенести поездку: после или перед поездкой-соседом."
+      },
+      "MoveJourneyResponse": {
+        "properties": {
+          "traveledYear": {
+            "type": "integer",
+            "title": "Traveledyear"
+          }
+        },
+        "type": "object",
+        "required": [
+          "traveledYear"
+        ],
+        "title": "MoveJourneyResponse",
+        "description": "Год поездки после переноса: он берётся от соседа и может смениться."
+      },
+      "MovePlacement": {
+        "type": "string",
+        "enum": [
+          "after",
+          "before"
+        ],
+        "title": "MovePlacement",
+        "description": "С какой стороны от строки-соседа встаёт переносимая строка в ручном порядке."
       },
       "MovementConnection": {
         "properties": {
@@ -1494,16 +2343,10 @@
             "title": "Countrycode"
           },
           "latitude": {
-            "type": "number",
-            "maximum": 90.0,
-            "minimum": -90.0,
-            "title": "Latitude"
+            "$ref": "#/components/schemas/Latitude"
           },
           "longitude": {
-            "type": "number",
-            "maximum": 180.0,
-            "minimum": -180.0,
-            "title": "Longitude"
+            "$ref": "#/components/schemas/Longitude"
           }
         },
         "type": "object",
@@ -1697,6 +2540,33 @@
         ],
         "title": "TransportType",
         "description": "Среда передвижения в поездке (а не конкретный вид транспорта).\n\nКатегория среды, не средство: пешком/машина/поезд = ``LAND``, самолёт = ``AIR``,\nпаром/корабль = ``WATER``. Зеркалит string-literal union на фронте."
+      },
+      "UpdateJourneyRequest": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/PlaceRef"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/PlaceRef"
+          },
+          "transportType": {
+            "$ref": "#/components/schemas/TransportType"
+          },
+          "traveledYear": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Traveledyear"
+          }
+        },
+        "type": "object",
+        "required": [
+          "origin",
+          "destination",
+          "transportType",
+          "traveledYear"
+        ],
+        "title": "UpdateJourneyRequest",
+        "description": "Тело запроса правки поездки: новые значения всех полей."
       },
       "VerifyEmailRequest": {
         "properties": {

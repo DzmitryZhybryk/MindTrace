@@ -1,0 +1,310 @@
+import { fireEvent } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { describe, expect, it } from "vitest";
+
+import { FEED_JOURNEYS, server } from "../../../test/handlers";
+import { intersectAllObserved, reportIntersection } from "../../../test/intersection";
+import { stubScreenLayout } from "../../../test/layout";
+import { matchMediaQueries } from "../../../test/motion";
+import { act, renderWithProviders, screen, waitFor, within } from "../../../test/render";
+import { AllJourneysView } from "./AllJourneysView";
+
+const DESKTOP_QUERY = "(min-width: 62em)";
+
+/** Подменяет ленту и запоминает query каждого запроса — тест смотрит, какие фильтры ушли. */
+function recordFeedRequests(
+  respond: (params: URLSearchParams) => Response | Promise<Response> = () =>
+    HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null }),
+) {
+  const requests: URLSearchParams[] = [];
+  server.use(
+    http.get("/v1/journeys/", ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      requests.push(params);
+      return respond(params);
+    }),
+  );
+  return requests;
+}
+
+describe("AllJourneysView", () => {
+  it("показывает поездки по годам — свежий год сверху — с названиями мест и расстоянием", async () => {
+    renderWithProviders(<AllJourneysView />);
+
+    const year2021 = await screen.findByRole("region", { name: "2021" });
+    const year2019 = screen.getByRole("region", { name: "2019" });
+    expect(year2021.compareDocumentPosition(year2019) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(await within(year2021).findByRole("button", { name: "Moscow" })).toBeInTheDocument();
+    expect(within(year2021).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(year2021).getByText("2,500 km")).toBeInTheDocument();
+    expect(within(year2019).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("наведённая поездка — дуга на карте с названиями её мест; другая строка меняет подписи", async () => {
+    matchMediaQueries(DESKTOP_QUERY);
+    const { container } = renderWithProviders(<AllJourneysView />);
+    const year2021 = await screen.findByRole("region", { name: "2021" });
+    await within(year2021).findByRole("button", { name: "Moscow" });
+    const [moscowToLondon, londonToParis] = within(year2021).getAllByRole("listitem");
+    const mapLabels = () => [...container.querySelectorAll(".feed-arc__label")].map((label) => label.textContent).sort();
+
+    fireEvent.pointerOver(moscowToLondon);
+    await waitFor(() => expect(mapLabels()).toEqual(["London", "Moscow"]));
+
+    fireEvent.pointerOver(londonToParis);
+    await waitFor(() => expect(mapLabels()).toEqual(["London", "Paris"]));
+  });
+
+  it("на узком экране карты за лентой нет — её даже не загружаем", async () => {
+    const { container } = renderWithProviders(<AllJourneysView />);
+    await screen.findByRole("region", { name: "2021" });
+
+    expect(container.querySelector(".all-journeys__map")).toBeNull();
+  });
+
+  it("кадр карты переезжает к наведённой поездке и остаётся на ней, когда курсор ушёл с ленты", async () => {
+    matchMediaQueries(DESKTOP_QUERY, "prefers-reduced-motion");
+    stubScreenLayout({
+      "world-map": { left: 0, top: 0, width: 1000, height: 487 },
+      "world-map-canvas": { left: 0, top: 0, width: 1000, height: 487 },
+      "all-journeys__column": { left: 0, top: 0, width: 400, height: 487 },
+    });
+    const { container } = renderWithProviders(<AllJourneysView />);
+    const year2021 = await screen.findByRole("region", { name: "2021" });
+    const [moscowToLondon, londonToParis] = within(year2021).getAllByRole("listitem");
+    const viewBox = () => container.querySelector(".world-map")?.getAttribute("viewBox");
+    await waitFor(() => expect(viewBox()).toBeTruthy());
+    const allJourneysFrame = viewBox();
+
+    // Лондон → Париж — короткая и в стороне от остальных: её кадр отличается от кадра всех поездок.
+    fireEvent.pointerOver(londonToParis);
+    await waitFor(() => expect(viewBox()).not.toBe(allJourneysFrame));
+    const londonToParisFrame = viewBox();
+    fireEvent.pointerOver(moscowToLondon);
+    await waitFor(() => expect(viewBox()).not.toBe(londonToParisFrame));
+    fireEvent.pointerOver(londonToParis);
+    await waitFor(() => expect(viewBox()).toBe(londonToParisFrame));
+    fireEvent.pointerLeave(container.querySelector(".journey-feed") ?? container);
+
+    // Дуга ушла вместе с курсором, а кадр — нет: он не возвращается к кадру всех поездок.
+    await waitFor(() => expect(container.querySelector(".feed-arc")).toBeNull());
+    expect(viewBox()).toBe(londonToParisFrame);
+  });
+
+  it("без поездок предлагает добавить первую", async () => {
+    server.use(
+      http.get("/v1/journeys/", () => HttpResponse.json({ items: [], nextCursor: null })),
+      http.get("/v1/journeys/years", () => HttpResponse.json({ years: [] })),
+    );
+    renderWithProviders(<AllJourneysView />);
+
+    expect(await screen.findByText("No journeys yet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add your first journey" })).toHaveAttribute("href", "/journeys/add");
+  });
+
+  it("ползунок лет сужает ленту, запрос уходит, когда ручка остановилась; ручки по краям — все годы", async () => {
+    const requests = recordFeedRequests();
+    const { user } = renderWithProviders(<AllJourneysView />);
+    await screen.findByRole("region", { name: "2021" });
+
+    screen.getByRole("slider", { name: "To year" }).focus();
+    await user.keyboard("{ArrowLeft}{ArrowLeft}");
+
+    await waitFor(() => expect(requests.at(-1)?.toString()).toBe("yearFrom=2019&yearTo=2019"));
+    // Промежуточное окно 2019–2020 отменилось до сети: ручку двигали подряд, запрос один.
+    expect(requests.map((params) => params.toString())).toEqual(["", "yearFrom=2019&yearTo=2019"]);
+
+    await user.keyboard("{ArrowRight}{ArrowRight}");
+
+    // Ручки снова по краям — без фильтра: тот же ключ, что у первого запроса, лента из кэша.
+    expect(await screen.findByRole("region", { name: "2021" })).toBeInTheDocument();
+    expect(requests).toHaveLength(2);
+  });
+
+  it("лента загружена целиком — новый фильтр виден сразу, до ответа сервера, и не приглушён", async () => {
+    // Ответ по фильтру держим: всё, что на экране до него, собрано на клиенте.
+    let releaseFiltered = () => {};
+    const filteredGate = new Promise<void>((resolve) => {
+      releaseFiltered = resolve;
+    });
+    recordFeedRequests((params) =>
+      params.has("yearFrom")
+        ? filteredGate.then(() => HttpResponse.json({ items: [FEED_JOURNEYS[2]], nextCursor: null }))
+        : HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null }),
+    );
+    const { user, container } = renderWithProviders(<AllJourneysView />);
+    await screen.findByRole("region", { name: "2021" });
+
+    screen.getByRole("slider", { name: "To year" }).focus();
+    await user.keyboard("{ArrowLeft}{ArrowLeft}");
+
+    await waitFor(() => expect(screen.queryByRole("region", { name: "2021" })).not.toBeInTheDocument());
+    expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(1);
+    expect(container.querySelector(".journey-feed--stale")).toBeNull();
+    releaseFiltered();
+  });
+
+  it("лента загружена не вся — выборка с клиента приглушена, пока сервер не ответил", async () => {
+    let releaseFiltered = () => {};
+    const filteredGate = new Promise<void>((resolve) => {
+      releaseFiltered = resolve;
+    });
+    recordFeedRequests((params) =>
+      params.has("yearFrom")
+        ? filteredGate.then(() => HttpResponse.json({ items: [FEED_JOURNEYS[2]], nextCursor: null }))
+        : HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: "page-2" }),
+    );
+    const { user, container } = renderWithProviders(<AllJourneysView />);
+    await screen.findByRole("region", { name: "2021" });
+
+    screen.getByRole("slider", { name: "To year" }).focus();
+    await user.keyboard("{ArrowLeft}{ArrowLeft}");
+
+    await waitFor(() => expect(screen.queryByRole("region", { name: "2021" })).not.toBeInTheDocument());
+    expect(container.querySelector(".journey-feed--stale")).not.toBeNull();
+
+    releaseFiltered();
+    await waitFor(() => expect(container.querySelector(".journey-feed--stale")).toBeNull());
+  });
+
+  it("заголовок года получает фон, только пока прилип к верху ленты", async () => {
+    renderWithProviders(<AllJourneysView />);
+    const header = await screen.findByRole("heading", { name: "2021" });
+    const rootBounds = DOMRect.fromRect({ x: 0, y: 100, width: 600, height: 400 });
+    expect(header).not.toHaveAttribute("data-stuck");
+
+    // Прилип: стоит на пиксель выше края прокрутки и виден не целиком.
+    act(() =>
+      reportIntersection(header, {
+        intersectionRatio: 0.98,
+        rootBounds,
+        boundingClientRect: DOMRect.fromRect({ x: 0, y: 99, width: 600, height: 46 }),
+      }),
+    );
+    expect(header).toHaveAttribute("data-stuck");
+
+    // Виден целиком — на своём месте в ленте.
+    act(() =>
+      reportIntersection(header, {
+        intersectionRatio: 1,
+        rootBounds,
+        boundingClientRect: DOMRect.fromRect({ x: 0, y: 220, width: 600, height: 46 }),
+      }),
+    );
+    expect(header).not.toHaveAttribute("data-stuck");
+
+    // Срезан снизу, у нижнего края прокрутки, — это не прилипание.
+    act(() =>
+      reportIntersection(header, {
+        intersectionRatio: 0.5,
+        rootBounds,
+        boundingClientRect: DOMRect.fromRect({ x: 0, y: 477, width: 600, height: 46 }),
+      }),
+    );
+    expect(header).not.toHaveAttribute("data-stuck");
+  });
+
+  it("поездки только за один год — шкалы лет нет, выбирать не из чего", async () => {
+    server.use(http.get("/v1/journeys/years", () => HttpResponse.json({ years: [2021] })));
+    renderWithProviders(<AllJourneysView />);
+
+    await screen.findByRole("region", { name: "2021" });
+
+    expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Years" })).not.toBeInTheDocument();
+  });
+
+  it("снятый вид транспорта уходит фильтром из оставшихся; без транспорта лента не запрашивается", async () => {
+    const requests = recordFeedRequests();
+    const { user } = renderWithProviders(<AllJourneysView />);
+    await screen.findByRole("region", { name: "2021" });
+
+    await user.click(screen.getByRole("checkbox", { name: "Air" }));
+    await waitFor(() => expect(requests.at(-1)?.getAll("transportType")).toEqual(["land", "water"]));
+
+    await user.click(screen.getByRole("checkbox", { name: "Land" }));
+    await user.click(screen.getByRole("checkbox", { name: "Water" }));
+    const requestCount = requests.length;
+
+    expect(await screen.findByText("Choose at least one transport")).toBeInTheDocument();
+    expect(requests).toHaveLength(requestCount);
+  });
+
+  it("фильтр без совпадений — отдельное сообщение, а не «поездок пока нет»", async () => {
+    recordFeedRequests((params) =>
+      HttpResponse.json({ items: params.has("yearFrom") ? [] : FEED_JOURNEYS, nextCursor: null }),
+    );
+    const { user } = renderWithProviders(<AllJourneysView />);
+
+    (await screen.findByRole("slider", { name: "To year" })).focus();
+    await user.keyboard("{ArrowLeft}");
+
+    expect(await screen.findByText("No journeys match these filters")).toBeInTheDocument();
+    expect(screen.queryByText("No journeys yet")).not.toBeInTheDocument();
+  });
+
+  it("сторож в конце ленты догружает следующую порцию по курсору; строка из двух порций — одна", async () => {
+    const londonToMoscow = {
+      ...FEED_JOURNEYS[0],
+      journeyId: "aaaaaaaa-0000-4000-8000-000000000004",
+      origin: FEED_JOURNEYS[0].destination,
+      destination: FEED_JOURNEYS[0].origin,
+      traveledYear: 2018,
+    };
+    const requests = recordFeedRequests((params) =>
+      params.get("cursor") === "page-2"
+        ? HttpResponse.json({ items: [FEED_JOURNEYS[2], londonToMoscow], nextCursor: null })
+        : HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: "page-2" }),
+    );
+    renderWithProviders(<AllJourneysView />);
+    await screen.findByRole("region", { name: "2019" });
+
+    act(() => intersectAllObserved());
+
+    const year2018 = await screen.findByRole("region", { name: "2018" });
+    expect(within(year2018).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(1);
+    expect(requests.map((params) => params.get("cursor"))).toEqual([null, "page-2"]);
+  });
+
+  it("порция не догрузилась — сообщение у конца ленты и повтор, который её догружает", async () => {
+    let isFailing = true;
+    recordFeedRequests((params) => {
+      if (params.get("cursor") !== "page-2") {
+        return HttpResponse.json({ items: FEED_JOURNEYS.slice(0, 2), nextCursor: "page-2" });
+      }
+
+      return isFailing
+        ? HttpResponse.json({ code: "internal_error", message: "boom" }, { status: 500 })
+        : HttpResponse.json({ items: FEED_JOURNEYS.slice(2), nextCursor: null });
+    });
+    const { user } = renderWithProviders(<AllJourneysView />);
+    await screen.findByRole("region", { name: "2021" });
+
+    act(() => intersectAllObserved());
+
+    expect(await screen.findByText("Couldn't load more journeys")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "2021" })).toBeInTheDocument();
+    isFailing = false;
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByRole("region", { name: "2019" })).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load more journeys")).not.toBeInTheDocument();
+  });
+
+  it("ошибка загрузки ленты — сообщение и повтор, который её показывает", async () => {
+    let isFailing = true;
+    recordFeedRequests(() =>
+      isFailing
+        ? HttpResponse.json({ code: "internal_error", message: "boom" }, { status: 500 })
+        : HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null }),
+    );
+    const { user } = renderWithProviders(<AllJourneysView />);
+
+    expect(await screen.findByText("Couldn't load your journeys")).toBeInTheDocument();
+    isFailing = false;
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByRole("region", { name: "2021" })).toBeInTheDocument();
+  });
+});

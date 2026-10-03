@@ -5,19 +5,12 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
-import { ApiError, applyApiError, errorCodeToken, resolveErrorToken } from "../../api/errors";
-import {
-  createJourneyMutation,
-  getJourneysGlobeQueryKey,
-  getJourneysMapQueryKey,
-  getMovementsMapQueryKey,
-  zTransportType,
-  type PlaceSearchItem,
-  type PlaceRef,
-  type TransportType,
-} from "../../api/sdk";
+import { applyApiError, resolveErrorToken } from "../../api/errors";
+import { createJourneyMutation, zTransportType, type TransportType } from "../../api/sdk";
 import { PlaceAutocomplete } from "../../components/PlaceAutocomplete";
 import { TRANSPORT_ICONS } from "../../components/transportIcons";
+import { invalidateJourneyAggregates, invalidateJourneyFeed } from "./journeyCache";
+import { applyUnknownPlaceError, hasCountry, toPlaceRef, type JourneyFormValues } from "./journeyFormRules";
 import { JourneyYearField } from "./JourneyYearField";
 
 const TRANSPORT_ICON_SIZE = 22;
@@ -47,59 +40,6 @@ function SwapVerticalIcon() {
   );
 }
 
-export type JourneyFormValues = {
-  origin: PlaceSearchItem | null;
-  destination: PlaceSearchItem | null;
-  transport: TransportType | null;
-  year: string | null;
-};
-
-const UNKNOWN_PLACE_CODE = "journeys.unknown_place";
-
-type PlaceWithCountry = PlaceSearchItem & { countryCode: string };
-
-/** Поездке нужна страна места; место без неё валидатор формы не пропускает до сабмита. */
-function hasCountry(place: PlaceSearchItem): place is PlaceWithCountry {
-  return Boolean(place.countryCode);
-}
-
-/** Место из подсказок → тело запроса: бэк проверяет место по `placeId`. */
-function toPlaceRef(place: PlaceWithCountry): PlaceRef {
-  return { placeId: place.placeId, countryCode: place.countryCode, latitude: place.latitude, longitude: place.longitude };
-}
-
-/**
- * Подсвечивает поля с местами, которых бэк не нашёл (`journeys.unknown_place`).
- *
- * Бэк возвращает только id ненайденных мест — какое поле подсветить, форма решает сама,
- * сравнивая их с выбранными местами.
- *
- * Returns:
- *     `true`, если ошибка разобрана и показана у полей.
- */
-function applyUnknownPlaceError(
-  err: unknown,
-  values: JourneyFormValues,
-  form: UseFormReturnType<JourneyFormValues>,
-): boolean {
-  if (!(err instanceof ApiError) || err.code !== UNKNOWN_PLACE_CODE) {
-    return false;
-  }
-
-  const rawIds = err.details?.place_ids;
-  const missing = new Set(Array.isArray(rawIds) ? rawIds.filter((id): id is string => typeof id === "string") : []);
-  let isApplied = false;
-  for (const field of ["origin", "destination"] as const) {
-    const place = values[field];
-    if (place && missing.has(place.placeId)) {
-      form.setFieldError(field, errorCodeToken(UNKNOWN_PLACE_CODE));
-      isApplied = true;
-    }
-  }
-
-  return isApplied;
-}
-
 interface JourneyFormProps {
   form: UseFormReturnType<JourneyFormValues>;
 }
@@ -116,17 +56,10 @@ export function JourneyForm({ form }: JourneyFormProps) {
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Новая поездка меняет и карту, и глобус — инвалидируем оба. Без этого глобус-фон
-  // (`staleTime: Infinity`) не увидел бы её до перезагрузки страницы.
+  // Новая поездка меняет карты, глобус, ленту и её годы — сбрасываем всё.
   const { mutateAsync: submitJourney, isPending: submitting } = useMutation({
     ...createJourneyMutation(),
-    onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: getJourneysMapQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getJourneysGlobeQueryKey() }),
-        // Ключ без фильтров совпадает с ключами для любых фильтров — сбрасываются все варианты карты.
-        queryClient.invalidateQueries({ queryKey: getMovementsMapQueryKey() }),
-      ]),
+    onSuccess: () => Promise.all([invalidateJourneyAggregates(queryClient), invalidateJourneyFeed(queryClient)]),
   });
 
   // Меняем «откуда»/«куда» местами. Глобус развернёт маршрут и иконку транспорта сам —

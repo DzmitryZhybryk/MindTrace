@@ -232,8 +232,8 @@ export const ROUTE_ARCS: RouteArc[] = ROUTES.map((route, index) => ({
 export const ROUTE_CITIES: City[] = Array.from(
   new Map(
     ROUTES.flatMap((route) => [
-      [route.from.name, route.from],
-      [route.to.name, route.to],
+      [route.from.id, route.from],
+      [route.to.id, route.to],
     ]),
   ).values(),
 );

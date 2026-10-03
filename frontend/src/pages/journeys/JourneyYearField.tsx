@@ -3,7 +3,7 @@ import type { UseFormReturnType } from "@mantine/form";
 import { useTranslation } from "react-i18next";
 
 import { resolveErrorToken } from "../../api/errors";
-import type { JourneyFormValues } from "./JourneyForm";
+import type { JourneyFormValues } from "./journeyFormRules";
 
 const YEARS_BACK = 100;
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 
+import { prefersReducedMotion } from "../reducedMotion";
 import { revealPov } from "./cameraReveal";
 import { GLOBE_ATMOSPHERE_COLOR, GLOBE_BUMP_URL, GLOBE_TEXTURE_URL } from "./constants";
 import { applyLabelDeclutter, applyLabelVisibility, createGlobeLabel } from "./globeLabel";
@@ -132,11 +133,7 @@ export function GlobeCanvas({
   // `paused` прошлого коммита: эффект камеры читает его ДО эффекта, который его обновляет.
   const wasPausedRef = useRef(paused);
   const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
-  const [reducedMotion] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false),
-  );
+  const [reducedMotion] = useState(prefersReducedMotion);
   const routeScene = useRouteScene({ route, globeRef, containerRef, reducedMotion, fading: routeFading });
   // Без маршрута — та же ссылка `labelCities`: новый массив на рендер пересобирал бы слой.
   const htmlData: object[] =

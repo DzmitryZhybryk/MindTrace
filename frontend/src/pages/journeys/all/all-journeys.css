@@ -1,0 +1,484 @@
+/* ---- Все поездки: колонка фильтров и ленты справа от панели навигации ------ */
+.all-journeys {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  /* Верх колонки — на одной линии с верхом левой панели. */
+  padding: var(--content-offset-top) 32px 24px;
+}
+
+/* ---- Фон-карта: за колонкой, кадр — в свободной части справа ---------------- */
+.all-journeys__map {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Суша приглушена, дуга — нет: карта фон, дуга — то, ради чего она здесь. */
+.feed-map .world-map__country {
+  opacity: 0.45;
+}
+
+.feed-arc__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  animation: feed-arc-draw 0.6s ease-out both;
+}
+
+.feed-arc__dot {
+  fill: var(--accent);
+  animation: feed-arc-dot 0.3s ease-out both;
+}
+
+/* Название места: обводка цветом фона под текстом держит его читаемым поверх суши и дуги. */
+.feed-arc__label {
+  fill: var(--text);
+  stroke: var(--surface);
+  stroke-linejoin: round;
+  paint-order: stroke;
+  font-family: var(--font-body);
+  font-weight: 500;
+  animation: feed-arc-dot 0.3s ease-out both;
+}
+
+@keyframes feed-arc-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes feed-arc-dot {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Колонка отодвинута от плавающей панели (left:32 + width:260), как форма добавления. */
+.all-journeys__column {
+  position: relative;
+  z-index: 1;
+  flex: 0 1 640px;
+  min-width: 0;
+  margin-left: 276px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Карта — фон и под колонкой тоже: стекло карточек без размытия, суша и дуга видны сквозь него. */
+.all-journeys__column .journeys-card {
+  backdrop-filter: none;
+}
+
+.all-journeys__filters {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+}
+
+/* Тот же стиль, что у заголовков панели и формы. */
+.all-journeys__title {
+  margin: 0;
+  font: 600 var(--fs-16)/1.2 var(--font-display);
+  color: var(--text);
+}
+
+.all-journeys__filter-label {
+  margin-bottom: 8px;
+  padding: 0;
+  font: 500 var(--fs-12)/1 var(--font-body);
+  color: var(--text-muted);
+}
+
+/* Лента прокручивается внутри своей карточки — экран раздела на десктопе не скроллится. */
+.all-journeys__feed {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 24px 16px;
+}
+
+.all-journeys__status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 0;
+}
+
+.all-journeys__add-link {
+  font: 600 var(--fs-14)/1 var(--font-body);
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.all-journeys__add-link:hover {
+  text-decoration: underline;
+}
+
+/* ---- Фильтры: шкала лет (ползунок карты перемещений) и чипы транспорта ------ */
+.all-journeys__years,
+.transport-chips {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.transport-chips__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ---- Чипы транспорта и подпись транспорта ---------------------------------- */
+.transport-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Выбранность видна по заливке — галочку Mantine прячем. */
+.transport-chips__chip .mantine-Chip-iconWrapper {
+  display: none;
+}
+
+/* ---- Лента ---------------------------------------------------------------- */
+.journey-feed {
+  position: relative;
+  transition: opacity var(--dur-fast) ease;
+}
+
+/* Прежний набор, пока грузится новый по сменившимся фильтрам. */
+.journey-feed--stale {
+  opacity: 0.55;
+}
+
+/*
+ * Год прилипает к верху карточки. Фон — только у прилипшего: под него уезжают строки, и он
+ * плотнее стекла карточки, чтобы они не читались. На месте заголовок прозрачный, как строки.
+ * `top: -1px` — чтобы прилипший был виден наблюдателю не целиком (см. YearHeader).
+ */
+.year-header {
+  position: sticky;
+  top: -1px;
+  z-index: 1;
+  margin: 0 -24px;
+  padding: 16px 24px 8px;
+  font: 600 var(--fs-22)/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  transition: background-color var(--dur-fast) ease;
+}
+
+.year-header[data-stuck] {
+  background: rgb(var(--ink-glass-rgb) / 0.94);
+}
+
+/* Пока строку несут, заголовок уступает ей место в такт строкам (переход как у dnd-kit). На
+   отпускании перехода нет: заголовок встаёт на место вместе с перестройкой ленты. */
+.journey-feed--sorting .year-header {
+  transition:
+    transform 250ms ease,
+    background-color var(--dur-fast) ease;
+}
+
+.journey-feed__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Невидимая сетка: ручка | иконка | маршрут | расстояние, без линеек таблицы. */
+.journey-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  margin: 0 -8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+/* Перетаскиваемая строка — над соседями, с подложкой, чтобы не смешиваться с ними. */
+.journey-row--dragging {
+  z-index: 2;
+  background: rgb(var(--ink-glass-rgb) / 0.96);
+  box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 0.45);
+}
+
+/* Ручка видна при наведении на строку и в фокусе; на тач-экране — всегда. */
+.journey-row__handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity var(--dur-fast) ease;
+}
+
+.journey-row:hover .journey-row__handle,
+.journey-row--dragging .journey-row__handle,
+.journey-row__handle:focus-visible {
+  opacity: 1;
+}
+
+.journey-row--dragging .journey-row__handle {
+  cursor: grabbing;
+}
+
+.journey-row__handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.journey-row__handle:disabled {
+  cursor: default;
+  visibility: hidden;
+}
+
+@media (pointer: coarse) {
+  .journey-row__handle {
+    opacity: 1;
+  }
+}
+
+/* Подсказка года перелистывается при каждом новом годе (компонент меняет ей ключ). */
+.journey-row__drop-year {
+  display: inline-block;
+  font: 600 var(--fs-13)/1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  white-space: nowrap;
+  animation: journey-year-flip 0.25s ease-out both;
+}
+
+@keyframes journey-year-flip {
+  from {
+    opacity: 0;
+    transform: perspective(200px) rotateX(-80deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Только что сохранённая строка мигает акцентом и гаснет. */
+.journey-row--saved {
+  animation: journey-row-saved 1.2s ease-out;
+}
+
+@keyframes journey-row-saved {
+  from {
+    background: rgb(var(--sun-rgb) / 0.25);
+  }
+
+  to {
+    background: transparent;
+  }
+}
+
+/* Удалённая строка схлопывается, прежде чем пропасть из ленты. */
+.journey-row--collapsing {
+  overflow: hidden;
+  animation: journey-row-collapse 0.25s ease-in forwards;
+}
+
+@keyframes journey-row-collapse {
+  from {
+    max-height: 480px;
+    opacity: 1;
+  }
+
+  to {
+    max-height: 0;
+    margin-block: 0;
+    padding-block: 0;
+    opacity: 0;
+  }
+}
+
+.journey-feed__error {
+  padding-top: 12px;
+}
+
+.journey-row__route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+  font: 500 var(--fs-15)/1.3 var(--font-body);
+  color: var(--text);
+}
+
+.journey-row__place {
+  overflow-wrap: anywhere;
+}
+
+.journey-row__arrow {
+  color: var(--text-muted);
+}
+
+/* Поля строки — кнопки без рамки: выглядят текстом, нажатие открывает правку. */
+.journey-row__field {
+  display: inline-flex;
+  align-items: center;
+  margin: -2px -4px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: text;
+  transition: background var(--dur-fast) ease;
+}
+
+.journey-row__field:hover {
+  background: rgb(var(--ink-on-dark-rgb) / 0.07);
+}
+
+.journey-row__field:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Правка: строка разворачивается в форму на всю ширину ленты. */
+.journey-row--editing {
+  display: block;
+  margin: 6px -12px;
+  padding: 14px 12px;
+  border-radius: 12px;
+  background: rgb(var(--ink-on-dark-rgb) / 0.05);
+}
+
+.journey-editor__route {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Удаление — справа, отдельно от Save / Cancel. */
+.journey-editor__delete {
+  margin-left: auto;
+}
+
+.transport-picker {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.transport-picker__label {
+  margin-bottom: 6px;
+  padding: 0;
+  font: 600 var(--fs-14)/1.4 var(--font-body);
+  color: var(--text);
+}
+
+.transport-picker__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.transport-picker__chip .mantine-Chip-iconWrapper {
+  display: none;
+}
+
+.journey-row__distance {
+  font: 400 var(--fs-13)/1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.journey-feed__more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 0;
+}
+
+/*
+ * Сторож догрузки растянут вверх от низа ленты: он попадает на экран примерно за полэкрана до
+ * конца загруженного, и следующая порция успевает прийти до того, как список кончится.
+ */
+.journey-feed__sentinel {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 50vh;
+  pointer-events: none;
+}
+
+/* Меньше движения: всё появляется и пропадает сразу. Схлопывание и мигание JS здесь не ждёт —
+   при этой настройке он их не запускает. */
+@media (prefers-reduced-motion: reduce) {
+  .feed-arc__line,
+  .feed-arc__dot,
+  .feed-arc__label,
+  .journey-row__drop-year,
+  .journey-row--saved,
+  .journey-row--collapsing {
+    animation: none;
+  }
+
+  .journey-feed,
+  .year-header,
+  .journey-feed--sorting .year-header {
+    transition: none;
+  }
+}
+
+/* ---- Узкий экран: колонка в потоке под панелью, страница скроллится целиком ---- */
+@media (max-width: 61.99em) {
+  .all-journeys {
+    position: static;
+    inset: auto;
+    padding: 0;
+  }
+
+  .all-journeys__column {
+    flex: 1 1 auto;
+    margin-left: 0;
+  }
+
+  .all-journeys__feed {
+    overflow: visible;
+  }
+
+  .journey-editor__route {
+    grid-template-columns: 1fr;
+  }
+}

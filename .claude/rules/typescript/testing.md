@@ -30,6 +30,14 @@ dialogs, the banner) and e2e thinnest — only the critical happy paths. Current
   sees `describe`/`it`/`vi`.
 - **jsdom** — simulated DOM. `sessionStorage`, `localStorage`, `atob`, `btoa` exist; **`fetch` is
   stubbed per-test** (`vi.stubGlobal`), **`matchMedia` does not exist** — mock it in component setup.
+  Missing APIs that `src/test/setup.ts` already stubs globally — read it before adding a stub.
+  `IntersectionObserver` there is controllable: the test triggers intersection itself
+  (`intersectAllObserved` from `src/test/intersection.ts`).
+- **No layout and no `AnimationEvent` in jsdom.** Every rect is zero, so anything that measures
+  (dnd-kit, FLIP) needs stubbed `getBoundingClientRect` / `offsetTop` (`src/test/layout.ts`, or a
+  per-test spy). Without `AnimationEvent` React listens to `onAnimationEnd` on the prefixed
+  `webkitAnimationEnd`, and `fireEvent.animationEnd` drops `animationName` — dispatch a
+  `new Event("webkitAnimationEnd")` with `animationName` defined on it.
 - **@testing-library/react** + **@testing-library/user-event** + **@testing-library/jest-dom** —
   component layer (added in the component phase).
 - **MSW** — network mocking for the component layer (the reusable "API fakes", analogous to the

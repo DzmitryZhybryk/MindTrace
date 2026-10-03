@@ -4,7 +4,7 @@ import { renderWithProviders, screen } from "../../test/render";
 import { JourneysPanel } from "./JourneysPanel";
 
 describe("JourneysPanel", () => {
-  it("реализованные пункты — ссылки: «Journeys map», «Movements map» и «+ Add journey» ведут на свои маршруты", () => {
+  it("реализованные пункты — ссылки: «Journeys map», «Movements map», «All journeys» и «+ Add journey» ведут на свои маршруты", () => {
     renderWithProviders(<JourneysPanel />);
 
     expect(screen.getByRole("link", { name: "Journeys map" })).toHaveAttribute("href", "/journeys");
@@ -12,22 +12,30 @@ describe("JourneysPanel", () => {
       "href",
       "/journeys/movements",
     );
+    expect(screen.getByRole("link", { name: "All journeys" })).toHaveAttribute("href", "/journeys/all");
     expect(screen.getByRole("link", { name: /Add journey/u })).toHaveAttribute(
       "href",
       "/journeys/add",
     );
   });
 
-  it("нереализованные разделы не навигируют: не ссылки, помечены «Soon», aria-disabled", () => {
+  it("нереализованный раздел «Wishlist» не навигирует: не ссылка, помечен «Soon», aria-disabled", () => {
     renderWithProviders(<JourneysPanel />);
 
-    for (const label of ["All journeys", "Wishlist"]) {
-      // Главный инвариант патча: пункт не ссылка → в пустой маршрут не ведёт.
-      expect(screen.queryByRole("link", { name: new RegExp(label, "u") })).toBeNull();
-      const item = screen.getByText(label);
-      expect(item).toHaveAttribute("aria-disabled", "true");
-      expect(item).toHaveTextContent("Soon");
-    }
+    // Главный инвариант: пункт не ссылка → в пустой маршрут не ведёт.
+    expect(screen.queryByRole("link", { name: /Wishlist/u })).toBeNull();
+    const item = screen.getByText("Wishlist");
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    expect(item).toHaveTextContent("Soon");
+  });
+
+  it("на маршруте /journeys/all подсвечивает «All journeys», «Journeys map» (end) не активен", () => {
+    renderWithProviders(<JourneysPanel />, { route: "/journeys/all" });
+
+    const active = screen.getByRole("link", { name: "All journeys" });
+    expect(active).toHaveClass("journeys-nav__item--active");
+    expect(active).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Journeys map" })).not.toHaveClass("journeys-nav__item--active");
   });
 
   it("«+ Add place» — отключённая кнопка с бейджем «Soon», не ссылка", () => {
