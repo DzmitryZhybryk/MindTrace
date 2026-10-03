@@ -7,8 +7,8 @@ import { GEO_PLACES, server } from "../../test/handlers";
 import { createTestQueryClient, screen } from "../../test/render";
 import { movementsQueryOptions } from "./movements/movementsQuery";
 
-// Сценарии формы разнесены по файлам (*.errors / *.validation / *.fields / *.scene): каждый
-// выбор места ждёт debounce автокомплита, и в одном файле они шли бы строго последовательно.
+// Form scenarios are split across files (*.errors / *.validation / *.fields / *.scene): every
+// place pick waits for the autocomplete debounce, and in one file they would run strictly in sequence.
 
 const [MOSCOW, LONDON] = GEO_PLACES;
 
@@ -37,8 +37,8 @@ describe("AddJourneyPage — отправка", () => {
   it("успешное создание помечает устаревшими карту, глобус и карту перемещений при любых фильтрах", async () => {
     server.use(http.post("/v1/journeys/", () => new HttpResponse(null, { status: 201 })));
     const queryClient = createTestQueryClient();
-    // Всё уже в кэше — как после захода на вкладки перед добавлением поездки. Карта
-    // перемещений — в двух вариантах: без фильтра и с одним видом транспорта.
+    // Everything is already in the cache, as after visiting the tabs before adding a journey. The
+    // movements map comes in two variants: unfiltered and with one transport type.
     const filteredMovementsKey = movementsQueryOptions(["air"]).queryKey;
     const noMovements = { firstYear: null, lastYear: null, connections: [] };
     queryClient.setQueryData(getJourneysMapQueryKey(), { countries: [] });
@@ -83,7 +83,7 @@ describe("AddJourneyPage — отправка", () => {
 
     await user.click(screen.getByRole("button", { name: "Swap origin and destination" }));
 
-    // Видимый текст полей подтянулся под перевёрнутые значения формы.
+    // The visible field text followed the swapped form values.
     expect(screen.getByLabelText("From")).toHaveValue("London");
     expect(screen.getByLabelText("To")).toHaveValue("Moscow");
 

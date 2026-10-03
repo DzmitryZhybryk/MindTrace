@@ -14,7 +14,7 @@ import {
 const WORLD_WIDTH = WORLD_VIEW_BOX.width;
 const WORLD_HEIGHT = WORLD_VIEW_BOX.height;
 
-/** Доля ширины видимой области, на которой лежит точка холста. */
+/** The share of the visible area's width at which a canvas point lies. */
 function relativeX(view: ViewBox, x: number): number {
   return (x - view.x) / view.width;
 }

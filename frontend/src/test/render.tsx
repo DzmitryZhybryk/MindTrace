@@ -1,18 +1,17 @@
 /**
- * Кастомный `render` с провайдерами приложения — единая точка для всех
- * component-тестов (аналог backend-фикстуры «service-under-test на фейках»).
+ * Custom `render` with the app providers: the single entry point for all component tests.
  *
- * Поднимает `MantineProvider` (тема приложения) + `MemoryRouter` (Link/Navigate/
- * useNavigate требуют Router-предка). Auth-состояние подаётся одним из двух путей:
- *  - `authValue` — stub `AuthContext.Provider` с контролируемым value (для
- *    компонентов, которым нужно фиксированное `{emailVerified, isAuthenticated…}`
- *    без поднятия реального bootstrap'а: HomePage, ProtectedRoute);
- *  - `withAuthProvider` — реальный `<AuthProvider>` (для страниц, где проверяем
- *    сам флоу `setAccessToken` → навигация: LoginPage, SignUpPage).
+ * Sets up `MantineProvider` (app theme) + `MemoryRouter` (Link/Navigate/useNavigate need a Router
+ * ancestor). Auth state comes by one of two paths:
+ *  - `authValue`: a stub `AuthContext.Provider` with a controlled value (for components that need
+ *    a fixed `{emailVerified, isAuthenticated...}` without the real bootstrap: HomePage,
+ *    ProtectedRoute);
+ *  - `withAuthProvider`: the real `<AuthProvider>` (for pages where the `setAccessToken` ->
+ *    navigation flow itself is checked: LoginPage, SignUpPage).
  *
- * Навигацию наблюдаем «как пользователь»: `renderRoutes` монтирует компонент на
- * его пути и добавляет landing-маркеры для целевых путей — после `navigate("/")`
- * в DOM появляется текст landing'а. `useNavigate` при этом не мокается.
+ * Navigation is observed "as a user": `renderRoutes` mounts the component at its path and adds
+ * landing markers for target paths, so after `navigate("/")` the landing text appears in the DOM.
+ * `useNavigate` is not mocked.
  */
 
 import { useState, type ReactElement, type ReactNode } from "react";
@@ -31,15 +30,12 @@ import { theme } from "../theme";
 import { CurrentUserProvider } from "../user/CurrentUserContext";
 
 /**
- * Query-клиент для одного теста — с боевыми дефолтами он был бы источником флака.
+ * Query client for one test; with production defaults it would be a source of flakiness.
  *
- * `retry: false` — иначе кейс «запрос упал» ждал бы три повтора с backoff'ом и
- * упирался в таймаут вместо того, чтобы показать ошибку. `refetchOnWindowFocus: false`
- * — jsdom шлёт focus по ходу `userEvent`, и фоновый рефетч бил бы по MSW уже после
- * `server.resetHandlers()`. Кэш свежий на каждый рендер: состояние между кейсами не течёт.
- *
- * Returns:
- *     Изолированный `QueryClient` для одного дерева.
+ * `retry: false`, otherwise a "request failed" case would wait for three retries with backoff and
+ * hit the timeout instead of showing the error. `refetchOnWindowFocus: false`: jsdom sends focus
+ * during `userEvent`, and a background refetch would hit MSW after `server.resetHandlers()`. The
+ * cache is fresh per render, so state does not leak between cases.
  */
 export function createTestQueryClient(queries: DefaultOptions["queries"] = {}): QueryClient {
   return new QueryClient({
@@ -50,13 +46,13 @@ export function createTestQueryClient(queries: DefaultOptions["queries"] = {}): 
 }
 
 type AuthOptions = {
-  /** Stub-значение контекста; имеет приоритет над `withAuthProvider`. */
+  /** Stub context value; takes priority over `withAuthProvider`. */
   authValue?: AuthContextValue;
-  /** Обернуть в реальный `<AuthProvider>` (если `authValue` не задан). */
+  /** Wrap in the real `<AuthProvider>` (if `authValue` is not set). */
   withAuthProvider?: boolean;
   /**
-   * Свой Query-клиент вместо дефолтного — когда тест смотрит на кэш снаружи дерева
-   * (инвалидация, очистка на разлогине) или меняет политику повторов.
+   * Own Query client instead of the default: when a test looks at the cache from outside the tree
+   * (invalidation, clearing on logout) or changes the retry policy.
    */
   queryClient?: QueryClient;
 };
@@ -67,12 +63,11 @@ type ProvidersProps = AuthOptions & {
 };
 
 function Providers({ children, initialPath, authValue, withAuthProvider, queryClient }: ProvidersProps) {
-  // Клиент фиксируется на монтирование дерева: `rerender` в тесте не должен сбрасывать
-  // кэш вместе с ним.
+  // The client is fixed at tree mount: a `rerender` in a test must not reset the cache with it.
   const [client] = useState(() => queryClient ?? createTestQueryClient());
 
-  // Реальный CurrentUserProvider в обоих auth-режимах (сеть закрывает MSW-handler
-  // `/v1/users/me`); в default-ветке его нет — без Auth-предка useAuth внутри бросит.
+  // The real CurrentUserProvider in both auth modes (an MSW handler for `/v1/users/me` covers the
+  // network); the default branch has none, since useAuth would throw without an Auth ancestor.
   let withAuth: ReactNode = children;
   if (authValue !== undefined) {
     withAuth = (
@@ -89,16 +84,13 @@ function Providers({ children, initialPath, authValue, withAuthProvider, queryCl
   }
 
   return (
-    // Схема — "dark", как в `main.tsx`. Раньше здесь стояло "light", и это было НЕ
-    // мелочью: на `main` обе стороны были светлыми, редизайн перевёл прод на тёмную, а
-    // тесты остались на светлой — то есть весь редизайн проверялся в противоположной
-    // схеме. Именно поэтому 207 зелёных тестов пропустили заголовок с контрастом 1.29:1
-    // и белую метку кнопки на светлом акценте: гейт физически не мог их увидеть.
+    // The scheme is "dark", as in `main.tsx`: tests must use the same scheme as production, or the
+    // gate cannot see contrast bugs that exist only in the dark scheme.
     //
-    // env="test" отключает Mantine-transitions и порталы: дропдаун Menu/Modal
-    // монтируется синхронно при открытии, без таймеров анимации. Без этого Menu в
-    // jsdom флапает — открывается и закрывается посреди асинхронной цепочки
-    // userEvent, и `findAllByRole("menuitem")` периодически таймаутит.
+    // env="test" disables Mantine transitions and portals: the Menu/Modal dropdown mounts
+    // synchronously on open, with no animation timers. Without it Menu flaps in jsdom, opening and
+    // closing in the middle of an async userEvent chain, and `findAllByRole("menuitem")`
+    // intermittently times out.
     <MantineProvider theme={theme} defaultColorScheme="dark" env="test">
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={[initialPath]}>
@@ -110,13 +102,13 @@ function Providers({ children, initialPath, authValue, withAuthProvider, queryCl
 }
 
 type RenderOptions = AuthOptions & {
-  /** Стартовый путь MemoryRouter (по умолчанию "/"). */
+  /** Initial MemoryRouter path (default "/"). */
   route?: string;
 };
 
 /**
- * Рендерит произвольный UI в провайдерах. Возвращает `user` (готовый
- * `userEvent.setup()`) поверх стандартного `RenderResult`.
+ * Renders arbitrary UI in the providers. Returns `user` (a ready `userEvent.setup()`) on top of
+ * the standard `RenderResult`.
  */
 export function renderWithProviders(
   ui: ReactElement,
@@ -135,25 +127,25 @@ export function renderWithProviders(
 }
 
 type Landing = {
-  /** Путь маршрута-маркера (цель навигации). */
+  /** Path of the marker route (the navigation target). */
   path: string;
-  /** Текст, по которому тест найдёт приземление (`findByText`). */
+  /** Text the test uses to find the landing (`findByText`). */
   label: string;
 };
 
 type RenderRoutesOptions = AuthOptions & {
-  /** Компонент-под-тестом и путь, на котором он смонтирован. */
+  /** The component under test and the path it is mounted at. */
   element: ReactElement;
   path: string;
-  /** Стартовый путь (по умолчанию = `path`). */
+  /** Initial path (default = `path`). */
   initialPath?: string;
-  /** Маркеры для целевых путей навигации. */
+  /** Markers for navigation target paths. */
   landings?: Landing[];
 };
 
 /**
- * Рендерит компонент в `<Routes>` вместе с landing-маркерами — для проверки
- * навигации по тому, что видит пользователь (а не слежки за `useNavigate`).
+ * Renders a component in `<Routes>` with landing markers, to check navigation by what the user
+ * sees (not by spying on `useNavigate`).
  */
 export function renderRoutes(
   options: RenderRoutesOptions,
@@ -179,8 +171,8 @@ export function renderRoutes(
 }
 
 /**
- * Строит полный `AuthContextValue` со спайами-заглушками по умолчанию; тест
- * переопределяет нужные поля (`emailVerified`, `isAuthenticated`, …).
+ * Builds a full `AuthContextValue` with default stub spies; a test overrides the fields it needs
+ * (`emailVerified`, `isAuthenticated`, ...).
  */
 export function makeAuthValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   return {
@@ -197,10 +189,9 @@ export function makeAuthValue(overrides: Partial<AuthContextValue> = {}): AuthCo
 }
 
 /**
- * Возвращает пункт меню Mantine по точному тексту. Снимаем все пункты одним
- * `findAllByRole` и матчим по `textContent` — надёжнее и нагляднее, чем
- * `findByRole("menuitem", { name })` на конкретный пункт. Дропдаун рендерится
- * синхронно благодаря `env="test"` у `MantineProvider` (см. выше).
+ * Returns a Mantine menu item by exact text. Grab all items with one `findAllByRole` and match by
+ * `textContent`: more reliable and clearer than `findByRole("menuitem", { name })` for one item.
+ * The dropdown renders synchronously thanks to `env="test"` on `MantineProvider` (see above).
  */
 export async function findMenuItem(text: string): Promise<HTMLElement> {
   const items = await screen.findAllByRole("menuitem");

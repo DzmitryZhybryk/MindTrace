@@ -23,8 +23,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Сброс состояния делаем в обработчике закрытия (а не в эффекте на `opened`),
-  // чтобы следующее открытие стартовало с чистой стадии "intro".
+  // Reset in the close handler (not an effect on `opened`) so the next open starts at "intro".
   const handleClose = () => {
     setStage("intro");
     setCode("");
@@ -42,7 +41,7 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {
-          // Email уже подтверждён в другой сессии/вкладке — синхронизируем токен.
+          // Already verified in another session/tab: sync the token.
           await syncVerifiedClaim();
           onVerified?.();
           handleClose();
@@ -74,15 +73,15 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {
-          // Email уже подтверждён — закрываем и синкаем.
+          // Already verified: close and sync.
           await syncVerifiedClaim();
           onVerified?.();
           handleClose();
           return;
         }
 
-        // 410 (expired), 404 (not found), 429 (attempts exceeded) — откатываем
-        // на стадию "intro", чтобы пользователь мог запросить новый код.
+        // 410 (expired), 404 (not found), 429 (attempts exceeded): back to "intro" so the user
+        // can request a new code.
         const shouldResetToIntro = err.status === 410 || err.status === 404 || err.status === 429;
         setError(errorCodeToken(err.code));
         if (shouldResetToIntro) {
@@ -104,8 +103,8 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
       centered
       radius="lg"
       title={
-        // Modal оборачивает title в свой <h2> — внутри должен быть НЕ заголовок (иначе
-        // <h2><h3> = невалидный HTML + дублирующий heading для скринридера). Text сохраняет вид.
+        // Modal wraps title in its own <h2>, so the content must NOT be a heading (nested headings
+        // are invalid HTML and duplicate the heading for screen readers). Text keeps the look.
         <Text size="h4" fw={700} style={{ color: "var(--text)" }}>
           {t("verifyEmail.title")}
         </Text>
@@ -174,17 +173,14 @@ export function VerifyEmailDialog({ opened, onClose, onVerified }: VerifyEmailDi
 }
 
 /**
- * После успешной верификации бэк не возвращает новый access-токен,
- * а email_verified claim в текущем токене остаётся false. Подтягиваем
- * свежий токен через /v1/auth/refresh/, чтобы UI-состояние сошлось с
- * фактическим состоянием на бэке.
+ * After verification the backend returns no new access token and the `email_verified` claim in
+ * the current one stays false, so fetch a fresh token via /v1/auth/refresh/.
  */
 async function syncVerifiedClaim(): Promise<void> {
   try {
     const { accessToken } = await refresh({ throwOnError: true });
     setAccessToken(accessToken);
   } catch {
-    // Refresh может упасть, если refresh-cookie истёк; UI всё равно
-    // получит актуальное состояние при следующем логине.
+    // Refresh may fail if the refresh cookie expired; the UI catches up on the next login.
   }
 }

@@ -1,21 +1,21 @@
-/* ---- Все поездки: колонка фильтров и ленты справа от панели навигации ------ */
+/* ---- All journeys: filters and feed column right of the navigation panel ------ */
 .all-journeys {
   position: absolute;
   inset: 0;
   z-index: 1;
   display: flex;
-  /* Верх колонки — на одной линии с верхом левой панели. */
+  /* The column top lines up with the left panel top. */
   padding: var(--content-offset-top) 32px 24px;
 }
 
-/* ---- Фон-карта: за колонкой, кадр — в свободной части справа ---------------- */
+/* ---- Background map: behind the column, framed in the free part on the right ---------------- */
 .all-journeys__map {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-/* Суша приглушена, дуга — нет: карта фон, дуга — то, ради чего она здесь. */
+/* Land is muted, the arc is not: the map is background, the arc is what it is here for. */
 .feed-map .world-map__country {
   opacity: 0.45;
 }
@@ -33,7 +33,7 @@
   animation: feed-arc-dot 0.3s ease-out both;
 }
 
-/* Название места: обводка цветом фона под текстом держит его читаемым поверх суши и дуги. */
+/* Place name: a background-coloured stroke under the text keeps it readable over land and the arc. */
 .feed-arc__label {
   fill: var(--text);
   stroke: var(--surface);
@@ -64,7 +64,7 @@
   }
 }
 
-/* Колонка отодвинута от плавающей панели (left:32 + width:260), как форма добавления. */
+/* The column is offset from the floating panel (left:32 + width:260), like the add form. */
 .all-journeys__column {
   position: relative;
   z-index: 1;
@@ -76,7 +76,7 @@
   gap: 14px;
 }
 
-/* Карта — фон и под колонкой тоже: стекло карточек без размытия, суша и дуга видны сквозь него. */
+/* The map is background under the column too: card glass has no blur, land and the arc show through it. */
 .all-journeys__column .journeys-card {
   backdrop-filter: none;
 }
@@ -88,7 +88,7 @@
   padding: 24px;
 }
 
-/* Тот же стиль, что у заголовков панели и формы. */
+/* Same style as the panel and form titles. */
 .all-journeys__title {
   margin: 0;
   font: 600 var(--fs-16)/1.2 var(--font-display);
@@ -102,7 +102,7 @@
   color: var(--text-muted);
 }
 
-/* Лента прокручивается внутри своей карточки — экран раздела на десктопе не скроллится. */
+/* The feed scrolls inside its card: the section screen does not scroll on desktop. */
 .all-journeys__feed {
   position: relative;
   flex: 1;
@@ -129,7 +129,7 @@
   text-decoration: underline;
 }
 
-/* ---- Фильтры: шкала лет (ползунок карты перемещений) и чипы транспорта ------ */
+/* ---- Filters: year scale (the movements map slider) and transport chips ------ */
 .all-journeys__years,
 .transport-chips {
   margin: 0;
@@ -144,33 +144,34 @@
   gap: 6px;
 }
 
-/* ---- Чипы транспорта и подпись транспорта ---------------------------------- */
+/* ---- Transport chips and transport label ---------------------------------- */
 .transport-label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-/* Выбранность видна по заливке — галочку Mantine прячем. */
+/* Selection shows by fill; hide Mantine's tick. */
 .transport-chips__chip .mantine-Chip-iconWrapper {
   display: none;
 }
 
-/* ---- Лента ---------------------------------------------------------------- */
+/* ---- Feed ---------------------------------------------------------------- */
 .journey-feed {
   position: relative;
   transition: opacity var(--dur-fast) ease;
 }
 
-/* Прежний набор, пока грузится новый по сменившимся фильтрам. */
+/* The previous set while a new one loads for changed filters. */
 .journey-feed--stale {
   opacity: 0.55;
 }
 
 /*
- * Год прилипает к верху карточки. Фон — только у прилипшего: под него уезжают строки, и он
- * плотнее стекла карточки, чтобы они не читались. На месте заголовок прозрачный, как строки.
- * `top: -1px` — чтобы прилипший был виден наблюдателю не целиком (см. YearHeader).
+ * The year sticks to the card top. Only a stuck heading has a background: rows scroll under it,
+ * and it is denser than the card glass so they do not show through. In place the heading is
+ * transparent like the rows. `top: -1px` makes a stuck heading not fully visible to the observer
+ * (see YearHeader).
  */
 .year-header {
   position: sticky;
@@ -188,8 +189,8 @@
   background: rgb(var(--ink-glass-rgb) / 0.94);
 }
 
-/* Пока строку несут, заголовок уступает ей место в такт строкам (переход как у dnd-kit). На
-   отпускании перехода нет: заголовок встаёт на место вместе с перестройкой ленты. */
+/* While a row is carried, the heading yields to it in step with the rows (a transition like
+   dnd-kit's). On release there is none: the heading takes its place with the feed rebuild. */
 .journey-feed--sorting .year-header {
   transition:
     transform 250ms ease,
@@ -202,7 +203,7 @@
   list-style: none;
 }
 
-/* Невидимая сетка: ручка | иконка | маршрут | расстояние, без линеек таблицы. */
+/* Invisible grid: grip | icon | route | distance, without table rules. */
 .journey-row {
   position: relative;
   display: grid;
@@ -215,14 +216,14 @@
   border-radius: 10px;
 }
 
-/* Перетаскиваемая строка — над соседями, с подложкой, чтобы не смешиваться с ними. */
+/* The dragged row sits above its neighbours with a backing so it does not blend with them. */
 .journey-row--dragging {
   z-index: 2;
   background: rgb(var(--ink-glass-rgb) / 0.96);
   box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 0.45);
 }
 
-/* Ручка видна при наведении на строку и в фокусе; на тач-экране — всегда. */
+/* The grip shows on row hover and focus; always on a touch screen. */
 .journey-row__handle {
   display: flex;
   align-items: center;
@@ -266,7 +267,7 @@
   }
 }
 
-/* Подсказка года перелистывается при каждом новом годе (компонент меняет ей ключ). */
+/* The year hint flips for every new year (the component changes its key). */
 .journey-row__drop-year {
   display: inline-block;
   font: 600 var(--fs-13)/1 var(--font-body);
@@ -288,7 +289,7 @@
   }
 }
 
-/* Только что сохранённая строка мигает акцентом и гаснет. */
+/* A just-saved row flashes the accent and fades. */
 .journey-row--saved {
   animation: journey-row-saved 1.2s ease-out;
 }
@@ -303,7 +304,7 @@
   }
 }
 
-/* Удалённая строка схлопывается, прежде чем пропасть из ленты. */
+/* A deleted row collapses before disappearing from the feed. */
 .journey-row--collapsing {
   overflow: hidden;
   animation: journey-row-collapse 0.25s ease-in forwards;
@@ -345,7 +346,7 @@
   color: var(--text-muted);
 }
 
-/* Поля строки — кнопки без рамки: выглядят текстом, нажатие открывает правку. */
+/* Row fields are borderless buttons: they look like text, pressing opens editing. */
 .journey-row__field {
   display: inline-flex;
   align-items: center;
@@ -370,7 +371,7 @@
   outline-offset: 1px;
 }
 
-/* Правка: строка разворачивается в форму на всю ширину ленты. */
+/* Editing: the row expands into a form across the full feed width. */
 .journey-row--editing {
   display: block;
   margin: 6px -12px;
@@ -385,7 +386,7 @@
   gap: 12px;
 }
 
-/* Удаление — справа, отдельно от Save / Cancel. */
+/* Delete goes on the right, separate from Save / Cancel. */
 .journey-editor__delete {
   margin-left: auto;
 }
@@ -430,8 +431,8 @@
 }
 
 /*
- * Сторож догрузки растянут вверх от низа ленты: он попадает на экран примерно за полэкрана до
- * конца загруженного, и следующая порция успевает прийти до того, как список кончится.
+ * The load-more sentinel is stretched upward from the feed bottom: it enters the screen about half
+ * a screen before the end of what is loaded, so the next page arrives before the list ends.
  */
 .journey-feed__sentinel {
   position: absolute;
@@ -442,8 +443,8 @@
   pointer-events: none;
 }
 
-/* Меньше движения: всё появляется и пропадает сразу. Схлопывание и мигание JS здесь не ждёт —
-   при этой настройке он их не запускает. */
+/* Reduced motion: everything appears and disappears at once. JS does not wait for collapse and
+   flash here: under this setting it does not start them. */
 @media (prefers-reduced-motion: reduce) {
   .feed-arc__line,
   .feed-arc__dot,
@@ -461,7 +462,7 @@
   }
 }
 
-/* ---- Узкий экран: колонка в потоке под панелью, страница скроллится целиком ---- */
+/* ---- Narrow screen: the column is in flow under the panel, the whole page scrolls ---- */
 @media (max-width: 61.99em) {
   .all-journeys {
     position: static;

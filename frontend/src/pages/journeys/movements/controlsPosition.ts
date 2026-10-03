@@ -1,9 +1,9 @@
 /**
- * Куда пользователь перетащил карточку фильтров карты перемещений — живёт в localStorage и
- * переживает перезагрузку и уход со вкладки. Нет сохранённого — карточка в левом нижнем углу.
+ * Where the user dragged the movements map filter card; kept in localStorage and survives a
+ * reload and leaving the tab. With nothing saved the card sits in the bottom-left corner.
  */
 
-/** Положение карточки от левого верхнего угла области карты, px. */
+/** Card position from the top-left corner of the map area, px. */
 export interface CardPosition {
   left: number;
   top: number;
@@ -20,7 +20,7 @@ function isCardPosition(value: unknown): value is CardPosition {
   return typeof left === "number" && Number.isFinite(left) && typeof top === "number" && Number.isFinite(top);
 }
 
-/** Сохранённое положение карточки; `null` — не сохранено или испорчено. */
+/** Saved card position; `null` means not saved or corrupted. */
 export function readControlsPosition(): CardPosition | null {
   try {
     const stored = localStorage.getItem(CONTROLS_POSITION_KEY);
@@ -31,7 +31,7 @@ export function readControlsPosition(): CardPosition | null {
   }
 }
 
-/** Сохраняет положение карточки; `null` — забыть, карточка вернётся в угол по умолчанию. */
+/** Saves the card position; `null` forgets it and the card returns to the default corner. */
 export function saveControlsPosition(position: CardPosition | null): void {
   try {
     if (position) {
@@ -40,6 +40,6 @@ export function saveControlsPosition(position: CardPosition | null): void {
       localStorage.removeItem(CONTROLS_POSITION_KEY);
     }
   } catch {
-    // localStorage недоступен (приватный режим / отключён) — положение не сохраняем.
+    // localStorage unavailable (private mode / disabled): the position is not persisted.
   }
 }

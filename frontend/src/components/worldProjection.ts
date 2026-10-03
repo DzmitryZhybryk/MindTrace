@@ -1,13 +1,12 @@
 import { clamp } from "./globe/route";
 
 /*
- * Проекция плоской карты мира: географические координаты → координаты SVG-холста,
- * и видимая область холста (масштаб и сдвиг карты). Общая для всех плоских карт, чтобы
- * страны и то, что рисуется поверх них, совпадали.
+ * Flat world map projection: geographic coordinates -> SVG canvas coordinates, plus the visible
+ * canvas area (zoom and pan). Shared by all flat maps so countries and what is drawn over them line up.
  */
 
-// --- Проекция Equal Earth (Šavrič, Patterson, Jenny, 2018) ----------------
-// Равноплощадная: честно показывает «сколько объехал», без раздувания полюсов.
+// --- Equal Earth projection (Šavrič, Patterson, Jenny, 2018) ----------------
+// Equal-area: shows true "how much was covered" without inflating the poles.
 const A1 = 1.340264;
 const A2 = -0.081106;
 const A3 = 0.000893;
@@ -28,19 +27,19 @@ function project(lng: number, lat: number): [number, number] {
   return [x, y];
 }
 
-// Габариты холста выводим из реальных границ проекции, а не подбираем на глаз.
+// Canvas size is derived from the projection's real bounds, not eyeballed.
 const VIEW_WIDTH = 1000;
 const X_MAX = project(180, 0)[0];
 const Y_MAX = project(0, 90)[1];
 const VIEW_HEIGHT = Math.round((VIEW_WIDTH * Y_MAX) / X_MAX);
 
 /**
- * Если соседние точки линии «перепрыгивают» антимеридиан (Россия, Фиджи, перелёт через
- * Тихий океан), путь нужно рвать, иначе через всю карту тянется горизонтальная полоса.
+ * If neighbouring points of a line jump across the antimeridian (Russia, Fiji, a Pacific
+ * flight), the path must be broken, otherwise a horizontal stripe is drawn across the map.
  */
 export const ANTIMERIDIAN_JUMP = 180;
 
-/** Видимая область холста в его координатах. */
+/** Visible canvas area, in canvas coordinates. */
 export interface ViewBox {
   x: number;
   y: number;
@@ -48,25 +47,25 @@ export interface ViewBox {
   height: number;
 }
 
-/** Весь мир целиком. */
+/** The whole world. */
 export const WORLD_VIEW_BOX: ViewBox = { x: 0, y: 0, width: VIEW_WIDTH, height: VIEW_HEIGHT };
 
-/** Пропорции мира: видимая область всегда в них — карта вписана по высоте и обрезает ширину. */
+/** World aspect ratio: the visible area always keeps it; the map fits by height and crops width. */
 export const WORLD_ASPECT = VIEW_WIDTH / VIEW_HEIGHT;
 
-// Сильнее всего карта приближается в восемь раз.
+// Maximum zoom is 8x.
 const MAX_ZOOM = 8;
 const MIN_VIEW_WIDTH = VIEW_WIDTH / MAX_ZOOM;
 
-/** Видна ли вся карта (не приближена). */
+/** Whether the whole map is visible (not zoomed in). */
 export function isWorldView(view: ViewBox): boolean {
   return view.width >= VIEW_WIDTH;
 }
 
-/** Приводит область к допустимой: пропорции мира, масштаб от «весь мир» до ×8, не за краем мира. */
+/** Clamps the area to a valid one: world aspect, zoom from the whole world to 8x, inside the world. */
 export function clampView(view: ViewBox): ViewBox {
-  // Высота мира округлена до целого, и width / WORLD_ASPECT дала бы 487.00000000000006 —
-  // весь мир возвращаем точной константой, а не пересчётом.
+  // The world height is rounded, so width / WORLD_ASPECT would give 487.00000000000006; return
+  // the exact constant for the whole world instead of recomputing.
   if (view.width >= VIEW_WIDTH) {
     return WORLD_VIEW_BOX;
   }
@@ -82,8 +81,8 @@ export function clampView(view: ViewBox): ViewBox {
 }
 
 /**
- * Приближает область в `factor` раз (меньше единицы — отдаляет). Точка холста
- * `(anchorX, anchorY)` остаётся на месте экрана — карта масштабируется вокруг курсора.
+ * Zooms the area by `factor` (below one zooms out). The canvas point `(anchorX, anchorY)` stays
+ * at the same screen position, so the map scales around the cursor.
  */
 export function zoomView(view: ViewBox, factor: number, anchorX: number, anchorY: number): ViewBox {
   const width = clamp(view.width / factor, MIN_VIEW_WIDTH, VIEW_WIDTH);
@@ -96,12 +95,12 @@ export function zoomView(view: ViewBox, factor: number, anchorX: number, anchorY
   });
 }
 
-/** Сдвигает область на `(dx, dy)` единиц холста. */
+/** Shifts the area by `(dx, dy)` canvas units. */
 export function panView(view: ViewBox, dx: number, dy: number): ViewBox {
   return clampView({ ...view, x: view.x + dx, y: view.y + dy });
 }
 
-/** Переводит долготу и широту в координаты холста (x вправо, y вниз). */
+/** Converts longitude and latitude to canvas coordinates (x right, y down). */
 export function projectToScreen(lng: number, lat: number): [number, number] {
   const [x, y] = project(lng, lat);
   return [((x + X_MAX) / (2 * X_MAX)) * VIEW_WIDTH, ((Y_MAX - y) / (2 * Y_MAX)) * VIEW_HEIGHT];

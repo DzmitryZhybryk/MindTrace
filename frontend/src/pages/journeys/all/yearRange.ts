@@ -1,14 +1,14 @@
-/** Диапазон лет ленты `[с, по]`, обе границы включительно; `null` — все годы. */
+/** Feed year range `[from, to]`, both bounds inclusive; `null` means all years. */
 export type YearRange = readonly [from: number, to: number];
 
 /**
- * Выбранные годы, вписанные в текущую шкалу.
+ * Selected years fitted into the current scale.
  *
- * Шкала меняется после правки и удаления поездок, а выбор, вышедший за неё, без ползунка не снять.
+ * The scale changes after editing and deleting journeys, and a selection that fell outside it
+ * cannot be cleared without the slider.
  *
- * Returns:
- *     `null` — все годы: ничего не выбрано, выбор покрывает всю шкалу или целиком вышел за неё,
- *     шкалы нет или в ней один год (ползунка тогда нет).
+ * Returns `null` (all years) when nothing is selected, the selection covers the whole scale or
+ * fell entirely outside it, there is no scale, or it holds a single year (then there is no slider).
  */
 export function fitYearRange(
   yearRange: YearRange | null,

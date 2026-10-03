@@ -26,61 +26,59 @@ export interface GlobePov {
 }
 
 /*
- * Пропсов ровно столько, сколько кто-то передаёт. Раньше их было семь: `autoRotateSpeed`,
- * `povDurationMs` и `className` не передавал ни один из двух потребителей — они жили как
- * заготовка «на будущее», но читались как поддерживаемая настройка. Вернуть любой из них —
- * две строки, а неиспользуемая опция обязывает её не сломать.
+ * Only props that a consumer actually passes; do not add speculative options (an unused option
+ * is a setting someone must not break).
  */
 interface GlobeCanvasProps {
-  /** Дуги маршрутов (`arcsData`); по умолчанию нет. */
+  /** Route arcs (`arcsData`); none by default. */
   arcs?: RouteArc[];
-  /** Города-концы для подписей (точка + название с окклюзией); по умолчанию нет. */
+  /** End cities for labels (dot + name with occlusion); none by default. */
   labelCities?: GlobeCity[];
-  /** Автовращение (гасится при prefers-reduced-motion). */
+  /** Auto-rotation (disabled under prefers-reduced-motion). */
   autoRotate?: boolean;
-  /** Точка обзора камеры. Первая установка мгновенна, смена — плавный перелёт. */
+  /** Camera point of view. The first set is instant, later changes fly smoothly. */
   pov?: GlobePov;
-  /** Спрятан роутом (например, `/journeys`) — пауза рендера, чтобы WebGL не крутил вхолостую. */
+  /** Hidden by the route (e.g. `/journeys`): rendering is paused so WebGL does not spin idle. */
   paused?: boolean;
-  /** Драг-вращение обеими осями. Жест распознаётся пиксельно по самой сфере, мимо неё — уходит странице. */
+  /** Drag rotation on both axes. The gesture is hit-tested pixel-wise on the sphere itself; off the sphere it goes to the page. */
   interactive?: boolean;
-  /** Маршрут формы поездки: пины концов, след и бегущий транспорт; по умолчанию нет. */
+  /** Journey form route: end pins, trail and moving vehicle; none by default. */
   route?: GlobeRoute | null;
-  /** Маршрут гаснет (уход с формы поездки на дашборд), затем хост его снимает. */
+  /** The route is fading (leaving the journey form for the dashboard); the host then removes it. */
   routeFading?: boolean;
   /**
-   * Появление (первая установка или выход из паузы) — подлётом камеры с докруткой, которая
-   * переходит в автовращение (см. cameraReveal.ts). Без него камера встаёт в `pov` сразу.
+   * Appearance (first set or leaving pause) as a camera fly-in with extra spin that hands over to
+   * auto-rotation (see cameraReveal.ts). Without it the camera snaps to `pov`.
    */
   reveal?: boolean;
 }
 
 const DEFAULT_POV: GlobePov = { lat: 22, lng: 24, altitude: 2.3 };
-/** Минимальный интервал пересчёта деклаттера подписей: fade идёт 0.4s, чаще — только лишние чтения layout. */
+/** Minimum label declutter recompute interval: the fade lasts 0.4s, so more often only costs layout reads. */
 const DECLUTTER_INTERVAL_MS = 150;
-/** Скорость автовращения и длительность перелёта камеры — общие для всех глобусов. */
+/** Auto-rotation speed, shared by all globes. */
 const AUTO_ROTATE_SPEED = 0.42;
-// Та же скорость в градусах долготы камеры в секунду: OrbitControls крутит 2π/60·speed рад/с,
-// а его `_rotateLeft` уменьшает азимут — в three-globe это и есть долгота камеры.
+// The same speed in degrees of camera longitude per second: OrbitControls rotates 2π/60·speed rad/s
+// and its `_rotateLeft` decreases the azimuth, which in three-globe is the camera longitude.
 const AUTO_ROTATE_DEG_PER_SEC = -6 * AUTO_ROTATE_SPEED;
 const POV_FLIGHT_MS = 1400;
 const ARC_COLOR: [string, string] = ["rgba(246, 177, 122, 0.95)", "rgba(111, 143, 214, 0.55)"];
-// Стабильные пустые ссылки — чтобы дефолты не пересоздавали массивы на каждый рендер.
+// Stable empty references so defaults do not recreate arrays every render.
 const EMPTY_ARCS: RouteArc[] = [];
 const EMPTY_CITIES: GlobeCity[] = [];
 
 /*
- * Аксессоры — модульные константы, а НЕ стрелки в JSX. globe.gl сравнивает аксессоры по
- * идентичности: новая функция на каждый рендер читается как «правило отрисовки сменилось»,
- * и слой перестраивается целиком. Для `htmlElement` это значит снос и пересборку DOM всех
- * подписей — на ровном месте, просто потому что родитель перерисовался (а он перерисовывается
- * на каждой смене маршрута: `PersistentGlobeHost` сидит на `useLocation`).
+ * Accessors are module constants, NOT arrows in JSX. globe.gl compares accessors by identity: a
+ * new function each render reads as "the drawing rule changed" and the layer is rebuilt entirely.
+ * For `htmlElement` that means tearing down and rebuilding the DOM of all labels for nothing,
+ * just because the parent rerendered (it does on every route change: `PersistentGlobeHost`
+ * uses `useLocation`).
  */
 const arcColorAccessor = (): [string, string] => ARC_COLOR;
 const arcDashInitialGapAccessor = (d: object): number => (d as RouteArc).dashInitialGap;
 /*
- * Html-слой в globe.gl один, поэтому подписи городов и элементы маршрута (пины, транспорт)
- * делят его: аксессоры различают датумы по дискриминатору `kind` маршрута.
+ * globe.gl has a single html layer, so city labels and route elements (pins, vehicle) share it:
+ * accessors tell datums apart by the route's `kind` discriminator.
  */
 const htmlLatAccessor = (d: object): number => (d as GlobeCity | { lat: number }).lat;
 const htmlLngAccessor = (d: object): number => (d as GlobeCity | { lng: number }).lng;
@@ -93,7 +91,7 @@ const htmlElementAccessor = (d: object): HTMLElement => {
   const city = d as GlobeCity;
   return createGlobeLabel(city.name, `${city.name ?? ""}|${city.lat}|${city.lng}`);
 };
-// Окклюзия дальней стороны: подписи гаснут прозрачностью, маршрут прячется мгновенно (как было).
+// Far-side occlusion: labels fade via opacity, the route hides instantly.
 const htmlVisibilityModifier = (el: HTMLElement, isVisible: boolean): void => {
   if (isRouteElement(el)) {
     applyRouteVisibility(el, isVisible);
@@ -109,12 +107,11 @@ const pathPointAltAccessor = (p: unknown): number => (p as TrailPoint).alt;
 const pathColorAccessor = (d: object): string => (d as RouteTrail).color;
 
 /**
- * Общая база декоративного 3D-глобуса (signature продукта). Инкапсулирует замер
- * контейнера, тёплую тонировку, атмосферу, блок зума скроллом, reduced-motion,
- * автовращение, перелёты камеры (pov) и опциональное драг-вращение по сфере. Опционально рисует дуги маршрутов,
- * подписи городов-концов (HTML-метки с окклюзией дальней стороны) и маршрут формы поездки
- * (пины, след, бегущий транспорт — см. routeScene.ts). Потребитель — app-global глобус-фон
- * (`PersistentGlobeHost`).
+ * Shared base of the decorative 3D globe (the product's signature). Encapsulates container
+ * measuring, warm tint, atmosphere, scroll-zoom blocking, reduced motion, auto-rotation, camera
+ * flights (pov) and optional drag rotation on the sphere. Optionally draws route arcs, end-city
+ * labels (HTML labels with far-side occlusion) and the journey form route (pins, trail, moving
+ * vehicle, see routeScene.ts). Consumer: the app-global globe background (`PersistentGlobeHost`).
  */
 export function GlobeCanvas({
   arcs = EMPTY_ARCS,
@@ -130,12 +127,12 @@ export function GlobeCanvas({
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hasSetPovRef = useRef(false);
-  // `paused` прошлого коммита: эффект камеры читает его ДО эффекта, который его обновляет.
+  // `paused` of the previous commit: the camera effect reads it BEFORE the effect that updates it.
   const wasPausedRef = useRef(paused);
   const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [reducedMotion] = useState(prefersReducedMotion);
   const routeScene = useRouteScene({ route, globeRef, containerRef, reducedMotion, fading: routeFading });
-  // Без маршрута — та же ссылка `labelCities`: новый массив на рендер пересобирал бы слой.
+  // Without a route, pass the same `labelCities` reference: a new array per render would rebuild the layer.
   const htmlData: object[] =
     routeScene.htmlData.length === 0 ? labelCities : [...labelCities, ...routeScene.htmlData];
 
@@ -164,19 +161,19 @@ export function GlobeCanvas({
     controls.autoRotate = autoRotate && !reducedMotion;
     controls.autoRotateSpeed = AUTO_ROTATE_SPEED;
     controls.enableZoom = false;
-    // Пан смещает точку прицела камеры — планета «уезжает» из центра без пути назад.
+    // Pan shifts the camera target: the planet drifts off-center with no way back.
     controls.enablePan = false;
 
     const target = { lat: pov.lat, lng: pov.lng, altitude: pov.altitude };
-    // Появление: первая установка или выход из паузы. С `reveal` — подлёт; без него —
-    // мгновенно, иначе проявление читалось бы влётом камеры с прошлой грани.
+    // Appearance: first set or leaving pause. With `reveal`, a fly-in; without it, instant,
+    // otherwise the appearance would read as the camera flying in from the previous face.
     const isAppearing = !paused && (!hasSetPovRef.current || wasPausedRef.current);
     hasSetPovRef.current = true;
 
     if (isAppearing && reveal && !reducedMotion) {
-      // Подлёт ведём сами, покадрово: штатный tween globe.gl перезаписывал бы камеру поверх
-      // автовращения. Автовращение при этом НЕ гасим — демпфированные контролы набирают
-      // скорость заранее, и к концу подлёта вращение подхватывается без провала.
+      // Drive the fly-in ourselves, frame by frame: the stock globe.gl tween would overwrite the
+      // camera over auto-rotation. Auto-rotation is NOT disabled: damped controls build up speed
+      // early, so the spin picks up without a dip at the end of the fly-in.
       const spin = autoRotate ? AUTO_ROTATE_DEG_PER_SEC : 0;
       let rafId = 0;
       let startedAt: number | null = null;
@@ -189,8 +186,8 @@ export function GlobeCanvas({
         }
       };
 
-      // Захват сферы рукой обрывает подлёт: покадровая перезапись камеры иначе тянула бы её
-      // назад из-под руки. `start` контролы шлют, только когда реально начали вращение.
+      // Grabbing the sphere aborts the fly-in: per-frame camera overwrites would otherwise pull it
+      // back from under the hand. Controls fire `start` only once rotation really began.
       const stopReveal = () => cancelAnimationFrame(rafId);
       controls.addEventListener("start", stopReveal);
 
@@ -202,7 +199,7 @@ export function GlobeCanvas({
       };
     }
 
-    // Перелёт — только для смены pov у видимого глобуса: спрятанному (paused) лететь незачем.
+    // Fly only for a pov change on a visible globe: a hidden (paused) one has no reason to fly.
     const isInstant = isAppearing || reducedMotion || paused;
     globe.pointOfView(target, isInstant ? 0 : POV_FLIGHT_MS);
   }, [
@@ -217,20 +214,20 @@ export function GlobeCanvas({
     reveal,
   ]);
 
-  // Объявлен ПОСЛЕ эффекта камеры: в одном коммите тот успевает прочитать прошлое значение.
+  // Declared AFTER the camera effect: within one commit that effect reads the previous value.
   useEffect(() => {
     wasPausedRef.current = paused;
   }, [paused]);
 
   /*
-   * Драг-вращение. Канвас растянут на весь вьюпорт, а планета занимает лишь его середину,
-   * поэтому хит-тест — по САМОЙ сфере (raycast через `toGlobeCoords`), а не по прямоугольнику
-   * элемента: жест, начатый мимо шара, глобус не трогает и уходит странице (на стеке — нативный
-   * скролл). Порядок обработчиков важен: `enableRotate` переключается в capture-фазе
-   * pointerdown, ДО обработчика OrbitControls на канвасе, поэтому тот стартует вращение только
-   * для жестов на сфере. `touch-action` канваса возвращаем в auto (OrbitControls ставит none —
-   * «все касания мои»), а скролл глушим вручную и только пока идёт драг сферы
-   * (non-passive touchmove + preventDefault).
+   * Drag rotation. The canvas spans the whole viewport but the planet occupies only its middle,
+   * so hit-testing is against the SPHERE itself (raycast via `toGlobeCoords`), not the element
+   * rectangle: a gesture started off the ball does not touch the globe and goes to the page
+   * (native scroll on touch). Handler order matters: `enableRotate` is toggled in the capture
+   * phase of pointerdown, BEFORE the OrbitControls handler on the canvas, so it starts rotation
+   * only for gestures on the sphere. The canvas `touch-action` is reset to auto (OrbitControls
+   * sets none, "all touches are mine"), and scroll is suppressed manually only while a sphere
+   * drag is in progress (non-passive touchmove + preventDefault).
    */
   useEffect(() => {
     const el = containerRef.current;
@@ -245,9 +242,9 @@ export function GlobeCanvas({
     let isDraggingSphere = false;
 
     const hitsSphere = (event: PointerEvent): boolean => {
-      // Raycast нормализует точку по МАКЕТНОМУ размеру канваса, а сам канвас живёт внутри
-      // трансформированного stage (scale в кадрировании грани) — поэтому экранные координаты
-      // переводим в макетные через фактический rect, иначе хит-тест уплывает к краям сферы.
+      // Raycast normalizes the point by the canvas LAYOUT size, but the canvas lives inside a
+      // transformed stage (scale from face framing), so convert screen coordinates to layout ones
+      // via the actual rect, otherwise the hit test drifts toward the sphere edges.
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return false;
 
@@ -257,15 +254,15 @@ export function GlobeCanvas({
     };
 
     const handlePointerDown = (event: PointerEvent) => {
-      // Мультитач: пока идёт драг, новые указатели игнорируем — иначе второе касание мимо
-      // сферы обрывает жест, а endDrag уходит в ранний return и autoRotate застревает выключенным.
+      // Multi-touch: while a drag is active ignore new pointers, otherwise a second touch off the
+      // sphere aborts the gesture, endDrag hits its early return and autoRotate stays off.
       if (isDraggingSphere) return;
 
       isDraggingSphere = hitsSphere(event);
       controls.enableRotate = isDraggingSphere;
 
       if (isDraggingSphere) {
-        // Пока пользователь держит планету, автовращение не борется с его рукой.
+        // While the user holds the planet, auto-rotation must not fight their hand.
         controls.autoRotate = false;
         el.style.cursor = "grabbing";
       }
@@ -309,12 +306,12 @@ export function GlobeCanvas({
   }, [interactive, autoRotate, reducedMotion, size.width, size.height]);
 
   /*
-   * Деклаттер подписей. У лимба проекция сжимает расстояния, и тексты соседних городов
-   * наезжают друг на друга; скрывается только ТЕКСТ проигравшей подписи, точка города
-   * видна всегда (resolveLabelVisibility решает, applyLabelDeclutter применяет).
-   * Собственный rAF-цикл вместо подписки на OrbitControls: перелёты `pointOfView` двигают
-   * камеру мимо controls, а гейт «матрица камеры не менялась — выходим» делает холостой
-   * кадр бесплатным. Внутри тика — сперва батч чтений layout, потом батч записи классов.
+   * Label declutter. Near the limb the projection squeezes distances and neighbouring city texts
+   * overlap; only the losing label's TEXT is hidden, the city dot is always visible
+   * (resolveLabelVisibility decides, applyLabelDeclutter applies). Own rAF loop instead of
+   * subscribing to OrbitControls: `pointOfView` flights move the camera behind controls' back, and
+   * the "camera matrix unchanged, bail out" gate makes an idle frame free. Within a tick: first a
+   * batch of layout reads, then a batch of class writes.
    */
   useEffect(() => {
     const host = containerRef.current;
@@ -345,10 +342,10 @@ export function GlobeCanvas({
       const center = { x: hostRect.left + hostRect.width / 2, y: hostRect.top + hostRect.height / 2 };
       const measured: { wrapper: HTMLElement; box: LabelBox }[] = [];
       for (const wrapper of host.querySelectorAll<HTMLElement>(".globe-label")) {
-        // Окклюзия дальней стороны владеет opacity обёртки — спрятанные ею в расчёте не участвуют.
+        // Far-side occlusion owns the wrapper's opacity: labels it hid do not take part in the calculation.
         if (wrapper.style.opacity === "0") continue;
 
-        // Ключ метки — data-атрибут из createGlobeLabel: имя города не уникально.
+        // Label key is the data attribute from createGlobeLabel: a city name is not unique.
         const id = wrapper.dataset.labelId;
         const nameEl = wrapper.querySelector<HTMLElement>(".globe-label__name");
         if (!id || !nameEl) continue;
@@ -375,8 +372,8 @@ export function GlobeCanvas({
     rafId = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(rafId);
-      // Страховка от застрявшего скрытого текста: эффект мог остановиться (labelCities < 2,
-      // pause), а globe.gl — сохранить DOM меток; спрятанной навсегда подпись остаться не должна.
+      // Guard against stuck hidden text: the effect may have stopped (labelCities < 2, pause)
+      // while globe.gl kept the label DOM; a label must not stay hidden forever.
       for (const wrapper of host.querySelectorAll<HTMLElement>(".globe-label--decluttered")) {
         applyLabelDeclutter(wrapper, false);
       }
@@ -384,22 +381,17 @@ export function GlobeCanvas({
   }, [labelCities, paused, size.width, size.height]);
 
   /*
-   * Колесо мыши над глобусом раньше глушилось безусловно — и это работало ровно наоборот
-   * задуманному. В публичной зоне слушатель мёртв: `.persistent-globe` объявлен
-   * `pointer-events: none`, поэтому событие туда не доходит вовсе. А на дашборде и в
-   * форме поездки, где глобус интерактивен, `preventDefault` съедал прокрутку СТРАНИЦЫ:
-   * пользователь наводил курсор на планету и переставал скроллить экран.
-   *
-   * Зум скроллом и так выключен через `controls.enableZoom = false` (см. эффект выше) —
-   * то есть блокировать было нечего. Слушатель убран: страница прокручивается везде.
+   * No wheel listener on purpose: zoom is already off via `controls.enableZoom = false` (see the
+   * effect above), and a `preventDefault` on the interactive globe would swallow PAGE scroll
+   * whenever the cursor is over the planet.
    */
 
   /*
-   * WebGL не должен крутиться впустую в двух случаях: вкладка скрыта ИЛИ глобус спрятан
-   * роутом (`paused`, например на /journeys, где он за непрозрачной ночью экрана). Сам по себе
-   * rAF в фоне тормозится браузером негарантированно (в фоновом окне поверх другого идёт), а
-   * сцена анимирована всегда (автовращение + пунктир дуг). Останавливаем явно — заметная
-   * разница по батарее и один живой WebGL-контекст на всё приложение.
+   * WebGL must not spin idle in two cases: the tab is hidden OR the globe is hidden by the route
+   * (`paused`, e.g. /journeys, where it is behind the screen's opaque night). Browsers throttle
+   * background rAF only unreliably (a window behind another keeps running) and the scene is
+   * always animated (auto-rotation + dashed arcs), so stop explicitly: a noticeable battery
+   * difference and one live WebGL context for the whole app.
    */
   useEffect(() => {
     const applyPlayState = () => {
@@ -416,10 +408,10 @@ export function GlobeCanvas({
     applyPlayState();
     document.addEventListener("visibilitychange", applyPlayState);
     return () => document.removeEventListener("visibilitychange", applyPlayState);
-    // size.* в зависимостях НЕ для галочки: `<Globe>` рендерится лишь после первого замера
-    // контейнера, поэтому на первом рендере `globeRef` пуст и applyPlayState впустую выходит.
-    // Без пере-применения по факту появления инстанса прямой заход на /journeys (там globe
-    // спрятан visibility:hidden, но коробка есть → size>0) поднял бы rAF глобуса при paused=true.
+    // size.* in the dependencies is NOT for show: `<Globe>` renders only after the first container
+    // measurement, so on the first render `globeRef` is empty and applyPlayState exits in vain.
+    // Without re-applying once the instance appears, a direct visit to /journeys (the globe is
+    // visibility:hidden there but the box exists, so size > 0) would start the globe rAF with paused=true.
   }, [paused, size.width, size.height]);
 
   return (
@@ -460,8 +452,8 @@ export function GlobeCanvas({
           htmlAltitude={htmlAltitudeAccessor}
           htmlElement={htmlElementAccessor}
           htmlElementVisibilityModifier={htmlVisibilityModifier}
-          // Позиции ставятся сразу: с дефолтной 1000мс твин-анимацией транспорт, чьи координаты
-          // меняются каждый кадр, копил бы твины и отставал от головы следа.
+          // Set positions immediately: with the default 1000ms tween, a vehicle whose coordinates
+          // change every frame would pile up tweens and lag behind the trail head.
           htmlTransitionDuration={0}
         />
       )}

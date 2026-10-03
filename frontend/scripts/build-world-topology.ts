@@ -1,14 +1,14 @@
 /*
- * Собирает границы стран для плоских карт: data/world-countries.geo.json (источник, в бандл не
- * попадает) → src/data/world-countries.topo.json (то, что импортирует WorldMap). Результат
- * коммитится; CI пересобирает его и падает, если он разошёлся с источником.
+ * Builds country borders for flat maps: data/world-countries.geo.json (the source, not in the
+ * bundle) -> src/data/world-countries.topo.json (what WorldMap imports). The result is committed;
+ * CI rebuilds it and fails if it diverges from the source.
  *
- * TopoJSON хранит общую границу соседей один раз, а координаты — целыми шагами сетки с дельтами
- * вместо шестизначных дробей. Контуры не упрощаются; квантование лишь склеивает соседние точки,
- * попавшие в один шаг сетки, — так кольцо теряет точку-другую, а точка сдвигается не больше чем
- * на полшага.
+ * TopoJSON stores a shared border of neighbours once, and coordinates as integer grid steps with
+ * deltas instead of six-digit fractions. Outlines are not simplified; quantization only merges
+ * neighbouring points that fall into one grid step, so a ring loses a point or two and a point
+ * shifts by no more than half a step.
  *
- * Запуск: make generate-world
+ * Run: make generate-world
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -19,13 +19,13 @@ import { topology } from "topojson-server";
 const SOURCE = fileURLToPath(new URL("../data/world-countries.geo.json", import.meta.url));
 const TARGET = fileURLToPath(new URL("../src/data/world-countries.topo.json", import.meta.url));
 
-// Под этим ключом страны лежат в `objects` топологии — его же читает WorldMap.
+// The key under which countries sit in the topology's `objects`; WorldMap reads the same one.
 const COUNTRIES_OBJECT = "countries";
 
 /*
- * Число шагов сетки по каждой оси. Холст карты — 1000 единиц на 360° долготы, при максимальном
- * приближении (×8) на экране шириной 1920 px единица холста ≈ 15 px. Шаг сетки 1e5 — 0.0036°,
- * то есть ~0.15 px даже вблизи; 1e4 дал бы ~1.5 px, и на ×8 контуры пошли бы лесенкой.
+ * Number of grid steps per axis. The map canvas is 1000 units per 360° of longitude; at maximum zoom
+ * (8x) on a 1920 px screen a canvas unit is about 15 px. A grid of 1e5 steps is 0.0036°, about
+ * 0.15 px even up close; 1e4 would give about 1.5 px and outlines would turn into stairs at 8x.
  */
 const QUANTIZATION = 100_000;
 

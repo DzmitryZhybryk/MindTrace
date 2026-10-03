@@ -1,18 +1,17 @@
 /*
- * Деклаттер подписей глобуса: решает, чьим подписям хватает места, в чистых экранных
- * координатах — без DOM и без знания о globe.gl (интеграция собирает rect'ы и применяет
- * результат сама, см. GlobeCanvas).
+ * Globe label declutter: decides whose labels fit, in pure screen coordinates with no DOM and no
+ * knowledge of globe.gl (the integration collects rects and applies the result, see GlobeCanvas).
  *
- * Правила:
- *  - приоритет у метки ближе к центру диска: у лимба проекция сжимает расстояния, и текст
- *    там всё равно нечитаем — уступает он; tie-break по ключу, чтобы порядок был стабилен;
- *  - гистерезис: спрятанная подпись возвращается только с запасом зазора (SHOW_CLEARANCE_PX),
- *    иначе на границе пересечения она мерцала бы каждый кадр вращения.
+ * Rules:
+ *  - a label closer to the disk center wins: near the limb the projection squeezes distances and
+ *    text there is unreadable anyway, so it yields; ties break by key for a stable order;
+ *  - hysteresis: a hidden label returns only with extra clearance (SHOW_CLEARANCE_PX), otherwise
+ *    it would flicker every rotation frame at the overlap boundary.
  */
 
 /**
- * Экранный прямоугольник подписи; `id` — стабильный уникальный ключ метки
- * (имя города не подходит: одноимённые города легитимны).
+ * Screen rectangle of a label; `id` is a stable unique label key (a city name will not do:
+ * same-named cities are legitimate).
  */
 export interface LabelBox {
   readonly id: string;
@@ -22,23 +21,23 @@ export interface LabelBox {
   readonly height: number;
 }
 
-/** Центр диска глобуса в тех же экранных координатах, что и `LabelBox`. */
+/** Globe disk center in the same screen coordinates as `LabelBox`. */
 export interface DiskCenter {
   readonly x: number;
   readonly y: number;
 }
 
-/** Запас зазора (px), с которым спрятанная подпись возвращается — гистерезис против мерцания. */
+/** Extra clearance (px) a hidden label needs to return: hysteresis against flicker. */
 export const SHOW_CLEARANCE_PX = 8;
 
-/** Квадрат расстояния от центра прямоугольника подписи до центра диска. */
+/** Squared distance from the label rectangle's center to the disk center. */
 function distanceSqToCenter(box: LabelBox, center: DiskCenter): number {
   const dx = box.left + box.width / 2 - center.x;
   const dy = box.top + box.height / 2 - center.y;
   return dx * dx + dy * dy;
 }
 
-/** Пересекаются ли прямоугольники, если раздуть их на `gap` с каждой стороны. */
+/** Whether the rectangles intersect when each is inflated by `gap` on every side. */
 export function boxesIntersect(a: LabelBox, b: LabelBox, gap: number): boolean {
   return (
     a.left < b.left + b.width + gap &&
@@ -49,39 +48,23 @@ export function boxesIntersect(a: LabelBox, b: LabelBox, gap: number): boolean {
 }
 
 /**
- * Ищет конфликт кандидата с уже принятыми подписями.
+ * Whether the candidate conflicts with any already accepted label (`gap` px of clearance
+ * required; 0 means just no overlap).
  *
- * Линейный проход — единственное место, которое надо заменить пространственной сеткой,
- * когда городов станут сотни; сигнатура при этом не меняется.
- *
- * Args:
- *     box: Кандидат на показ.
- *     accepted: Подписи, уже получившие место (в порядке приоритета).
- *     gap: Требуемый зазор в px (0 — достаточно не пересекаться).
- *
- * Returns:
- *     Есть ли пересечение хотя бы с одной принятой подписью.
+ * The linear scan is the one place to replace with a spatial grid once there are hundreds of
+ * cities; the signature stays the same.
  */
 function hasConflict(box: LabelBox, accepted: readonly LabelBox[], gap: number): boolean {
   return accepted.some((other) => boxesIntersect(box, other, gap));
 }
 
 /**
- * Решает, какие подписи спрятать в текущем кадре.
+ * Decides which labels to hide in the current frame; returns their keys.
  *
- * Жадный отбор в порядке приоритета (ближе к центру диска — раньше; при равенстве — по
- * ключу): подпись получает место, если не конфликтует с уже принятыми. Прятавшаяся в
- * прошлом кадре подпись требует зазор `SHOW_CLEARANCE_PX`, видимая — лишь отсутствия
- * пересечения. Прямоугольники нулевого размера (метка ещё не отрендерена) вызывающая
- * сторона отфильтровывает сама.
- *
- * Args:
- *     boxes: Экранные прямоугольники всех видимых подписей.
- *     center: Центр диска глобуса в тех же координатах.
- *     previouslyHidden: Ключи подписей, спрятанных прошлым прогоном (гистерезис).
- *
- * Returns:
- *     Ключи подписей, которые надо спрятать в этом кадре.
+ * Greedy selection in priority order (closer to the disk center first, ties by key): a label gets
+ * space if it does not conflict with already accepted ones. A label hidden last frame needs
+ * `SHOW_CLEARANCE_PX` of clearance, a visible one only no overlap (`previouslyHidden` carries
+ * that hysteresis). Zero-size rectangles (label not rendered yet) are filtered by the caller.
  */
 export function resolveLabelVisibility(
   boxes: readonly LabelBox[],

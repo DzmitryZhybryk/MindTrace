@@ -10,7 +10,7 @@ import { createTestQueryClient, makeAuthValue } from "../test/render";
 import { CurrentUserProvider } from "./CurrentUserContext";
 import { useCurrentUser } from "./useCurrentUser";
 
-/** Пробник: выводит статус машины состояний (и имя — для ready), без Mantine/Router. */
+/** Probe: prints the state machine status (and the name for ready), without Mantine/Router. */
 function Probe() {
   const state = useCurrentUser();
   return <span>{state.status === "ready" ? `ready:${state.user.displayName ?? state.user.username}` : state.status}</span>;
@@ -44,7 +44,7 @@ describe("CurrentUserProvider", () => {
   it("после логина грузит /me и отдаёт ready с профилем", async () => {
     render(tree(makeAuthValue({ isAuthenticated: true })));
 
-    // Дефолтная MSW-фикстура: displayName=null → пробник показывает username.
+    // The default MSW fixture: displayName=null, so the probe shows username.
     expect(await screen.findByText("ready:traveler")).toBeInTheDocument();
   });
 
@@ -93,8 +93,8 @@ describe("CurrentUserProvider", () => {
   });
 
   it("транзиентный сбой /me больше не терминален — боевая политика повторов доводит до ready", async () => {
-    // До Query первая же неудача оставляла профиль в error навсегда; теперь 5xx повторяется.
-    // Клиент с боевым предикатом (retryDelay: 0 — ждать backoff в тесте незачем).
+    // Without retries the first failure left the profile in error forever; now a 5xx is retried.
+    // A client with the real predicate (retryDelay: 0, no point waiting for backoff in a test).
     let attempts = 0;
     server.use(
       http.get("/v1/users/me", () => {
@@ -130,7 +130,7 @@ describe("CurrentUserProvider", () => {
   });
 
   it("поздний ответ устаревшего запроса не затирает состояние после логаута", async () => {
-    // Ответ /me придерживается вручную: логаут происходит, пока запрос «в полёте».
+    // The /me response is held manually: logout happens while the request is "in flight".
     let releaseProfile!: () => void;
     const gate = new Promise<void>((resolve) => {
       releaseProfile = resolve;
@@ -142,8 +142,8 @@ describe("CurrentUserProvider", () => {
       }),
     );
 
-    // Один клиент на оба рендера: новый обнулил бы кэш вместе с запросом «в полёте»,
-    // и проверять было бы нечего.
+    // One client for both renders: a new one would reset the cache with the in-flight request and
+    // there would be nothing to check.
     const queryClient = createTestQueryClient();
     const { rerender } = render(tree(makeAuthValue({ isAuthenticated: true }), queryClient));
     expect(screen.getByText("loading")).toBeInTheDocument();
@@ -152,7 +152,7 @@ describe("CurrentUserProvider", () => {
     expect(await screen.findByText("anonymous")).toBeInTheDocument();
 
     releaseProfile();
-    // Даём устаревшему ответу дойти: состояние должно остаться anonymous.
+    // Let the stale response arrive: the state must stay anonymous.
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.getByText("anonymous")).toBeInTheDocument();
     expect(screen.queryByText(/ready:/u)).not.toBeInTheDocument();

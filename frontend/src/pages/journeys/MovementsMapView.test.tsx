@@ -11,13 +11,13 @@ import { act, renderWithProviders, screen, waitFor } from "../../test/render";
 import type { JourneysOutletContext } from "./JourneysLayout";
 import { MovementsMapView } from "./MovementsMapView";
 
-// Дуги, точки и подписи — SVG без доступных ролей, поэтому данные на карте наблюдаем по классам.
+// Arcs, dots and labels are SVG without accessible roles, so map data is observed by class.
 const ARC = ".movement-line";
 const DOT = ".movement-dot";
 
 const UNKNOWN_PLACE_ID = "99999999-9999-4999-8999-999999999999";
 
-/** Вкладка под каркасом раздела: он отдаёт ей ref панели через `<Outlet context>`. */
+/** A tab under the section shell: the shell hands it the panel ref via `<Outlet context>`. */
 function MovementsTab() {
   const panelRef = useRef<HTMLElement>(null);
   const context = useMemo<JourneysOutletContext>(() => ({ panelRef }), []);
@@ -38,7 +38,7 @@ function viewBoxWidth(container: HTMLElement): number {
   return Number(container.querySelector(".world-map")?.getAttribute("viewBox")?.split(" ")[2]);
 }
 
-/** Записывает query-строки запросов карты перемещений и отвечает фикстурой без фильтра. */
+/** Records the query strings of movements map requests and answers with the unfiltered fixture. */
 function recordMovementsRequests(): string[] {
   const queries: string[] = [];
   server.use(
@@ -50,7 +50,7 @@ function recordMovementsRequests(): string[] {
   return queries;
 }
 
-/** Ждёт, пока на карте появятся все три маршрута фикстуры. */
+/** Waits until all three fixture routes appear on the map. */
 async function waitForAllRoutes(container: HTMLElement): Promise<void> {
   await waitFor(() => {
     expect(container.querySelectorAll(ARC)).toHaveLength(3);
@@ -68,7 +68,7 @@ describe("MovementsMapView", () => {
     expect(screen.getByText("Loading your map…")).toBeInTheDocument();
     await waitForAllRoutes(container);
 
-    // Москва ⇄ Лондон — два маршрута, Лондон → Париж — третий; у каждого стрелка на конце.
+    // Moscow <-> London is two routes, London -> Paris the third; each has an arrow at the end.
     for (const arc of container.querySelectorAll(ARC)) {
       expect(arc.getAttribute("marker-end")).toBe("url(#movement-arrow)");
     }
@@ -78,7 +78,7 @@ describe("MovementsMapView", () => {
   });
 
   it("дуга через край мира — два куска, гаснущих у разреза, стрелка только на втором", async () => {
-    // Токио → Лос-Анджелес: кратчайший путь идёт через Тихий океан, через 180-й меридиан.
+    // Tokyo -> Los Angeles: the shortest path crosses the Pacific, over the 180th meridian.
     server.use(
       http.get("/v1/journeys/movements", () =>
         HttpResponse.json({
@@ -97,7 +97,7 @@ describe("MovementsMapView", () => {
 
     const { container } = renderMovements();
 
-    // У каждого куска — хвост у разреза, гаснущий градиентом, и сплошная остальная часть.
+    // Each piece has a tail at the cut fading by a gradient, and the rest is solid.
     await waitFor(() => {
       expect(container.querySelectorAll(ARC)).toHaveLength(4);
     });
@@ -105,7 +105,7 @@ describe("MovementsMapView", () => {
     const fading = arcs.filter((arc) => arc.style.stroke.startsWith("url("));
     expect(fading).toHaveLength(2);
     expect(container.querySelectorAll("linearGradient")).toHaveLength(2);
-    // Стрелка одна — в конце сплошной части второго куска, у точки назначения.
+    // There is one arrow, at the end of the second piece's solid part, at the destination point.
     const withArrow = arcs.filter((arc) => arc.getAttribute("marker-end") === "url(#movement-arrow)");
     expect(withArrow).toEqual([arcs[3]]);
     expect(arcs[3].style.stroke).toBe("");
@@ -176,7 +176,7 @@ describe("MovementsMapView", () => {
     const { user, container } = renderMovements();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load your journeys");
-    // Пустой подсказки при ошибке нет — поездки, может, и есть, их просто не удалось загрузить.
+    // There is no empty hint on an error: journeys may exist, they just failed to load.
     expect(screen.queryByText(/No journeys yet/u)).not.toBeInTheDocument();
 
     server.resetHandlers();
@@ -202,11 +202,11 @@ describe("MovementsMapView", () => {
     await waitForAllRoutes(container);
     const toYear = screen.getByRole("slider", { name: "To year" });
 
-    // Фокус — как с клавиатуры (Tab): клик в jsdom запустил бы перетаскивание по дорожке нулевой ширины.
+    // Focus as from the keyboard (Tab): in jsdom a click would start a drag on a zero-width track.
     act(() => toYear.focus());
     await user.keyboard("{ArrowLeft}");
 
-    // Окно 2019–2021: Лондон → Париж (2022) пропал, Москва ⇄ Лондон остались.
+    // Window 2019-2021: London -> Paris (2022) is gone, Moscow <-> London remain.
     await waitFor(() => {
       expect(container.querySelectorAll(ARC)).toHaveLength(2);
     });
@@ -215,7 +215,7 @@ describe("MovementsMapView", () => {
   });
 
   it("карта меняется прямо во время перетаскивания ползунка, до отпускания кнопки", async () => {
-    // Дорожка ползунка 300 px: 2019 — у левого края, 2022 — у правого, год — 100 px.
+    // The slider track is 300 px: 2019 at the left edge, 2022 at the right, a year is 100 px.
     stubScreenLayout({ "mantine-RangeSlider-trackContainer": { left: 0, top: 0, width: 300, height: 20 } });
     const queries = recordMovementsRequests();
     const { container } = renderMovements();
@@ -225,7 +225,7 @@ describe("MovementsMapView", () => {
       throw new Error("Дорожка ползунка не найдена");
     }
 
-    // Захватили правый ползунок и тянем влево на год — кнопку не отпускаем.
+    // Grab the right thumb and drag left by a year without releasing the button.
     fireEvent.mouseDown(track, { clientX: 300, clientY: 10 });
     fireEvent.mouseMove(document, { clientX: 200, clientY: 10 });
 
@@ -245,13 +245,13 @@ describe("MovementsMapView", () => {
     await user.clear(screen.getByRole("textbox", { name: "From year" }));
     await user.type(screen.getByRole("textbox", { name: "From year" }), "2021{Enter}");
 
-    // Окно 2021–2022: Лондон → Москва (2020) пропал.
+    // Window 2021-2022: London -> Moscow (2020) is gone.
     await waitFor(() => {
       expect(container.querySelectorAll(ARC)).toHaveLength(2);
     });
     expect(screen.getByRole("button", { name: "From year" })).toHaveTextContent("2021");
 
-    // 200 — меньше первого года шкалы: левая граница встаёт на 2019.
+    // 200 is below the first year of the scale: the left bound snaps to 2019.
     await user.click(screen.getByRole("button", { name: "From year" }));
     await user.clear(screen.getByRole("textbox", { name: "From year" }));
     await user.type(screen.getByRole("textbox", { name: "From year" }), "200{Enter}");
@@ -303,7 +303,7 @@ describe("MovementsMapView", () => {
 
     expect(await screen.findByText("Choose at least one transport")).toBeInTheDocument();
     expect(container.querySelectorAll(ARC)).toHaveLength(0);
-    // Ни один запрос не ушёл без фильтра транспорта.
+    // No request went out without the transport filter.
     expect(queries.filter((query) => query.includes("transportType="))).toEqual([
       "transportType=air&transportType=land",
       "transportType=land",
@@ -316,13 +316,13 @@ describe("MovementsMapView", () => {
         HttpResponse.json({ ...MOVEMENTS_RESPONSE, firstYear: 1976, lastYear: 2026 }),
       ),
     );
-    // Ползунок 300 px на 50 лет — около 6 px на год: засечка каждый год слиплась бы в бусы.
+    // A 300 px slider over 50 years is about 6 px per year: a tick every year would blur into beads.
     stubScreenLayout({ "movements-controls__slider": { left: 0, top: 0, width: 300, height: 30 } });
 
     const { container } = renderMovements();
 
     await screen.findByRole("slider", { name: "To year" });
-    // Шаг 2 года: чётные годы с 1976 по 2026 — 26 засечек вместо 51.
+    // A step of 2 years: even years from 1976 to 2026 give 26 ticks instead of 51.
     await waitFor(() => {
       expect(container.querySelectorAll(".mantine-RangeSlider-mark")).toHaveLength(26);
     });

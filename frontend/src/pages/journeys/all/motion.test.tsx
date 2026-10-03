@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { preferReducedMotion } from "../../../test/motion";
 import { useAnimatedNumber, useFlip } from "./motion";
 
-// Web Animations в jsdom нет — шпион ставится прямо в прототип и снимается за собой.
+// jsdom has no Web Animations: the spy is set on the prototype and removed afterwards.
 afterEach(() => {
   Reflect.deleteProperty(HTMLElement.prototype, "animate");
 });
@@ -15,7 +15,7 @@ interface FlipItem {
   top: number;
 }
 
-/** Список с `data-flip-id`; место строки в раскладке задаёт `data-top` (в jsdom раскладки нет). */
+/** A list with `data-flip-id`; a row's layout position is set by `data-top` (jsdom has no layout). */
 function FlipList({ items, isPaused }: { items: readonly FlipItem[]; isPaused: boolean }) {
   const ref = useRef<HTMLUListElement>(null);
   useFlip(ref, isPaused);
@@ -29,7 +29,7 @@ function FlipList({ items, isPaused }: { items: readonly FlipItem[]; isPaused: b
   );
 }
 
-/** Раскладка из `data-top` и шпион Web Animations, которого в jsdom нет. */
+/** Layout from `data-top` and a Web Animations spy, which jsdom lacks. */
 function stubLayoutAndAnimations() {
   vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function topOf(this: HTMLElement) {
     return Number(this.dataset.top ?? 0);

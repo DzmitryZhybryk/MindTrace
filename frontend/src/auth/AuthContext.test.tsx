@@ -10,7 +10,7 @@ import { getJourneysMapQueryKey } from "../api/sdk";
 import { makeAccessToken, server } from "../test/handlers";
 import { createTestQueryClient, renderWithProviders, screen } from "../test/render";
 
-/** Проба контекста: рендерит состояние auth текстом + кнопку входа для наблюдения извне. */
+/** Context probe: renders auth state as text plus a login button to observe from outside. */
 function AuthProbe() {
   const { isBootstrapping, isAuthenticated, emailVerified, setAccessToken } = useAuth();
   return (
@@ -23,12 +23,12 @@ function AuthProbe() {
   );
 }
 
-/** Рендерит пробу под реальным `<AuthProvider>` (bootstrap бьёт в MSW-refresh). */
+/** Renders the probe under the real `<AuthProvider>` (the bootstrap hits the MSW refresh). */
 function renderAuth(queryClient?: QueryClient) {
   return renderWithProviders(<AuthProbe />, { withAuthProvider: true, queryClient });
 }
 
-/** Подменяет дефолтный 401-refresh успешным — проба стартует залогиненной. */
+/** Replaces the default 401 refresh with a successful one: the probe starts logged in. */
 function withLiveSession(): void {
   server.use(
     http.post("/v1/auth/refresh/", () =>
@@ -39,7 +39,7 @@ function withLiveSession(): void {
 
 describe("AuthProvider", () => {
   it("bootstrap без сессии (refresh 401) завершается неаутентифицированным", async () => {
-    // Дефолтный handler refresh отдаёт 401 — сессии нет.
+    // The default refresh handler returns 401: no session.
     renderAuth();
 
     expect(await screen.findByText("bootstrapping: false")).toBeInTheDocument();
@@ -96,9 +96,9 @@ describe("AuthProvider", () => {
   });
 
   it("недобровольный разлогин чистит кэш server-state — данные не достаются следующему входу", async () => {
-    // Разлогин через событие транспорта, а не через кнопку: кэш обязан чиститься на СМЕНЕ
-    // состояния сессии, иначе карта и профиль ушедшего пользователя видны следующему —
-    // причём глобус-фон со `staleTime: Infinity` не перезапросил бы их никогда.
+    // Logout via a transport event, not the button: the cache must clear on a session state CHANGE,
+    // otherwise the previous user's map and profile are visible to the next one, and the globe
+    // background (`staleTime: Infinity`) would never refetch them.
     withLiveSession();
     const queryClient = createTestQueryClient();
     renderAuth(queryClient);

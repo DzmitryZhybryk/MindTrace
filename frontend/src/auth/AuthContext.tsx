@@ -14,14 +14,14 @@ import {
 import { AuthContext, type AuthContextValue } from "./useAuth";
 import { resetVerifyBannerDismissed } from "./verifyBannerStorage";
 
-// Провайдер стоит на корне, а диалог открывают редко и только залогиненные. Статический импорт
-// тянул бы Modal, PinInput и блокировку прокрутки в загрузку каждой страницы, включая лендинг.
+// The provider sits at the root but the dialog is opened rarely, and only when logged in. A static
+// import would pull Modal, PinInput and scroll lock into every page load, landing included.
 const VerifyEmailDialog = lazy(() =>
   import("./VerifyEmailDialog").then((m) => ({ default: m.VerifyEmailDialog })),
 );
 
-// До первого открытия диалога нет вовсе; после — он остаётся смонтированным, чтобы
-// закрытие доигрывало анимацию, а повторное открытие не ждало загрузки.
+// The dialog is absent until first opened; after that it stays mounted so closing can finish
+// its animation and reopening does not wait for a load.
 type VerifyDialogState = "never-opened" | "open" | "closed";
 
 interface AuthProviderProps {
@@ -39,11 +39,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return subscribeAccessToken((token) => setAccessTokenState(token));
   }, []);
 
-  // Кэш Query держит данные ушедшей сессии (профиль, карта поездок) — без сброса их
-  // увидел бы следующий вошедший в этой вкладке, причём глобус-фон со `staleTime: Infinity`
-  // не перезапросил бы их никогда. Чистим на СМЕНЕ auth-состояния, а не в обработчике
-  // кнопки: разлогин приходит тремя путями (кнопка, событие `auth-required` из транспорта,
-  // код `users.user_deleted` на /me), и общее у них ровно одно — пропавший токен.
+  // The Query cache holds the previous session's data (profile, journeys map); without a reset
+  // the next user in this tab would see it, and the globe background (`staleTime: Infinity`)
+  // would never refetch. Clear on an auth-state CHANGE, not in a button handler: logout arrives
+  // three ways (button, the transport's `auth-required` event, `users.user_deleted` on /me),
+  // and their only common point is the token disappearing.
   useEffect(() => {
     if (!isAuthenticated) {
       queryClient.clear();
@@ -57,10 +57,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     let cancelled = false;
     (async () => {
-      // Через single-flight `ensureRefreshed`, а не прямой refresh(): иначе
-      // двойной запуск эффекта под StrictMode дал бы два параллельных /refresh/
-      // и reuse-detection на бэке оборвал бы сессию. Токен пишет сам
-      // ensureRefreshed (на успехе) — подписка обновит state.
+      // Go through single-flight `ensureRefreshed`, not a direct refresh(): the double effect run
+      // under StrictMode would send two parallel /refresh/ calls and backend reuse detection
+      // would kill the session. `ensureRefreshed` stores the token itself on success, and the
+      // subscription updates state.
       const refreshed = await ensureRefreshed();
       if (cancelled) {
         return;
@@ -93,8 +93,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   const setAccessToken = useCallback((token: string) => {
-    // Вход/регистрация — новая сессия: сбрасываем «скрытие» плашки о подтверждении
-    // email, чтобы dismiss прежнего аккаунта не утёк в эту вкладку (см. verifyBannerStorage).
+    // Login/signup starts a new session: reset the banner dismiss so the previous account's
+    // dismiss does not leak into this tab (see verifyBannerStorage).
     resetVerifyBannerDismissed();
     writeAccessToken(token);
   }, []);
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   return (
     <AuthContext.Provider value={value}>
       {children}
-      {/* Не загрузился chunk диалога — гасим только диалог, а не всё приложение. */}
+      {/* If the dialog chunk fails to load, drop only the dialog, not the whole app. */}
       {verifyDialog !== "never-opened" && (
         <ErrorBoundary fallback={null}>
           <Suspense fallback={null}>

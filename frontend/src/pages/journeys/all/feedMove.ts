@@ -2,7 +2,7 @@ import type { SortingStrategy } from "@dnd-kit/sortable";
 
 import type { JourneyFeedEntry, JourneysFeedResponse, MovePlacement } from "../../../api/sdk";
 
-/** Куда переносится поездка: рядом с соседом, до или после него, и в его год. */
+/** Where a journey moves: next to a neighbour, before or after it, and into its year. */
 export interface MoveTarget {
   neighborJourneyId: string;
   placement: MovePlacement;
@@ -10,18 +10,12 @@ export interface MoveTarget {
 }
 
 /**
- * Переводит «строку бросили на место другой» в запрос переноса.
+ * Turns "a row was dropped onto another's place" into a move request, or `null` if the row
+ * stayed in place.
  *
- * Тянули вниз — поездка встаёт после той, на которую бросили; вверх — перед ней. Год берётся
- * у соседа. Поэтому в конец года строку приносят сверху, а в начало года — снизу.
- *
- * Args:
- *     journeys: Строки ленты в порядке показа.
- *     activeId: Перетаскиваемая поездка.
- *     overId: Поездка, на место которой бросили.
- *
- * Returns:
- *     Цель переноса или `null`, если строка осталась на месте.
+ * Dragged down, the journey lands after the one it was dropped on; up, before it. The year comes
+ * from the neighbour. So to reach the end of a year a row is brought from above, and the start of
+ * a year from below.
  */
 export function resolveMoveTarget(
   journeys: readonly JourneyFeedEntry[],
@@ -43,10 +37,10 @@ export function resolveMoveTarget(
 }
 
 /**
- * Сдвиг строк ленты, пока строку несут: строки между её местом и целью уступают ей ровно её
- * высоту. Строки в году идут вплотную, а стандартная стратегия dnd-kit прибавляет к высоте
- * расстояние до соседней строки — на границе лет в него входит заголовок, и строка визуально
- * уезжала в чужой год. Заголовки сдвигает `yearHeaderShift` на ту же высоту.
+ * Offset of feed rows while a row is carried: rows between its place and the target yield exactly
+ * its height. Rows within a year are flush, while the standard dnd-kit strategy adds the distance
+ * to the neighbouring row to the height; at a year boundary that includes the heading, and the
+ * row visually ended up in the wrong year. `yearHeaderShift` shifts headings by the same height.
  */
 export const feedSortingStrategy: SortingStrategy = ({ activeIndex, activeNodeRect, index, rects, overIndex }) => {
   const height = (rects[activeIndex] ?? activeNodeRect)?.height;
@@ -65,20 +59,14 @@ export const feedSortingStrategy: SortingStrategy = ({ activeIndex, activeNodeRe
 };
 
 /**
- * Сдвиг заголовка года, пока строку несут, — в пару к `feedSortingStrategy`.
+ * Offset (px, vertical) of a year heading while a row is carried; pairs with `feedSortingStrategy`.
  *
- * Заголовок стоит перед первой строкой своего года. Если он оказался между местом строки и
- * целью, он уступает строке её высоту вместе со строками: тогда на экране видно, в какой год
- * строка встанет, а строки под целью остаются в своём году.
+ * A heading sits before the first row of its year. If it falls between the row's place and the
+ * target, it yields the row's height along with the rows: the screen then shows which year the
+ * row will land in, and rows under the target stay in their year.
  *
- * Args:
- *     activeIndex: Место перетаскиваемой строки в ленте.
- *     overIndex: Место строки, над которой её держат.
- *     firstRowIndex: Место первой строки года этого заголовка.
- *     height: Высота перетаскиваемой строки, px.
- *
- * Returns:
- *     Сдвиг по вертикали, px.
+ * `activeIndex` is the dragged row's place in the feed, `overIndex` the row it is held over,
+ * `firstRowIndex` the first row of this heading's year, `height` the dragged row's height in px.
  */
 export function yearHeaderShift({
   activeIndex,
@@ -107,18 +95,10 @@ export function yearHeaderShift({
 }
 
 /**
- * Переставляет поездку в загруженных порциях ленты — так же, как это сделает бэк.
+ * Reorders a journey in the loaded feed pages, the same way the backend will.
  *
- * Поездка встаёт рядом с соседом в его порции и получает его год. Если соседа или поездки в
- * порциях нет, порции возвращаются как были.
- *
- * Args:
- *     pages: Порции ленты.
- *     journeyId: Переносимая поездка.
- *     target: Цель переноса.
- *
- * Returns:
- *     Новые порции.
+ * The journey lands next to its neighbour in its page and takes its year. If the neighbour or the
+ * journey is not in the pages, the pages are returned unchanged. Returns new pages.
  */
 export function moveJourneyInPages(
   pages: readonly JourneysFeedResponse[],

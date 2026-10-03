@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { placeCard, type Box } from "./cardPlacement";
 
-// Область карты 1200×800; панель навигации слева: от (32, 100), 260×400 — низ на 500.
+// The map area is 1200x800; the navigation panel is on the left: from (32, 100), 260x400, bottom at 500.
 const AREA = { width: 1200, height: 800 };
 const CARD = { width: 260, height: 160 };
 const PANEL: Box = { left: 32, top: 100, width: 260, height: 400 };
@@ -14,9 +14,9 @@ describe("placeCard", () => {
   });
 
   it("рамка выровнена по панели: не левее её левого края и не выше её верха", () => {
-    // В угол рамки нельзя — там панель: ближайшее место — правее неё, с зазором 16.
+    // The frame corner is not allowed because the panel is there: the nearest spot is right of it, with a 16 gap.
     expect(placeCard({ left: 0, top: 0 }, LAYOUT)).toEqual({ left: 32 + 260 + 16, top: 100 });
-    // Левее панели некуда, а под панелью — можно: левый край совпадает с панелью.
+    // There is no room left of the panel but there is under it: the left edge matches the panel.
     expect(placeCard({ left: 0, top: 700 }, LAYOUT)).toEqual({ left: 32, top: AREA.height - 32 - CARD.height });
   });
 
@@ -28,9 +28,9 @@ describe("placeCard", () => {
   });
 
   it("на панель не наезжает: встаёт правее неё или под ней — что ближе", () => {
-    // Чуть заходит на панель справа — ближе отодвинуть вправо.
+    // It slightly overlaps the panel from the right: moving it right is closer.
     expect(placeCard({ left: 250, top: 150 }, LAYOUT)).toEqual({ left: 32 + 260 + 16, top: 150 });
-    // Заходит на панель снизу — ближе опустить под неё.
+    // It overlaps the panel from below: moving it under is closer.
     expect(placeCard({ left: 40, top: 480 }, LAYOUT)).toEqual({ left: 40, top: 100 + 400 + 16 });
   });
 

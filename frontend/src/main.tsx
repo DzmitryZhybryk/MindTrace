@@ -16,10 +16,9 @@ const queryClient = createQueryClient();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     {/*
-      Тёмная схема — не косметика, а выравнивание Mantine с поверхностью продукта.
-      Пока схема была светлой, её дефолты (белая коробка чекбокса, серая disabled-кнопка,
-      почти чёрный текст ошибки) приходилось перебивать вручную на каждой тёмной
-      поверхности. Теперь они работают в ту же сторону, что и дизайн.
+      The dark scheme aligns Mantine with the product surface. With a light scheme its defaults
+      (white checkbox box, grey disabled button, near-black error text) had to be overridden by
+      hand on every dark surface.
     */}
     <MantineProvider theme={theme} defaultColorScheme="dark">
       <QueryClientProvider client={queryClient}>

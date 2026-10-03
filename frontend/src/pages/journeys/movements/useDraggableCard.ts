@@ -12,7 +12,7 @@ import {
 import { placeCard, type Box } from "./cardPlacement";
 import { readControlsPosition, saveControlsPosition, type CardPosition } from "./controlsPosition";
 
-// Шаг сдвига карточки стрелкой с клавиатуры, px.
+// Card step per keyboard arrow press, px.
 const KEYBOARD_STEP_PX = 24;
 
 const KEYBOARD_STEPS: Readonly<Record<string, readonly [number, number]>> = {
@@ -23,9 +23,9 @@ const KEYBOARD_STEPS: Readonly<Record<string, readonly [number, number]>> = {
 };
 
 interface DraggableCard {
-  /** Положение карточки; пустой объект — пока не измерено, место из CSS. */
+  /** Card position; an empty object until measured, then the CSS spot applies. */
   style: CSSProperties;
-  /** Обработчики ушка: перетаскивание, стрелки, двойной клик — сброс в угол по умолчанию. */
+  /** Tab handlers: drag, arrow keys, double click resets to the default corner. */
   handleProps: {
     onPointerDown: (event: PointerEvent<HTMLElement>) => void;
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
@@ -38,8 +38,8 @@ function boxOf(element: HTMLElement): Box {
 }
 
 /**
- * Ставит карточку на ближайшее допустимое к `wanted` место (см. placeCard); без `wanted` —
- * в левый нижний угол рамки. Панель учитывается, только если лежит в той же области карты.
+ * Puts the card on the nearest allowed spot to `wanted` (see placeCard); without `wanted`, in the
+ * bottom-left corner of the frame. The panel counts only if it lies in the same map area.
  */
 function resolvePosition(wanted: CardPosition | null, card: HTMLElement, panel: HTMLElement | null): CardPosition | null {
   const area = card.offsetParent;
@@ -57,22 +57,22 @@ function resolvePosition(wanted: CardPosition | null, card: HTMLElement, panel: 
     overhangTop,
     panel: panel && panel.offsetParent === area ? boxOf(panel) : null,
   };
-  // Левый нижний угол: дальше всего вниз и влево — ограничения рамки поставят на место.
+  // Bottom-left corner: as far down and left as possible; the frame constraints settle it.
   return placeCard(wanted ?? { left: 0, top: layout.area.height }, layout);
 }
 
 /**
- * Перетаскиваемая карточка поверх области карты: тянут за ушко, положение запоминается.
+ * A draggable card over the map area: dragged by the tab, the position is remembered.
  *
- * Карточка держится в рамке, выровненной по панели навигации, и не наезжает на панель — ни при
- * перетаскивании, ни когда окно стало меньше. На мобильной ширине карточка в потоке
- * (`position: static`), и сдвиги там не действуют.
+ * The card stays in a frame aligned to the navigation panel and never overlaps the panel, neither
+ * while dragging nor when the window shrinks. On mobile width the card is in flow
+ * (`position: static`) and offsets do not apply.
  */
 export function useDraggableCard(
   cardRef: RefObject<HTMLElement | null>,
   panelRef: RefObject<HTMLElement | null>,
 ): DraggableCard {
-  // Куда пользователь поставил карточку сам; `null` — не ставил, место по умолчанию.
+  // Where the user put the card; `null` means they did not, so the default spot.
   const [wanted, setWanted] = useState<CardPosition | null>(readControlsPosition);
   const [placed, setPlaced] = useState<CardPosition | null>(null);
   const dragStart = useRef<{ pointerX: number; pointerY: number; origin: CardPosition } | null>(null);
@@ -80,7 +80,7 @@ export function useDraggableCard(
   const place = useCallback(
     (next: CardPosition | null) => {
       const card = cardRef.current;
-      /* v8 ignore next 3 -- зовётся из эффекта и обработчиков ушка, когда карточка уже смонтирована */
+      /* v8 ignore next 3 -- called from an effect and tab handlers once the card is already mounted */
       if (!card) {
         return null;
       }
@@ -92,7 +92,7 @@ export function useDraggableCard(
     [cardRef, panelRef],
   );
 
-  // Место пересчитывается при каждом изменении размера области карты: панель и края двигаются с ней.
+  // Recomputed on every map area resize: the panel and edges move with it.
   useLayoutEffect(() => {
     const area = cardRef.current?.offsetParent;
     place(wanted);
@@ -130,7 +130,7 @@ export function useDraggableCard(
       const handle = event.currentTarget;
       handle.setPointerCapture(event.pointerId);
 
-      // Карточка едет за указателем на тот же сдвиг, что прошёл указатель от точки захвата.
+      // The card follows the pointer by the same offset the pointer travelled from the grab point.
       const target = (pointer: globalThis.PointerEvent): CardPosition | null => {
         const start = dragStart.current;
         return start

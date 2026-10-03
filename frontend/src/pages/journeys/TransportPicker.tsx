@@ -10,7 +10,7 @@ interface TransportPickerProps {
   error?: string;
 }
 
-/** Выбор одного вида транспорта чипами «иконка + подпись». */
+/** Picks one transport type via "icon + label" chips. */
 export function TransportPicker({ value, onChange, error }: TransportPickerProps) {
   const { t } = useTranslation("journeys");
 

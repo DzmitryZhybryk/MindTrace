@@ -38,24 +38,25 @@ import type { YearRange } from "./yearRange";
 interface JourneyFeedProps {
   yearRange: YearRange | null;
   transportTypes: readonly TransportType[];
-  /** Есть ли у пользователя поездки вообще — отличает «пока пусто» от «фильтр ничего не нашёл». */
+  /** Whether the user has any journeys at all: tells "empty so far" from "the filter found nothing". */
   hasJourneys: boolean;
-  /** Загруженные строки в порядке показа — по ним карта строит кадр. */
+  /** Loaded rows in display order; the map builds its frame from them. */
   onJourneysChange: (journeys: readonly JourneyFeedEntry[]) => void;
-  /** Поездка, на которой сейчас пользователь: тянет, правит, навёл курсор или фокус. */
+  /** The journey the user is on: dragging, editing, hovering or focusing. */
   onActiveJourneyChange: (journey: JourneyFeedEntry | null) => void;
 }
 
 /**
- * Лента поездок по годам с бесконечной прокруткой, правкой строк и перетаскиванием.
+ * Feed of journeys by year with infinite scroll, row editing and drag and drop.
  *
- * Следующая порция грузится, когда до конца загруженного остаётся около полэкрана: невидимый
- * сторож растянут вверх от низа списка. Пока идёт запрос ленты или перенос, сторож молчит —
- * догрузка отменила бы обновление уже загруженного. При смене фильтров прежние строки остаются
- * на экране приглушёнными, пока не придёт новый набор; тянуть их в это время нельзя.
+ * The next page loads when about half a screen remains to the end of the loaded rows: an
+ * invisible sentinel is stretched upward from the list bottom. While a feed request or a move is
+ * in flight the sentinel stays quiet, since loading more would cancel the refresh of what is
+ * already loaded. On a filter change the previous rows stay on screen dimmed until the new set
+ * arrives; they cannot be dragged meanwhile.
  *
- * Все строки — один список для перетаскивания, поэтому строку можно перенести и в другой год;
- * у края ленты список прокручивается сам, а сторож догружает следующие годы.
+ * All rows are one drag list, so a row can be moved to another year too; at the feed edge the
+ * list scrolls by itself and the sentinel loads the following years.
  */
 export function JourneyFeed({
   yearRange,
@@ -69,25 +70,25 @@ export function JourneyFeed({
   const queryClient = useQueryClient();
   const filters = { yearRange, transportTypes };
   const options = feedQueryOptions(filters);
-  // Пока сервер не ответил по новым фильтрам, лента собирается из уже загруженного: больше всего
-  // строк — в ленте без фильтров, иначе берём то, что было на экране.
+  // Until the server answers for the new filters the feed is built from what is loaded: the
+  // unfiltered feed has the most rows, otherwise take what was on screen.
   const allJourneysFeed = queryClient.getQueryData(feedQueryOptions(NO_FEED_FILTERS).queryKey);
   const feed = useInfiniteQuery({
     ...options,
-    // У выборки нет курсоров: её не догружают, она живёт до ответа сервера.
+    // A selection has no cursors: it is not paged further and lives until the server answers.
     placeholderData: (previous) => {
       const pages = (allJourneysFeed ?? previous)?.pages;
       return pages && { pages: filterFeedPages(pages, filters), pageParams: pages.map(() => null) };
     },
   });
   const { data, hasNextPage, isFetching, isFetchNextPageError, fetchNextPage } = feed;
-  // Выборка из полностью загруженной ленты совпадает с ответом сервера — её не приглушаем.
+  // A selection from a fully loaded feed equals the server's answer, so it is not dimmed.
   const isStale = feed.isPlaceholderData && !isFeedFullyLoaded(allJourneysFeed?.pages);
   const { move, isMoving, errorToken: moveErrorToken } = useJourneyMove(options.queryKey);
 
-  // Перестановку из кэша Query доносит до ленты рендером позже, а dnd-kit снимает сдвиги строк
-  // сразу на отпускании — строки на кадр прыгнули бы назад. Поэтому брошенную строку ставим на
-  // новое место сами, пока лента показывает те же порции, от которых посчитан перенос.
+  // The Query cache delivers the reorder to the feed one render later, while dnd-kit drops the row
+  // offsets immediately on release, so rows would jump back for a frame. Therefore put the dropped
+  // row in its new place ourselves while the feed still shows the same pages the move was computed from.
   const [drop, setDrop] = useState<{ pages: readonly JourneysFeedResponse[]; journeyId: string; target: MoveTarget } | null>(
     null,
   );
@@ -106,24 +107,24 @@ export function JourneyFeed({
     [i18n.language],
   );
 
-  // Правится не больше одной строки: клик по другой строке переключает правку на неё.
+  // At most one row is edited: a click on another row switches editing to it.
   const [editing, setEditing] = useState<{ journeyId: string; field: JourneyEditField } | null>(null);
   const [dropYear, setDropYear] = useState<number | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-  // Над какой строкой держат перетаскиваемую и её высота — по ним сдвигаются заголовки лет.
+  // Which row the dragged one is over and its height: year headings shift by them.
   const [dragOver, setDragOver] = useState<{ overId: string; rowHeight: number } | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
-  // Только что сохранённая строка — мигнёт подсветкой.
+  // A just-saved row flashes a highlight.
   const [savedId, setSavedId] = useState<string | null>(null);
   const isDragDisabled = editing !== null || isMoving || feed.isPlaceholderData;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  // Брошенная строка уже стоит там, где её видно, — FLIP только запоминает новые места, иначе
-  // проиграл бы перенос заново со старого места.
+  // The dropped row already stands where it is seen; FLIP only records the new positions,
+  // otherwise it would replay the move again from the old spot.
   useFlip(containerRef, dragId !== null || isDropShown);
 
-  // Строка под курсором или с фокусом внутри — одним слушателем на всю ленту. Фокус, перешедший
-  // на соседнюю кнопку той же строки, строку не меняет.
+  // The row under the cursor or with focus inside, via one listener for the whole feed. Focus moving
+  // to a neighbouring button of the same row does not change the row.
   const hasRows = groups.length > 0;
   useEffect(() => {
     const container = containerRef.current;
@@ -162,8 +163,8 @@ export function JourneyFeed({
     onActiveJourneyChange(activeJourney);
   }, [activeJourney, onActiveJourneyChange]);
 
-  // Строку тянут только за ручку, поэтому сенсору указателя не нужна задержка: на ручке
-  // `touch-action: none`, и палец не скроллит страницу вместо перетаскивания.
+  // A row is dragged only by its handle, so the pointer sensor needs no delay: the handle has
+  // `touch-action: none`, and a finger does not scroll the page instead of dragging.
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -183,7 +184,7 @@ export function JourneyFeed({
   const targetYearOf = (activeId: string | number, overId: string | number) =>
     resolveMoveTarget(journeys, String(activeId), String(overId))?.traveledYear ??
     journeys.find((journey) => journey.journeyId === activeId)?.traveledYear;
-  // Без своих объявлений скринридер прочёл бы id строк.
+  // Without custom announcements a screen reader would read row ids.
   const announcements: Announcements = {
     onDragStart: ({ active }) => t("all.dnd.start", { route: routeOf(active.id) }),
     onDragOver: ({ active, over }) =>
@@ -200,7 +201,7 @@ export function JourneyFeed({
 
   const handleDragOver = ({ active, over }: DragOverEvent) => {
     if (over) {
-      // Высоту берём здесь: на старте перетаскивания dnd-kit строку ещё не замерил.
+      // Take the height here: at drag start dnd-kit has not measured the row yet.
       setDragOver({ overId: String(over.id), rowHeight: active.rect.current.initial?.height ?? 0 });
       setDropYear(targetYearOf(active.id, over.id) ?? null);
     }
@@ -226,8 +227,8 @@ export function JourneyFeed({
 
   const sentinelRef = useRef<HTMLDivElement>(null);
   const canLoadMore = hasNextPage && !isFetching && !isMoving && !isFetchNextPageError;
-  // Наблюдатель пересоздаётся, когда догрузка снова разрешена: если сторож всё ещё на экране,
-  // новый наблюдатель сразу сообщит об этом и запросит следующую порцию.
+  // The observer is recreated when loading more is allowed again: if the sentinel is still on
+  // screen, the new observer reports it immediately and requests the next page.
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel || !canLoadMore) {

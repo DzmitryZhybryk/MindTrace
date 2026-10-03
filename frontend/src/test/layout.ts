@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-/** Прямоугольник элемента на экране, px. */
+/** Element rectangle on screen, px. */
 export interface ScreenRect {
   left: number;
   top: number;
@@ -8,14 +8,14 @@ export interface ScreenRect {
   height: number;
 }
 
-/** Размеры элемента в раскладке (`offset*`) и класс его `offsetParent`. */
+/** Element layout sizes (`offset*`) and the class of its `offsetParent`. */
 export interface OffsetBox {
-  /** Без них положение берётся из инлайн-стиля `left`/`top` — его задаёт перетаскивание. */
+  /** Without them the position comes from the inline `left`/`top` style, which dragging sets. */
   left?: number;
   top?: number;
   width: number;
   height: number;
-  /** Класс ближайшего предка, относительно которого элемент позиционирован. */
+  /** Class of the nearest ancestor the element is positioned against. */
   parentClass?: string;
 }
 
@@ -24,9 +24,9 @@ function offsetBoxOf(element: Element, boxesByClass: Readonly<Record<string, Off
 }
 
 /**
- * Задаёт элементам по CSS-классу раскладку `offset*` / `client*`: в jsdom её нет — у всех
- * нулевые размеры и `offsetParent === null`. `clientWidth`/`clientHeight` равны размеру box.
- * Снимается `vi.restoreAllMocks()`.
+ * Sets `offset*` / `client*` layout on elements by CSS class: jsdom has none (everything has zero
+ * size and `offsetParent === null`). `clientWidth`/`clientHeight` equal the box size.
+ * Undone by `vi.restoreAllMocks()`.
  */
 export function stubOffsetLayout(boxesByClass: Readonly<Record<string, OffsetBox>>): void {
   const position = (element: HTMLElement, side: "left" | "top"): number =>
@@ -59,9 +59,9 @@ export function stubOffsetLayout(boxesByClass: Readonly<Record<string, OffsetBox
 }
 
 /**
- * Задаёт экранные прямоугольники элементам по их CSS-классу: в jsdom нет раскладки, и
- * `getBoundingClientRect` у всех возвращает нули. Элемент без класса из карты — нулевой.
- * Снимается `vi.restoreAllMocks()`.
+ * Sets screen rectangles on elements by CSS class: jsdom has no layout and `getBoundingClientRect`
+ * returns zeros for all. An element whose class is not in the map is zero.
+ * Undone by `vi.restoreAllMocks()`.
  */
 export function stubScreenLayout(rectsByClass: Readonly<Record<string, ScreenRect>>): void {
   vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function rectOf(this: Element) {

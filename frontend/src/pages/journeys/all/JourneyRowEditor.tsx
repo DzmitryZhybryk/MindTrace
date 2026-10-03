@@ -28,7 +28,7 @@ import { prefersReducedMotion } from "../../../components/reducedMotion";
 
 const JOURNEY_NOT_FOUND_CODE = "journeys.journey_not_found";
 
-/** Поле строки, по которому кликнули, — в нём окажется фокус при открытии правки. */
+/** The row field that was clicked; it receives focus when editing opens. */
 export type JourneyEditField = "origin" | "destination" | "transport" | "year";
 
 interface JourneyRowEditorProps {
@@ -36,7 +36,7 @@ interface JourneyRowEditorProps {
   nameOf: PlaceNameLookup;
   focusField: JourneyEditField;
   onClose: () => void;
-  /** Поездка сохранена — строка после закрытия правки мигнёт подсветкой. */
+  /** The journey was saved: after editing closes the row flashes a highlight. */
   onSaved: () => void;
 }
 
@@ -45,11 +45,10 @@ function isJourneyNotFound(err: unknown): boolean {
 }
 
 /**
- * Показан ли у поля выпадающий список с вариантами.
+ * Whether the field's dropdown with options is shown.
  *
- * Mantine помечает открытый список `data-expanded` (а `aria-expanded` — не у всех полей), но
- * подсказки места «открываются» и пустыми, по фокусу. Поэтому список считается показанным, только
- * если в нём есть варианты.
+ * Mantine marks an open list with `data-expanded` (and `aria-expanded` not on every field), but
+ * place suggestions "open" empty on focus too. So the list counts as shown only if it has options.
  */
 function isListShown(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement) || target.dataset.expanded === undefined) {
@@ -61,12 +60,12 @@ function isListShown(target: EventTarget | null): boolean {
 }
 
 /**
- * Правка строки ленты на месте: все поля поездки разом, Save / Cancel / Esc, плюс удаление с
- * подтверждением в самой строке.
+ * In-place editing of a feed row: all journey fields at once, Save / Cancel / Esc, plus delete
+ * with confirmation in the row itself.
  *
- * Сохранение отправляет все поля целиком. Одинаковые города выбрать можно — сохранить нельзя,
- * это ловит валидатор формы. Удалённая в другом месте поездка: на сохранении — ошибка и
- * обновлённая лента, на удалении — просто убираем строку, цель уже достигнута.
+ * Saving sends all fields whole. The same city can be picked but not saved; the form validator
+ * catches that. A journey deleted elsewhere: on save, an error and a refreshed feed; on delete,
+ * just remove the row since the goal is already met.
  */
 export function JourneyRowEditor({ journey, nameOf, focusField, onClose, onSaved }: JourneyRowEditorProps) {
   const { t } = useTranslation("journeys");
@@ -75,7 +74,7 @@ export function JourneyRowEditor({ journey, nameOf, focusField, onClose, onSaved
   const rootRef = useRef<HTMLFormElement>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
-  // Удалённая строка сначала схлопывается и только потом пропадает из ленты.
+  // A deleted row first collapses and only then disappears from the feed.
   const [isCollapsing, setIsCollapsing] = useState(false);
 
   const unknownLabel = tCommon("map.unknownPlace");
@@ -102,9 +101,9 @@ export function JourneyRowEditor({ journey, nameOf, focusField, onClose, onSaved
       ?.focus();
   }, [focusField]);
 
-  // Esc внутри правки отменяет её. Пока у поля показан список (подсказки места, годы), Esc
-  // закрывает только список. Слушатель нативный: React-обработчики Mantine сработают позже,
-  // поэтому смотрим на сам список, а не на `defaultPrevented`.
+  // Esc inside editing cancels it. While a field shows a list (place suggestions, years), Esc
+  // closes only the list. The listener is native: Mantine's React handlers run later, so look at
+  // the list itself, not at `defaultPrevented`.
   useEffect(() => {
     const root = rootRef.current;
     if (!root) {

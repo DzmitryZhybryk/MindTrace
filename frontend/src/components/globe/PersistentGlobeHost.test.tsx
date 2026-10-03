@@ -17,9 +17,9 @@ import { routeCameraPov, type GlobeRoute } from "./route";
 import { ROUTE_CITIES } from "./routes";
 
 /*
- * Холст мокаем: он тянет three/WebGL, которых в jsdom нет. Мок отражает переданные пропы в
- * data-атрибуты, чтобы тест проверил, ЧЕМ хост кормит глобус (число дуг/городов, пауза), не
- * трогая сам WebGL. Холст в хосте ленивый — потому ждём его через `findByTestId`.
+ * The canvas is mocked: it pulls in three/WebGL, which jsdom lacks. The mock reflects the passed
+ * props into data attributes so the test checks WHAT the host feeds the globe (arc/city counts,
+ * pause) without touching WebGL itself. The canvas is lazy in the host, hence the wait via `findByTestId`.
  */
 type MockGlobeProps = {
   arcs?: readonly unknown[];
@@ -53,10 +53,10 @@ vi.mock("./GlobeCanvas", () => ({
 }));
 
 /*
- * Публикатор сцены — то, что на проде делает страница добавления поездки: кладёт в канал
- * маршрут формы и прямоугольник колонки. Живёт ВНЕ роутов, поэтому уход с /journeys/add
- * его не размонтирует: сцена после навигации держит маршрут, как в тот единственный рендер,
- * когда страница ещё не успела его очистить.
+ * The scene publisher is what the add-journey page does in production: it puts the form route and
+ * the column rectangle into the channel. It lives OUTSIDE the routes, so leaving /journeys/add
+ * does not unmount it: after navigation the scene still holds the route, as in that single
+ * render when the page has not cleared it yet.
  */
 function ScenePublisher({ route, slot }: { route: GlobeRoute | null; slot: GlobeSlot | null }) {
   const { setRoute, setSlot } = useGlobeSceneActions();
@@ -68,7 +68,7 @@ function ScenePublisher({ route, slot }: { route: GlobeRoute | null; slot: Globe
   return null;
 }
 
-/** Кнопка навигации по приложению — уход с грани формы так, как его делает пользователь. */
+/** An in-app navigation button: leaving the form face the way a user does. */
 function GoTo({ path }: { path: string }) {
   const navigate = useNavigate();
   return (
@@ -78,7 +78,7 @@ function GoTo({ path }: { path: string }) {
   );
 }
 
-/** AuthContext залогиненного пользователя с заданным `sub` (по нему кэшируются города). */
+/** AuthContext of a logged-in user with the given `sub` (cities are cached by it). */
 function authedValue(sub: string): AuthContextValue {
   return makeAuthValue({ isAuthenticated: true, claims: { sub, email_verified: true, exp: 4_102_444_800 } });
 }
@@ -172,9 +172,9 @@ describe("PersistentGlobeHost — источник данных глобуса",
 
     const globe = await screen.findByTestId("globe-canvas");
 
-    // Дуг у авторизованного нет; города приезжают асинхронно из journeys/globe (Moscow + London).
+    // An authenticated user has no arcs; cities arrive asynchronously from journeys/globe (Moscow + London).
     expect(globe).toHaveAttribute("data-arcs", "0");
-    // Дашборд — единственная грань, где холсту передан interactive (драг-вращение).
+    // The dashboard is the only face where the canvas gets interactive (drag rotation).
     expect(globe).toHaveAttribute("data-interactive", "true");
     await waitFor(() => expect(globe).toHaveAttribute("data-cities", "2"));
   });
@@ -212,7 +212,7 @@ describe("PersistentGlobeHost — источник данных глобуса",
         return HttpResponse.json({ items: [] });
       }),
     );
-    // Запрос названий уходит, только когда точки глобуса уже получены — ждём именно его.
+    // The names request goes out only once the globe points are received; wait for exactly that.
     let resolveRequests = 0;
     server.events.on("request:start", ({ request }) => {
       if (new URL(request.url).pathname === "/v1/geo/places/resolve") {
@@ -259,8 +259,8 @@ describe("PersistentGlobeHost — источник данных глобуса",
 
 describe("PersistentGlobeHost — свежесть данных фона", () => {
   /**
-   * Считает обращения к глобусу и отдаёт города с заданными названиями. Места берутся из
-   * фикстуры газеттира — их id знает фейковый `resolve`, так что у точек будут названия.
+   * Counts globe requests and returns cities with the given names. Places come from the gazetteer
+   * fixture, whose ids the fake `resolve` knows, so the points get names.
    */
   function countGlobeRequests(cityNames: string[]): () => number {
     let requests = 0;
@@ -292,14 +292,14 @@ describe("PersistentGlobeHost — свежесть данных фона", () =>
 
     renderWithProviders(<PersistentGlobeHost />, options);
 
-    // Точки на месте сразу, из кэша — и второго запроса не было.
+    // The points are in place at once, from the cache, and there was no second request.
     expect(await screen.findByTestId("globe-canvas")).toHaveAttribute("data-cities", "2");
     expect(requestCount()).toBe(1);
   });
 
   it("инвалидация ключа глобуса обновляет фон, несмотря на бесконечную свежесть", async () => {
-    // Так до глобуса доезжает поездка, добавленная в форме: `staleTime: Infinity` сам по себе
-    // не обновился бы никогда, поэтому мутация инвалидирует ключ глобуса.
+    // This is how a journey added in the form reaches the globe: `staleTime: Infinity` alone would
+    // never refresh, so the mutation invalidates the globe key.
     const requestCount = countGlobeRequests(["Moscow"]);
     const queryClient = createTestQueryClient();
     renderWithProviders(<PersistentGlobeHost />, {
@@ -347,7 +347,7 @@ describe("PersistentGlobeHost — грань формы поездки", () => {
     originLabel: "Moscow",
     destinationLabel: "London",
   };
-  // jsdom: вьюпорт 1024×768. Колонка справа — как на десктопной раскладке формы.
+  // jsdom: the viewport is 1024x768. The column is on the right, as in the desktop form layout.
   const SLOT: GlobeSlot = { left: 700, top: 100, width: 300, height: 600 };
 
   afterEach(() => {
@@ -444,12 +444,12 @@ describe("PersistentGlobeHost — грань формы поездки", () => {
     const host = container.querySelector<HTMLElement>(".persistent-globe");
 
     await waitFor(() => expect(host?.style.getPropertyValue("--globe-slot-clip")).not.toBe(""));
-    // Отступы обрезки от краёв вьюпорта: справа 1024 − (700 + 300), снизу 768 − (100 + 600).
+    // Clip insets from the viewport edges: right 1024 - (700 + 300), bottom 768 - (100 + 600).
     expect(host?.style.getPropertyValue("--globe-slot-clip")).toBe("inset(100px 24px 68px 700px)");
-    // Центр колонки (850, 400) минус центр вьюпорта (512, 384).
+    // Column center (850, 400) minus viewport center (512, 384).
     expect(host?.style.getPropertyValue("--globe-slot-x")).toBe("338px");
     expect(host?.style.getPropertyValue("--globe-slot-y")).toBe("16px");
-    // Своего масштаба у грани нет — он общий с дашбордом (CSS), иначе переход менял бы размер.
+    // The face has no scale of its own: it is shared with the dashboard (CSS), otherwise the transition would resize.
     expect(host?.style.getPropertyValue("--globe-slot-scale")).toBe("");
   });
 
@@ -480,7 +480,7 @@ describe("PersistentGlobeHost — грань формы поездки", () => {
     expect(screenAttr(container, "data-screen")).toBe("home");
     expect(globe).toHaveAttribute("data-route", "Moscow");
     expect(globe).toHaveAttribute("data-route-fading", "true");
-    // Кадрирование грани формы уходит вместе с ней — рамка перелетает к дашборду.
+    // The form face framing leaves with it: the frame flies to the dashboard.
     expect(container.querySelector<HTMLElement>(".persistent-globe")?.style.getPropertyValue("--globe-slot-clip")).toBe(
       "",
     );

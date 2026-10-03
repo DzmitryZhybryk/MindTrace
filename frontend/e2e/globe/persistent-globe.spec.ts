@@ -5,7 +5,7 @@ import { loginViaUi, registerUser } from "../helpers/users";
 
 async function hitsGlobeAtCenter(page: Page, locator: Locator): Promise<boolean> {
   await expect(locator, `${locator} должен быть подключён к DOM для проверки центра`).toBeAttached();
-  // Пустой flex-слот может иметь нулевую ширину: для его центра достаточно высоты.
+  // An empty flex slot may have zero width: height is enough for its center.
   await expect
     .poll(async () => (await locator.boundingBox())?.height ?? 0, {
       message: `${locator} должен иметь положительную высоту для проверки центра`,
@@ -23,24 +23,24 @@ async function hitsGlobeAtCenter(page: Page, locator: Locator): Promise<boolean>
 }
 
 /**
- * E2E: app-global глобус-фон — грань хоста следует за маршрутом (перелёт login→home,
- * форма поездки→home).
+ * E2E: the app-global globe background: the host face follows the route (flight login -> home,
+ * journey form -> home).
  *
- * Проверка структурная (по data-атрибутам `.persistent-globe`), сознательно БЕЗ завязки на
- * WebGL/canvas: CSS-слой хоста (кадрирование + скрим) обязан жить и там, где WebGL недоступен
- * (headless-браузер без GPU), — сбой холста изолирует boundary внутри самого хоста.
+ * The check is structural (by `.persistent-globe` data attributes), deliberately WITHOUT depending
+ * on WebGL/canvas: the host's CSS layer (framing + scrim) must work where WebGL is unavailable
+ * too (a headless browser without a GPU); a canvas failure is isolated by a boundary inside the host itself.
  */
 test.describe("Persistent globe", () => {
   test("грань хоста следует за маршрутом: login до входа, home после", async ({ page, request }) => {
     const { username, password } = await registerUser(request);
     const globe = page.locator(".persistent-globe");
 
-    // Публичная грань: на /login хост смонтирован и кадрирован под форму логина.
+    // Public face: on /login the host is mounted and framed for the login form.
     await page.goto("/login");
     await expect(globe).toHaveAttribute("data-screen", "login");
     await expect(globe).toHaveAttribute("data-visible", "true");
 
-    // После входа хост НЕ размонтируется — та же нода переключает грань на дашбордную.
+    // After login the host is NOT unmounted: the same node switches to the dashboard face.
     await loginViaUi(page, { login: username, password });
     await expect(globe).toHaveAttribute("data-screen", "home");
     await expect(globe).toHaveAttribute("data-visible", "true");
@@ -51,7 +51,7 @@ test.describe("Persistent globe", () => {
   }) => {
     const globe = authedPage.locator(".persistent-globe");
 
-    // Десктопный вьюпорт проектов (≥992px): колонка глобуса у формы видима, грань — своя.
+    // The projects' desktop viewport (>=992px): the globe column beside the form is visible, with its own face.
     await authedPage.goto("/journeys/add");
     await expect(globe).toHaveAttribute("data-screen", "journeyAdd");
     await expect(globe).toHaveAttribute("data-visible", "true");
@@ -61,7 +61,7 @@ test.describe("Persistent globe", () => {
 
     await expect(globe).toHaveAttribute("data-screen", "home");
     await expect(globe).toHaveAttribute("data-visible", "true");
-    // Та же DOM-нода, что и на форме: WebGL не перезагружался — отсюда и перелёт.
+    // The same DOM node as on the form: WebGL was not reloaded, hence the flight.
     expect(await hostNode?.evaluate((node) => node.isConnected)).toBe(true);
   });
 

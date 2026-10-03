@@ -3,8 +3,8 @@ import { createContext, useContext } from "react";
 import type { GlobeRoute } from "./route";
 
 /**
- * Прямоугольник места под глобус на странице (viewport-координаты `getBoundingClientRect`).
- * По нему хост кадрирует и обрезает сферу.
+ * Rectangle reserved for the globe on a page (viewport coordinates of `getBoundingClientRect`).
+ * The host frames and crops the sphere by it.
  */
 export interface GlobeSlot {
   left: number;
@@ -13,15 +13,15 @@ export interface GlobeSlot {
   height: number;
 }
 
-/** Что страница просит показать на своей грани глобуса. Читает хост. */
+/** What a page asks to show on its face of the globe. Read by the host. */
 export interface GlobeSceneState {
   route: GlobeRoute | null;
   slot: GlobeSlot | null;
 }
 
 /**
- * Сеттеры сцены — отдельным контекстом со стабильной ссылкой: страница-публикатор не
- * перерисовывается на каждом тике замера слота, её дерево (форма) живёт своей жизнью.
+ * Scene setters in a separate context with a stable reference: the publishing page does not
+ * rerender on every slot measurement tick, and its tree (the form) lives its own life.
  */
 export interface GlobeSceneActions {
   setRoute: (route: GlobeRoute | null) => void;

@@ -5,8 +5,8 @@ import { GEO_PLACES, server } from "../test/handlers";
 import { renderWithProviders, screen, waitFor } from "../test/render";
 import { PlaceAutocomplete } from "./PlaceAutocomplete";
 
-// Запас поверх debounce компонента (DEBOUNCE_MS = 250): столько ждём, чтобы отложенный
-// запрос успел бы уйти, если бы гард «текст равен выбранному месту» не работал.
+// Margin over the component debounce (DEBOUNCE_MS = 250): how long to wait so a deferred request
+// would have gone out if the "text equals the picked place" guard did not work.
 const DEBOUNCE_SETTLE_MS = 400;
 
 describe("PlaceAutocomplete", () => {
@@ -17,8 +17,8 @@ describe("PlaceAutocomplete", () => {
     );
 
     await user.type(screen.getByLabelText("From"), "Mos");
-    // hidden: true — Mantine Combobox-дропдаун (Popover/Floating UI) в jsdom не получает
-    // вычисленную позицию и остаётся display:none, поэтому опция вне видимого a11y-дерева.
+    // hidden: true, because a Mantine Combobox dropdown (Popover/Floating UI) gets no computed
+    // position in jsdom and stays display:none, so the option is outside the visible a11y tree.
     await user.click(await screen.findByRole("option", { name: /Moscow/iu, hidden: true }));
 
     expect(onChange).toHaveBeenCalledWith(GEO_PLACES[0]);
@@ -31,7 +31,7 @@ describe("PlaceAutocomplete", () => {
     );
     expect(screen.getByLabelText("From")).toHaveValue(moscow.name);
 
-    // Родитель поменял value не нашим onChange — поле обязано показать новое имя.
+    // The parent changed value not via our onChange: the field must show the new name.
     rerender(<PlaceAutocomplete label="From" placeholder="City" value={london} onChange={vi.fn()} />);
 
     expect(screen.getByLabelText("From")).toHaveValue(london.name);
@@ -55,8 +55,8 @@ describe("PlaceAutocomplete", () => {
   });
 
   it("после выбора города повторный поиск по его же имени не уходит в сеть", async () => {
-    // Debounce «догоняет» подставленное имя выбранного места — без гарда это был бы
-    // лишний запрос, а его выдача снова открыла бы дропдаун поверх заполненного поля.
+    // The debounce "catches up" with the filled-in name of the picked place; without the guard that
+    // would be a needless request whose results would reopen the dropdown over a filled field.
     let requests = 0;
     server.use(
       http.get("/v1/geo/places/search/", () => {
@@ -72,8 +72,8 @@ describe("PlaceAutocomplete", () => {
     await user.click(await screen.findByRole("option", { name: /Moscow/iu, hidden: true }));
     const afterPick = requests;
 
-    // Единственный способ увидеть ОТСУТСТВИЕ запроса — дать debounce (250 мс в компоненте)
-    // отработать на подставленном имени и убедиться, что счётчик не сдвинулся.
+    // The only way to see the ABSENCE of a request is to let the debounce (250 ms in the component)
+    // run on the filled-in name and check the counter did not move.
     await new Promise((resolve) => setTimeout(resolve, DEBOUNCE_SETTLE_MS));
 
     expect(requests).toBe(afterPick);
@@ -119,7 +119,7 @@ describe("PlaceAutocomplete", () => {
     await user.type(screen.getByLabelText("From"), "Bl");
 
     const sea = await screen.findByRole("option", { name: "Black Sea", hidden: true });
-    // У моря в опции только название; у города — название и страна.
+    // A sea's option has only the name; a city's has name and country.
     expect(sea).toHaveTextContent(/^Black Sea$/u);
     expect(screen.getByRole("option", { name: /Moscow/iu, hidden: true })).toHaveTextContent("Russia");
   });

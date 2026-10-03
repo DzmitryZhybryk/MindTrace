@@ -7,7 +7,7 @@ import { makeAccessToken, server } from "../test/handlers";
 import { renderWithProviders, screen } from "../test/render";
 import type { UserEvent } from "@testing-library/user-event";
 
-/** Монтирует диалог открытым со спайами onClose/onVerified. */
+/** Mounts the dialog open with onClose/onVerified spies. */
 function renderDialog() {
   const onClose = vi.fn();
   const onVerified = vi.fn();
@@ -18,13 +18,13 @@ function renderDialog() {
   return { ...view, onClose, onVerified };
 }
 
-/** Переводит диалог со стадии intro на стадию ввода кода (Send code → 202). */
+/** Moves the dialog from the intro stage to code entry (Send code -> 202). */
 async function gotoCodeStage(user: UserEvent) {
   await user.click(screen.getByRole("button", { name: "Send code" }));
   await screen.findByRole("button", { name: "Verify" });
 }
 
-/** Вводит код по одной цифре в каждый input PinInput. */
+/** Types the code one digit into each PinInput input. */
 async function typeCode(user: UserEvent, code: string) {
   const inputs = screen.getAllByRole("textbox");
   for (let index = 0; index < code.length; index += 1) {

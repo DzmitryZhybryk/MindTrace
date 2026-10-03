@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { isWorldView, panView, zoomView, type ViewBox } from "./worldProjection";
 
-// Насколько меняется масштаб за пиксель прокрутки колеса или щипка тачпада.
+// Zoom change per pixel of wheel scroll or trackpad pinch.
 const WHEEL_ZOOM_SPEED = 0.01;
 
-/** Safari присылает щипок тачпада не колесом с `ctrlKey`, а нестандартным GestureEvent. */
+/** Safari sends a trackpad pinch as a non-standard GestureEvent, not a wheel event with `ctrlKey`. */
 interface SafariGestureEvent extends UIEvent {
   scale: number;
   clientX: number;
@@ -26,16 +26,15 @@ function isSameView(left: ViewBox, right: ViewBox): boolean {
 }
 
 /**
- * Масштаб и сдвиг карты жестами — только над самой картой, остальная страница на месте.
+ * Zoom and pan of the map by gestures, only over the map itself; the rest of the page stays put.
  *
- * Приближают щипком тачпада (колесо с `ctrlKey`, в Safari — GestureEvent) и двумя
- * пальцами на сенсорном экране; приближенную карту двигают перетаскиванием и прокруткой.
- * Двойной клик возвращает стартовый вид. Пока видна вся карта, прокрутка и вертикальный
- * свайп достаются странице.
+ * Zoom: trackpad pinch (wheel with `ctrlKey`, GestureEvent in Safari) and two fingers on touch.
+ * A zoomed map is panned by drag and scroll. Double click restores the initial view. While the
+ * whole map is visible, scroll and vertical swipe go to the page.
  *
- * Жесты слушаются на `canvasRef`; по размеру `svgRef` на экране пиксели переводятся в
- * единицы холста. Новый `initialView` подменяет вид, только пока пользователь его не менял.
- * Возвращает текущую видимую область.
+ * Gestures are listened for on `canvasRef`; the on-screen size of `svgRef` converts pixels to
+ * canvas units. A new `initialView` replaces the view only while the user has not changed it.
+ * Returns the current visible area.
  */
 export function useMapZoom(
   canvasRef: RefObject<HTMLElement | null>,
@@ -46,13 +45,13 @@ export function useMapZoom(
   const [view, setView] = useState(initialView);
   if (trackedInitialView !== initialView) {
     setTrackedInitialView(initialView);
-    // Вид, который пользователь успел поменять, новый стартовый (например, после ресайза) не затирает.
+    // A view the user already changed is not overwritten by a new initial one (e.g. after a resize).
     if (isSameView(view, trackedInitialView)) {
       setView(initialView);
     }
   }
 
-  // Обработчики подписаны один раз, а текущий и стартовый вид читают отсюда.
+  // Handlers subscribe once and read the current and initial view from here.
   const viewRef = useRef(view);
   const initialViewRef = useRef(initialView);
   useEffect(() => {
@@ -63,7 +62,7 @@ export function useMapZoom(
   useEffect(() => {
     const canvas = canvasRef.current;
     const svg = svgRef.current;
-    /* v8 ignore next 3 -- оба узла рендерятся вместе с картой, эффект после монтирования */
+    /* v8 ignore next 3 -- both nodes render with the map, the effect runs after mount */
     if (!canvas || !svg) {
       return;
     }
@@ -73,7 +72,7 @@ export function useMapZoom(
       setView(next);
     };
 
-    // Сколько единиц холста в экранном пикселе и какая точка холста под экранной точкой.
+    // Canvas units per screen pixel, and which canvas point lies under a screen point.
     const unitsPerPx = () => viewRef.current.width / svg.getBoundingClientRect().width;
     const toCanvas = (clientX: number, clientY: number): ScreenPosition => {
       const rect = svg.getBoundingClientRect();
@@ -119,7 +118,7 @@ export function useMapZoom(
       gestureStart = null;
     };
 
-    // Активные касания и нажатая кнопка мыши: одно — сдвиг, два — щипок.
+    // Active touches and the pressed mouse button: one pans, two pinch.
     const pointers = new Map<number, ScreenPosition>();
     const handlePointerDown = (event: PointerEvent) => {
       if (event.pointerType === "mouse" && event.button !== 0) {

@@ -18,7 +18,7 @@ import { MovementsControls, type YearWindow } from "./movements/MovementsControl
 import { projectArc } from "./movements/movementGeometry";
 import { movementsQueryOptions } from "./movements/movementsQuery";
 
-// Стабильные ссылки на «пусто»: `WorldMap` и слой стрелок пересчитываются по идентичности пропов.
+// Stable "empty" references: `WorldMap` and the arrow layer recompute by prop identity.
 const NO_COUNTRIES: MapCountry[] = [];
 const NO_CONNECTIONS: ProjectedConnection[] = [];
 const ALL_TRANSPORT_TYPES: TransportType[] = [...zTransportType.options];
@@ -30,9 +30,9 @@ interface MovementsData {
 }
 
 /**
- * Проецирует дуги маршрутов один раз на ответ.
+ * Projects the route arcs once per response.
  *
- * Модульная (а не инлайн-стрелка) — Query мемоизирует результат `select` по ссылке на функцию.
+ * Module-level (not an inline arrow): Query memoizes the `select` result by function reference.
  */
 function toMovementsData(response: MovementsMapResponse): MovementsData {
   return {
@@ -49,14 +49,13 @@ function toMovementsData(response: MovementsMapResponse): MovementsData {
 }
 
 /**
- * Под-вкладка «Карта перемещений» — маршрут /journeys/movements: куда пользователь ездил,
- * стрелкой на каждый маршрут, с названиями мест. Маршруты фильтруются окном лет и видами
- * транспорта.
+ * "Movements map" sub-tab, route /journeys/movements: where the user travelled, an arrow per
+ * route, with place names. Routes are filtered by a year window and transport types.
  *
- * Окно лет применяется на клиенте — по годам, пришедшим в каждом маршруте, — поэтому линии
- * меняются прямо по ходу перетаскивания ползунка, без запросов. Транспорт — запросом: пока
- * грузится новый набор, на карте остаются прежние маршруты. Шкала лет, рамка карты и названия
- * мест берутся по всем поездкам, без фильтров: кадр не прыгает. Страны одного цвета, подсказок нет.
+ * The year window applies on the client, by the years each route carries, so lines change as the
+ * slider is dragged, with no requests. Transport goes through a request: while a new set loads,
+ * the previous routes stay on the map. The year scale, map frame and place names come from all
+ * journeys, unfiltered, so the frame does not jump. Countries are one colour, no tooltips.
  */
 export function MovementsMapView() {
   const { t } = useTranslation("journeys");
@@ -68,7 +67,7 @@ export function MovementsMapView() {
   const lastYear = all.data?.lastYear ?? null;
   const allConnections = all.data?.connections ?? NO_CONNECTIONS;
 
-  // Окно лет не задано, пока пользователь не тронул ползунок: тогда — все годы.
+  // The year window is unset until the user touches the slider; then it means all years.
   const [selectedWindow, setSelectedWindow] = useState<YearWindow | null>(null);
   const [transportTypes, setTransportTypes] = useState<TransportType[]>(ALL_TRANSPORT_TYPES);
   const hasTransport = transportTypes.length > 0;
@@ -77,7 +76,7 @@ export function MovementsMapView() {
     [selectedWindow, firstYear, lastYear],
   );
 
-  // Все виды транспорта — тот же ключ, что у запроса без фильтра: второй запрос не уходит.
+  // All transport types share the key of the unfiltered request, so no second request is sent.
   const shown = useQuery({
     ...movementsQueryOptions(transportTypes),
     select: toMovementsData,
@@ -85,7 +84,7 @@ export function MovementsMapView() {
     enabled: hasTransport,
   });
   const shownConnections = shown.data?.connections;
-  // Маршрут виден, если хоть одна его поездка попала в окно лет.
+  // A route is visible if at least one of its journeys falls in the year window.
   const connections = useMemo(() => {
     if (!hasTransport || !shownConnections || !window) {
       return NO_CONNECTIONS;

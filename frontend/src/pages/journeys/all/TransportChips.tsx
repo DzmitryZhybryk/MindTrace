@@ -9,7 +9,7 @@ interface TransportChipsProps {
   onTransportTypesChange: (transportTypes: TransportType[]) => void;
 }
 
-/** Мультивыбор видов транспорта ленты: иконка и подпись, выбранность — заливкой. */
+/** Multi-select of feed transport types: icon and label, selection shown by fill. */
 export function TransportChips({ transportTypes, onTransportTypesChange }: TransportChipsProps) {
   const { t } = useTranslation("journeys");
 

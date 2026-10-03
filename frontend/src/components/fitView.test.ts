@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 import { fitView } from "./fitView";
 import { WORLD_ASPECT, WORLD_VIEW_BOX, type ViewBox } from "./worldProjection";
 
-// Область карты шире SVG: карта вписана по высоте, по бокам — пустые поля.
+// The map area is wider than the SVG: the map fits by height, with empty margins at the sides.
 const WIDE_CANVAS = { width: 1600, height: 600 };
-// Небольшой прямоугольник маршрутов в середине мира.
+// A small rectangle of routes in the middle of the world.
 const BOUNDS: ViewBox = { x: 480, y: 180, width: 40, height: 20 };
 
-/** Экранный x (px от левого края области карты) точки холста при данном виде. */
+/** Screen x (px from the map area's left edge) of a canvas point for a given view. */
 function screenX(view: ViewBox, canvas: { width: number; height: number }, x: number): number {
   const svgWidth = canvas.height * WORLD_ASPECT;
   return (canvas.width - svgWidth) / 2 + ((x - view.x) / view.width) * svgWidth;
@@ -47,7 +47,7 @@ describe("fitView", () => {
   it("точку не раздувает на весь экран: ширина кадра не меньше четверти мира", () => {
     const view = fitView({ x: 500, y: 200, width: 0, height: 0 }, WIDE_CANVAS, 0);
 
-    // Допуск на плавающую точку: пересчёт через пиксели даёт 249.99999999999997.
+    // Floating-point tolerance: the recomputation via pixels gives 249.99999999999997.
     expect(view.width).toBeGreaterThanOrEqual(WORLD_VIEW_BOX.width * 0.25 - 1e-9);
   });
 

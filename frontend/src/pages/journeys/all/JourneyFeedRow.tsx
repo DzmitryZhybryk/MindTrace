@@ -15,17 +15,17 @@ interface JourneyFeedRowProps {
   journey: JourneyFeedEntry;
   nameOf: PlaceNameLookup;
   distanceFormat: Intl.NumberFormat;
-  /** Клик по полю строки открывает правку с фокусом в этом поле. */
+  /** A click on a row field opens editing with focus in that field. */
   onEdit: (field: JourneyEditField) => void;
   isDragDisabled: boolean;
-  /** Год, в который попадёт строка, если её сейчас бросить; задан только у перетаскиваемой. */
+  /** Year the row lands in if dropped now; set only on the dragged row. */
   dropYear: number | null;
-  /** Строку только что сохранили — она мигнёт подсветкой, после чего вызовет `onSavedShown`. */
+  /** The row was just saved: it flashes a highlight, then calls `onSavedShown`. */
   isSaved: boolean;
   onSavedShown: () => void;
 }
 
-/** Ручка перетаскивания — два столбца точек; UI-контрол, рисуется по `currentColor`. */
+/** Drag grip: two columns of dots; a UI control drawn in `currentColor`. */
 function GripIcon() {
   return (
     <svg width="8" height="14" viewBox="0 0 8 14" aria-hidden="true" fill="currentColor">
@@ -35,11 +35,11 @@ function GripIcon() {
 }
 
 /**
- * Строка ленты: ручка, транспорт, «откуда → куда» и расстояние. Пока названия грузятся — многоточие.
+ * Feed row: grip, transport, "from -> to" and distance. An ellipsis shows while names load.
  *
- * Транспорт и места — кнопки без рамки: нажатие открывает правку строки. Расстояние считает бэк,
- * поэтому оно не нажимается. Строку тянут за ручку — мышью, пальцем или с клавиатуры (пробел,
- * стрелки, пробел); при переносе в другой год рядом показывается «→ год».
+ * Transport and places are borderless buttons: pressing opens row editing. The backend computes
+ * the distance, so it is not clickable. A row is dragged by the grip with mouse, finger or
+ * keyboard (space, arrows, space); moving to another year shows "-> year" beside it.
  */
 export function JourneyFeedRow({
   journey,
@@ -111,7 +111,7 @@ export function JourneyFeedRow({
           {destination ?? "…"}
         </button>
       </span>
-      {/* Ключ — год: при переходе в следующий год подсказка перелистывается заново. */}
+      {/* The key is the year: moving to the next year flips the hint again. */}
       {isChangingYear ? (
         <span key={dropYear} className="journey-row__drop-year">
           → {dropYear}

@@ -1,13 +1,13 @@
 /*
- * Проверяет бюджет бандла (.claude/rules/web/performance.md → «Bundle Budget») по прод-сборке.
- * Вес страницы — то, что браузер обязан скачать, чтобы её показать: точка входа и всё, что
- * она и чанки страницы тянут статическими импортами, плюс их CSS. Динамический import()
- * (глобус-фон, соседние страницы) грузится отдельно и в вес страницы не входит.
+ * Checks the bundle budget (.claude/rules/web/performance.md, "Bundle Budget") on a production build.
+ * A page's weight is what the browser must download to show it: the entry point and everything it
+ * and the page chunks pull in via static imports, plus their CSS. A dynamic import() (the globe
+ * background, neighbouring pages) loads separately and does not count toward the page weight.
  *
- * Граф берётся из манифеста Vite, а не из текста чанков: манифест разделяет статические и
- * динамические импорты, а в предзагрузке они выглядят одинаково.
+ * The graph comes from the Vite manifest, not from chunk text: the manifest separates static and
+ * dynamic imports, while in preloading they look the same.
  *
- * Запуск: make budget (собирает с манифестом и проверяет). Падает, если страница не влезает.
+ * Run: make budget (builds with the manifest and checks). Fails if a page does not fit.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -30,8 +30,8 @@ interface Budget {
   css: number;
 }
 
-// Лимиты в kB gzip (1 kB = 1000 байт, как в отчёте Vite). Числа и их обоснование живут в
-// performance.md; меняешь там — меняй здесь.
+// Limits in kB gzip (1 kB = 1000 bytes, as in the Vite report). The numbers and their rationale
+// live in performance.md; change them there and here together.
 const BUDGETS = {
   landing: { js: 200, css: 40 },
   app: { js: 300, css: 50 },
@@ -40,7 +40,7 @@ const BUDGETS = {
 interface Page {
   name: string;
   budget: keyof typeof BUDGETS;
-  /** Модули маршрута из App.tsx, которые грузятся лениво: лейаут и сама страница. */
+  /** Route modules from App.tsx that load lazily: the layout and the page itself. */
   modules: string[];
 }
 
@@ -73,8 +73,9 @@ const PAGES: readonly Page[] = [
 
 const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as Manifest;
 
-// Размеры — свой gzip уровня 9, а не цифры из вывода `vite build`: Vite жмёт другим компрессором,
-// и его gz-колонка расходится с этой на 1–3 %. Лимиты сверять только с выводом этого скрипта.
+// Sizes use our own gzip level 9, not the numbers from `vite build` output: Vite compresses with a
+// different compressor and its gz column differs from this one by 1-3%. Compare limits only with
+// this script's output.
 const gzipSizes = new Map<string, number>();
 function gzipSize(file: string): number {
   let size = gzipSizes.get(file);
@@ -95,7 +96,7 @@ function chunk(key: string): ManifestChunk {
   return found;
 }
 
-/** Файлы JS и CSS, которые тянут модули `roots` вместе со всеми статическими импортами. */
+/** JS and CSS files pulled in by the `roots` modules together with all their static imports. */
 function staticClosure(roots: readonly string[]): { js: Set<string>; css: Set<string> } {
   const js = new Set<string>();
   const css = new Set<string>();

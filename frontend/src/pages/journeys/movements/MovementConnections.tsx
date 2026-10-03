@@ -5,12 +5,12 @@ import { projectToScreen } from "../../../components/worldProjection";
 import { placeLabels } from "./labelPlacement";
 import { piecePath, splitEdgeFade, type ArcPieces } from "./movementGeometry";
 
-/** Маршрут «откуда → куда» с уже спроецированной дугой. */
+/** A from -> to route with its arc already projected. */
 export interface ProjectedConnection {
   key: string;
   origin: MapPoint;
   destination: MapPoint;
-  /** Годы поездок по маршруту, по возрастанию: по ним маршрут попадает в окно лет или нет. */
+  /** Years of journeys on the route, ascending: they decide whether the route falls in the year window. */
   years: readonly number[];
   arc: ArcPieces;
 }
@@ -18,31 +18,30 @@ export interface ProjectedConnection {
 interface MovementConnectionsProps {
   connections: readonly ProjectedConnection[];
   /**
-   * Доля ширины мира, которую занимает видимая область. Стрелки и точки задаются в
-   * единицах холста — без поправки они росли бы при приближении карты вместе с ней.
+   * Share of the world width taken by the visible area. Arrows and dots are in canvas units;
+   * without this correction they would grow with the map when zoomed in.
    */
   unitScale: number;
-  /** Подпись места по его id; `undefined` — название ещё грузится, подписи нет. */
+  /** Place label by id; `undefined` means the name is still loading, no label. */
   labelOf: (placeId: string) => string | undefined;
 }
 
-// Размеры в единицах холста, когда видна вся карта.
+// Sizes in canvas units when the whole map is visible.
 const ARROW_SIZE = 7;
 const DOT_RADIUS = 2.2;
 const LABEL_FONT_SIZE = 8;
-// Отступ подписи от края точки, зазор до линий и соседних подписей, обводка-подложка под текстом.
+// Label offset from the dot edge, clearance from lines and neighbouring labels, halo stroke behind the text.
 const LABEL_GAP = 2;
 const LABEL_CLEARANCE = 1.2;
 const LABEL_HALO_WIDTH = 2.4;
-// Дуга через край мира гаснет у разреза на этой длине — а не обрывается посреди океана.
+// An arc across the world edge fades at the cut over this length instead of ending abruptly mid-ocean.
 const EDGE_FADE_LENGTH = 40;
-// Один маркер на слой: на странице одна карта перемещений.
+// One marker per layer: the page has a single movements map.
 const ARROW_MARKER_ID = "movement-arrow";
 
 /**
- * Слой карты перемещений поверх `WorldMap`: точка с названием на каждое место и дуга со
- * стрелкой на каждый маршрут. Поездки туда и обратно ложатся на одну дугу, и стрелки
- * оказываются на обоих её концах.
+ * Movements map layer over `WorldMap`: a dot with a name for each place and an arc with an arrow
+ * for each route. Trips there and back share one arc, so arrows appear at both ends.
  */
 export function MovementConnections({ connections, unitScale, labelOf }: MovementConnectionsProps) {
   const placeDots = useMemo(() => {
@@ -60,7 +59,7 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
     });
   }, [connections]);
 
-  // Подписи держат постоянный размер на экране, поэтому раскладка пересчитывается с масштабом.
+  // Labels keep a constant on-screen size, so the layout is recomputed with the zoom.
   const labels = useMemo(() => {
     const labelledPlaces = placeDots.flatMap((dot) => {
       const label = labelOf(dot.key);
@@ -96,7 +95,7 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
           <path className="movement-arrow" d="M0 1L10 5L0 9Z" />
         </marker>
       </defs>
-      {/* Точки под линиями: остриё стрелки ложится на точку назначения, а не прячется под ней. */}
+      {/* Dots under the lines: the arrow tip lands on the destination dot instead of hiding under it. */}
       <g>
         {placeDots.map((dot) => (
           <circle
@@ -124,8 +123,8 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
             );
           }
 
-          // Дуга через край мира — два куска: первый гаснет к разрезу, второй из него проявляется.
-          // Гаснет только хвост у разреза, остальная дуга — сплошная.
+          // An arc across the world edge is two pieces: the first fades toward the cut, the second
+          // emerges from it. Only the tail at the cut fades; the rest of the arc is solid.
           const fadeLength = EDGE_FADE_LENGTH * unitScale;
           const pieces = [
             { split: splitEdgeFade(first, "end", fadeLength), endsAtDestination: false },
@@ -137,7 +136,7 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
                 const gradientId = `movement-edge-fade-${connectionIndex}-${pieceIndex}`;
                 const [[innerX, innerY], [edgeX, edgeY]] = split.fadeAxis;
                 const hasSolid = split.solid.length > 1;
-                // Стрелка — на той части, что кончается в точке назначения.
+                // The arrow goes on the part that ends at the destination point.
                 const arrow = `url(#${ARROW_MARKER_ID})`;
                 return (
                   <g key={gradientId}>
@@ -156,7 +155,7 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
                     </defs>
                     <path
                       className="movement-line"
-                      // Инлайн, а не атрибутом: stroke из CSS-класса линии перебил бы атрибут.
+                      // Inline, not an attribute: the stroke from the line's CSS class would override an attribute.
                       style={{ stroke: `url(#${gradientId})` }}
                       d={piecePath(split.fade)}
                       markerEnd={endsAtDestination && !hasSolid ? arrow : undefined}
@@ -177,7 +176,7 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
           );
         })}
       </g>
-      {/* Подписи — поверх линий: если места без пересечения нет, дуга не перечёркивает название. */}
+      {/* Labels over the lines: if there is no crossing-free spot, an arc does not strike through the name. */}
       <g>
         {labels.map((label) => (
           <text

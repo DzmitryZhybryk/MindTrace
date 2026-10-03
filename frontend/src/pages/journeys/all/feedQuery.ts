@@ -13,14 +13,14 @@ export interface FeedFilters {
   transportTypes: readonly TransportType[];
 }
 
-/** Фильтры, при которых лента — все поездки: её кэш — источник для выборки на клиенте. */
+/** Filters under which the feed is all journeys: its cache is the source for client-side selection. */
 export const NO_FEED_FILTERS: FeedFilters = { yearRange: null, transportTypes: zTransportType.options };
 
-// Ползунок лет меняет фильтр на каждом пройденном годе. Лента по фильтру уходит в сеть, когда он
-// столько простоял: запрос сменившегося фильтра отменяется ещё до отправки.
+// The year slider changes the filter on every year passed. The filtered feed goes to the network
+// once the filter has stood this long: a request for a superseded filter is cancelled before sending.
 const FILTER_SETTLE_MS = 250;
 
-/** Ждёт, пока фильтр постоит; отмена запроса прерывает ожидание. */
+/** Waits for the filter to settle; aborting the request interrupts the wait. */
 function waitForFilterToSettle(signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(resolve, FILTER_SETTLE_MS);
@@ -35,22 +35,22 @@ function waitForFilterToSettle(signal: AbortSignal): Promise<void> {
   });
 }
 
-/** Поездки одного года в порядке ленты. */
+/** Journeys of one year in feed order. */
 export interface FeedYearGroup {
   year: number;
   journeys: readonly JourneyFeedEntry[];
 }
 
 /**
- * Опции бесконечного запроса ленты — единственное место, где фильтры превращаются в ключ.
+ * Infinite feed query options: the only place where filters become a key.
  *
- * Одинаковый набор транспорта даёт одинаковый ключ при любом порядке выбора, а «выбраны все»
- * равносильно «без фильтра». Первая порция — без курсора: пустой объект, а не `null` —
- * сгенерированный `queryFn` принимает объект за параметры запроса. Ответ не устаревает сам —
- * его сбрасывают изменения поездок.
+ * The same transport set gives the same key in any selection order, and "all selected" equals "no
+ * filter". The first page has no cursor: an empty object, not `null`, because the generated
+ * `queryFn` takes an object as request parameters. The response never goes stale by itself;
+ * journey changes invalidate it.
  *
- * Первая порция ленты по фильтру ждёт, пока фильтр постоит: если за это время его сменили, запрос
- * отменяется — Query отменяет запрос, который никто больше не ждёт, раз `queryFn` взял сигнал.
+ * The first page of a filtered feed waits for the filter to settle: if it changed meanwhile, the
+ * request is cancelled (Query cancels a request nobody awaits anymore since `queryFn` took the signal).
  */
 export function feedQueryOptions({ yearRange, transportTypes }: FeedFilters) {
   const query: NonNullable<ListJourneysData["query"]> = {};
@@ -76,7 +76,7 @@ export function feedQueryOptions({ yearRange, transportTypes }: FeedFilters) {
   return {
     ...options,
     queryFn: async (context: Parameters<typeof fetchPage>[0]) => {
-      // Первая порция — объект параметров, следующие — строка курсора.
+      // The first page is a params object, later ones are a cursor string.
       if (typeof context.pageParam === "object") {
         await waitForFilterToSettle(context.signal);
       }
@@ -87,18 +87,11 @@ export function feedQueryOptions({ yearRange, transportTypes }: FeedFilters) {
 }
 
 /**
- * Лента по фильтрам, собранная на клиенте из уже загруженных порций, — её видно, пока не пришёл
- * ответ сервера.
+ * The feed by filters, built on the client from already loaded pages; shown until the server
+ * answers. Returns pages with only the rows matching the filters.
  *
- * Порядок строк тот же, что отдаст сервер: фильтр только выкидывает строки. Курсоров у выборки
- * нет — догружать её нечем, она живёт до ответа.
- *
- * Args:
- *     pages: Загруженные порции.
- *     filters: Фильтры ленты.
- *
- * Returns:
- *     Порции только со строками, подходящими под фильтры.
+ * Row order is the same the server will return: a filter only drops rows. The selection has no
+ * cursors, so there is nothing to load more with; it lives until the answer.
  */
 export function filterFeedPages(
   pages: readonly JourneysFeedResponse[],
@@ -112,13 +105,8 @@ export function filterFeedPages(
 }
 
 /**
- * Загружена ли лента до конца: тогда выборка из неё на клиенте совпадает с ответом сервера.
- *
- * Args:
- *     pages: Загруженные порции; `undefined` — ленты в кэше нет.
- *
- * Returns:
- *     `true`, если порций больше нет.
+ * Whether the feed is loaded to the end: then a client-side selection from it equals the server's
+ * answer. `pages` is `undefined` if the feed is not in the cache; returns `true` if there are no more pages.
  */
 export function isFeedFullyLoaded(pages: readonly JourneysFeedResponse[] | undefined): boolean {
   const lastPage = pages?.at(-1);
@@ -126,16 +114,10 @@ export function isFeedFullyLoaded(pages: readonly JourneysFeedResponse[] | undef
 }
 
 /**
- * Раскладывает загруженные порции ленты по годам.
+ * Groups the loaded feed pages by year (pages in load order).
  *
- * Поездка, попавшая в две порции (строки сдвинулись между запросами), показывается один раз —
- * там, где встретилась первой. Годы идут в порядке первого появления, то есть как в ленте.
- *
- * Args:
- *     pages: Загруженные порции в порядке загрузки.
- *
- * Returns:
- *     Группы по годам.
+ * A journey that landed in two pages (rows shifted between requests) is shown once, where it was
+ * first met. Years go in order of first appearance, i.e. as in the feed.
  */
 export function groupFeedByYear(pages: readonly JourneysFeedResponse[]): readonly FeedYearGroup[] {
   const seen = new Set<string>();

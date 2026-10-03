@@ -11,7 +11,7 @@ import { AllJourneysView } from "./AllJourneysView";
 
 const DESKTOP_QUERY = "(min-width: 62em)";
 
-/** Подменяет ленту и запоминает query каждого запроса — тест смотрит, какие фильтры ушли. */
+/** Replaces the feed and records each request's query, so the test sees which filters went out. */
 function recordFeedRequests(
   respond: (params: URLSearchParams) => Response | Promise<Response> = () =>
     HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null }),
@@ -76,7 +76,7 @@ describe("AllJourneysView", () => {
     await waitFor(() => expect(viewBox()).toBeTruthy());
     const allJourneysFrame = viewBox();
 
-    // Лондон → Париж — короткая и в стороне от остальных: её кадр отличается от кадра всех поездок.
+    // London -> Paris is short and apart from the others: its frame differs from the all-journeys frame.
     fireEvent.pointerOver(londonToParis);
     await waitFor(() => expect(viewBox()).not.toBe(allJourneysFrame));
     const londonToParisFrame = viewBox();
@@ -86,7 +86,7 @@ describe("AllJourneysView", () => {
     await waitFor(() => expect(viewBox()).toBe(londonToParisFrame));
     fireEvent.pointerLeave(container.querySelector(".journey-feed") ?? container);
 
-    // Дуга ушла вместе с курсором, а кадр — нет: он не возвращается к кадру всех поездок.
+    // The arc left with the cursor but the frame did not: it does not return to the all-journeys frame.
     await waitFor(() => expect(container.querySelector(".feed-arc")).toBeNull());
     expect(viewBox()).toBe(londonToParisFrame);
   });
@@ -111,18 +111,18 @@ describe("AllJourneysView", () => {
     await user.keyboard("{ArrowLeft}{ArrowLeft}");
 
     await waitFor(() => expect(requests.at(-1)?.toString()).toBe("yearFrom=2019&yearTo=2019"));
-    // Промежуточное окно 2019–2020 отменилось до сети: ручку двигали подряд, запрос один.
+    // The intermediate window 2019-2020 was cancelled before the network: the thumb moved in a row, one request.
     expect(requests.map((params) => params.toString())).toEqual(["", "yearFrom=2019&yearTo=2019"]);
 
     await user.keyboard("{ArrowRight}{ArrowRight}");
 
-    // Ручки снова по краям — без фильтра: тот же ключ, что у первого запроса, лента из кэша.
+    // Thumbs at the edges again means no filter: the same key as the first request, the feed from cache.
     expect(await screen.findByRole("region", { name: "2021" })).toBeInTheDocument();
     expect(requests).toHaveLength(2);
   });
 
   it("лента загружена целиком — новый фильтр виден сразу, до ответа сервера, и не приглушён", async () => {
-    // Ответ по фильтру держим: всё, что на экране до него, собрано на клиенте.
+    // Hold the filtered response: everything on screen before it is built on the client.
     let releaseFiltered = () => {};
     const filteredGate = new Promise<void>((resolve) => {
       releaseFiltered = resolve;
@@ -173,7 +173,7 @@ describe("AllJourneysView", () => {
     const rootBounds = DOMRect.fromRect({ x: 0, y: 100, width: 600, height: 400 });
     expect(header).not.toHaveAttribute("data-stuck");
 
-    // Прилип: стоит на пиксель выше края прокрутки и виден не целиком.
+    // Stuck: one pixel above the scroll edge and not fully visible.
     act(() =>
       reportIntersection(header, {
         intersectionRatio: 0.98,
@@ -183,7 +183,7 @@ describe("AllJourneysView", () => {
     );
     expect(header).toHaveAttribute("data-stuck");
 
-    // Виден целиком — на своём месте в ленте.
+    // Fully visible: in its place in the feed.
     act(() =>
       reportIntersection(header, {
         intersectionRatio: 1,
@@ -193,7 +193,7 @@ describe("AllJourneysView", () => {
     );
     expect(header).not.toHaveAttribute("data-stuck");
 
-    // Срезан снизу, у нижнего края прокрутки, — это не прилипание.
+    // Cut off at the bottom, at the lower scroll edge: that is not sticking.
     act(() =>
       reportIntersection(header, {
         intersectionRatio: 0.5,

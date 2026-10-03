@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { yearLabelCenters } from "./yearLabelCenters";
 
-// Ползунок 300 px; центры подписей держатся не ближе 48 px друг к другу и в 24 px от краёв.
+// The slider is 300 px; label centers stay no closer than 48 px to each other and 24 px from the edges.
 const WIDTH = 300;
 
 describe("yearLabelCenters", () => {
@@ -23,9 +23,9 @@ describe("yearLabelCenters", () => {
   });
 
   it("у края двигаемой подписи уступить некуда — отходит стоящая", () => {
-    // Обе ручки у правого края, тянут правую: ей некуда вправо — левая подпись отходит влево.
+    // Both thumbs are at the right edge and the right one is dragged: it has nowhere to go right, so the left label moves left.
     expect(yearLabelCenters([290, 296], 1, WIDTH)).toEqual([228, 276]);
-    // Обе у левого края, тянут левую: ей некуда влево — правая подпись отходит вправо.
+    // Both are at the left edge and the left one is dragged: it has nowhere to go left, so the right label moves right.
     expect(yearLabelCenters([4, 10], 0, WIDTH)).toEqual([24, 72]);
   });
 });

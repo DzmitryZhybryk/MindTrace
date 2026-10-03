@@ -4,7 +4,7 @@ import { placeLabels, type LabelledPlace, type LabelMetrics, type PlacedLabel } 
 
 const METRICS: LabelMetrics = { fontSize: 10, gap: 4, dotRadius: 2, clearance: 1 };
 
-// Те же коэффициенты, что у раскладки: по ним тест восстанавливает прямоугольник подписи.
+// The same ratios as the layout: the test reconstructs the label rectangle from them.
 const CHAR_WIDTH_RATIO = 0.62;
 const LINE_HEIGHT_RATIO = 1.25;
 
@@ -12,7 +12,7 @@ function place(placeId: string, x: number, y: number, label: string, routeCount 
   return { placeId, x, y, label, routeCount };
 }
 
-/** Прямоугольник подписи на холсте. */
+/** A label rectangle on the canvas. */
 function boxOf(label: PlacedLabel): { left: number; right: number; top: number; bottom: number } {
   const width = label.label.length * METRICS.fontSize * CHAR_WIDTH_RATIO;
   const height = METRICS.fontSize * LINE_HEIGHT_RATIO;
@@ -46,7 +46,7 @@ describe("placeLabels", () => {
   });
 
   it("подпись уходит с линии, проходящей справа от точки", () => {
-    // Горизонтальная дуга вправо от точки перекрыла бы подпись в позиции «справа».
+    // A horizontal arc to the right of the dot would cover the label in the "right" position.
     const arc = [
       [
         [100, 100],
@@ -61,7 +61,7 @@ describe("placeLabels", () => {
   });
 
   it("если без линий места нет, подпись всё равно ставится, но не на соседей", () => {
-    // Сетка дуг во все стороны: любая позиция задевает линию.
+    // A grid of arcs in every direction: any position touches a line.
     const arcs = [
       [
         [
@@ -108,8 +108,8 @@ describe("placeLabels", () => {
 
   it("точка, зажатая чужими точками со всех сторон, остаётся без подписи, а подписи соседей не пересекаются", () => {
     const center = place("center", 100, 100, "Center");
-    // Чужие точки во всех восьми направлениях: каждая позиция подписи центра задевает точку,
-    // а точки мешают подписи и на запасном шаге (там разрешено лишь пересекать линии).
+    // Other dots in all eight directions: every position of the center label touches a dot, and
+    // dots block the label at the fallback step too (only crossing lines is allowed there).
     const neighbours = [
       [115, 100],
       [85, 100],
@@ -132,9 +132,10 @@ describe("placeLabels", () => {
   });
 
   it("первыми раскладываются места, через которые проходит больше маршрутов", () => {
-    // Точки друг над другом ближе высоты строки: подписи справа пересеклись бы, а сами точки
-    // чужим подписям справа не мешают — правое место одно на двоих, и достаётся оживлённой.
-    // По id тихое место шло бы первым — так тест различает приоритет по маршрутам и по ключу.
+    // Dots one above another closer than a line height: labels on the right would overlap, while
+    // the dots themselves do not block each other's right labels, so the right spot is shared by
+    // two and goes to the busy one. By id the quiet place would go first, which lets the test tell
+    // route priority from key priority.
     const quiet = place("a-quiet", 100, 100, "Quiet", 1);
     const busy = place("z-busy", 100, 108, "Busy", 3);
 

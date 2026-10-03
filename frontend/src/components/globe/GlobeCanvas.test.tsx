@@ -11,16 +11,16 @@ import type { RouteHtmlDatum, RouteTrail } from "./routeScene";
 import type { GlobeCity } from "./routes";
 
 /*
- * Ветки этого компонента открываются только когда контейнер получил РАЗМЕР: до этого
- * `<Globe>` не монтируется, ref пуст и эффект настройки камеры выходит на первой строке.
- * Глобальная заглушка ResizeObserver из `src/test/setup.ts` колбэк не дёргает никогда —
- * поэтому здесь своя, с ручным управлением.
+ * The branches of this component open only once the container gets a SIZE: before that `<Globe>`
+ * is not mounted, the ref is empty and the camera setup effect exits on its first line. The global
+ * ResizeObserver stub from `src/test/setup.ts` never fires its callback, so this file has its own,
+ * manually controlled one.
  */
 let fireResize: ((width: number, height: number) => void) | null = null;
 
 class ControllableResizeObserver {
-  // Поле объявлено отдельно, а не parameter property: в проекте включён
-  // `erasableSyntaxOnly`, и `constructor(private readonly …)` не проходит tsc.
+  // The field is declared separately, not as a parameter property: the project enables
+  // `erasableSyntaxOnly` and `constructor(private readonly ...)` fails tsc.
   callback: ResizeObserverCallback;
 
   constructor(callback: ResizeObserverCallback) {
@@ -37,7 +37,7 @@ class ControllableResizeObserver {
   disconnect(): void {}
 }
 
-/** Инстанс globe.gl, который отдаёт мок вместо настоящего three/WebGL. */
+/** The globe.gl instance that the mock returns instead of real three/WebGL. */
 let controls: Pick<OrbitControls,
   | "autoRotate" | "autoRotateSpeed" | "enableZoom" | "enablePan" | "enableRotate"
   | "addEventListener" | "removeEventListener" | "dispatchEvent"
@@ -46,18 +46,18 @@ const pointOfView = vi.fn();
 const pauseAnimation = vi.fn();
 const resumeAnimation = vi.fn();
 const toGlobeCoords = vi.fn();
-// Камера нужна деклаттеру подписей: гейт «матрица не менялась — кадр пропускается».
+// The camera is needed by the label declutterer: the "matrix unchanged, skip the frame" gate.
 const cameraStub = { matrixWorld: { elements: [0] } };
-// Канвас рендерера нужен интерактивному эффекту (он переопределяет touch-action OrbitControls).
+// The renderer canvas is needed by the interactive effect (it overrides OrbitControls' touch-action).
 const rendererDomElement = document.createElement("canvas");
 
-// Пропсы последнего рендера `<Globe>`: по ним видно, чем холст кормит слои (данные, аксессоры).
+// Props of the last `<Globe>` render: they show what the canvas feeds the layers (data, accessors).
 let globeProps: Record<string, unknown> = {};
 
 vi.mock("react-globe.gl", () => ({
   default: (props: { ref?: { current?: unknown } }) => {
     globeProps = props;
-    // globe.gl отдаёт императивный инстанс через ref — воспроизводим ровно это.
+    // globe.gl hands out the imperative instance via ref; reproduce exactly that.
     if (props.ref) {
       props.ref.current = {
         controls: () => controls,
@@ -89,7 +89,7 @@ beforeEach(() => {
   controls = Object.assign(new EventDispatcher(), {
     autoRotate: false, autoRotateSpeed: 0, enableZoom: true, enablePan: true, enableRotate: true,
   });
-  // По умолчанию «мимо сферы»: попадание каждый тест задаёт явно.
+  // By default "off the sphere": each test sets a hit explicitly.
   toGlobeCoords.mockReturnValue(null);
   cameraStub.matrixWorld.elements = [0];
   vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
@@ -126,8 +126,8 @@ describe("GlobeCanvas", () => {
 
     act(() => fireResize?.(800, 600));
 
-    // Второй аргумент — длительность: на первой установке она обязана быть нулевой,
-    // иначе глобус приезжал бы издалека при каждом открытии страницы.
+    // The second argument is the duration: on the first set it must be zero, otherwise the globe
+    // would fly in from afar on every page open.
     expect(pointOfView).toHaveBeenLastCalledWith(expect.anything(), 0);
   });
 
@@ -150,7 +150,7 @@ describe("GlobeCanvas", () => {
     act(() => rerender(<GlobeCanvas pov={{ lat: 40, lng: 30, altitude: 1.8 }} />));
 
     expect(controls.autoRotate).toBe(false);
-    // Даже смена грани идёт мгновенно — перелёт это анимация.
+    // Even a face change is instant: a flight is an animation.
     expect(pointOfView.mock.calls.at(-1)?.[1]).toBe(0);
   });
 
@@ -165,8 +165,8 @@ describe("GlobeCanvas", () => {
   it("останавливает рендер, когда вкладку скрыли, и возобновляет при возврате", () => {
     renderWithProviders(<GlobeCanvas />);
     act(() => fireResize?.(800, 600));
-    // Появление инстанса уже применило play-state (resume для непаузного) — дальше считаем
-    // ТОЛЬКО эффект от visibilitychange.
+    // The instance appearing already applied play-state (resume for a non-paused one); from here
+    // count ONLY the effect of visibilitychange.
     pauseAnimation.mockClear();
     resumeAnimation.mockClear();
 
@@ -187,8 +187,8 @@ describe("GlobeCanvas", () => {
   });
 
   it("paused ставит на паузу инстанс, появившийся уже спрятанным (прямой заход на /journeys)", () => {
-    // На первом рендере ref пуст (нет размера); Globe монтируется лишь после замера. Пауза
-    // обязана примениться по факту появления инстанса, иначе rAF скрытого глобуса крутился бы.
+    // On the first render the ref is empty (no size); Globe mounts only after measuring. The pause
+    // must apply once the instance appears, otherwise the hidden globe's rAF would run.
     renderWithProviders(<GlobeCanvas paused />);
 
     act(() => fireResize?.(800, 600));
@@ -272,7 +272,7 @@ describe("GlobeCanvas", () => {
   });
 
   it("interactive: второе касание мимо сферы не обрывает драг и не глушит автовращение", () => {
-    // Первый pointerdown попадает в сферу, второй (палец/ладонь мимо шара) — нет.
+    // The first pointerdown hits the sphere, the second (a finger/palm off the ball) does not.
     toGlobeCoords.mockReturnValueOnce({ lat: 10, lng: 20 });
     const { container } = renderWithProviders(<GlobeCanvas interactive />);
     act(() => fireResize?.(800, 600));
@@ -323,7 +323,7 @@ describe("GlobeCanvas", () => {
     act(() => fireResize?.(800, 600));
     const el = container.querySelector<HTMLElement>(".globe-canvas");
     if (!el) throw new Error("контейнер глобуса не отрендерился");
-    // Канвас 800×600 отрисован в rect 1600×1200 (scale 2): экранная точка (800, 600) — это (400, 300) макета.
+    // An 800x600 canvas is drawn in a 1600x1200 rect (scale 2): the screen point (800, 600) is layout (400, 300).
     vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 1600, 1200));
 
     act(() => {
@@ -361,7 +361,7 @@ describe("GlobeCanvas", () => {
     if (!el) throw new Error("контейнер глобуса не отрендерился");
     vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
 
-    // Слой подписей строим руками: мок react-globe.gl DOM-элементы данных не рендерит.
+    // Build the label layer by hand: the react-globe.gl mock does not render data DOM elements.
     const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
     const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
     for (const wrapper of [tashkent, bishkek]) {
@@ -372,7 +372,7 @@ describe("GlobeCanvas", () => {
     const tashkentName = tashkent.querySelector<HTMLElement>(".globe-label__name");
     const bishkekName = bishkek.querySelector<HTMLElement>(".globe-label__name");
     if (!tashkentName || !bishkekName) throw new Error("подписи не собрались");
-    // Центр диска (400, 300): Бишкек ближе, Ташкент наезжает на него сбоку.
+    // Disk center (400, 300): Bishkek is closer, Tashkent overlaps it from the side.
     vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(350, 296, 60, 12));
     vi.spyOn(bishkekName, "getBoundingClientRect").mockReturnValue(new DOMRect(390, 294, 60, 12));
 
@@ -382,7 +382,7 @@ describe("GlobeCanvas", () => {
 
     expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
     expect(bishkek.classList.contains("globe-label--decluttered")).toBe(false);
-    // Канал окклюзии не тронут: обёртка (и точка) остаётся видимой, гаснет только текст.
+    // The occlusion channel is untouched: the wrapper (and the dot) stays visible, only the text hides.
     expect(tashkent.style.opacity).toBe("1");
   });
 
@@ -419,14 +419,14 @@ describe("GlobeCanvas", () => {
     });
     expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
 
-    // Подписи разъехались, но камера не двигалась — пересчёта нет, класс остаётся.
+    // The labels moved apart but the camera did not move: no recompute, the class stays.
     vi.spyOn(tashkentName, "getBoundingClientRect").mockReturnValue(new DOMRect(600, 400, 60, 12));
     act(() => {
       vi.advanceTimersByTime(400);
     });
     expect(tashkent.classList.contains("globe-label--decluttered")).toBe(true);
 
-    // Камера сдвинулась — пересчёт возвращает текст (зазор больше запаса гистерезиса).
+    // The camera moved: the recompute returns the text (the gap exceeds the hysteresis margin).
     cameraStub.matrixWorld.elements = [1];
     act(() => {
       vi.advanceTimersByTime(400);
@@ -490,7 +490,7 @@ describe("GlobeCanvas", () => {
     const tashkent = createGlobeLabel("Ташкент", "Ташкент|41.3|69.2");
     const bishkek = createGlobeLabel("Бишкек", "Бишкек|42.9|74.6");
     tashkent.style.opacity = "1";
-    // Бишкек ушёл за горизонт: окклюзия спрятала обёртку целиком.
+    // Bishkek went behind the horizon: occlusion hid the whole wrapper.
     bishkek.style.opacity = "0";
     el.append(tashkent, bishkek);
 
@@ -533,7 +533,7 @@ describe("GlobeCanvas — маршрут формы поездки", () => {
   }
 
   beforeEach(() => {
-    // Без анимации транспорт сразу стоит в конце пути — позиция детерминирована.
+    // Without animation the vehicle stands at the end of the path at once: the position is deterministic.
     setReducedMotion(true);
   });
 
@@ -608,7 +608,7 @@ describe("GlobeCanvas — маршрут формы поездки", () => {
 
     expect(label.style.opacity).toBe("0");
     expect(pin.style.visibility).toBe("hidden");
-    // opacity пина свободна под угасание маршрута — окклюзия её не занимает.
+    // The pin's opacity is free for the route fade-out: occlusion does not take it.
     expect(pin.style.opacity).toBe("");
 
     hideBehindGlobe(pin, true);
@@ -686,7 +686,7 @@ describe("GlobeCanvas — подлёт камеры при появлении (r
     act(() => vi.advanceTimersByTime(2000));
 
     expect(start.altitude).toBeGreaterThan(TARGET.altitude);
-    // Кадры идут без tween globe.gl (длительность 0) — иначе он съел бы автовращение.
+    // Frames run without the globe.gl tween (duration 0), otherwise it would swallow auto-rotation.
     expect(calls().every(([, duration]) => duration === 0)).toBe(true);
     expect(calls().length).toBeGreaterThan(10);
     const [end] = calls().at(-1) ?? [];
@@ -720,7 +720,7 @@ describe("GlobeCanvas — подлёт камеры при появлении (r
 
     expect(pointOfView).not.toHaveBeenCalled();
     unmount();
-    // Утёкшая подписка вызвала бы отмену старого кадра даже после размонтирования.
+    // A leaked subscription would cancel the old frame even after unmount.
     const cancelFrame = vi.spyOn(window, "cancelAnimationFrame");
     act(() => controls.dispatchEvent({ type: "start" }));
     expect(cancelFrame).not.toHaveBeenCalled();

@@ -5,7 +5,7 @@ import { piecePath, projectArc, splitEdgeFade } from "./movementGeometry";
 
 const MOSCOW = { latitude: 55.75, longitude: 37.62 };
 const LONDON = { latitude: 51.5, longitude: -0.12 };
-// Токио → Лос-Анджелес: короткий путь по большому кругу идёт через Тихий океан, через антимеридиан.
+// Tokyo -> Los Angeles: the short great-circle path crosses the Pacific, over the antimeridian.
 const TOKYO = { latitude: 35.69, longitude: 139.69 };
 const LOS_ANGELES = { latitude: 34.05, longitude: -118.24 };
 
@@ -28,7 +28,7 @@ describe("projectArc", () => {
     const middle = pieces[0][Math.floor(pieces[0].length / 2)];
     const straightMiddleY = (projectToScreen(MOSCOW.longitude, MOSCOW.latitude)[1] + projectToScreen(LONDON.longitude, LONDON.latitude)[1]) / 2;
 
-    // Север — вверху холста: середина дуги выше середины отрезка.
+    // North is at the top of the canvas: the arc midpoint is above the segment midpoint.
     expect(middle[1]).toBeLessThan(straightMiddleY);
   });
 
@@ -56,7 +56,7 @@ describe("piecePath", () => {
 });
 
 describe("splitEdgeFade", () => {
-  // Прямой кусок вдоль оси x: точки через каждые 10 единиц, от 0 до 100.
+  // A straight piece along the x axis: points every 10 units, from 0 to 100.
   const piece = Array.from({ length: 11 }, (_, index) => [index * 10, 50] as const);
 
   it("у конца куска гаснет только хвост заданной длины, остальное сплошное", () => {
@@ -92,7 +92,7 @@ describe("splitEdgeFade", () => {
   });
 
   it("дуга, повернувшая после края, не гаснет: прозрачность ложится только на хвост у края", () => {
-    // От края идёт вправо, затем круто вниз — как дуга Вашингтон → Сингапур над Сибирью.
+    // From the edge it goes right, then steeply down, like the Washington -> Singapore arc over Siberia.
     const hooked = [
       [0, 0],
       [40, 0],

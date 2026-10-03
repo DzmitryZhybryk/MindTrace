@@ -9,8 +9,8 @@ import { renderWithProviders, screen } from "../../test/render";
 import { AddJourneyPage } from "./AddJourneyPage";
 
 /**
- * Зонд канала сцены — то, что на проде читает `PersistentGlobeHost`. Стоит ВНЕ роутов, чтобы
- * пережить уход со страницы и показать, что она за собой убрала.
+ * A probe of the scene channel: what `PersistentGlobeHost` reads in production. It stands OUTSIDE
+ * the routes to survive leaving the page and show that the page cleaned up after itself.
  */
 function SceneProbe() {
   const { route, slot } = useGlobeScene();
@@ -25,7 +25,7 @@ function SceneProbe() {
   );
 }
 
-/** Форма на /journeys/add и зонд сцены рядом; сабмит уводит на /journeys. */
+/** The form at /journeys/add with the scene probe beside it; submit navigates to /journeys. */
 function renderWithSceneProbe() {
   return renderWithProviders(
     <>
@@ -70,7 +70,7 @@ describe("AddJourneyPage — сцена глобуса", () => {
   });
 
   it("колонка нулевого размера (узкий экран, display:none) — места под глобус нет", () => {
-    // jsdom не верстает: rect любого элемента нулевой — ровно как у скрытой колонки.
+    // jsdom does no layout: every element's rect is zero, exactly like a hidden column.
     renderWithSceneProbe();
 
     expect(screen.getByTestId("scene")).toHaveAttribute("data-slot", "none");

@@ -7,7 +7,7 @@ import { server, TEST_ACCESS_TOKEN } from "../test/handlers";
 import { makeAuthValue, renderRoutes, screen } from "../test/render";
 import { SignUpPage } from "./SignUpPage";
 
-/** Монтирует SignUpPage на /signup c landing-маркером "/" для наблюдения навигации. */
+/** Mounts SignUpPage at /signup with a "/" landing marker to observe navigation. */
 function renderSignup() {
   const authValue = makeAuthValue({ setAccessToken: vi.fn() });
   const view = renderRoutes({
@@ -45,7 +45,7 @@ describe("SignUpPage", () => {
     await user.type(screen.getByLabelText("Email"), "alice@example.com");
     await user.type(screen.getByLabelText("Password"), "s3cret-pass");
 
-    // Поля заполнены, но согласия ещё нет — кнопка по-прежнему заблокирована.
+    // The fields are filled but consent is missing: the button stays disabled.
     expect(screen.getByRole("button", { name: "Create account" })).toBeDisabled();
 
     await user.click(screen.getByRole("checkbox", termsCheckbox));
@@ -74,8 +74,8 @@ describe("SignUpPage", () => {
 
     try {
       await user.click(screen.getByRole("checkbox", termsCheckbox));
-      // Username заведомо коротковат (нужна ошибка), остальные поля — лишь бы кнопка
-      // разблокировалась: она ждёт заполненности, а валидность проверяет сабмит.
+      // Username is deliberately too short (an error is needed); the other fields only unlock the
+      // button: it waits for the form to be filled, and submit checks validity.
       await user.type(screen.getByLabelText("Username"), "ab");
       await user.type(screen.getByLabelText("Email"), "alice@example.com");
       await user.type(screen.getByLabelText("Password"), "s3cret-pass");
@@ -85,7 +85,7 @@ describe("SignUpPage", () => {
 
       await i18n.changeLanguage("ru");
 
-      // Ошибка была показана на en, сменили язык — без ре-валидации текст стал ru.
+      // The error was shown in en, the language switched: without re-validation the text became ru.
       expect(
         await screen.findByText("Имя пользователя должно содержать минимум 3 символа"),
       ).toBeInTheDocument();
@@ -97,10 +97,9 @@ describe("SignUpPage", () => {
   it("слишком длинные поля дают max-length ошибки и не отправляют запрос", async () => {
     const { user, authValue } = renderSignup();
 
-    // Вставка, а не посимвольный ввод: здесь проверяется ОГРАНИЧЕНИЕ ДЛИНЫ, а способ
-    // попадания текста в поле к этому отношения не имеет. `user.type` шлёт полный цикл
-    // событий на каждый символ — на 352 символах тест пробивал дефолтные 5 секунд под
-    // нагрузкой полного прогона с покрытием и утаскивал за собой следующий тест.
+    // Paste, not per-character typing: this checks the LENGTH LIMIT, and how text gets into the
+    // field is irrelevant. `user.type` sends a full event cycle per character; at 352 characters the
+    // test exceeded the default 5 seconds under a full coverage run and dragged the next test down.
     const fill = async (label: string, value: string) => {
       await user.click(screen.getByLabelText(label));
       await user.paste(value);

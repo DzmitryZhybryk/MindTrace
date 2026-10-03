@@ -59,7 +59,7 @@ describe("moveJourneyInPages", () => {
 });
 
 describe("feedSortingStrategy", () => {
-  // Строки FEED по 44 px вплотную; между b (2021) и c (2019) — заголовок года высотой 56 px.
+  // FEED rows are 44 px each, flush; between b (2021) and c (2019) is a 56 px year heading.
   const ROW = 44;
   const rects = [0, 44, 144, 188].map((top) => ({ top, left: 0, width: 600, height: ROW, right: 600, bottom: top + ROW }));
   const shiftsFor = (activeIndex: number, overIndex: number) =>
@@ -82,7 +82,7 @@ describe("feedSortingStrategy", () => {
 
 describe("yearHeaderShift", () => {
   const ROW = 44;
-  // В FEED год 2021 начинается со строки 0, год 2019 — со строки 2.
+  // In FEED the year 2021 starts at row 0, the year 2019 at row 2.
   const shiftOf2019 = (activeIndex: number, overIndex: number) =>
     yearHeaderShift({ activeIndex, overIndex, firstRowIndex: 2, height: ROW });
 

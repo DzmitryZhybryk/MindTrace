@@ -1,27 +1,27 @@
 import { boxesIntersect, type LabelBox } from "../../../components/globe/labelDeclutter";
 import type { ArcPieces } from "./movementGeometry";
 
-/** Место на холсте, которому нужна подпись. */
+/** A place on the canvas that needs a label. */
 export interface LabelledPlace {
   placeId: string;
   x: number;
   y: number;
   label: string;
-  /** Сколько маршрутов проходит через место: подписи оживлённых мест раскладываются первыми. */
+  /** How many routes pass through the place: labels of busy places are laid out first. */
   routeCount: number;
 }
 
-/** Размеры подписи в единицах холста при текущем масштабе. */
+/** Label sizes in canvas units at the current zoom. */
 export interface LabelMetrics {
   fontSize: number;
-  /** Отступ подписи от центра точки. */
+  /** Offset of the label from the dot center. */
   gap: number;
   dotRadius: number;
-  /** Зазор, который подпись держит от линий и других подписей. */
+  /** Clearance the label keeps from lines and other labels. */
   clearance: number;
 }
 
-/** Подпись, получившая место: `anchor` — выравнивание текста относительно `x`. */
+/** A label that got a position: `anchor` is the text alignment relative to `x`. */
 export interface PlacedLabel {
   placeId: string;
   label: string;
@@ -32,15 +32,14 @@ export interface PlacedLabel {
 
 type Point = readonly [number, number];
 
-// Ширину текста оцениваем, а не меряем: в jsdom нет ни canvas.measureText, ни
-// getComputedTextLength. Коэффициент с запасом — широкие буквы кириллицы не должны
-// вылезать за оценку.
+// Text width is estimated, not measured: jsdom has neither canvas.measureText nor
+// getComputedTextLength. The ratio has headroom so wide Cyrillic letters do not exceed the estimate.
 const CHAR_WIDTH_RATIO = 0.62;
 const LINE_HEIGHT_RATIO = 1.25;
-// Диагональные позиции ближе к точке: иначе подпись «отлетает» от неё.
+// Diagonal positions sit closer to the dot, otherwise the label "drifts away" from it.
 const DIAGONAL_GAP_RATIO = 0.7;
 
-// Куда можно поставить подпись, в порядке предпочтения: справа привычнее всего читать.
+// Where a label may go, in order of preference: to the right is the most natural to read.
 const CANDIDATE_DIRECTIONS: readonly (readonly [number, number])[] = [
   [1, 0],
   [-1, 0],
@@ -52,7 +51,7 @@ const CANDIDATE_DIRECTIONS: readonly (readonly [number, number])[] = [
   [0, 1],
 ];
 
-/** Пересекает ли отрезок прямоугольник (отсечение Лианга — Барски). */
+/** Whether a segment crosses a rectangle (Liang-Barsky clipping). */
 function segmentHitsBox(start: Point, end: Point, box: LabelBox): boolean {
   const dx = end[0] - start[0];
   const dy = end[1] - start[1];
@@ -93,13 +92,12 @@ function inflate(box: LabelBox, by: number): LabelBox {
 }
 
 /**
- * Раскладывает подписи мест так, чтобы они не наезжали друг на друга, на точки мест и на
- * дуги со стрелками.
+ * Lays out place labels so they overlap neither each other, nor place dots, nor arcs with arrows.
  *
- * Жадно, в порядке приоритета (больше маршрутов — раньше, у равных — по id, чтобы раскладка
- * не прыгала): подпись занимает первую из позиций вокруг точки, где ничего не задевает. Если
- * такой нет — первую, где не задевает другие подписи и точки (линию пересечь можно). Если
- * нет и такой, подпись прячется: при приближении место для неё появится.
+ * Greedy, in priority order (more routes first, ties by id so the layout does not jump): a label
+ * takes the first position around its dot that touches nothing. If there is none, the first that
+ * touches no other labels or dots (crossing a line is allowed). If there is none either, the label
+ * is hidden: zooming in will make room for it.
  */
 export function placeLabels(
   places: readonly LabelledPlace[],

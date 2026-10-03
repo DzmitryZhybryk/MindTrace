@@ -8,8 +8,8 @@ import { JourneyForm } from "./JourneyForm";
 import { JOURNEY_FORM_VALIDATE, type JourneyFormValues } from "./journeyFormRules";
 
 /**
- * Прямоугольник слота во viewport-координатах; нулевой размер (колонка скрыта на узком
- * экране — `display: none`) означает «места под глобус нет».
+ * Slot rectangle in viewport coordinates; zero size (column hidden on a narrow screen via
+ * `display: none`) means "no room for the globe".
  */
 function measureSlot(element: HTMLElement): GlobeSlot | null {
   const rect = element.getBoundingClientRect();
@@ -19,11 +19,11 @@ function measureSlot(element: HTMLElement): GlobeSlot | null {
 }
 
 /**
- * Под-вкладка «Добавить путешествие» — маршрут /journeys/add. Двухпанельный экран:
- * слева форма, справа место под глобус-героя, который вживую рисует маршрут по вводу.
- * Сам глобус — app-global `PersistentGlobeHost`: страница лишь публикует ему маршрут и
- * прямоугольник своей колонки, поэтому уход на /home — перелёт той же планеты, а не
- * смена двух разных. Рендерится в <Outlet/> каркаса JourneysLayout.
+ * "Add journey" sub-tab, route /journeys/add. Two-panel screen: the form on the left, a slot for
+ * the hero globe on the right that draws the route live from input. The globe itself is the
+ * app-global `PersistentGlobeHost`: the page only publishes the route and its column rectangle,
+ * so leaving for /home is a flight of the same planet, not a swap of two. Rendered in the
+ * <Outlet/> of the JourneysLayout shell.
  */
 export function AddJourneyPage() {
   const { t } = useTranslation("journeys");
@@ -43,8 +43,8 @@ export function AddJourneyPage() {
 
   const { origin, destination, transport } = form.getValues();
 
-  // Identity маршрута — по его полям, а не по рендеру: controlled-форма перерисовывается
-  // на каждый ввод (например, выбор года), и новый объект на каждом рендере гонял бы хост впустую.
+  // Route identity follows its fields, not the render: a controlled form rerenders on every input
+  // (e.g. picking a year), and a new object each render would make the host run for nothing.
   const route = useMemo<GlobeRoute>(
     () => ({
       origin,
@@ -62,8 +62,8 @@ export function AddJourneyPage() {
 
   useEffect(() => () => setRoute(null), [setRoute]);
 
-  // Слот меряем и по размеру (ResizeObserver: баннер в потоке, смена брейкпоинта), и по окну
-  // (сдвиг колонки без смены её размера ResizeObserver не видит).
+  // Measure the slot by its size (ResizeObserver: in-flow banner, breakpoint change) and by the
+  // window (a column shift without a size change is invisible to ResizeObserver).
   useEffect(() => {
     const element = slotRef.current;
     if (!element) return;
@@ -91,7 +91,7 @@ export function AddJourneyPage() {
         </section>
       </div>
 
-      {/* Пустой слот под глобус: жесты сквозь него уходят планете (контракт — persistent-globe.css). */}
+      {/* Empty globe slot: gestures pass through to the planet (contract in persistent-globe.css). */}
       <div ref={slotRef} className="add-journey__globe-col" data-globe-slot />
     </div>
   );

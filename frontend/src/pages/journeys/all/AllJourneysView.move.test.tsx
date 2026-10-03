@@ -10,8 +10,8 @@ const ROW_HEIGHT = 44;
 const ROW_STEP = 50;
 
 /**
- * Раскладывает строки ленты столбиком в порядке DOM: в jsdom у всех нулевые прямоугольники, и
- * dnd-kit не нашёл бы, какая строка ниже. Остальным элементам — нули, как и было.
+ * Stacks the feed rows in a column in DOM order: in jsdom all rectangles are zero and dnd-kit
+ * could not tell which row is lower. Other elements stay zero.
  */
 function stackRowsVertically() {
   vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function rectOf(this: Element) {
@@ -25,7 +25,7 @@ function stackRowsVertically() {
   });
 }
 
-/** Перетаскивает строку Лондон → Париж (2021) на строку ниже с клавиатуры: пробел, стрелка, пробел. */
+/** Drags the London -> Paris (2021) row one row down with the keyboard: space, arrow, space. */
 async function dragLondonToParisDown(user: ReturnType<typeof renderWithProviders>["user"]) {
   const year2021 = await screen.findByRole("region", { name: "2021" });
   const handles = within(year2021).getAllByRole("button", { name: "Drag to reorder" });
@@ -39,7 +39,7 @@ describe("AllJourneysView — перенос", () => {
   it("строка, перенесённая с клавиатуры в другой год, встаёт туда до ответа, а на сервер уходит сосед и сторона", async () => {
     stackRowsVertically();
     let request: { url: string; body: unknown } | null = null;
-    // Ответ на перенос держим, пока тест смотрит на ленту: перестановка должна быть видна до него.
+    // Hold the move response while the test looks at the feed: the reorder must be visible before it.
     let releaseResponse = () => {};
     const responseGate = new Promise<void>((resolve) => {
       releaseResponse = resolve;
@@ -64,7 +64,7 @@ describe("AllJourneysView — перенос", () => {
     expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(2);
     expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(1);
     releaseResponse();
-    // Перенос доводим до конца здесь: его запоздалые запросы ушли бы в моки следующего теста.
+    // Finish the move here: its late requests would otherwise leak into the next test's mocks.
     await waitFor(() =>
       expect(screen.getAllByRole("button", { name: "Drag to reorder" }).every((handle) => !handle.hasAttribute("disabled"))).toBe(true),
     );
@@ -72,7 +72,7 @@ describe("AllJourneysView — перенос", () => {
 
   it("брошенная строка остаётся там, где её отпустили, без повтора анимации; показанная лента не перезапрашивается", async () => {
     stackRowsVertically();
-    // Web Animations в jsdom нет — шпион в прототипе; без него FLIP молча пропускает анимацию.
+    // jsdom has no Web Animations: a spy on the prototype; without it FLIP silently skips the animation.
     const animate = vi.fn();
     Object.defineProperty(HTMLElement.prototype, "animate", { configurable: true, writable: true, value: animate });
     let feedRequests = 0;
@@ -93,7 +93,7 @@ describe("AllJourneysView — перенос", () => {
 
       await dragLondonToParisDown(user);
 
-      // Год сменился — годы перезапрошены; лента сбрасывается тем же шагом, сразу после них.
+      // The year changed, so years are refetched; the feed is invalidated in the same step, right after them.
       await waitFor(() => expect(yearsRequests).toBe(2));
       expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(2);
       expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(1);
@@ -106,7 +106,7 @@ describe("AllJourneysView — перенос", () => {
 
   it("бэк отказал в переносе — строка возвращается на место сама, не дожидаясь перезапроса ленты", async () => {
     stackRowsVertically();
-    // Перезапрос ленты после отказа держим: на место строку должен вернуть откат, а не он.
+    // Hold the feed refetch after the refusal: the rollback, not the refetch, must put the row back.
     let feedRequests = 0;
     let releaseRefetch = () => {};
     const refetchGate = new Promise<void>((resolve) => {
@@ -119,7 +119,7 @@ describe("AllJourneysView — перенос", () => {
           return HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null });
         }
 
-        // Перезапрос отдаёт ленту, которую на сервере успели поменять: соседа из 2019 уже нет.
+        // The refetch returns a feed changed on the server meanwhile: the 2019 neighbour is gone.
         await refetchGate;
         return HttpResponse.json({ items: [FIRST_2021, LONDON_TO_PARIS], nextCursor: null });
       }),
@@ -137,7 +137,7 @@ describe("AllJourneysView — перенос", () => {
     expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(1);
 
     releaseRefetch();
-    // Лента приходит с сервера; ждём её, чтобы запрос не оборвался размонтированием после теста.
+    // The feed arrives from the server; wait for it so the request is not aborted by unmounting after the test.
     await waitFor(() => expect(screen.queryByRole("region", { name: "2019" })).not.toBeInTheDocument());
   });
 
@@ -166,7 +166,7 @@ describe("AllJourneysView — перенос", () => {
 
     await user.keyboard(" ");
     await user.keyboard("{ArrowDown}");
-    // Перенос завершаем при любом исходе: незавершённый утёк бы в следующий тест.
+    // Finish the move whatever the outcome: an unfinished one would leak into the next test.
     try {
       await waitFor(() => expect(header2019.style.transform).toBe(`translateY(-${ROW_HEIGHT}px)`));
       expect(screen.getByRole("heading", { name: "2021" }).style.transform).toBe("");

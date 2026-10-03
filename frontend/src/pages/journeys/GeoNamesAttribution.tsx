@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-/** Условие лицензии CC BY 4.0: там, где показаны названия мест из GeoNames, указываем источник. */
+/** CC BY 4.0 licence condition: credit the source wherever GeoNames place names are shown. */
 export function GeoNamesAttribution() {
   const { t } = useTranslation("journeys");
 

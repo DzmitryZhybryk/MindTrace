@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ApiError } from "./errors";
 import { createQueryClient, shouldRetry } from "./queryClient";
 
-/** `ApiError` с заданным статусом — код и текст для политики повторов не важны. */
+/** An `ApiError` with the given status; code and text do not matter for the retry policy. */
 function apiError(status: number): ApiError {
   return new ApiError(status, { code: "any_code", message: "any" });
 }
@@ -14,8 +14,8 @@ describe("shouldRetry", () => {
   });
 
   it("не повторяет invalid_response — битое тело придёт таким же", () => {
-    // Транспорт отдаёт его со статусом успешного ответа, поэтому проверка «status < 500»
-    // должна ловить и этот случай, а не только 4xx.
+    // The transport returns it with a success status, so the "status < 500" check must catch this
+    // case too, not only 4xx.
     expect(shouldRetry(0, new ApiError(200, { code: "invalid_response", message: "broken" }))).toBe(false);
   });
 

@@ -1,6 +1,6 @@
 /**
- * Управляемый `IntersectionObserver` для jsdom (своего у jsdom нет): ставится глобально в
- * `setup.ts`, а тест сам решает, когда наблюдаемые элементы «показались на экране».
+ * A controllable `IntersectionObserver` for jsdom (it has none): installed globally in
+ * `setup.ts`, and the test decides when observed elements "appear on screen".
  */
 
 const liveObservers = new Set<IntersectionObserverStub>();
@@ -34,14 +34,14 @@ export class IntersectionObserverStub {
     return [];
   }
 
-  /** Сообщает наблюдателю запись для элемента, если он его наблюдает. */
+  /** Reports an entry for the element to the observer if it observes it. */
   report(target: Element, entry: Partial<IntersectionObserverEntry>): void {
     if (this.targets.has(target)) {
       this.callback([{ target, ...entry } as IntersectionObserverEntry], this as unknown as IntersectionObserver);
     }
   }
 
-  /** Сообщает наблюдателю, что все его элементы на экране. */
+  /** Tells the observer that all its elements are on screen. */
   intersectAll(): void {
     const entries = [...this.targets].map(
       (target) => ({ target, isIntersecting: true, intersectionRatio: 1 }) as IntersectionObserverEntry,
@@ -53,8 +53,8 @@ export class IntersectionObserverStub {
 }
 
 /**
- * «Прокручивает» к каждому наблюдаемому элементу: все живые наблюдатели получают пересечение.
- * Вызывать внутри `act`, если колбэк меняет состояние.
+ * "Scrolls" to every observed element: all live observers get an intersection. Call inside `act`
+ * if the callback changes state.
  */
 export function intersectAllObserved(): void {
   for (const observer of liveObservers) {
@@ -63,8 +63,8 @@ export function intersectAllObserved(): void {
 }
 
 /**
- * Сообщает всем, кто наблюдает элемент, заданную запись: место элемента и области наблюдения,
- * долю видимого. Вызывать внутри `act`, если колбэк меняет состояние.
+ * Reports the given entry to everyone observing the element: the element's and the root's
+ * position and the visible share. Call inside `act` if the callback changes state.
  */
 export function reportIntersection(target: Element, entry: Partial<IntersectionObserverEntry>): void {
   for (const observer of liveObservers) {

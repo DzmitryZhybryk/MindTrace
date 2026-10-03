@@ -22,7 +22,7 @@ describe("JourneysPanel", () => {
   it("нереализованный раздел «Wishlist» не навигирует: не ссылка, помечен «Soon», aria-disabled", () => {
     renderWithProviders(<JourneysPanel />);
 
-    // Главный инвариант: пункт не ссылка → в пустой маршрут не ведёт.
+    // The main invariant: the item is not a link, so it does not lead to an empty route.
     expect(screen.queryByRole("link", { name: /Wishlist/u })).toBeNull();
     const item = screen.getByText("Wishlist");
     expect(item).toHaveAttribute("aria-disabled", "true");

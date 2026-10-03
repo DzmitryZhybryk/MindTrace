@@ -16,8 +16,8 @@ import { JourneyYearField } from "./JourneyYearField";
 const TRANSPORT_ICON_SIZE = 22;
 
 /**
- * Inline-иконка «поменять местами»: вертикальные стрелки вверх/вниз. SVG, а не Noto-эмодзи,
- * т.к. это UI-контрол — рисуем штрихом по `currentColor`, чтобы тематизировался под кнопку.
+ * Inline "swap" icon: vertical up/down arrows. SVG, not Noto emoji, since it is a UI control:
+ * drawn as a stroke in `currentColor` so it themes with the button.
  */
 function SwapVerticalIcon() {
   return (
@@ -45,10 +45,10 @@ interface JourneyFormProps {
 }
 
 /**
- * Форма добавления поездки: откуда/куда (автокомплит), транспорт и год. `form` поднят в
- * AddJourneyPage, чтобы глобус-герой реагировал на ввод вживую. Сабмит строит payload из
- * выбранных мест, транспорта и года, шлёт POST
- * `/v1/journeys` (`createJourney`) и при успехе ведёт на `/journeys`.
+ * Add-journey form: from/to (autocomplete), transport and year. `form` is lifted into
+ * AddJourneyPage so the hero globe reacts to input live. Submit builds the payload from the
+ * picked places, transport and year, POSTs `/v1/journeys` (`createJourney`) and on success goes
+ * to `/journeys`.
  */
 export function JourneyForm({ form }: JourneyFormProps) {
   const { t } = useTranslation("journeys");
@@ -56,15 +56,15 @@ export function JourneyForm({ form }: JourneyFormProps) {
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Новая поездка меняет карты, глобус, ленту и её годы — сбрасываем всё.
+  // A new journey changes the maps, globe, feed and its years: invalidate everything.
   const { mutateAsync: submitJourney, isPending: submitting } = useMutation({
     ...createJourneyMutation(),
     onSuccess: () => Promise.all([invalidateJourneyAggregates(queryClient), invalidateJourneyFeed(queryClient)]),
   });
 
-  // Меняем «откуда»/«куда» местами. Глобус развернёт маршрут и иконку транспорта сам —
-  // его анимация завязана на порядок origin→destination. Ошибки полей сбрасываем, чтобы
-  // старая валидация (например, «выберите город») не висела на перенесённом значении.
+  // Swap from/to. The globe flips the route and the transport icon itself (its animation depends
+  // on the origin -> destination order). Clear field errors so old validation (e.g. "pick a city")
+  // does not stay on the moved value.
   const handleSwap = () => {
     const { origin, destination } = form.getValues();
     form.setValues({ origin: destination, destination: origin });
@@ -94,7 +94,7 @@ export function JourneyForm({ form }: JourneyFormProps) {
         return;
       }
 
-      // Ошибка операции (не привязана к полю) — на уровне формы, у кнопки сабмита.
+      // An operation error (not tied to a field) goes at form level by the submit button.
       const message = applyApiError(err, form);
       if (message) {
         setFormError(message);
@@ -108,8 +108,8 @@ export function JourneyForm({ form }: JourneyFormProps) {
   return (
     <form onSubmit={form.onSubmit(handleSubmit)}>
       <Stack gap="md">
-        {/* Кнопка обмена лежит в DOM ПОСЛЕ обоих полей (визуально — поверх зазора между
-            ними), чтобы Tab шёл «откуда → куда», не цепляя кнопку. */}
+        {/* The swap button is in the DOM AFTER both fields (visually over the gap between them) so
+            Tab goes from -> to without catching the button. */}
         <div className="add-journey__route">
           <Stack gap="md">
             <PlaceAutocomplete

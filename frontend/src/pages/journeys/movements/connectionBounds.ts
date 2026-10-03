@@ -2,17 +2,17 @@ import type { ViewBox } from "../../../components/worldProjection";
 import type { ArcPieces } from "./movementGeometry";
 
 /**
- * Прямоугольник холста, в котором лежат все дуги, — под него подгоняется карта.
+ * Canvas rectangle containing all arcs; the map is fitted to it.
  *
- * `null` — подгонять нечего: маршрутов нет, или какая-то дуга пересекает антимеридиан и
- * лежит у обоих краёв карты сразу; тогда карта показывает весь мир.
+ * `null` means nothing to fit: no routes, or some arc crosses the antimeridian and lies at both
+ * map edges at once; the map then shows the whole world.
  */
 export function connectionBounds(arcs: readonly ArcPieces[]): ViewBox | null {
   if (arcs.length === 0 || arcs.some((pieces) => pieces.length > 1)) {
     return null;
   }
 
-  // Циклом, а не Math.min(...points): у тысяч дуг точек больше, чем функция принимает аргументов.
+  // A loop, not Math.min(...points): thousands of arcs have more points than a function accepts as arguments.
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;

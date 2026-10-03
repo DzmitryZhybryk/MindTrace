@@ -10,15 +10,15 @@ import { toApiLanguage } from "../i18n/apiLanguage";
 import "./place-autocomplete.css";
 
 const PIN_ICON_SIZE = 20;
-// Стабильная ссылка на пустую выдачу: эффект «подсветить первую подсказку» завязан на
-// идентичность `options` и на новом `[]` каждый рендер гонялся бы вхолостую.
+// Stable reference for empty results: the "highlight the first option" effect depends on
+// `options` identity and would rerun every render with a fresh `[]`.
 const NO_OPTIONS: PlaceSearchItem[] = [];
 
-// Бэк принимает запрос от 2 символов.
+// The backend accepts queries from 2 characters.
 const MIN_LENGTH = 2;
 const DEBOUNCE_MS = 250;
 const RESULT_LIMIT = 20;
-// Высота списка ограничена — длинная выдача скроллится внутри дропдауна, а не тянет страницу.
+// Capped height: a long list scrolls inside the dropdown instead of stretching the page.
 const DROPDOWN_MAX_HEIGHT = 320;
 
 interface PlaceAutocompleteProps {
@@ -30,11 +30,10 @@ interface PlaceAutocompleteProps {
 }
 
 /**
- * Переводит фокус на следующий контрол формы (поле/селект) после `current`.
+ * Moves focus to the next form control (input/select) after `current`.
  *
- * После выбора места «перекидывает» пользователя на следующий шаг (другой город,
- * транспорт): Enter/Tab по подсказке не должны оставлять курсор в уже заполненном
- * поле. Кнопки (в т.ч. «поменять местами») пропускаем — фокус идёт по полям ввода.
+ * After a place is picked, Enter/Tab must not leave the cursor in the filled field. Buttons
+ * (including swap) are skipped: focus follows input fields only.
  */
 function focusNextFormControl(current: HTMLElement | null): void {
   const form = current?.closest("form");
@@ -50,13 +49,12 @@ function focusNextFormControl(current: HTMLElement | null): void {
 }
 
 /**
- * Поле выбора места с автокомплитом по газеттиру (`/v1/geo/places/search`).
+ * Place picker with gazetteer autocomplete (`/v1/geo/places/search`).
  *
- * Набор → debounce → запрос (устаревшие отменяются `AbortController`) → выпадающий
- * список кандидатов; выбор кладёт `PlaceSearchItem` (с `placeId`) в `value`. Пока место
- * не выбрано, `value` держится `null` (форма требует выбранный кандидат). При пустой
- * выдаче подсказка ведёт пользователя попробовать другое написание/английское имя
- * (страховка от дырявого `name_ru`).
+ * Typing -> debounce -> request (stale ones are aborted) -> dropdown of candidates; picking puts
+ * a `PlaceSearchItem` (with `placeId`) into `value`. `value` stays `null` until a candidate is
+ * picked (the form requires one). On empty results a hint suggests another spelling or the
+ * English name (insurance against gaps in `name_ru`).
  */
 export function PlaceAutocomplete({ label, placeholder, value, onChange, error }: PlaceAutocompleteProps) {
   const { t, i18n } = useTranslation("journeys");
@@ -65,18 +63,17 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
 
   const [search, setSearch] = useState(value?.name ?? "");
   const [debouncedSearch] = useDebouncedValue(search, DEBOUNCE_MS);
-  // Подпись уже выбранного кандидата: пока текст ей равен — повторно не ищем (иначе
-  // debounce, «догнав» имя после выбора, тут же запустил бы лишний запрос). Состояние,
-  // а не ref: от него зависит `enabled` запроса, то есть значение нужно на рендере.
+  // Name of the already picked candidate: while the text equals it, do not search again (the
+  // debounce catching up after a pick would fire a needless request). State, not a ref: the
+  // query's `enabled` depends on it, so it is needed during render.
   const [selectedName, setSelectedName] = useState<string | null>(value?.name ?? null);
-  // Последнее значение, которое МЫ САМИ отдали через onChange. Если родитель пришлёт
-  // другой `value` (например, swap «Откуда»/«Куда» в форме), значит смена внешняя —
-  // и видимый текст надо подтянуть под неё (см. эффект ниже).
+  // Last value WE emitted via onChange. If the parent sends a different `value` (e.g. a
+  // from/to swap), the change is external and the visible text must follow (see the effect below).
   const lastEmittedRef = useRef<PlaceSearchItem | null>(value);
 
-  // Внешняя установка `value` (swap городов в форме) → синхронизируем видимый текст и
-  // «якорь» имени. Свой выбор/правка уже выставили `lastEmittedRef`, поэтому условие
-  // гасит лишний прогон и не затирает то, что пользователь печатает.
+  // An external `value` change (city swap) syncs the visible text and the name anchor. Our own
+  // pick/edit already set `lastEmittedRef`, so the condition skips a needless run and does not
+  // overwrite what the user is typing.
   useEffect(() => {
     if (value === lastEmittedRef.current) {
       return;
@@ -88,8 +85,8 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
   }, [value]);
 
   const language = toApiLanguage(i18n.language);
-  // Бэк отдаёт ISO alpha-2 (BY/RU), имя страны резолвит фронт через CLDR под язык UI
-  // (контракт проекта — см. docs/architecture.md); неизвестный код → показываем сам код.
+  // The backend returns ISO alpha-2 (BY/RU); the frontend resolves the country name via CLDR for
+  // the UI language (see docs/architecture.md). Unknown code: show the code itself.
   const countryNames = useMemo(() => new Intl.DisplayNames([language], { type: "region", fallback: "none" }), [language]);
 
   const trimmedSearch = debouncedSearch.trim();
@@ -98,21 +95,21 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
   const { data, isFetching, isError } = useQuery({
     ...searchPlacesOptions({ query: { searchText: trimmedSearch, language, limit: RESULT_LIMIT } }),
     enabled: !isBelowMinLength && trimmedSearch !== selectedName,
-    // Подсказки предыдущего набора остаются на экране, пока едет следующий запрос:
-    // список не схлопывается на каждый введённый символ. Устаревший запрос Query
-    // отменяет сам — сигнал уходит в SDK из сгенерированного queryFn.
+    // Previous suggestions stay on screen while the next request is in flight, so the list does
+    // not collapse on every keystroke. Query aborts the stale request itself (the signal goes
+    // to the SDK from the generated queryFn).
     placeholderData: keepPreviousData,
   });
 
-  // Короткий текст очищает выдачу, ошибка — тоже (иначе keepPreviousData показывал бы
-  // подсказки от запроса, которого пользователь уже не делает).
+  // Short text clears the results, and so does an error (otherwise keepPreviousData would show
+  // suggestions from a query the user no longer makes).
   const options = useMemo(
     () => (isBelowMinLength || isError ? NO_OPTIONS : (data?.items ?? NO_OPTIONS)),
     [isBelowMinLength, isError, data],
   );
 
-  // Первую подсказку держим активной → Enter сразу выбирает её (без клика/стрелок), и
-  // Mantine сам обрабатывает Enter на активной опции, не давая ему отправить форму.
+  // Keep the first option active so Enter picks it without a click or arrows, and Mantine
+  // handles Enter on the active option instead of letting it submit the form.
   useEffect(() => {
     if (options.length > 0) {
       combobox.selectFirstOption();
@@ -121,7 +118,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
 
   const handleInputChange = (text: string) => {
     setSearch(text);
-    // Редактирование сбрасывает выбранное место: пока не выбран новый кандидат, value пуст.
+    // Editing clears the picked place: value stays empty until a new candidate is picked.
     setSelectedName(null);
     if (value !== null) {
       lastEmittedRef.current = null;
@@ -134,7 +131,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
   const handleOptionSubmit = (optionValue: string) => {
     const picked = options.find((place) => place.placeId === optionValue);
     combobox.closeDropdown();
-    // optionValue приходит из value рендеренной Combobox.Option → picked всегда найден.
+    // optionValue comes from a rendered Combobox.Option's value, so `picked` is always found.
     /* v8 ignore next 3 */
     if (picked === undefined) {
       return;
@@ -144,8 +141,8 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
     lastEmittedRef.current = picked;
     onChange(picked);
     setSearch(picked.name);
-    // Выбор сделан — уводим фокус на следующее поле (другой город / транспорт), чтобы
-    // курсор не «залипал» на уже заполненном поле после Enter/Tab по подсказке.
+    // Picked: move focus to the next field (other city / transport) so the cursor does not stick
+    // in the filled field after Enter/Tab on a suggestion.
     focusNextFormControl(inputRef.current);
   };
 
@@ -165,10 +162,9 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
             onChange={(event) => handleInputChange(event.currentTarget.value)}
             onFocus={() => combobox.openDropdown()}
             onBlur={() => combobox.closeDropdown()}
-            // Tab (как и Enter) применяет первую подсказку. Глушим дефолтный Tab —
-            // фокус на следующее поле переводим сами в handleOptionSubmit (иначе он бы
-            // уехал дальше/на кнопку обмена). Shift+Tab оставляем браузеру (шаг назад).
-            // Через capture, т.к. onKeyDown перехватывает Mantine.
+            // Tab (like Enter) applies the first suggestion. Suppress default Tab: handleOptionSubmit
+            // moves focus itself (otherwise it would jump on or to the swap button). Shift+Tab is
+            // left to the browser (step back). Uses capture because Mantine intercepts onKeyDown.
             onKeyDownCapture={(event) => {
               if (event.key === "Tab" && !event.shiftKey && combobox.dropdownOpened && options.length > 0) {
                 event.preventDefault();
@@ -185,7 +181,7 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
           <Combobox.Options>
             <ScrollArea.Autosize mah={DROPDOWN_MAX_HEIGHT} type="scroll">
               {options.map((place) => {
-                // У мест вроде моря страны нет — тогда подпись со страной не показываем.
+                // Places like seas have no country: show no country label.
                 const country = place.countryCode ? (countryNames.of(place.countryCode) ?? place.countryCode) : null;
                 return (
                   <Combobox.Option className="place-option" value={place.placeId} key={place.placeId}>

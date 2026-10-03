@@ -6,9 +6,8 @@ import { getCurrentUserOptions, type CurrentUserResponse } from "../api/sdk";
 import { useAuth } from "../auth/useAuth";
 import { CurrentUserContext, type CurrentUserState } from "./useCurrentUser";
 
-// Коды, за которыми не стоит живого пользователя: повторять запрос бессмысленно,
-// сессия подлежит разлогину. Ветвимся по `code` (стабильный контракт API), не по
-// HTTP-статусу — статус здесь деталь транспорта.
+// Codes meaning there is no live user: retrying is pointless and the session must be logged out.
+// Branch on `code` (the stable API contract), not the HTTP status (a transport detail).
 const SESSION_INVALID_CODES: ReadonlySet<string> = new Set(["users.user_deleted", "users.user_not_found"]);
 
 function isSessionInvalid(error: unknown): boolean {
@@ -20,13 +19,12 @@ interface CurrentUserProviderProps {
 }
 
 /**
- * Грузит профиль (`/v1/users/me`) и раздаёт его через контекст.
+ * Loads the profile (`/v1/users/me`) and exposes it via context.
  *
- * Живёт ПОВЕРХ `AuthProvider` и реагирует на его состояние: пока auth-bootstrap не
- * завершён — `loading` (запрос не шлём, токена может ещё не быть); без сессии —
- * `anonymous`; логин/логаут переключают `isAuthenticated`, а с ним и `enabled` запроса.
- * Транзиентные сбои (сеть, 5xx) Query повторяет сам, поэтому `error` здесь — уже
- * терминальный исход, а не первая неудача.
+ * Sits ABOVE `AuthProvider` and follows its state: `loading` until the auth bootstrap finishes
+ * (no request, the token may not exist yet), `anonymous` without a session; login/logout flip
+ * `isAuthenticated` and with it the query's `enabled`. Query retries transient failures itself,
+ * so `error` here is a terminal outcome, not a first failure.
  */
 export function CurrentUserProvider({ children }: CurrentUserProviderProps) {
   const { isAuthenticated, isBootstrapping, clearSession } = useAuth();
@@ -35,8 +33,7 @@ export function CurrentUserProvider({ children }: CurrentUserProviderProps) {
     enabled: !isBootstrapping && isAuthenticated,
   });
 
-  // Семантика «пользователя больше нет» — разлогин; провайдер уйдёт в anonymous сам,
-  // когда погаснет isAuthenticated.
+  // "The user is gone" means logout; the provider goes anonymous by itself once isAuthenticated drops.
   useEffect(() => {
     if (isSessionInvalid(error)) {
       clearSession();
@@ -58,17 +55,11 @@ interface StateInput {
 }
 
 /**
- * Сводит auth-состояние и исход запроса в машину состояний контекста.
+ * Folds auth state and the query outcome into the context's state machine.
  *
- * Auth важнее данных: поздний ответ на запрос, отправленный до логаута, не должен
- * поднять профиль поверх `anonymous`. Разлогинивающий код держит `loading` — состояние
- * временное, `clearSession` уже в пути и переведёт провайдер в `anonymous`.
- *
- * Args:
- *     input: Флаги auth-провайдера и результат запроса `/me`.
- *
- * Returns:
- *     Состояние для потребителей `useCurrentUser`.
+ * Auth beats data: a late response to a request sent before logout must not raise the profile
+ * over `anonymous`. A logging-out error code holds `loading`: it is transient, `clearSession`
+ * is already on its way and will move the provider to `anonymous`.
  */
 function toState({ isAuthenticated, isBootstrapping, data, error }: StateInput): CurrentUserState {
   if (isBootstrapping) {

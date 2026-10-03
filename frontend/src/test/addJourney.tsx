@@ -4,7 +4,7 @@ import type { UserEvent } from "@testing-library/user-event";
 import { AddJourneyPage } from "../pages/journeys/AddJourneyPage";
 import { renderRoutes, screen, waitFor, within } from "./render";
 
-/** Монтирует AddJourneyPage на /journeys/add с landing-маркером целевого пути сабмита. */
+/** Mounts AddJourneyPage at /journeys/add with a landing marker for the submit target path. */
 export function renderAddJourney(queryClient?: QueryClient) {
   return renderRoutes({
     element: <AddJourneyPage />,
@@ -14,15 +14,15 @@ export function renderAddJourney(queryClient?: QueryClient) {
   });
 }
 
-// hidden: true — Mantine Combobox/Select-дропдаун (Popover/Floating UI) в jsdom не получает
-// вычисленную позицию и остаётся display:none, поэтому опции вне видимого a11y-дерева.
+// hidden: true, because a Mantine Combobox/Select dropdown (Popover/Floating UI) gets no computed
+// position in jsdom and stays display:none, so options are outside the visible a11y tree.
 
 /**
- * Набирает запрос в поле автокомплита и выбирает кандидата.
+ * Types a query into the autocomplete field and picks a candidate.
  *
- * Поиск опции скоупится в дропдаун ИМЕННО этого поля (по `aria-controls` инпута): Mantine
- * Combobox держит закрытый дропдаун соседнего поля в DOM (`keepMounted`), и одноимённая
- * опция оттуда иначе перехватила бы выбор (From и To с одинаковым городом).
+ * The option lookup is scoped to THIS field's dropdown (via the input's `aria-controls`): Mantine
+ * Combobox keeps a neighbouring field's closed dropdown in the DOM (`keepMounted`), and a
+ * same-named option from there would otherwise hijack the pick (From and To with the same city).
  */
 export async function pickPlace(options: {
   user: UserEvent;
@@ -44,14 +44,14 @@ export async function pickPlace(options: {
   await user.click(await within(listbox).findByRole("option", { name: option, hidden: true }));
 }
 
-/** Открывает Mantine Select по триггеру и кликает опцию по точному имени. */
+/** Opens a Mantine Select by its trigger and clicks the option by exact name. */
 export async function pickOption(options: { user: UserEvent; trigger: HTMLElement; option: string }): Promise<void> {
   const { user, trigger, option } = options;
   await user.click(trigger);
   await user.click(await screen.findByRole("option", { name: option, hidden: true }));
 }
 
-/** Заполняет форму Moscow → London, самолёт, 2020 — без отправки. */
+/** Fills the form Moscow -> London, plane, 2020, without submitting. */
 export async function fillMoscowToLondon(user: UserEvent): Promise<void> {
   await pickPlace({ user, label: "From", query: "Mos", option: /Moscow/iu });
   await pickPlace({ user, label: "To", query: "Lon", option: /London/iu });
@@ -59,7 +59,7 @@ export async function fillMoscowToLondon(user: UserEvent): Promise<void> {
   await pickOption({ user, trigger: screen.getByPlaceholderText("Select year"), option: "2020" });
 }
 
-/** Заполняет форму Moscow → London, самолёт, 2020 и отправляет её. */
+/** Fills the form Moscow -> London, plane, 2020 and submits it. */
 export async function submitMoscowToLondon(user: UserEvent): Promise<void> {
   await fillMoscowToLondon(user);
   await user.click(screen.getByRole("button", { name: "Add journey" }));

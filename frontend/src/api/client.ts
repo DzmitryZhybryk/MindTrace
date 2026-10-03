@@ -15,17 +15,16 @@ function shouldRetryAfterRefresh(status: number, code: string, pathname: string)
 }
 
 /**
- * Транспорт сгенерированного SDK — единственный путь всех вызовов нашего API.
+ * Transport of the generated SDK: the only path for every call to our API.
  *
- * SDK сам разбирает и валидирует успешный ответ, поэтому здесь остаётся сессия и неуспех:
- * Bearer из `tokenStore`, refresh-cookie, single-flight refresh при 401 с повтором запроса,
- * эмиты `auth-required` / `verify-required`. Не «чистый fetch»: на не-2xx бросает `ApiError`,
- * иначе ветки `instanceof ApiError` на фронте остались бы без своего типа.
+ * The SDK parses and validates successful responses; this handles the session and failures:
+ * Bearer from `tokenStore`, refresh cookie, single-flight refresh on 401 with a retry, and the
+ * `auth-required` / `verify-required` events. Throws `ApiError` on non-2xx.
  */
 export async function appFetch(input: URL | RequestInfo, init?: RequestInit): Promise<Response> {
   const request = new Request(input, init);
 
-  // Тело запроса — одноразовый поток, поэтому копию под повтор снимаем до первой отправки.
+  // A request body is a one-shot stream, so clone for the retry before the first send.
   const retryable = request.clone();
   const { pathname } = new URL(request.url);
 
@@ -64,11 +63,11 @@ function sendWithSession(request: Request): Promise<Response> {
 }
 
 /**
- * Запрос к `/refresh/` в обход SDK: `sdk.ts` настраивает клиента этим же транспортом,
- * и вызов сгенерированного `refresh()` отсюда замкнул бы импорты в цикл.
+ * Calls `/refresh/` bypassing the SDK: `sdk.ts` configures the client with this transport, so
+ * importing the generated `refresh()` here would create an import cycle.
  *
- * Путь передаётся строкой, а не `Request`: относительный URL в конструкторе `Request`
- * вне браузера (jsdom + undici) не резолвится — «Failed to parse URL».
+ * The path is a string, not a `Request`: outside a browser (jsdom + undici) a relative URL in
+ * the `Request` constructor fails with "Failed to parse URL".
  */
 function sendRefreshRequest(): Promise<Response> {
   return fetch(REFRESH_PATH, {
@@ -93,17 +92,12 @@ async function parseErrorBody(response: Response): Promise<ApiErrorBody> {
 }
 
 /**
- * Single-flight refresh: параллельные обращения шерят один pending promise,
- * чтобы не делать N запросов к /v1/auth/refresh/ одновременно. Покрывает оба
- * источника refresh'а — 401-ретраи из `appFetch` и bootstrap из `AuthContext`
- * (включая двойной запуск эффекта под React StrictMode в dev). Это критично
- * из-за ротации refresh-токена с reuse-detection на бэке: два параллельных
- * /refresh/ с одной cookie привели бы к revoke-all и обрыву сессии. После
- * завершения promise сбрасывается; следующий вызов запустит новый refresh.
+ * Single-flight refresh: concurrent callers share one pending promise. Covers both refresh
+ * sources: 401 retries from `appFetch` and the `AuthContext` bootstrap (including the double
+ * effect run under StrictMode). Critical because the backend rotates refresh tokens with
+ * reuse detection: two parallel `/refresh/` calls with one cookie would revoke the whole session.
  *
- * Returns:
- *     `true`, если есть валидная сессия (access-token записан в tokenStore),
- *     иначе `false`.
+ * Resolves `true` if a valid session exists (access token stored in `tokenStore`).
  */
 export function ensureRefreshed(): Promise<boolean> {
   if (pendingRefresh !== null) {

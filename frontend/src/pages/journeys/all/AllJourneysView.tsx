@@ -14,18 +14,18 @@ import "./all-journeys.css";
 const ALL_TRANSPORT_TYPES: TransportType[] = [...zTransportType.options];
 const NO_JOURNEYS: readonly JourneyFeedEntry[] = [];
 
-// Карта — декор за лентой: её chunk (карта мира с границами стран) не держит первую отрисовку ленты.
+// The map is decor behind the feed: its chunk (world map with country borders) must not hold up the feed's first paint.
 const FeedBackdropMap = lazy(() => import("./FeedBackdropMap").then((m) => ({ default: m.FeedBackdropMap })));
-// Та же граница, что у раскладки в all-journeys.css: уже — колонка во всю ширину, карте нет места.
+// Same breakpoint as the layout in all-journeys.css: narrower means a full-width column with no room for the map.
 const DESKTOP_QUERY = "(min-width: 62em)";
 
 /**
- * Под-вкладка «Все поездки» — маршрут /journeys/all: лента поездок по годам с фильтрами по годам
- * и транспорту.
+ * "All journeys" sub-tab, route /journeys/all: a feed of journeys by year with year and
+ * transport filters.
  *
- * Шкала лет — от первого до последнего года пользователя, без учёта фильтров: она не должна
- * сжиматься от собственного выбора. Ручки, разведённые по краям шкалы, — все годы, без фильтра.
- * За колонкой — приглушённая карта с дугой активной поездки.
+ * The year scale runs from the user's first to last year, ignoring filters: it must not shrink
+ * from its own selection. Thumbs at the scale edges mean all years, no filter. Behind the column
+ * is a muted map with the active journey's arc.
  */
 export function AllJourneysView() {
   const { t } = useTranslation("journeys");
@@ -39,7 +39,7 @@ export function AllJourneysView() {
     () => fitYearRange(yearRange, firstYear, lastYear),
     [yearRange, firstYear, lastYear],
   );
-  // Ползунок сверяет окно по ссылке — «все годы» не пересоздаём на каждый рендер.
+  // The slider compares the window by reference, so do not recreate "all years" every render.
   const yearWindow = useMemo<YearRange>(
     () => shownYearRange ?? [firstYear ?? 0, lastYear ?? 0],
     [shownYearRange, firstYear, lastYear],
@@ -52,7 +52,7 @@ export function AllJourneysView() {
 
   return (
     <div className="all-journeys">
-      {/* Фон под колонкой; на узком экране его нет — колонка там во всю ширину. */}
+      {/* Background under the column; absent on narrow screens where the column is full width. */}
       {isDesktop && (
         <div className="all-journeys__map" aria-hidden="true">
           <Suspense fallback={null}>
@@ -68,7 +68,7 @@ export function AllJourneysView() {
       <div ref={columnRef} className="all-journeys__column">
         <section className="all-journeys__filters journeys-card" aria-label={t("all.filters")}>
           <h1 className="all-journeys__title">{t("nav.all")}</h1>
-          {/* Один год — выбирать не из чего, шкалы нет. */}
+          {/* A single year leaves nothing to choose, so no scale. */}
           {firstYear !== undefined && lastYear !== undefined && firstYear < lastYear && (
             <fieldset className="all-journeys__years">
               <legend className="all-journeys__filter-label">{t("all.years")}</legend>

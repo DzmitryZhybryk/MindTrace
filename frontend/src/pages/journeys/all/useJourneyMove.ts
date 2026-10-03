@@ -7,19 +7,14 @@ import { invalidateJourneyAggregates, invalidateJourneyFeed } from "../journeyCa
 import { moveJourneyInPages, type MoveTarget } from "./feedMove";
 
 /**
- * Перенос поездки с оптимистичной перестановкой в ленте.
+ * Moves a journey with an optimistic reorder in the feed. `feedKey` is the shown feed's key (the
+ * one reordered). Returns `move`, the in-progress flag and the last move's error token.
  *
- * Строка встаёт на новое место сразу, до ответа. Сервер ставит её вплотную к соседу, поэтому
- * показанная лента после успеха уже верна и не перезапрашивается; сбрасываются только скрытые
- * варианты ленты (другие фильтры). Бэк отказал (сосед удалён, чужой) — лента возвращается как
- * была, показывается ошибка и перезапрашивается: отказ значит, что она разошлась с сервером.
- * Карты и годы сбрасываются, только если сменился год: порядок внутри года на них не влияет.
- *
- * Args:
- *     feedKey: Ключ показанной ленты — её и переставляем.
- *
- * Returns:
- *     `move`, флаг идущего переноса и токен ошибки последнего переноса.
+ * The row takes its new place immediately, before the answer. The server places it flush with the
+ * neighbour, so the shown feed is already right after success and is not refetched; only hidden
+ * feed variants (other filters) are invalidated. If the backend refuses (neighbour deleted, not
+ * ours), the feed reverts, shows an error and is refetched: a refusal means it diverged from the
+ * server. Maps and years are invalidated only if the year changed: order within a year does not affect them.
  */
 export function useJourneyMove(feedKey: QueryKey) {
   const queryClient = useQueryClient();
@@ -28,7 +23,7 @@ export function useJourneyMove(feedKey: QueryKey) {
 
   const move = async (journey: JourneyFeedEntry, target: MoveTarget) => {
     setErrorToken(null);
-    // Запрос ленты, вернувшийся после перестановки, затёр бы её старым порядком.
+    // A feed request returning after the reorder would overwrite it with the old order.
     await queryClient.cancelQueries({ queryKey: feedKey });
     const previous = queryClient.getQueryData<InfiniteData<JourneysFeedResponse>>(feedKey);
     queryClient.setQueryData<InfiniteData<JourneysFeedResponse>>(

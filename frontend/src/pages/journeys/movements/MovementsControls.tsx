@@ -7,7 +7,7 @@ import { TRANSPORT_ICONS } from "../../../components/transportIcons";
 import { useDraggableCard } from "./useDraggableCard";
 import { YearRangeSlider } from "./YearRangeSlider";
 
-/** Окно лет `[с, по]`, обе границы включительно. */
+/** Year window `[from, to]`, both bounds inclusive. */
 export type YearWindow = readonly [number, number];
 
 const TRANSPORT_ICON_SIZE = 20;
@@ -16,15 +16,15 @@ interface MovementsControlsProps {
   firstYear: number;
   lastYear: number;
   window: YearWindow;
-  /** Граница окна перешла на другой год — карта меняется прямо по ходу перетаскивания. */
+  /** A window bound moved to another year; the map changes live while dragging. */
   onWindowChange: (window: YearWindow) => void;
   transportTypes: readonly TransportType[];
   onTransportTypesChange: (transportTypes: TransportType[]) => void;
-  /** Панель навигации: карточка не наезжает на неё и выравнивается по её краям. */
+  /** Navigation panel: the card does not overlap it and aligns to its edges. */
   panelRef: RefObject<HTMLElement | null>;
 }
 
-/** Ручка перетаскивания — два ряда точек; UI-контрол, рисуется по `currentColor`. */
+/** Drag grip: two rows of dots; a UI control drawn in `currentColor`. */
 function GripIcon() {
   return (
     <svg width="16" height="8" viewBox="0 0 16 8" aria-hidden="true" fill="currentColor">
@@ -34,11 +34,11 @@ function GripIcon() {
 }
 
 /**
- * Фильтры карты перемещений: окно лет и виды транспорта, в перетаскиваемой карточке.
+ * Movements map filters (year window and transport types) in a draggable card.
  *
- * Линии появляются и исчезают прямо по ходу перетаскивания ползунка (см. YearRangeSlider).
- * Карточку двигают за ушко над верхним краем (стрелками — тоже), двойной клик по ушку
- * возвращает её в угол по умолчанию.
+ * Lines appear and disappear live while the slider is dragged (see YearRangeSlider). The card is
+ * moved by the tab above its top edge (arrow keys work too); a double click on the tab returns
+ * it to the default corner.
  */
 export function MovementsControls({
   firstYear,
@@ -67,7 +67,7 @@ export function MovementsControls({
         <GripIcon />
       </UnstyledButton>
 
-      {/* Одного года хватает подписи — двигать в ползунке нечего. */}
+      {/* A single year needs only a label: nothing to move in a slider. */}
       {isSingleYear ? (
         <Text className="movements-controls__single-year">{firstYear}</Text>
       ) : (
@@ -84,8 +84,8 @@ export function MovementsControls({
       <Chip.Group multiple value={[...transportTypes]} onChange={(value) => onTransportTypesChange(value as TransportType[])}>
         <fieldset className="movements-controls__transport">
           <VisuallyHidden component="legend">{t("movements.transport")}</VisuallyHidden>
-          {/* Одни иконки в ряд, поровну; подпись — для скринридера и во всплывающей подсказке.
-              Выбранность видна по заливке, без галочки. */}
+          {/* Icons only, in a row, evenly spaced; the label is for screen readers and the tooltip.
+              Selection shows by fill, no tick. */}
           <Group gap={6} grow wrap="nowrap">
             {zTransportType.options.map((type) => (
               <Chip

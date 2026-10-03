@@ -13,15 +13,15 @@ interface GlobeSceneProviderProps {
 }
 
 /**
- * Канал «страница → персистентный глобус». Хост — сиблинг `<Routes>`, поэтому провайдер
- * стоит выше обоих. Модуль лёгкий: ни three, ни текстур — он в main-chunk'е.
+ * Channel from a page to the persistent globe. The host is a sibling of `<Routes>`, so the
+ * provider sits above both. The module is light (no three, no textures) and is in the main chunk.
  */
 export function GlobeSceneProvider({ children }: GlobeSceneProviderProps) {
   const [route, setRoute] = useState<GlobeRoute | null>(null);
   const [slot, setSlot] = useState<GlobeSlot | null>(null);
 
   const scene = useMemo(() => ({ route, slot }), [route, slot]);
-  // Сеттеры useState стабильны — объект живёт всё время жизни провайдера.
+  // useState setters are stable, so the object lives as long as the provider.
   const actions = useMemo<GlobeSceneActions>(() => ({ setRoute, setSlot }), []);
 
   return (

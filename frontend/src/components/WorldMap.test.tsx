@@ -9,8 +9,8 @@ import type { MapCountry, WorldMapTone } from "./WorldMap";
 import { WorldMap } from "./WorldMap";
 import { WORLD_VIEW_BOX, type ViewBox } from "./worldProjection";
 
-// Уникальные заливки на статус: по fill однозначно находим path нужной страны
-// (роль/имя у SVG-path недоступны — это графика).
+// Unique fills per status: a country's path is found unambiguously by fill (an SVG path has no
+// role/name, it is graphics).
 const TONE: WorldMapTone = {
   land: "#eeeeee",
   border: "#999999",
@@ -43,13 +43,13 @@ describe("WorldMap", () => {
       <WorldMap countries={COUNTRIES} tone={TONE} className="test-map" />,
     );
 
-    // Посещённая и wishlist-страны получают свои заливки, остальные — land.
+    // Visited and wishlist countries get their fills, the rest get land.
     expect(container.querySelector(`.world-map__country[fill="${TONE.visited}"]`)).not.toBeNull();
     expect(container.querySelector(`.world-map__country[fill="${TONE.wishlist}"]`)).not.toBeNull();
     expect(container.querySelectorAll(`.world-map__country[fill="${TONE.land}"]`).length).toBeGreaterThan(0);
-    // Город посещённой страны — одна точка.
+    // A visited country's city is one dot.
     expect(container.querySelectorAll(".world-map__city-dot")).toHaveLength(1);
-    // Доступное имя карты и внешний класс-модификатор.
+    // The map's accessible name and the external modifier class.
     expect(container.querySelector(".world-map")?.getAttribute("aria-label")).toBe(
       "World map highlighting visited countries",
     );
@@ -69,14 +69,14 @@ describe("WorldMap", () => {
 
     await user.hover(pathByFill(container, TONE.visited));
 
-    // Имя резолвится из ISO-кода через CLDR (RU → Russia), города — с годами визитов.
+    // The name resolves from the ISO code via CLDR (RU -> Russia), cities come with visit years.
     expect(await screen.findByText("Russia")).toBeInTheDocument();
     expect(screen.getByText("Moscow")).toBeInTheDocument();
     expect(screen.getByText("2019, 2021")).toBeInTheDocument();
   });
 
   it("в тултипе города идут по году первого визита, а в одном году — по названию", async () => {
-    // Алфавит и годы расходятся: York и London — 2019, Bristol — 2021.
+    // Alphabet and years disagree: York and London are 2019, Bristol is 2021.
     const countries: MapCountry[] = [
       {
         id: "GB",
@@ -105,10 +105,10 @@ describe("WorldMap", () => {
     await user.hover(pathByFill(container, TONE.visited));
 
     expect(await screen.findByText("Russia")).toBeInTheDocument();
-    // Страна посещена — «ещё не посещено» тут было бы неправдой; годов без имени города тоже нет.
+    // The country is visited, so "not visited yet" would be false here; there are no years without a city name either.
     expect(screen.queryByText("Not visited yet")).not.toBeInTheDocument();
     expect(screen.queryByText("2019")).not.toBeInTheDocument();
-    // Точка города на карте есть и без названия.
+    // The city dot is on the map even without a name.
     expect(container.querySelectorAll(".world-map__city-dot")).toHaveLength(1);
   });
 
@@ -124,14 +124,14 @@ describe("WorldMap", () => {
   });
 
   it("территория без ISO-кода (Northern Cyprus) показывает имя из geojson", async () => {
-    // Единственная wishlist-страна → находим её path по уникальной заливке.
+    // The only wishlist country: find its path by the unique fill.
     const { container, user } = renderWithProviders(
       <WorldMap countries={[{ id: "Northern Cyprus", status: "wishlist", cities: [] }]} tone={TONE} />,
     );
 
     await user.hover(pathByFill(container, TONE.wishlist));
 
-    // id не вида ISO alpha-2 → имя резолвится не через CLDR, а из geojson (COUNTRY_NAMES).
+    // An id that is not ISO alpha-2 resolves its name not via CLDR but from geojson (COUNTRY_NAMES).
     expect(await screen.findByText("Northern Cyprus")).toBeInTheDocument();
   });
 
@@ -140,7 +140,7 @@ describe("WorldMap", () => {
       <WorldMap countries={COUNTRIES} tone={TONE} />,
     );
 
-    // Любая страна вне пропсов countries → статус land → muted «ещё не посещено».
+    // Any country outside the countries prop gets status land, a muted "not visited yet".
     const landPath = container.querySelector<SVGPathElement>(`.world-map__country[fill="${TONE.land}"]`);
     if (!landPath) {
       throw new Error("Непосещённая страна не найдена");
@@ -165,11 +165,11 @@ describe("WorldMap", () => {
       throw new Error("Тултип не найден");
     }
 
-    // Далеко за правым/нижним краем viewport → тултип отражается к курсору (calc(-100%)).
+    // Far beyond the right/bottom viewport edge the tooltip flips toward the cursor (calc(-100%)).
     fireEvent.mouseMove(wrap, { clientX: 5000, clientY: 5000 });
     expect(tooltip.style.transform).toContain("calc(-100%");
 
-    // Ближе к началу координат → обычное смещение на offset, без отражения (нет calc()).
+    // Closer to the origin: the normal offset, no flip (no calc()).
     fireEvent.mouseMove(wrap, { clientX: 5, clientY: 5 });
     expect(tooltip.style.transform).not.toContain("calc(");
   });
@@ -188,9 +188,9 @@ describe("WorldMap", () => {
   });
 });
 
-// --- Масштаб, стартовый вид и слой поверх карты ----------------------------
+// --- Zoom, initial view and the layer over the map ----------------------------
 
-// SVG карты во всю область 1000×487 px: при виде на весь мир пиксель равен единице холста.
+// The map SVG fills the whole 1000x487 px area: in the whole-world view a pixel equals a canvas unit.
 const SCREEN_RECTS: Record<string, ScreenRect> = {
   "world-map": { left: 0, top: 0, width: 1000, height: 487 },
   "world-map-canvas": { left: 0, top: 0, width: 1000, height: 487 },
@@ -198,7 +198,7 @@ const SCREEN_RECTS: Record<string, ScreenRect> = {
   "occluder-above-map": { left: 0, top: -300, width: 400, height: 200 },
 };
 
-// Прокрутка колеса на столько даёт ровно двукратное приближение (масштаб — exp от прокрутки).
+// A wheel scroll of this amount gives exactly 2x zoom (the scale is exp of the scroll).
 const ZOOM_IN_TWICE_DELTA = -100 * Math.LN2;
 
 function viewBoxOf(container: HTMLElement): ViewBox {
@@ -217,7 +217,7 @@ function canvasOf(container: HTMLElement): HTMLElement {
   return canvas;
 }
 
-/** Safari присылает щипок тачпада отдельными событиями со `scale`. */
+/** Safari sends a trackpad pinch as separate events with `scale`. */
 function gesture(type: string, scale: number, clientX: number, clientY: number): Event {
   return Object.assign(new Event(type, { bubbles: true, cancelable: true }), { scale, clientX, clientY });
 }
@@ -229,7 +229,7 @@ interface OccludedMapProps {
   isFitAnimated?: boolean;
 }
 
-/** Карта с панелью поверх: ref панели, как его передаёт каркас раздела. */
+/** A map with a panel over it: the panel ref, as the section shell passes it. */
 function OccludedMap({ fitBounds, occluderClass, shouldFadeUnderOccluder, isFitAnimated }: OccludedMapProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   return (
@@ -267,10 +267,10 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
     });
 
     const view = viewBoxOf(container);
-    // Страница жест не получила — масштабировать её браузеру нечего.
+    // The page did not get the gesture: there is nothing for the browser to zoom.
     expect(isPassedToPage).toBe(false);
     expect(view.width).toBeCloseTo(WORLD_VIEW_BOX.width / 2);
-    // Точка под курсором (x=250 холста) осталась на своём месте экрана — на четверти ширины.
+    // The point under the cursor (canvas x=250) stayed at its screen position, a quarter of the width.
     expect((250 - view.x) / view.width).toBeCloseTo(0.25);
     expect(container.querySelector(".world-map-wrap--zoomed")).not.toBeNull();
   });
@@ -294,7 +294,7 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
 
     const moved = viewBoxOf(container);
     expect(isPassedToPage).toBe(false);
-    // SVG на экране 1000 px, в кадре половина мира: пиксель — полединицы холста.
+    // The SVG is 1000 px on screen with half the world in frame: a pixel is half a canvas unit.
     expect(moved.x).toBeCloseTo(zoomed.x + 20);
     expect(moved.y).toBeCloseTo(zoomed.y + 10);
   });
@@ -309,12 +309,12 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
     fireEvent.pointerMove(canvas, { pointerId: 1, pointerType: "mouse", clientX: 260, clientY: 180 });
     fireEvent.pointerUp(canvas, { pointerId: 1, pointerType: "mouse" });
 
-    // Карту тянут за собой: курсор влево-вверх — область вправо-вниз.
+    // The map is dragged along: cursor left-up moves the area right-down.
     const dragged = viewBoxOf(container);
     expect(dragged.x).toBeCloseTo(zoomed.x + 20);
     expect(dragged.y).toBeCloseTo(zoomed.y + 10);
 
-    // После отпускания движение мыши карту не двигает.
+    // After release, mouse movement does not move the map.
     fireEvent.pointerMove(canvas, { pointerId: 1, pointerType: "mouse", clientX: 100, clientY: 100 });
     expect(viewBoxOf(container)).toEqual(dragged);
 
@@ -328,7 +328,7 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
 
     fireEvent.pointerDown(canvas, { pointerId: 1, pointerType: "touch", clientX: 400, clientY: 200 });
     fireEvent.pointerDown(canvas, { pointerId: 2, pointerType: "touch", clientX: 600, clientY: 200 });
-    // Пальцы разошлись с 200 до 400 px — вдвое.
+    // The fingers moved apart from 200 to 400 px: twice as far.
     fireEvent.pointerMove(canvas, { pointerId: 2, pointerType: "touch", clientX: 800, clientY: 200 });
 
     expect(viewBoxOf(container).width).toBeCloseTo(WORLD_VIEW_BOX.width / 2);
@@ -362,7 +362,7 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
 
     fireEvent.wheel(canvasOf(container), { ctrlKey: true, deltaY: ZOOM_IN_TWICE_DELTA, clientX: 500, clientY: 240 });
 
-    // Слой получает текущую область, а точка города в единицах холста вдвое меньше.
+    // The layer receives the current area, and the city dot in canvas units is half as large.
     expect(Number(probe()?.getAttribute("width"))).toBeCloseTo(WORLD_VIEW_BOX.width / 2);
     expect(Number(cityDot()?.getAttribute("r"))).toBeCloseTo(worldRadius / 2);
   });
@@ -392,15 +392,15 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
     const occluded = renderWithProviders(<OccludedMap fitBounds={bounds} occluderClass="occluder-over-map" />);
     const occludedView = viewBoxOf(occluded.container);
 
-    // Панель над картой (мобильная раскладка) ничего не закрывает: содержимое по центру кадра —
-    // и его левый край пришёлся бы как раз под панель, окажись она поверх карты.
+    // A panel above the map (mobile layout) covers nothing: the content is centered in frame, and
+    // its left edge would fall right under the panel if it were over the map.
     expect(freeView.width).toBeLessThan(WORLD_VIEW_BOX.width);
     expect(freeView.x + freeView.width / 2).toBeCloseTo(bounds.x + bounds.width / 2);
     expect(leftOnScreen(freeView)).toBeLessThan(panelWidth);
-    // Панель поверх левых 400 px: кадр сдвинут, левый край содержимого — правее панели.
+    // A panel over the left 400 px: the frame is shifted, the content's left edge is right of the panel.
     expect(leftOnScreen(occludedView)).toBeGreaterThan(panelWidth);
 
-    // Двойной клик возвращает именно стартовый вид, а не весь мир.
+    // A double click restores the initial view specifically, not the whole world.
     fireEvent.doubleClick(canvasOf(occluded.container));
     expect(viewBoxOf(occluded.container)).toEqual(occludedView);
   });
@@ -412,7 +412,7 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
       <OccludedMap fitBounds={first} occluderClass="occluder-above-map" />,
     );
 
-    // Нетронутый вид переезжает на новый стартовый.
+    // An untouched view moves to the new initial one.
     rerender(<OccludedMap fitBounds={second} occluderClass="occluder-above-map" />);
     const untouchedView = viewBoxOf(container);
     expect(untouchedView.width).toBeLessThan(WORLD_VIEW_BOX.width);
@@ -429,14 +429,14 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
     const bounds: ViewBox = { x: 400, y: 180, width: 200, height: 20 };
 
     const over = renderWithProviders(<OccludedMap fitBounds={bounds} occluderClass="occluder-over-map" />);
-    // Растворение начинается у кромки панели: закрыто ровно столько, сколько она занимает.
+    // The fade starts at the panel edge: exactly as much is covered as the panel occupies.
     expect(over.container.querySelector(".world-map-wrap--occluded")).not.toBeNull();
     expect(canvasOf(over.container).style.getPropertyValue("--map-occluded-left")).toBe(
       `${SCREEN_RECTS["occluder-over-map"].width}px`,
     );
     over.unmount();
 
-    // Панель над картой (мобильная раскладка) ничего не закрывает — растворять нечего.
+    // A panel above the map (mobile layout) covers nothing, so there is nothing to fade.
     const above = renderWithProviders(<OccludedMap fitBounds={bounds} occluderClass="occluder-above-map" />);
     expect(above.container.querySelector(".world-map-wrap--occluded")).toBeNull();
     expect(canvasOf(above.container).style.getPropertyValue("--map-occluded-left")).toBe("");
@@ -470,7 +470,7 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
 
     rerender(<OccludedMap fitBounds={second} occluderClass="occluder-above-map" isFitAnimated />);
 
-    // Сразу после смены кадр ещё старый, через кадры анимации — промежуточный, в конце — новый.
+    // Right after the change the frame is still the old one, after animation frames an intermediate one, finally the new one.
     expect(viewBoxOf(container)).toEqual(firstView);
     await waitFor(() => {
       const view = viewBoxOf(container);

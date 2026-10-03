@@ -9,7 +9,7 @@ import { AllJourneysView } from "./AllJourneysView";
 
 const [MOSCOW_TO_LONDON, , PARIS_TO_MOSCOW] = FEED_JOURNEYS;
 
-/** Открывает ленту и правку строки Москва → Лондон кликом по её месту отправления. */
+/** Opens the feed and editing of the Moscow -> London row by clicking its departure place. */
 async function openMoscowToLondonEditor() {
   const rendered = renderWithProviders(<AllJourneysView />);
   const year2021 = await screen.findByRole("region", { name: "2021" });
@@ -76,7 +76,7 @@ describe("AllJourneysView — правка и удаление", () => {
       }
       return row;
     });
-    // В jsdom нет AnimationEvent, поэтому React слушает префиксное webkitAnimationEnd.
+    // jsdom has no AnimationEvent, so React listens to the prefixed webkitAnimationEnd.
     const animationEnd = new Event("webkitAnimationEnd", { bubbles: true });
     Object.defineProperty(animationEnd, "animationName", { value: "journey-row-saved" });
     act(() => {
@@ -266,8 +266,8 @@ describe("AllJourneysView — правка и удаление", () => {
     });
     expect(within(year2021).getAllByRole("listitem")).toHaveLength(2);
 
-    // В jsdom нет AnimationEvent, поэтому React слушает префиксное webkitAnimationEnd, а fireEvent
-    // теряет animationName — событие собираем сами.
+    // jsdom has no AnimationEvent, so React listens to the prefixed webkitAnimationEnd, and fireEvent
+    // drops animationName: build the event ourselves.
     const animationEnd = new Event("webkitAnimationEnd", { bubbles: true });
     Object.defineProperty(animationEnd, "animationName", { value: "journey-row-collapse" });
     act(() => {
