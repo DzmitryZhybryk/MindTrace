@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from app.shared.schemas import CamelModel
 
@@ -27,7 +27,9 @@ class CursorPageResponse[ItemT](CamelModel):
     схемы в OpenAPI своё имя. ``nextCursor`` = ``null`` — страница последняя.
     """
 
-    items: list[ItemT]
+    model_config = ConfigDict(frozen=True)
+
+    items: tuple[ItemT, ...]
     next_cursor: str | None
 
 

@@ -13,7 +13,7 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
-import type { CurrentUserResponse, MovementsMapResponse, PlaceSearchItem } from "../api/sdk";
+import type { CurrentUserResponse, JourneyFeedEntry, MovementsMapResponse, PlaceSearchItem } from "../api/sdk";
 
 /**
  * Минимальный газеттир для component-тестов автокомплита (`/v1/geo/places/search`).
@@ -115,6 +115,46 @@ export const MOVEMENTS_RESPONSE: MovementsMapResponse = {
   ],
 };
 
+const [MOSCOW_PLACE, LONDON_PLACE, PARIS_PLACE] = GEO_PLACES.map(({ placeId, countryCode, latitude, longitude }) => ({
+  placeId,
+  countryCode: countryCode ?? "",
+  latitude,
+  longitude,
+}));
+
+/**
+ * Лента поездок одной порцией: в 2021 Москва → Лондон и Лондон → Париж, в 2019 Париж → Москва.
+ * Годы для чипов — `FEED_YEARS`.
+ */
+export const FEED_JOURNEYS: readonly JourneyFeedEntry[] = [
+  {
+    journeyId: "aaaaaaaa-0000-4000-8000-000000000001",
+    origin: MOSCOW_PLACE,
+    destination: LONDON_PLACE,
+    transportType: "air",
+    traveledYear: 2021,
+    distanceKm: 2500,
+  },
+  {
+    journeyId: "aaaaaaaa-0000-4000-8000-000000000002",
+    origin: LONDON_PLACE,
+    destination: PARIS_PLACE,
+    transportType: "land",
+    traveledYear: 2021,
+    distanceKm: 344,
+  },
+  {
+    journeyId: "aaaaaaaa-0000-4000-8000-000000000003",
+    origin: PARIS_PLACE,
+    destination: MOSCOW_PLACE,
+    transportType: "air",
+    traveledYear: 2019,
+    distanceKm: 2480,
+  },
+];
+
+export const FEED_YEARS: readonly number[] = [2019, 2021];
+
 export const handlers = [
   http.post("/v1/auth/register/", () => HttpResponse.json(successTokenBody, { status: 201 })),
   http.post("/v1/auth/login/", () => HttpResponse.json(successTokenBody, { status: 200 })),
@@ -176,6 +216,14 @@ export const handlers = [
   // Карта перемещений без фильтров. Тест переопределяет на пустой/ошибочный/фильтрованный
   // ответ через server.use(...).
   http.get("/v1/journeys/movements", () => HttpResponse.json(MOVEMENTS_RESPONSE)),
+  // Лента одной порцией и годы для чипов. Тест переопределяет порции, фильтры и ошибки через
+  // server.use(...).
+  http.get("/v1/journeys/", () => HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null })),
+  http.get("/v1/journeys/years", () => HttpResponse.json({ years: FEED_YEARS })),
+  // Правка и удаление: 204 без тела; перенос — год соседа (тест задаёт свой через server.use).
+  http.put("/v1/journeys/:journeyId", () => new HttpResponse(null, { status: 204 })),
+  http.delete("/v1/journeys/:journeyId", () => new HttpResponse(null, { status: 204 })),
+  http.post("/v1/journeys/:journeyId/move", () => HttpResponse.json({ traveledYear: 2021 })),
   // Профиль текущего пользователя: кормит CurrentUserProvider при любом залогиненном рендере.
   http.get("/v1/users/me", () => HttpResponse.json(TEST_CURRENT_USER)),
 ];

@@ -60,6 +60,11 @@ const PAGES: readonly Page[] = [
     modules: ["src/pages/journeys/JourneysLayout.tsx", "src/pages/journeys/MovementsMapView.tsx"],
   },
   {
+    name: "/journeys/all",
+    budget: "app",
+    modules: ["src/pages/journeys/JourneysLayout.tsx", "src/pages/journeys/all/AllJourneysView.tsx"],
+  },
+  {
     name: "/journeys/add",
     budget: "app",
     modules: ["src/pages/journeys/JourneysLayout.tsx", "src/pages/journeys/AddJourneyPage.tsx"],

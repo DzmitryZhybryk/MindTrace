@@ -1,27 +1,89 @@
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from uuid import UUID
 
-from sqlalchemy import Subquery, func, select, union_all
+from sqlalchemy import ColumnElement, Subquery, func, or_, select, union_all, update
 from sqlalchemy.dialects.postgresql import aggregate_order_by, distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.journeys.application.ports import JourneyRepositoryPort
-from app.journeys.application.schemas import MovementConnection, VisitedPlace
+from app.journeys.application.schemas import JourneyFilters, JourneyOrderScope, MovementConnection, VisitedPlace
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
 from app.journeys.domain.value_objects import GeoPoint
 from app.journeys.infra.models import Journey
-from app.shared.repositories.base_repository import BaseDBRepository
+from app.shared.fractional_index import BaseSortKeyRepository
+from app.shared.pagination import CursorPage, PageQuery, decode_cursor, split_page
+from app.shared.types import DictStrAny
 
 
-class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
+class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], JourneyRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session=session, model=Journey)
 
     async def insert_journey(self, journey_entity: JourneyEntity) -> None:
-        await self.insert(data=self._to_model(journey_entity=journey_entity))
+        await self.insert(data=Journey(**self._to_columns(journey_entity=journey_entity)))
 
-    async def find_visited_places_by_user_id(self, *, user_id: UUID) -> list[VisitedPlace]:
+    async def update_journey_by_id(self, journey_entity: JourneyEntity) -> None:
+        """
+        Записывает изменённое состояние поездки одним UPDATE по PK.
+
+        Все колонки, кроме PK, переписываются текущим состоянием сущности.
+
+        Args:
+            journey_entity: Поездка с уже изменённым состоянием
+        """
+        values = self._to_columns(journey_entity=journey_entity)
+        del values["id"]  # PK не входит в SET
+        query = update(Journey).where(Journey.id == journey_entity.journey_id).values(**values)
+        await self._session.execute(query)
+
+    async def find_journey_by_id_and_user_id_for_update(
+        self,
+        *,
+        journey_id: UUID,
+        user_id: UUID,
+    ) -> JourneyEntity | None:
+        """
+        Находит поездку пользователя по id и блокирует строку до конца транзакции.
+
+        Удалённая поездка находится: интерпретировать удаление — дело вызывающего.
+
+        Args:
+            journey_id: Id поездки
+            user_id: Владелец поездки
+
+        Returns:
+            Поездка; ``None``, если у пользователя такой нет
+        """
+        query = select(Journey).where(Journey.id == journey_id, Journey.user_id == user_id).with_for_update()
+        journey_model = await self._fetch_one(query=query)
+        return self._to_entity(journey_model=journey_model) if journey_model else None
+
+    async def find_journey_by_id_and_user_id(self, *, journey_id: UUID, user_id: UUID) -> JourneyEntity | None:
+        """
+        Находит поездку пользователя по id, без блокировки.
+
+        Удалённая поездка находится: интерпретировать удаление — дело вызывающего.
+
+        Args:
+            journey_id: Id поездки
+            user_id: Владелец поездки
+
+        Returns:
+            Поездка; ``None``, если у пользователя такой нет
+        """
+        query = select(Journey).where(Journey.id == journey_id, Journey.user_id == user_id)
+        journey_model = await self._fetch_one(query=query)
+        return self._to_entity(journey_model=journey_model) if journey_model else None
+
+    def _sort_key_scope(self, scope: JourneyOrderScope) -> Sequence[ColumnElement[bool]]:
+        return (
+            Journey.user_id == scope.user_id,
+            Journey.traveled_year == scope.traveled_year,
+            Journey.deleted_at.is_(None),
+        )
+
+    async def find_visited_places_by_user_id(self, *, user_id: UUID) -> tuple[VisitedPlace, ...]:
         """
         Возвращает места, где пользователь побывал, — по одному на место.
 
@@ -64,7 +126,7 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
             .order_by(place_copies.c.country_code, place_copies.c.place_id)
         )
         result = await self._session.execute(query)
-        return [
+        return tuple(
             VisitedPlace(
                 place=GeoPoint(
                     place_id=row.place_id,
@@ -75,14 +137,14 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
                 years=tuple(row.years),
             )
             for row in result
-        ]
+        )
 
     async def find_movement_connections_by_user_id(
         self,
         *,
         user_id: UUID,
         transport_types: Collection[TransportType] | None,
-    ) -> list[MovementConnection]:
+    ) -> tuple[MovementConnection, ...]:
         """
         Возвращает маршруты поездок пользователя — по одному на пару «откуда → куда».
 
@@ -120,7 +182,7 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
             .order_by(Journey.origin_place_id, Journey.destination_place_id)
         )
         result = await self._session.execute(query)
-        return [
+        return tuple(
             MovementConnection(
                 origin=GeoPoint(
                     place_id=row.origin_place_id,
@@ -137,24 +199,82 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
                 years=tuple(row.years),
             )
             for row in result
-        ]
+        )
 
-    async def find_journey_year_bounds_by_user_id(self, *, user_id: UUID) -> tuple[int, int] | None:
+    async def find_journeys_page_by_user_id(
+        self,
+        *,
+        user_id: UUID,
+        page: PageQuery,
+        filters: JourneyFilters,
+    ) -> CursorPage[JourneyEntity]:
         """
-        Возвращает годы первой и последней неудалённой поездки пользователя.
+        Возвращает страницу ленты неудалённых поездок пользователя под фильтром.
+
+        Порядок — свежий год сверху, внутри года — по ``sort_key``. Курсор — год и ключ последней
+        строки страницы; ``(год, ключ)`` уникален среди неудалённых поездок, другого тай-брейкера не нужно.
+
+        Args:
+            user_id: Владелец поездок
+            page: Курсор и размер страницы
+            filters: Годы и виды транспорта
+
+        Returns:
+            Поездки страницы и курсор следующей
+
+        Raises:
+            InvalidCursorError: курсор не разбирается или выдан другим списком
+        """
+        conditions = [Journey.user_id == user_id, Journey.deleted_at.is_(None)]
+        if filters.year_from is not None:
+            conditions.append(Journey.traveled_year >= filters.year_from)
+
+        if filters.year_to is not None:
+            conditions.append(Journey.traveled_year <= filters.year_to)
+
+        if filters.transport_types is not None:
+            conditions.append(Journey.transport_type.in_(filters.transport_types))
+
+        if page.cursor is not None:
+            cursor_year, cursor_sort_key = decode_cursor(cursor=page.cursor, parsers=(int, str))
+            # Граница по году отдельным условием: по ней индекс начинает сразу с нужного года,
+            # а одно OR планировщик может применить фильтром ко всем поездкам пользователя.
+            conditions.append(Journey.traveled_year <= cursor_year)
+            conditions.append(or_(Journey.traveled_year < cursor_year, Journey.sort_key > cursor_sort_key))
+
+        query = (
+            select(Journey)
+            .where(*conditions)
+            .order_by(Journey.traveled_year.desc(), Journey.sort_key)
+            .limit(page.limit + 1)
+        )
+        result = await self._session.scalars(query)
+        page_models, next_cursor = split_page(
+            rows=result.all(),
+            limit=page.limit,
+            cursor_values=lambda journey_model: (str(journey_model.traveled_year), journey_model.sort_key),
+        )
+        journey_entities = tuple(self._to_entity(journey_model=journey_model) for journey_model in page_models)
+        return CursorPage(items=journey_entities, next_cursor=next_cursor)
+
+    async def find_journey_years_by_user_id(self, user_id: UUID) -> tuple[int, ...]:
+        """
+        Возвращает годы неудалённых поездок пользователя, по возрастанию, без повторов.
 
         Args:
             user_id: Владелец поездок
 
         Returns:
-            Первый и последний год; ``None``, если поездок нет
+            Годы поездок; пусто, если поездок нет
         """
-        query = select(func.min(Journey.traveled_year), func.max(Journey.traveled_year)).where(
-            Journey.user_id == user_id,
-            Journey.deleted_at.is_(None),
+        query = (
+            select(Journey.traveled_year)
+            .where(Journey.user_id == user_id, Journey.deleted_at.is_(None))
+            .distinct()
+            .order_by(Journey.traveled_year)
         )
-        first_year, last_year = (await self._session.execute(query)).one()
-        return (first_year, last_year) if first_year is not None else None
+        result = await self._session.scalars(query)
+        return tuple(result)
 
     @staticmethod
     def _place_visits(*, user_id: UUID) -> Subquery:
@@ -176,22 +296,69 @@ class JourneyRepository(BaseDBRepository[Journey], JourneyRepositoryPort):
         ).where(*is_user_journey)
         return union_all(origins, destinations).subquery("visits")
 
-    def _to_model(self, journey_entity: JourneyEntity) -> Journey:
-        return Journey(
-            id=journey_entity.journey_id,
-            user_id=journey_entity.user_id,
-            origin_place_id=journey_entity.origin.place_id,
-            origin_country_code=journey_entity.origin.country_code,
-            origin_latitude=journey_entity.origin.latitude,
-            origin_longitude=journey_entity.origin.longitude,
-            destination_place_id=journey_entity.destination.place_id,
-            destination_country_code=journey_entity.destination.country_code,
-            destination_latitude=journey_entity.destination.latitude,
-            destination_longitude=journey_entity.destination.longitude,
-            transport_type=journey_entity.transport_type,
-            distance_km=journey_entity.distance_km,
-            traveled_year=journey_entity.traveled_year,
-            created_at=journey_entity.created_at,
-            updated_at=journey_entity.updated_at,
-            deleted_at=journey_entity.deleted_at,
+    def _to_entity(self, journey_model: Journey) -> JourneyEntity:
+        """
+        Конвертирует ORM-модель в доменную сущность.
+
+        Args:
+            journey_model: ORM-модель из БД
+
+        Returns:
+            Доменная сущность поездки
+        """
+        return JourneyEntity(
+            journey_id=journey_model.id,
+            user_id=journey_model.user_id,
+            origin=GeoPoint(
+                place_id=journey_model.origin_place_id,
+                country_code=journey_model.origin_country_code,
+                latitude=journey_model.origin_latitude,
+                longitude=journey_model.origin_longitude,
+            ),
+            destination=GeoPoint(
+                place_id=journey_model.destination_place_id,
+                country_code=journey_model.destination_country_code,
+                latitude=journey_model.destination_latitude,
+                longitude=journey_model.destination_longitude,
+            ),
+            transport_type=TransportType(journey_model.transport_type),
+            distance_km=journey_model.distance_km,
+            traveled_year=journey_model.traveled_year,
+            sort_key=journey_model.sort_key,
+            created_at=journey_model.created_at,
+            updated_at=journey_model.updated_at,
+            deleted_at=journey_model.deleted_at,
         )
+
+    def _to_columns(self, journey_entity: JourneyEntity) -> DictStrAny:
+        """
+        Единый маппинг поездки в колонки ORM-модели (включая PK ``id``).
+
+        Источник истины для обоих путей записи: INSERT (``Journey(**columns)``) и UPDATE (те же
+        колонки минус PK) — новое поле добавляется здесь один раз и попадает в оба.
+
+        Args:
+            journey_entity: Доменная сущность поездки
+
+        Returns:
+            Словарь ``column -> value`` со всеми колонками, включая PK
+        """
+        return {
+            "id": journey_entity.journey_id,
+            "user_id": journey_entity.user_id,
+            "origin_place_id": journey_entity.origin.place_id,
+            "origin_country_code": journey_entity.origin.country_code,
+            "origin_latitude": journey_entity.origin.latitude,
+            "origin_longitude": journey_entity.origin.longitude,
+            "destination_place_id": journey_entity.destination.place_id,
+            "destination_country_code": journey_entity.destination.country_code,
+            "destination_latitude": journey_entity.destination.latitude,
+            "destination_longitude": journey_entity.destination.longitude,
+            "transport_type": journey_entity.transport_type,
+            "distance_km": journey_entity.distance_km,
+            "traveled_year": journey_entity.traveled_year,
+            "sort_key": journey_entity.sort_key,
+            "created_at": journey_entity.created_at,
+            "updated_at": journey_entity.updated_at,
+            "deleted_at": journey_entity.deleted_at,
+        }

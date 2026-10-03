@@ -1,0 +1,133 @@
+import { http, HttpResponse } from "msw";
+import { describe, expect, it, vi } from "vitest";
+
+import { FEED_JOURNEYS, server } from "../../../test/handlers";
+import { renderWithProviders, screen, waitFor, within } from "../../../test/render";
+import { AllJourneysView } from "./AllJourneysView";
+
+const [, LONDON_TO_PARIS, PARIS_TO_MOSCOW] = FEED_JOURNEYS;
+const ROW_HEIGHT = 44;
+const ROW_STEP = 50;
+
+/**
+ * Раскладывает строки ленты столбиком в порядке DOM: в jsdom у всех нулевые прямоугольники, и
+ * dnd-kit не нашёл бы, какая строка ниже. Остальным элементам — нули, как и было.
+ */
+function stackRowsVertically() {
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function rectOf(this: Element) {
+    const index = [...document.querySelectorAll("[data-flip-id]")].indexOf(this);
+    return index === -1
+      ? DOMRect.fromRect({ x: 0, y: 0, width: 0, height: 0 })
+      : DOMRect.fromRect({ x: 0, y: index * ROW_STEP, width: 600, height: ROW_HEIGHT });
+  });
+}
+
+/** Перетаскивает строку Лондон → Париж (2021) на строку ниже с клавиатуры: пробел, стрелка, пробел. */
+async function dragLondonToParisDown(user: ReturnType<typeof renderWithProviders>["user"]) {
+  const year2021 = await screen.findByRole("region", { name: "2021" });
+  const handles = within(year2021).getAllByRole("button", { name: "Drag to reorder" });
+  handles[1].focus();
+  await user.keyboard(" ");
+  await user.keyboard("{ArrowDown}");
+  await user.keyboard(" ");
+}
+
+describe("AllJourneysView — перенос", () => {
+  it("строка, перенесённая с клавиатуры в другой год, встаёт туда до ответа, а на сервер уходит сосед и сторона", async () => {
+    stackRowsVertically();
+    let request: { url: string; body: unknown } | null = null;
+    // Ответ на перенос держим, пока тест смотрит на ленту: перестановка должна быть видна до него.
+    let releaseResponse = () => {};
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve;
+    });
+    server.use(
+      http.post("/v1/journeys/:journeyId/move", async ({ request: incoming }) => {
+        request = { url: new URL(incoming.url).pathname, body: await incoming.json() };
+        await responseGate;
+        return HttpResponse.json({ traveledYear: 2019 });
+      }),
+    );
+    const { user } = renderWithProviders(<AllJourneysView />);
+
+    await dragLondonToParisDown(user);
+
+    await waitFor(() =>
+      expect(request).toEqual({
+        url: `/v1/journeys/${LONDON_TO_PARIS.journeyId}/move`,
+        body: { neighborJourneyId: PARIS_TO_MOSCOW.journeyId, placement: "after" },
+      }),
+    );
+    expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(1);
+    releaseResponse();
+  });
+
+  it("бэк отказал в переносе — строка возвращается на место сама, не дожидаясь перезапроса ленты", async () => {
+    stackRowsVertically();
+    // Перезапрос ленты после отказа держим: на место строку должен вернуть откат, а не он.
+    let feedRequests = 0;
+    let releaseRefetch = () => {};
+    const refetchGate = new Promise<void>((resolve) => {
+      releaseRefetch = resolve;
+    });
+    server.use(
+      http.get("/v1/journeys/", async () => {
+        feedRequests += 1;
+        if (feedRequests > 1) {
+          await refetchGate;
+        }
+        return HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null });
+      }),
+      http.post("/v1/journeys/:journeyId/move", () =>
+        HttpResponse.json({ code: "journeys.invalid_move_target", message: "нет" }, { status: 400 }),
+      ),
+    );
+    const { user } = renderWithProviders(<AllJourneysView />);
+
+    await dragLondonToParisDown(user);
+
+    expect(await screen.findByText("Couldn't move the journey there. The list has been refreshed")).toBeInTheDocument();
+    await waitFor(() => expect(feedRequests).toBe(2));
+    expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(1);
+    releaseRefetch();
+  });
+
+  it("пока строку несут в другой год, вместо расстояния у неё подсказка «→ год»", async () => {
+    stackRowsVertically();
+    const { user } = renderWithProviders(<AllJourneysView />);
+    const year2021 = await screen.findByRole("region", { name: "2021" });
+    within(year2021).getAllByRole("button", { name: "Drag to reorder" })[1].focus();
+
+    await user.keyboard(" ");
+    expect(screen.queryByText("→ 2019")).not.toBeInTheDocument();
+    await user.keyboard("{ArrowDown}");
+
+    expect(await screen.findByText("→ 2019")).toBeInTheDocument();
+    expect(screen.queryByText("344 km")).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.getByText("344 km")).toBeInTheDocument();
+  });
+
+  it("Esc во время переноса отменяет его без запроса", async () => {
+    stackRowsVertically();
+    const moveSpy = vi.fn();
+    server.use(
+      http.post("/v1/journeys/:journeyId/move", () => {
+        moveSpy();
+        return HttpResponse.json({ traveledYear: 2019 });
+      }),
+    );
+    const { user } = renderWithProviders(<AllJourneysView />);
+    const year2021 = await screen.findByRole("region", { name: "2021" });
+    within(year2021).getAllByRole("button", { name: "Drag to reorder" })[1].focus();
+
+    await user.keyboard(" ");
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Escape}");
+
+    expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(2);
+    expect(moveSpy).not.toHaveBeenCalled();
+  });
+});

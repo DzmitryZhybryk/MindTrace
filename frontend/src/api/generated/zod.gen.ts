@@ -12,6 +12,36 @@ export const zCurrentUserResponse = z.object({
 });
 
 /**
+ * JourneyDistanceResponse
+ *
+ * Расстояние маршрута по большой окружности, км — то же, что поездка сохранит.
+ */
+export const zJourneyDistanceResponse = z.object({
+  distanceKm: z.int()
+});
+
+/**
+ * JourneyPlace
+ *
+ * Место поездки: его ``placeId``, страна и координаты, без названия.
+ */
+export const zJourneyPlace = z.object({
+  placeId: z.uuid(),
+  countryCode: z.string(),
+  latitude: z.number(),
+  longitude: z.number()
+});
+
+/**
+ * JourneyYearsResponse
+ *
+ * Годы, в которые пользователь ездил, по возрастанию, без повторов — без учёта фильтров ленты.
+ */
+export const zJourneyYearsResponse = z.object({
+  years: z.array(z.int())
+});
+
+/**
  * Language
  *
  * Язык отображаемого имени места в автокомплите.
@@ -22,12 +52,16 @@ export const zCurrentUserResponse = z.object({
  */
 export const zLanguage = z.enum(['en', 'ru']);
 
+export const zLatitude = z.number().check(z.gte(-90), z.lte(90));
+
 /**
  * LoginRequest
  */
 export const zLoginRequest = z.object({
   login: z.string().check(z.minLength(1), z.maxLength(254))
 });
+
+export const zLongitude = z.number().check(z.gte(-180), z.lte(180));
 
 /**
  * MapCity
@@ -84,6 +118,32 @@ export const zMapPoint = z.object({
  */
 export const zJourneysGlobeResponse = z.object({
   places: z.array(zMapPoint)
+});
+
+/**
+ * MoveJourneyResponse
+ *
+ * Год поездки после переноса: он берётся от соседа и может смениться.
+ */
+export const zMoveJourneyResponse = z.object({
+  traveledYear: z.int()
+});
+
+/**
+ * MovePlacement
+ *
+ * С какой стороны от строки-соседа встаёт переносимая строка в ручном порядке.
+ */
+export const zMovePlacement = z.enum(['after', 'before']);
+
+/**
+ * MoveJourneyRequest
+ *
+ * Куда перенести поездку: после или перед поездкой-соседом.
+ */
+export const zMoveJourneyRequest = z.object({
+  neighborJourneyId: z.uuid(),
+  placement: zMovePlacement
 });
 
 /**
@@ -146,8 +206,8 @@ export const zPlaceName = z.object({
 export const zPlaceRef = z.object({
   placeId: z.uuid(),
   countryCode: z.string().check(z.length(2)),
-  latitude: z.number().check(z.gte(-90), z.lte(90)),
-  longitude: z.number().check(z.gte(-180), z.lte(180))
+  latitude: zLatitude,
+  longitude: zLongitude
 });
 
 /**
@@ -228,11 +288,44 @@ export const zTransportType = z.enum([
  * CreateJourneyRequest
  *
  * Тело запроса создания поездки.
- *
- * Год не может быть в будущем (по UTC), отправление не может совпадать с назначением. Нарушения —
- * ошибки с кодами ``journeys.*``, а не 422.
  */
 export const zCreateJourneyRequest = z.object({
+  origin: zPlaceRef,
+  destination: zPlaceRef,
+  transportType: zTransportType,
+  traveledYear: z.int().check(z.gte(1))
+});
+
+/**
+ * JourneyFeedEntry
+ *
+ * Поездка в ленте.
+ */
+export const zJourneyFeedEntry = z.object({
+  journeyId: z.uuid(),
+  origin: zJourneyPlace,
+  destination: zJourneyPlace,
+  transportType: zTransportType,
+  traveledYear: z.int(),
+  distanceKm: z.int()
+});
+
+/**
+ * JourneysFeedResponse
+ *
+ * Страница ленты поездок: свежий год сверху, внутри года — порядок пользователя.
+ */
+export const zJourneysFeedResponse = z.object({
+  items: z.array(zJourneyFeedEntry),
+  nextCursor: z.nullable(z.string())
+});
+
+/**
+ * UpdateJourneyRequest
+ *
+ * Тело запроса правки поездки: новые значения всех полей.
+ */
+export const zUpdateJourneyRequest = z.object({
   origin: zPlaceRef,
   destination: zPlaceRef,
   transportType: zTransportType,
@@ -314,7 +407,68 @@ export const zResolvePlacesBody = zResolvePlacesRequest;
  */
 export const zResolvePlacesResponse2 = zResolvePlacesResponse;
 
+export const zListJourneysQuery = z.object({
+  cursor: z.nullish(z.string().check(z.maxLength(512))),
+  limit: z._default(z.optional(z.int().check(z.gte(1), z.lte(100))), 50),
+  yearFrom: z.nullish(z.int().check(z.gte(1))),
+  yearTo: z.nullish(z.int().check(z.gte(1))),
+  transportType: z.nullish(z.array(zTransportType))
+});
+
+/**
+ * Successful Response
+ */
+export const zListJourneysResponse = zJourneysFeedResponse;
+
 export const zCreateJourneyBody = zCreateJourneyRequest;
+
+export const zDeleteJourneyPath = z.object({
+  journey_id: z.uuid()
+});
+
+/**
+ * Successful Response
+ */
+export const zDeleteJourneyResponse = z.void();
+
+export const zUpdateJourneyBody = zUpdateJourneyRequest;
+
+export const zUpdateJourneyPath = z.object({
+  journey_id: z.uuid()
+});
+
+/**
+ * Successful Response
+ */
+export const zUpdateJourneyResponse = z.void();
+
+export const zMoveJourneyBody = zMoveJourneyRequest;
+
+export const zMoveJourneyPath = z.object({
+  journey_id: z.uuid()
+});
+
+/**
+ * Successful Response
+ */
+export const zMoveJourneyResponse2 = zMoveJourneyResponse;
+
+export const zEstimateJourneyDistanceQuery = z.object({
+  originLatitude: zLatitude,
+  originLongitude: zLongitude,
+  destinationLatitude: zLatitude,
+  destinationLongitude: zLongitude
+});
+
+/**
+ * Successful Response
+ */
+export const zEstimateJourneyDistanceResponse = zJourneyDistanceResponse;
+
+/**
+ * Successful Response
+ */
+export const zGetJourneyYearsResponse = zJourneyYearsResponse;
 
 /**
  * Successful Response

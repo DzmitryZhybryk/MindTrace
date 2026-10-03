@@ -1,24 +1,38 @@
 import uuid
 
-from sqlalchemy import REAL, SmallInteger, String, Uuid
+from sqlalchemy import REAL, Index, SmallInteger, String, Uuid, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.models import BaseDBModel
+from app.shared.fractional_index import SortKeyModel
 from app.shared.models.base_model import DateTimeMixin
 
 
-class Journey(DateTimeMixin, BaseDBModel):
+class Journey(DateTimeMixin, SortKeyModel):
     """
     Поездка пользователя: откуда, куда, на чём и когда.
 
     Места — ссылки на справочник geo плюс страна и координаты, названий здесь нет. Внешних
     ключей на geo и users нет: это другие домены. Когда — только год.
+
+    ``sort_key`` — ручной порядок внутри года: уникален среди неудалённых поездок пользователя
+    за год, индекс заодно обслуживает ленту.
     """
 
     __tablename__ = "journeys"
+    __table_args__ = (
+        # Должен совпадать с миграцией.
+        Index(
+            "ix_journeys_active_user_id_year_sort_key",
+            "user_id",
+            text("traveled_year DESC"),
+            "sort_key",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column()
 
     origin_place_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     origin_country_code: Mapped[str] = mapped_column(String(2))

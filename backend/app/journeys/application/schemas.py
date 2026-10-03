@@ -3,16 +3,30 @@ from uuid import UUID
 
 from app.journeys.domain.enums import TransportType
 from app.journeys.domain.value_objects import GeoPoint
+from app.shared.fractional_index import MovePlacement
+from app.shared.pagination import CursorPage, PageQuery
 
 __all__ = [
     "CreateJourneyCommand",
+    "DeleteJourneyCommand",
+    "EstimateJourneyDistanceCommand",
     "GetMovementsMapCommand",
+    "JourneyDistanceResult",
+    "JourneyFeedItem",
+    "JourneyFilters",
+    "JourneyOrderScope",
+    "JourneyYearsResult",
     "JourneysGlobeResult",
     "JourneysMapResult",
+    "ListJourneysCommand",
+    "ListJourneysResult",
     "MapCityVisit",
     "MapCountryVisits",
+    "MoveJourneyCommand",
+    "MoveJourneyResult",
     "MovementConnection",
     "MovementsMapResult",
+    "UpdateJourneyCommand",
     "VisitedPlace",
 ]
 
@@ -25,6 +39,68 @@ class CreateJourneyCommand:
     origin: GeoPoint
     destination: GeoPoint
     transport_type: TransportType
+    traveled_year: int
+
+
+@dataclass(frozen=True, slots=True)
+class UpdateJourneyCommand:
+    """Новые значения всех полей поездки: правка заменяет поездку целиком."""
+
+    user_id: UUID
+    journey_id: UUID
+    origin: GeoPoint
+    destination: GeoPoint
+    transport_type: TransportType
+    traveled_year: int
+
+
+@dataclass(frozen=True, slots=True)
+class DeleteJourneyCommand:
+    """Какую поездку пользователя удалить."""
+
+    user_id: UUID
+    journey_id: UUID
+
+
+@dataclass(frozen=True, slots=True)
+class MoveJourneyCommand:
+    """Какую поездку пользователя перенести и куда: после или перед поездкой-соседом."""
+
+    user_id: UUID
+    journey_id: UUID
+    neighbor_journey_id: UUID
+    placement: MovePlacement
+
+
+@dataclass(frozen=True, slots=True)
+class MoveJourneyResult:
+    """Год поездки после переноса: он берётся от соседа и может смениться."""
+
+    traveled_year: int
+
+
+@dataclass(frozen=True, slots=True)
+class EstimateJourneyDistanceCommand:
+    """Координаты концов маршрута, расстояние между которыми нужно посчитать."""
+
+    origin_latitude: float
+    origin_longitude: float
+    destination_latitude: float
+    destination_longitude: float
+
+
+@dataclass(frozen=True, slots=True)
+class JourneyDistanceResult:
+    """Расстояние маршрута по большой окружности, км — то же, что поездка сохранит."""
+
+    distance_km: int
+
+
+@dataclass(frozen=True, slots=True)
+class JourneyOrderScope:
+    """Область ручного порядка поездок: поездки одного пользователя за один год."""
+
+    user_id: UUID
     traveled_year: int
 
 
@@ -121,3 +197,54 @@ class MovementsMapResult:
     first_year: int | None
     last_year: int | None
     connections: tuple[MovementConnection, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class JourneyFilters:
+    """
+    Фильтр ленты поездок.
+
+    Годы — включительно, ``None`` — без границы. ``transport_types`` — виды транспорта, поездки на
+    которых учитываются; ``None`` — все.
+    """
+
+    year_from: int | None
+    year_to: int | None
+    transport_types: frozenset[TransportType] | None
+
+
+@dataclass(frozen=True, slots=True)
+class ListJourneysCommand:
+    """Какую страницу ленты поездок отдать и с каким фильтром."""
+
+    user_id: UUID
+    page: PageQuery
+    filters: JourneyFilters
+
+
+@dataclass(frozen=True, slots=True)
+class JourneyFeedItem:
+    """Поездка в ленте. Названий мест нет: фронт запрашивает их у geo по ``place_id``."""
+
+    journey_id: UUID
+    origin: GeoPoint
+    destination: GeoPoint
+    transport_type: TransportType
+    traveled_year: int
+    distance_km: int
+
+
+@dataclass(frozen=True, slots=True)
+class ListJourneysResult(CursorPage[JourneyFeedItem]):
+    """
+    Страница ленты поездок.
+
+    Порядок — свежий год сверху, внутри года — порядок, заданный пользователем.
+    """
+
+
+@dataclass(frozen=True, slots=True)
+class JourneyYearsResult:
+    """Годы, в которые пользователь ездил, по возрастанию — без учёта фильтров ленты."""
+
+    years: tuple[int, ...]

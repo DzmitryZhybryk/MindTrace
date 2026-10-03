@@ -8,9 +8,6 @@ export type ClientOptions = {
  * CreateJourneyRequest
  *
  * Тело запроса создания поездки.
- *
- * Год не может быть в будущем (по UTC), отправление не может совпадать с назначением. Нарушения —
- * ошибки с кодами ``journeys.*``, а не 422.
  */
 export type CreateJourneyRequest = {
   origin: PlaceRef;
@@ -75,6 +72,93 @@ export type ErrorResponse = {
 };
 
 /**
+ * JourneyDistanceResponse
+ *
+ * Расстояние маршрута по большой окружности, км — то же, что поездка сохранит.
+ */
+export type JourneyDistanceResponse = {
+  /**
+   * Distancekm
+   */
+  distanceKm: number;
+};
+
+/**
+ * JourneyFeedEntry
+ *
+ * Поездка в ленте.
+ */
+export type JourneyFeedEntry = {
+  /**
+   * Journeyid
+   */
+  journeyId: string;
+  origin: JourneyPlace;
+  destination: JourneyPlace;
+  transportType: TransportType;
+  /**
+   * Traveledyear
+   */
+  traveledYear: number;
+  /**
+   * Distancekm
+   */
+  distanceKm: number;
+};
+
+/**
+ * JourneyPlace
+ *
+ * Место поездки: его ``placeId``, страна и координаты, без названия.
+ */
+export type JourneyPlace = {
+  /**
+   * Placeid
+   */
+  placeId: string;
+  /**
+   * Countrycode
+   */
+  countryCode: string;
+  /**
+   * Latitude
+   */
+  latitude: number;
+  /**
+   * Longitude
+   */
+  longitude: number;
+};
+
+/**
+ * JourneyYearsResponse
+ *
+ * Годы, в которые пользователь ездил, по возрастанию, без повторов — без учёта фильтров ленты.
+ */
+export type JourneyYearsResponse = {
+  /**
+   * Years
+   */
+  years: Array<number>;
+};
+
+/**
+ * JourneysFeedResponse
+ *
+ * Страница ленты поездок: свежий год сверху, внутри года — порядок пользователя.
+ */
+export type JourneysFeedResponse = {
+  /**
+   * Items
+   */
+  items: Array<JourneyFeedEntry>;
+  /**
+   * Nextcursor
+   */
+  nextCursor: string | null;
+};
+
+/**
  * JourneysGlobeResponse
  *
  * Ответ глобуса: места, где пользователь побывал, каждое ровно один раз.
@@ -111,6 +195,8 @@ export type JourneysMapResponse = {
  */
 export type Language = 'en' | 'ru';
 
+export type Latitude = number;
+
 /**
  * LoginRequest
  */
@@ -120,6 +206,8 @@ export type LoginRequest = {
    */
   login: string;
 };
+
+export type Longitude = number;
 
 /**
  * MapCity
@@ -184,6 +272,38 @@ export type MapPoint = {
    */
   longitude: number;
 };
+
+/**
+ * MoveJourneyRequest
+ *
+ * Куда перенести поездку: после или перед поездкой-соседом.
+ */
+export type MoveJourneyRequest = {
+  /**
+   * Neighborjourneyid
+   */
+  neighborJourneyId: string;
+  placement: MovePlacement;
+};
+
+/**
+ * MoveJourneyResponse
+ *
+ * Год поездки после переноса: он берётся от соседа и может смениться.
+ */
+export type MoveJourneyResponse = {
+  /**
+   * Traveledyear
+   */
+  traveledYear: number;
+};
+
+/**
+ * MovePlacement
+ *
+ * С какой стороны от строки-соседа встаёт переносимая строка в ручном порядке.
+ */
+export type MovePlacement = 'after' | 'before';
 
 /**
  * MovementConnection
@@ -257,14 +377,8 @@ export type PlaceRef = {
    * Countrycode
    */
   countryCode: string;
-  /**
-   * Latitude
-   */
-  latitude: number;
-  /**
-   * Longitude
-   */
-  longitude: number;
+  latitude: Latitude;
+  longitude: Longitude;
 };
 
 /**
@@ -383,6 +497,21 @@ export type TokenResponse = {
  * паром/корабль = ``WATER``. Зеркалит string-literal union на фронте.
  */
 export type TransportType = 'land' | 'air' | 'water';
+
+/**
+ * UpdateJourneyRequest
+ *
+ * Тело запроса правки поездки: новые значения всех полей.
+ */
+export type UpdateJourneyRequest = {
+  origin: PlaceRef;
+  destination: PlaceRef;
+  transportType: TransportType;
+  /**
+   * Traveledyear
+   */
+  traveledYear: number;
+};
 
 /**
  * VerifyEmailRequest
@@ -747,6 +876,64 @@ export type ResolvePlacesResponses = {
 
 export type ResolvePlacesResponse2 = ResolvePlacesResponses[keyof ResolvePlacesResponses];
 
+export type ListJourneysData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Cursor
+     */
+    cursor?: string | null;
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Yearfrom
+     */
+    yearFrom?: number | null;
+    /**
+     * Yearto
+     */
+    yearTo?: number | null;
+    /**
+     * Transporttype
+     */
+    transportType?: Array<TransportType> | null;
+  };
+  url: '/v1/journeys/';
+};
+
+export type ListJourneysErrors = {
+  /**
+   * Ошибка запроса ленты
+   */
+  400: ErrorResponse;
+  /**
+   * Невалидный или истёкший access-токен
+   */
+  401: ErrorResponse;
+  /**
+   * Ошибка валидации запроса
+   */
+  422: ErrorResponse;
+  /**
+   * Внутренняя ошибка сервера
+   */
+  500: ErrorResponse;
+};
+
+export type ListJourneysError = ListJourneysErrors[keyof ListJourneysErrors];
+
+export type ListJourneysResponses = {
+  /**
+   * Successful Response
+   */
+  200: JourneysFeedResponse;
+};
+
+export type ListJourneysResponse = ListJourneysResponses[keyof ListJourneysResponses];
+
 export type CreateJourneyData = {
   body: CreateJourneyRequest;
   path?: never;
@@ -781,6 +968,207 @@ export type CreateJourneyResponses = {
    */
   201: unknown;
 };
+
+export type DeleteJourneyData = {
+  body?: never;
+  path: {
+    /**
+     * Journey Id
+     */
+    journey_id: string;
+  };
+  query?: never;
+  url: '/v1/journeys/{journey_id}';
+};
+
+export type DeleteJourneyErrors = {
+  /**
+   * Невалидный или истёкший access-токен
+   */
+  401: ErrorResponse;
+  /**
+   * У пользователя нет такой поездки или она удалена
+   */
+  404: ErrorResponse;
+  /**
+   * Ошибка валидации запроса
+   */
+  422: ErrorResponse;
+  /**
+   * Внутренняя ошибка сервера
+   */
+  500: ErrorResponse;
+};
+
+export type DeleteJourneyError = DeleteJourneyErrors[keyof DeleteJourneyErrors];
+
+export type DeleteJourneyResponses = {
+  /**
+   * Successful Response
+   */
+  204: void;
+};
+
+export type DeleteJourneyResponse = DeleteJourneyResponses[keyof DeleteJourneyResponses];
+
+export type UpdateJourneyData = {
+  body: UpdateJourneyRequest;
+  path: {
+    /**
+     * Journey Id
+     */
+    journey_id: string;
+  };
+  query?: never;
+  url: '/v1/journeys/{journey_id}';
+};
+
+export type UpdateJourneyErrors = {
+  /**
+   * Ошибка валидации поездки
+   */
+  400: ErrorResponse;
+  /**
+   * Невалидный или истёкший access-токен
+   */
+  401: ErrorResponse;
+  /**
+   * У пользователя нет такой поездки или она удалена
+   */
+  404: ErrorResponse;
+  /**
+   * Ошибка валидации запроса
+   */
+  422: ErrorResponse;
+  /**
+   * Внутренняя ошибка сервера
+   */
+  500: ErrorResponse;
+};
+
+export type UpdateJourneyError = UpdateJourneyErrors[keyof UpdateJourneyErrors];
+
+export type UpdateJourneyResponses = {
+  /**
+   * Successful Response
+   */
+  204: void;
+};
+
+export type UpdateJourneyResponse = UpdateJourneyResponses[keyof UpdateJourneyResponses];
+
+export type MoveJourneyData = {
+  body: MoveJourneyRequest;
+  path: {
+    /**
+     * Journey Id
+     */
+    journey_id: string;
+  };
+  query?: never;
+  url: '/v1/journeys/{journey_id}/move';
+};
+
+export type MoveJourneyErrors = {
+  /**
+   * Соседа нет у пользователя, он удалён или это сама переносимая поездка
+   */
+  400: ErrorResponse;
+  /**
+   * Невалидный или истёкший access-токен
+   */
+  401: ErrorResponse;
+  /**
+   * У пользователя нет такой поездки или она удалена
+   */
+  404: ErrorResponse;
+  /**
+   * Ошибка валидации запроса
+   */
+  422: ErrorResponse;
+  /**
+   * Внутренняя ошибка сервера
+   */
+  500: ErrorResponse;
+};
+
+export type MoveJourneyError = MoveJourneyErrors[keyof MoveJourneyErrors];
+
+export type MoveJourneyResponses = {
+  /**
+   * Successful Response
+   */
+  200: MoveJourneyResponse;
+};
+
+export type MoveJourneyResponse2 = MoveJourneyResponses[keyof MoveJourneyResponses];
+
+export type EstimateJourneyDistanceData = {
+  body?: never;
+  path?: never;
+  query: {
+    originLatitude: Latitude;
+    originLongitude: Longitude;
+    destinationLatitude: Latitude;
+    destinationLongitude: Longitude;
+  };
+  url: '/v1/journeys/distance';
+};
+
+export type EstimateJourneyDistanceErrors = {
+  /**
+   * Невалидный или истёкший access-токен
+   */
+  401: ErrorResponse;
+  /**
+   * Ошибка валидации запроса
+   */
+  422: ErrorResponse;
+  /**
+   * Внутренняя ошибка сервера
+   */
+  500: ErrorResponse;
+};
+
+export type EstimateJourneyDistanceError = EstimateJourneyDistanceErrors[keyof EstimateJourneyDistanceErrors];
+
+export type EstimateJourneyDistanceResponses = {
+  /**
+   * Successful Response
+   */
+  200: JourneyDistanceResponse;
+};
+
+export type EstimateJourneyDistanceResponse = EstimateJourneyDistanceResponses[keyof EstimateJourneyDistanceResponses];
+
+export type GetJourneyYearsData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/v1/journeys/years';
+};
+
+export type GetJourneyYearsErrors = {
+  /**
+   * Невалидный или истёкший access-токен
+   */
+  401: ErrorResponse;
+  /**
+   * Внутренняя ошибка сервера
+   */
+  500: ErrorResponse;
+};
+
+export type GetJourneyYearsError = GetJourneyYearsErrors[keyof GetJourneyYearsErrors];
+
+export type GetJourneyYearsResponses = {
+  /**
+   * Successful Response
+   */
+  200: JourneyYearsResponse;
+};
+
+export type GetJourneyYearsResponse = GetJourneyYearsResponses[keyof GetJourneyYearsResponses];
 
 export type GetJourneysMapData = {
   body?: never;

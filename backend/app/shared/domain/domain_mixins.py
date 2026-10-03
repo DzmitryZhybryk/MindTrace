@@ -41,3 +41,13 @@ class TimestampedEntityMixin:
         через явные доменные операции, которые сами вызывают ``_mark_updated``.
         """
         self._updated_at = dt.datetime.now(tz=dt.UTC)
+
+    def _mark_deleted(self) -> None:
+        """
+        Помечает сущность удалённой (soft-delete): ``deleted_at`` и ``updated_at`` — один момент.
+
+        Как и ``_mark_updated``, вызывается изнутри доменной операции удаления наследника.
+        """
+        now = dt.datetime.now(tz=dt.UTC)
+        self._deleted_at = now
+        self._updated_at = now

@@ -11,7 +11,7 @@ import { SoonBadge } from "../../components/SoonBadge";
 const NAV_ITEMS = [
   { key: "map", to: "/journeys", end: true, soon: false },
   { key: "movements", to: "/journeys/movements", end: false, soon: false },
-  { key: "all", to: "/journeys/all", end: false, soon: true },
+  { key: "all", to: "/journeys/all", end: false, soon: false },
   { key: "wishlist", to: "/journeys/wishlist", end: false, soon: true },
 ] as const;
 

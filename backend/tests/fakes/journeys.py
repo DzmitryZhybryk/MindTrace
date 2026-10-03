@@ -15,13 +15,15 @@ Python продублировал бы их.
 from collections.abc import AsyncIterator, Collection
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from typing import cast
 from unittest.mock import AsyncMock
 from uuid import UUID
 
 from app.journeys.application.ports import JourneyRepositoryPort, JourneyUnitOfWorkPort
-from app.journeys.application.schemas import MovementConnection, VisitedPlace
+from app.journeys.application.schemas import JourneyFilters, JourneyOrderScope, MovementConnection, VisitedPlace
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
+from app.shared.pagination import CursorPage, PageQuery, decode_cursor, split_page
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,32 +41,130 @@ class FakeJourneyRepository(JourneyRepositoryPort):
         self.journeys: list[JourneyEntity] = []
         self.visited_places_by_user_id: dict[UUID, list[VisitedPlace]] = {}
         self.movement_connections_by_user_id: dict[UUID, list[MovementConnection]] = {}
-        self.year_bounds_by_user_id: dict[UUID, tuple[int, int]] = {}
         # С каким фильтром спрашивали маршруты: сам фильтр фейк не применяет (его правило — в SQL).
         self.movement_connection_queries: list[MovementConnectionQuery] = []
 
     async def insert_journey(self, journey_entity: JourneyEntity) -> None:
         self.journeys.append(journey_entity)
 
-    async def find_visited_places_by_user_id(self, *, user_id: UUID) -> list[VisitedPlace]:
-        return self.visited_places_by_user_id.get(user_id, [])
+    async def update_journey_by_id(self, journey_entity: JourneyEntity) -> None:
+        """Заменяет поездку с тем же id её текущим состоянием."""
+        self.journeys = [
+            journey_entity if stored_entity.journey_id == journey_entity.journey_id else stored_entity
+            for stored_entity in self.journeys
+        ]
+
+    async def find_journey_by_id_and_user_id_for_update(
+        self,
+        *,
+        journey_id: UUID,
+        user_id: UUID,
+    ) -> JourneyEntity | None:
+        """Поездка пользователя по id; блокировать в фейке нечего."""
+        return await self.find_journey_by_id_and_user_id(journey_id=journey_id, user_id=user_id)
+
+    async def find_journey_by_id_and_user_id(self, *, journey_id: UUID, user_id: UUID) -> JourneyEntity | None:
+        """Поездка пользователя по id, удалённая тоже — как в SQL."""
+        return next(
+            (
+                journey_entity
+                for journey_entity in self.journeys
+                if journey_entity.journey_id == journey_id and journey_entity.user_id == user_id
+            ),
+            None,
+        )
+
+    async def lock_sort_keys(self, scope: JourneyOrderScope) -> None:
+        """Блокировка в in-memory фейке не нужна: тесты не конкурируют за область."""
+        return
+
+    async def find_last_sort_key(self, scope: JourneyOrderScope) -> str | None:
+        """Наибольший ключ среди неудалённых поездок области."""
+        return max(self._sort_keys_in_scope(scope), default=None)
+
+    async def find_next_sort_key(self, *, scope: JourneyOrderScope, after_sort_key: str) -> str | None:
+        """Ближайший ключ области, больший ``after_sort_key``."""
+        return min((key for key in self._sort_keys_in_scope(scope) if key > after_sort_key), default=None)
+
+    async def find_previous_sort_key(self, *, scope: JourneyOrderScope, before_sort_key: str) -> str | None:
+        """Ближайший ключ области, меньший ``before_sort_key``."""
+        return max((key for key in self._sort_keys_in_scope(scope) if key < before_sort_key), default=None)
+
+    def _sort_keys_in_scope(self, scope: JourneyOrderScope) -> tuple[str, ...]:
+        return tuple(
+            journey_entity.sort_key
+            for journey_entity in self.journeys
+            if journey_entity.user_id == scope.user_id
+            and journey_entity.traveled_year == scope.traveled_year
+            and journey_entity.deleted_at is None
+        )
+
+    async def find_journeys_page_by_user_id(
+        self,
+        *,
+        user_id: UUID,
+        page: PageQuery,
+        filters: JourneyFilters,
+    ) -> CursorPage[JourneyEntity]:
+        """Страница ленты поверх ``self.journeys``: те же фильтр, порядок и курсор, что в SQL."""
+        journey_entities = [
+            journey_entity
+            for journey_entity in self.journeys
+            if journey_entity.user_id == user_id
+            and journey_entity.deleted_at is None
+            and (filters.year_from is None or journey_entity.traveled_year >= filters.year_from)
+            and (filters.year_to is None or journey_entity.traveled_year <= filters.year_to)
+            and (filters.transport_types is None or journey_entity.transport_type in filters.transport_types)
+        ]
+        # Свежий год сверху, внутри года — по ключу порядка.
+        journey_entities.sort(key=lambda journey_entity: (-journey_entity.traveled_year, journey_entity.sort_key))
+        if page.cursor is not None:
+            # Парсеры (int, str) гарантируют типы значений, decode_cursor отдаёт их как object.
+            cursor_year, cursor_sort_key = cast(
+                typ=tuple[int, str],
+                val=decode_cursor(cursor=page.cursor, parsers=(int, str)),
+            )
+            journey_entities = [
+                journey_entity
+                for journey_entity in journey_entities
+                if (-journey_entity.traveled_year, journey_entity.sort_key) > (-cursor_year, cursor_sort_key)
+            ]
+
+        page_entities, next_cursor = split_page(
+            rows=journey_entities,
+            limit=page.limit,
+            cursor_values=lambda journey_entity: (str(journey_entity.traveled_year), journey_entity.sort_key),
+        )
+        return CursorPage(items=page_entities, next_cursor=next_cursor)
+
+    async def find_journey_years_by_user_id(self, user_id: UUID) -> tuple[int, ...]:
+        """Годы неудалённых поездок пользователя из ``self.journeys``, по возрастанию."""
+        return tuple(
+            sorted(
+                {
+                    journey_entity.traveled_year
+                    for journey_entity in self.journeys
+                    if journey_entity.user_id == user_id and journey_entity.deleted_at is None
+                }
+            )
+        )
+
+    async def find_visited_places_by_user_id(self, *, user_id: UUID) -> tuple[VisitedPlace, ...]:
+        return tuple(self.visited_places_by_user_id.get(user_id, ()))
 
     async def find_movement_connections_by_user_id(
         self,
         *,
         user_id: UUID,
         transport_types: Collection[TransportType] | None,
-    ) -> list[MovementConnection]:
+    ) -> tuple[MovementConnection, ...]:
         self.movement_connection_queries.append(
             MovementConnectionQuery(
                 user_id=user_id,
                 transport_types=frozenset(transport_types) if transport_types is not None else None,
             )
         )
-        return self.movement_connections_by_user_id.get(user_id, [])
-
-    async def find_journey_year_bounds_by_user_id(self, *, user_id: UUID) -> tuple[int, int] | None:
-        return self.year_bounds_by_user_id.get(user_id)
+        return tuple(self.movement_connections_by_user_id.get(user_id, ()))
 
 
 class FakeJourneyUnitOfWork(JourneyUnitOfWorkPort):

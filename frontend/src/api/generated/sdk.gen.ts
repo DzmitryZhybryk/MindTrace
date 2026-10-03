@@ -4,8 +4,8 @@ import * as z from 'zod/mini';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateJourneyData, CreateJourneyErrors, CreateJourneyResponses, GetCurrentUserData, GetCurrentUserErrors, GetCurrentUserResponses, GetJourneysGlobeData, GetJourneysGlobeErrors, GetJourneysGlobeResponses, GetJourneysMapData, GetJourneysMapErrors, GetJourneysMapResponses, GetMovementsMapData, GetMovementsMapErrors, GetMovementsMapResponses, HealthzData, HealthzResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, RefreshData, RefreshErrors, RefreshResponses, RegisterData, RegisterErrors, RegisterResponses, ResolvePlacesData, ResolvePlacesErrors, ResolvePlacesResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses, SendEmailVerificationData, SendEmailVerificationErrors, SendEmailVerificationResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
-import { zCreateJourneyBody, zGetCurrentUserResponse, zGetJourneysGlobeResponse, zGetJourneysMapResponse, zGetMovementsMapQuery, zGetMovementsMapResponse, zLoginBody, zLoginResponse, zLogoutResponse, zRefreshResponse, zRegisterBody, zRegisterResponse, zResolvePlacesBody, zResolvePlacesResponse2, zSearchPlacesQuery, zSearchPlacesResponse, zVerifyEmailBody, zVerifyEmailResponse } from './zod.gen';
+import type { CreateJourneyData, CreateJourneyErrors, CreateJourneyResponses, DeleteJourneyData, DeleteJourneyErrors, DeleteJourneyResponses, EstimateJourneyDistanceData, EstimateJourneyDistanceErrors, EstimateJourneyDistanceResponses, GetCurrentUserData, GetCurrentUserErrors, GetCurrentUserResponses, GetJourneysGlobeData, GetJourneysGlobeErrors, GetJourneysGlobeResponses, GetJourneysMapData, GetJourneysMapErrors, GetJourneysMapResponses, GetJourneyYearsData, GetJourneyYearsErrors, GetJourneyYearsResponses, GetMovementsMapData, GetMovementsMapErrors, GetMovementsMapResponses, HealthzData, HealthzResponses, ListJourneysData, ListJourneysErrors, ListJourneysResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, MoveJourneyData, MoveJourneyErrors, MoveJourneyResponses, RefreshData, RefreshErrors, RefreshResponses, RegisterData, RegisterErrors, RegisterResponses, ResolvePlacesData, ResolvePlacesErrors, ResolvePlacesResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses, SendEmailVerificationData, SendEmailVerificationErrors, SendEmailVerificationResponses, UpdateJourneyData, UpdateJourneyErrors, UpdateJourneyResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
+import { zCreateJourneyBody, zDeleteJourneyPath, zDeleteJourneyResponse, zEstimateJourneyDistanceQuery, zEstimateJourneyDistanceResponse, zGetCurrentUserResponse, zGetJourneysGlobeResponse, zGetJourneysMapResponse, zGetJourneyYearsResponse, zGetMovementsMapQuery, zGetMovementsMapResponse, zListJourneysQuery, zListJourneysResponse, zLoginBody, zLoginResponse, zLogoutResponse, zMoveJourneyBody, zMoveJourneyPath, zMoveJourneyResponse2, zRefreshResponse, zRegisterBody, zRegisterResponse, zResolvePlacesBody, zResolvePlacesResponse2, zSearchPlacesQuery, zSearchPlacesResponse, zUpdateJourneyBody, zUpdateJourneyPath, zUpdateJourneyResponse, zVerifyEmailBody, zVerifyEmailResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
   /**
@@ -186,6 +186,22 @@ export const resolvePlaces = <ThrowOnError extends boolean = false>(options: Opt
 });
 
 /**
+ * List Journeys
+ */
+export const listJourneys = <ThrowOnError extends boolean = false>(options?: Options<ListJourneysData, ThrowOnError>): RequestResult<ListJourneysResponses, ListJourneysErrors, ThrowOnError, 'data'> => (options?.client ?? client).get<ListJourneysResponses, ListJourneysErrors, ThrowOnError, 'data'>({
+  requestValidator: async (data) => await z.object({
+    body: z.optional(z.never()),
+    path: z.optional(z.never()),
+    query: z.optional(zListJourneysQuery)
+  }).parseAsync(data),
+  responseValidator: async (data) => await zListJourneysResponse.parseAsync(data),
+  responseStyle: 'data',
+  security: [{ scheme: 'bearer', type: 'http' }],
+  url: '/v1/journeys/',
+  ...options
+});
+
+/**
  * Create Journey
  */
 export const createJourney = <ThrowOnError extends boolean = false>(options: Options<CreateJourneyData, ThrowOnError>): RequestResult<CreateJourneyResponses, CreateJourneyErrors, ThrowOnError, 'data'> => (options.client ?? client).post<CreateJourneyResponses, CreateJourneyErrors, ThrowOnError, 'data'>({
@@ -202,6 +218,94 @@ export const createJourney = <ThrowOnError extends boolean = false>(options: Opt
     'Content-Type': 'application/json',
     ...options.headers
   }
+});
+
+/**
+ * Delete Journey
+ */
+export const deleteJourney = <ThrowOnError extends boolean = false>(options: Options<DeleteJourneyData, ThrowOnError>): RequestResult<DeleteJourneyResponses, DeleteJourneyErrors, ThrowOnError, 'data'> => (options.client ?? client).delete<DeleteJourneyResponses, DeleteJourneyErrors, ThrowOnError, 'data'>({
+  requestValidator: async (data) => await z.object({
+    body: z.optional(z.never()),
+    path: zDeleteJourneyPath,
+    query: z.optional(z.never())
+  }).parseAsync(data),
+  responseValidator: async (data) => await zDeleteJourneyResponse.parseAsync(data),
+  responseStyle: 'data',
+  security: [{ scheme: 'bearer', type: 'http' }],
+  url: '/v1/journeys/{journey_id}',
+  ...options
+});
+
+/**
+ * Update Journey
+ */
+export const updateJourney = <ThrowOnError extends boolean = false>(options: Options<UpdateJourneyData, ThrowOnError>): RequestResult<UpdateJourneyResponses, UpdateJourneyErrors, ThrowOnError, 'data'> => (options.client ?? client).put<UpdateJourneyResponses, UpdateJourneyErrors, ThrowOnError, 'data'>({
+  requestValidator: async (data) => await z.object({
+    body: zUpdateJourneyBody,
+    path: zUpdateJourneyPath,
+    query: z.optional(z.never())
+  }).parseAsync(data),
+  responseValidator: async (data) => await zUpdateJourneyResponse.parseAsync(data),
+  responseStyle: 'data',
+  security: [{ scheme: 'bearer', type: 'http' }],
+  url: '/v1/journeys/{journey_id}',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
+ * Move Journey
+ */
+export const moveJourney = <ThrowOnError extends boolean = false>(options: Options<MoveJourneyData, ThrowOnError>): RequestResult<MoveJourneyResponses, MoveJourneyErrors, ThrowOnError, 'data'> => (options.client ?? client).post<MoveJourneyResponses, MoveJourneyErrors, ThrowOnError, 'data'>({
+  requestValidator: async (data) => await z.object({
+    body: zMoveJourneyBody,
+    path: zMoveJourneyPath,
+    query: z.optional(z.never())
+  }).parseAsync(data),
+  responseValidator: async (data) => await zMoveJourneyResponse2.parseAsync(data),
+  responseStyle: 'data',
+  security: [{ scheme: 'bearer', type: 'http' }],
+  url: '/v1/journeys/{journey_id}/move',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
+ * Estimate Journey Distance
+ */
+export const estimateJourneyDistance = <ThrowOnError extends boolean = false>(options: Options<EstimateJourneyDistanceData, ThrowOnError>): RequestResult<EstimateJourneyDistanceResponses, EstimateJourneyDistanceErrors, ThrowOnError, 'data'> => (options.client ?? client).get<EstimateJourneyDistanceResponses, EstimateJourneyDistanceErrors, ThrowOnError, 'data'>({
+  requestValidator: async (data) => await z.object({
+    body: z.optional(z.never()),
+    path: z.optional(z.never()),
+    query: zEstimateJourneyDistanceQuery
+  }).parseAsync(data),
+  responseValidator: async (data) => await zEstimateJourneyDistanceResponse.parseAsync(data),
+  responseStyle: 'data',
+  security: [{ scheme: 'bearer', type: 'http' }],
+  url: '/v1/journeys/distance',
+  ...options
+});
+
+/**
+ * Get Journey Years
+ */
+export const getJourneyYears = <ThrowOnError extends boolean = false>(options?: Options<GetJourneyYearsData, ThrowOnError>): RequestResult<GetJourneyYearsResponses, GetJourneyYearsErrors, ThrowOnError, 'data'> => (options?.client ?? client).get<GetJourneyYearsResponses, GetJourneyYearsErrors, ThrowOnError, 'data'>({
+  requestValidator: async (data) => await z.object({
+    body: z.optional(z.never()),
+    path: z.optional(z.never()),
+    query: z.optional(z.never())
+  }).parseAsync(data),
+  responseValidator: async (data) => await zGetJourneyYearsResponse.parseAsync(data),
+  responseStyle: 'data',
+  security: [{ scheme: 'bearer', type: 'http' }],
+  url: '/v1/journeys/years',
+  ...options
 });
 
 /**
