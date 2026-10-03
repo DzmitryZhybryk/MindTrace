@@ -23,6 +23,7 @@ class TokenIssuer:
 
     def __init__(
         self,
+        *,
         deterministic_hasher: DeterministicHasherPort,
         jwt_service: JWTService,
         refresh_token_ttl_days: int,
@@ -49,6 +50,7 @@ class TokenIssuer:
 
     def issue_refresh_token(
         self,
+        *,
         user_id: UUID,
         client_metadata: ClientMetadata,
     ) -> tuple[str, RefreshTokenEntity]:
@@ -78,6 +80,7 @@ class TokenIssuer:
 
     def build_token_pair(
         self,
+        *,
         user_credentials_entity: UserCredentialsEntity,
         refresh_secret: str,
         refresh_token_entity: RefreshTokenEntity,

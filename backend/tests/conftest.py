@@ -39,17 +39,21 @@ for _key, _value in _TEST_ENV_DEFAULTS.items():
 # синглтон ``settings``, которому нужны заполненные env-поля (E402 осознанно).
 from app.auth.application.settings import EmailVerificationConfig  # noqa: E402
 from app.shared.infra.crypto import Sha256DeterministicHasher  # noqa: E402
+from tests.builders import LONDON_PLACE_ID, MOSCOW_PLACE_ID  # noqa: E402
 from tests.fakes import (  # noqa: E402
     FakeAuthUnitOfWork,
     FakeChallengeRepository,
     FakeJourneyRepository,
     FakeJourneyUnitOfWork,
     FakePlaceRepository,
+    FakePlacesClient,
     FakeRefreshTokenRepository,
     FakeSaltedHasher,
     FakeTaskBus,
     FakeUserCredentialsRepository,
+    FakeUserRepository,
     FakeUsersClient,
+    FakeUserUnitOfWork,
 )
 
 _EMAIL_VERIFICATION_TTL_MINUTES = 15
@@ -136,6 +140,18 @@ def fake_users_client() -> FakeUsersClient:
 
 
 @pytest.fixture
+def fake_user_repository() -> FakeUserRepository:
+    return FakeUserRepository()
+
+
+@pytest.fixture
+def fake_user_uow(fake_user_repository: FakeUserRepository) -> FakeUserUnitOfWork:
+    # Репозиторий — отдельная фикстура того же инстанса: тест сидит/ассертит его состояние
+    # по конкретному типу (на uow он под port-типом, без .by_user_id).
+    return FakeUserUnitOfWork(user_repository=fake_user_repository)
+
+
+@pytest.fixture
 def fake_salted_hasher() -> FakeSaltedHasher:
     return FakeSaltedHasher()
 
@@ -154,6 +170,11 @@ def deterministic_hasher() -> Sha256DeterministicHasher:
 @pytest.fixture
 def fake_place_repository() -> FakePlaceRepository:
     return FakePlaceRepository()
+
+
+@pytest.fixture
+def fake_places_client() -> FakePlacesClient:
+    return FakePlacesClient(existing_place_ids=(MOSCOW_PLACE_ID, LONDON_PLACE_ID))
 
 
 @pytest.fixture

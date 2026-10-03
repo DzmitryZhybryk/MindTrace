@@ -4,14 +4,91 @@
   height: 100%;
 }
 
-/* Заполняем высоту области, ширину обрезаем — карта всегда height-constrained,
-   поэтому верх/низ прижаты к padding независимо от пропорций окна. */
+/* Fill the area's height and crop the width: the map is always height-constrained, so top/bottom
+   stay at the padding regardless of window proportions. */
 .world-map-canvas {
   width: 100%;
   height: 100%;
   overflow: hidden;
   display: flex;
   justify-content: center;
+  /* Gestures over the map are its zoom and pan (useMapZoom). Pinch is not handed to the browser,
+     but vertical swipe is, while the map is not zoomed: otherwise on a phone the page could not
+     be scrolled by starting a gesture on the map. */
+  touch-action: pan-y;
+  user-select: none;
+}
+
+/* A zoomed map is panned by dragging; the area edges dissolve instead of ending in a hard line
+   (in the whole-world view the edges are ocean and no border shows). */
+.world-map-wrap--zoomed .world-map-canvas {
+  --world-map-edge-fade: 48px;
+  touch-action: none;
+  cursor: grab;
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent,
+      #000 var(--world-map-edge-fade),
+      #000 calc(100% - var(--world-map-edge-fade)),
+      transparent
+    ),
+    linear-gradient(
+      to bottom,
+      transparent,
+      #000 var(--world-map-edge-fade),
+      #000 calc(100% - var(--world-map-edge-fade)),
+      transparent
+    );
+  mask-composite: intersect;
+}
+
+/*
+ * A panel over the left part of the map: the map dissolves toward its edge instead of ending
+ * under it, so route lines fade in where the visible map begins rather than popping out from
+ * under the panel. WorldMap puts the covered strip width into --map-occluded-left.
+ */
+.world-map-wrap--occluded .world-map-canvas {
+  --world-map-panel-fade: 48px;
+  mask-image: linear-gradient(
+    to right,
+    transparent var(--map-occluded-left),
+    #000 calc(var(--map-occluded-left) + var(--world-map-panel-fade))
+  );
+}
+
+/* Zoomed and covered by a panel: both masks at once, the area edges and the panel edge. */
+.world-map-wrap--zoomed.world-map-wrap--occluded .world-map-canvas {
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent,
+      #000 var(--world-map-edge-fade),
+      #000 calc(100% - var(--world-map-edge-fade)),
+      transparent
+    ),
+    linear-gradient(
+      to bottom,
+      transparent,
+      #000 var(--world-map-edge-fade),
+      #000 calc(100% - var(--world-map-edge-fade)),
+      transparent
+    ),
+    linear-gradient(
+      to right,
+      transparent var(--map-occluded-left),
+      #000 calc(var(--map-occluded-left) + var(--world-map-panel-fade))
+    );
+  mask-composite: intersect;
+}
+
+.world-map-wrap--zoomed .world-map-canvas:active {
+  cursor: grabbing;
+}
+
+/* A zoomed map keeps the grab cursor over countries too, otherwise a country's pointer would override it. */
+.world-map-wrap--zoomed .world-map__country {
+  cursor: inherit;
 }
 
 .world-map {
@@ -27,31 +104,40 @@
 }
 
 /*
- * Подсветка страны под курсором — затемнение через filter. Нейтрально к
- * статусу: одинаково читается на сером, зелёном и жёлтом и не подменяет смысл
- * цвета (в отличие от смены fill). Затемняется именно заливка, её не
- * перекрывают соседние страны, поэтому эффект виден надёжно.
+ * Hover highlight of a country: darkening via filter. Neutral to status: it reads the same on
+ * grey, green and yellow and does not replace the meaning of the colour (unlike changing fill).
+ * The fill itself darkens and neighbouring countries do not cover it, so the effect is reliably visible.
  */
 .world-map__country:hover {
   filter: brightness(0.9);
 }
 
-/* Точки городов не перехватывают мышь — hover всегда попадает в страну под ними. */
-.world-map__cities {
+/* Static map: a country under the cursor is not highlighted and does not look clickable. */
+.world-map-wrap--static .world-map__country {
+  cursor: default;
+}
+
+.world-map-wrap--static .world-map__country:hover {
+  filter: none;
+}
+
+/* City dots and the layer over countries do not intercept the mouse: hover always reaches the country. */
+.world-map__cities,
+.world-map__overlay {
   pointer-events: none;
 }
 
 .world-map__tooltip {
   position: absolute;
   z-index: 5;
-  /* Сдвиг от курсора и флип у краёв экрана задаются инлайн в WorldMap.tsx. */
+  /* Offset from the cursor and the flip at screen edges are set inline in WorldMap.tsx. */
   pointer-events: none;
   min-width: 124px;
   padding: 10px 12px;
   border-radius: 10px;
   background: rgb(var(--ink-2-rgb) / 0.94);
-  /* Рамка обязательна: тултип теперь той же семьи, что и фон страницы, и без
-     неё сливается с ночью — раньше его отделяла разница со светлым фоном. */
+  /* The border is required: the tooltip is the same family as the page background and without it
+     blends into the night. */
   border: 1px solid var(--hairline);
   box-shadow: 0 12px 32px rgb(var(--shadow-rgb) / 0.5);
   backdrop-filter: blur(var(--blur-glass));

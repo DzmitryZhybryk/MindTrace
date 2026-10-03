@@ -6,7 +6,7 @@ Integration: ``_ensure_procrastinate_schema`` идемпотентна прот�
 ``procrastinate_jobs``. Проверяем обе ветки на живой БД: пусто → схема
 применяется; повтор на уже мигрированной БД → no-op (не падает на дублирующих
 CREATE). Строится тот же ``ProcrastinateApp``, что и в проде, на том же DSN
-(``procrastinate_dsn``), — покрываем ровно боевой путь.
+(``postgres_libpq_dsn``), — покрываем ровно боевой путь.
 """
 
 from procrastinate import PsycopgConnector
@@ -28,7 +28,7 @@ async def test_ensure_procrastinate_schema_applies_then_is_idempotent(
     postgres_settings: PostgresSettings,
 ) -> None:
     """Пустая БД → схема применяется; повторный вызов → no-op (не падает на дублирующих CREATE)."""
-    procrastinate_app = ProcrastinateApp(connector=PsycopgConnector(conninfo=postgres_settings.procrastinate_dsn))
+    procrastinate_app = ProcrastinateApp(connector=PsycopgConnector(conninfo=postgres_settings.postgres_libpq_dsn))
     await procrastinate_app.open_async()
     try:
         # Прекондиция: свежий контейнер — procrastinate-схемы ещё нет (лоудно ловит контаминацию).

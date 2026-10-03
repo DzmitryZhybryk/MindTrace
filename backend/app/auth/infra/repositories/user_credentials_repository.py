@@ -70,6 +70,7 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
 
     async def find_user_credentials_by_email_or_username(
         self,
+        *,
         email: str,
         username: str,
     ) -> list[UserCredentialsEntity]:

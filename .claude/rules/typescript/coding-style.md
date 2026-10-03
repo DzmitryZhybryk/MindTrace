@@ -79,6 +79,24 @@ banner), not transient errors.
 
 Schema validation via **Zod** at boundaries (HTTP, forms); the type is inferred from the schema — `z.infer<typeof schema>`.
 
+Import it as `import * as z from "zod/mini"`, never from `"zod"`. The generated SDK validators are
+`zod/mini` too (`compatibilityVersion: "mini"` in `openapi-ts.config.ts`); a single classic
+import puts the full zod (~18 kb gz) back on every page.
+
+## Comments (frontend)
+
+The owner does not read frontend code, so a comment here is written for the AI assistant that
+maintains it, and **only in English** (code, CSS, config and test comments alike; `.tsx`, `.ts`,
+`.css`, `index.html`, `nginx.conf`, `Dockerfile`, `Makefile` under `frontend/`).
+
+- Keep a comment only if it carries what the code does not show: a hidden constraint, a browser/
+  jsdom/library quirk, why an obvious alternative is wrong, a contract with another file.
+- Do not narrate history ("used to be...", "after the redesign"), metrics or the fix that
+  introduced the line, and do not restate what the code says.
+- Short. State the reason in one or two lines; no `Args:`/`Returns:` blocks (that is the Python style).
+- Strings are not comments: user-facing text stays in `src/locales`, and `it("...")`/`describe`
+  titles stay in Russian per [testing.md](./testing.md).
+
 ## No `console.log`
 
 `console.log` is forbidden in production code.

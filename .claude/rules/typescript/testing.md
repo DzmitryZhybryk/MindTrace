@@ -18,7 +18,7 @@ Two orthogonal axes: **test type** (speed + dependencies) and **module/feature**
 
 The **bulk of value is in `unit`** (the `api`/`auth` logic modules). Keep component thin (forms,
 dialogs, the banner) and e2e thinnest — only the critical happy paths. Current e2e surface:
-`e2e/auth/{signup,login,logout,session,email-verification}.spec.ts` и `e2e/journeys/map.spec.ts`.
+`e2e/auth/{signup,login,logout,session,email-verification}.spec.ts` и `e2e/journeys/{map,movements}.spec.ts`.
 Флоу помечены кодами (A/B/D/K/L…), коды живут в докстрингах самих спеков — отдельного
 плана-файла НЕТ.
 
@@ -30,6 +30,14 @@ dialogs, the banner) and e2e thinnest — only the critical happy paths. Current
   sees `describe`/`it`/`vi`.
 - **jsdom** — simulated DOM. `sessionStorage`, `localStorage`, `atob`, `btoa` exist; **`fetch` is
   stubbed per-test** (`vi.stubGlobal`), **`matchMedia` does not exist** — mock it in component setup.
+  Missing APIs that `src/test/setup.ts` already stubs globally — read it before adding a stub.
+  `IntersectionObserver` there is controllable: the test triggers intersection itself
+  (`intersectAllObserved` from `src/test/intersection.ts`).
+- **No layout and no `AnimationEvent` in jsdom.** Every rect is zero, so anything that measures
+  (dnd-kit, FLIP) needs stubbed `getBoundingClientRect` / `offsetTop` (`src/test/layout.ts`, or a
+  per-test spy). Without `AnimationEvent` React listens to `onAnimationEnd` on the prefixed
+  `webkitAnimationEnd`, and `fireEvent.animationEnd` drops `animationName` — dispatch a
+  `new Event("webkitAnimationEnd")` with `animationName` defined on it.
 - **@testing-library/react** + **@testing-library/user-event** + **@testing-library/jest-dom** —
   component layer (added in the component phase).
 - **MSW** — network mocking for the component layer (the reusable "API fakes", analogous to the
@@ -63,6 +71,12 @@ frontend/src/
     └── tokenStore.ts + tokenStore.test.ts
 e2e/                            # Playwright: e2e/<домен>/<флоу>.spec.ts + e2e/helpers/, e2e/fixtures.ts
 ```
+
+**Split a heavy component's tests by scenario: `<Module>.<topic>.test.tsx`** (e.g.
+`AddJourneyPage.errors.test.tsx`). Vitest runs files in parallel but the tests inside one file
+in sequence, so a file whose tests each take a second (a full form fill through Mantine and the
+autocomplete debounce) sets the wall time of the whole run. The helpers such files share live in
+`src/test/` (e.g. `src/test/addJourney.tsx`), not copied into each file.
 
 ## Philosophy: classicist + mock only the network
 
@@ -151,7 +165,7 @@ Note: the v8 **text** reporter silently hides files already at 100% — for exac
 `.github/workflows/ci.yml` держит **Frontend gate**: node 26 → `npm ci` → `make check`
 (lint + typecheck + unit/component). Backend-гейт идёт отдельной job'ой (`make check-ci`).
 
-Порог покрытия 90% форсится НЕ в CI, а локальным pre-push хуком (`.githooks/pre-push`,
+Порог покрытия 90% форсится НЕ в CI, а локальным pre-commit хуком (`.githooks/pre-commit`,
 активируется разово через `make hooks`). e2e в CI не гоняется — он поднимает свой одноразовый
 стек и запускается вручную через `make test-e2e`.
 

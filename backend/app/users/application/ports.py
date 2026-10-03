@@ -13,6 +13,7 @@
 
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
+from uuid import UUID
 
 from app.users.domain.entities import UserEntity
 
@@ -21,6 +22,8 @@ class UserRepositoryPort(Protocol):
     """Контракт хранилища пользователей, на который опирается application-слой."""
 
     async def insert_user(self, user_entity: UserEntity) -> None: ...
+
+    async def find_user_by_id(self, user_id: UUID) -> UserEntity | None: ...
 
 
 class UserUnitOfWorkPort(Protocol):

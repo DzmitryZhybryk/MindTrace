@@ -45,7 +45,12 @@ def test_extract_request_context_empty_when_nothing_present(make_request: Callab
 
 def test_build_log_context_uses_explicit_context_when_given(make_request: Callable[..., Request]) -> None:
     """При переданном ``context`` он подмешивается как есть (без извлечения из request)."""
-    log_context = build_log_context(make_request(), status_code=200, process_time=0.12345, context={"trace": "abc"})
+    log_context = build_log_context(
+        request=make_request(),
+        status_code=200,
+        process_time=0.12345,
+        context={"trace": "abc"},
+    )
 
     assert log_context["method"] == "GET"
     assert log_context["path"] == "/v1/ping"
@@ -58,7 +63,7 @@ def test_build_log_context_falls_back_to_extracted_context(make_request: Callabl
     """Без явного ``context`` подмешивается извлечённый из request (client_ip и т.п.)."""
     request = make_request(client=("203.0.113.5", 54321))
 
-    log_context = build_log_context(request, status_code=200, process_time=0.1)
+    log_context = build_log_context(request=request, status_code=200, process_time=0.1)
 
     assert log_context["client_ip"] == "203.0.113.5"
 
@@ -66,7 +71,7 @@ def test_build_log_context_falls_back_to_extracted_context(make_request: Callabl
 def test_build_error_log_context_for_domain_error_omits_traceback(make_request: Callable[..., Request]) -> None:
     """Доменная ошибка: пишутся error_code/error_message, traceback не нужен, статус из категории."""
     log_context, status_code, include_traceback = build_error_log_context(
-        make_request(),
+        request=make_request(),
         exc=NotFoundError(),
         process_time=0.1,
     )
@@ -80,7 +85,7 @@ def test_build_error_log_context_for_domain_error_omits_traceback(make_request: 
 def test_build_error_log_context_for_unexpected_error_includes_traceback(make_request: Callable[..., Request]) -> None:
     """Неожиданная ошибка: error_message из str(exc), traceback включается."""
     log_context, status_code, include_traceback = build_error_log_context(
-        make_request(),
+        request=make_request(),
         exc=ValueError("boom"),
         process_time=0.1,
     )

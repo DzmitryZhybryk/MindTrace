@@ -1,90 +1,60 @@
-import { useCallback, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useTranslation } from "react-i18next";
+import type { Feature, MultiPolygon, Polygon, Position } from "geojson";
+import { feature } from "topojson-client";
+import type { GeometryCollection, Topology } from "topojson-specification";
 
-import worldData from "../data/world-countries.geo.json";
+import worldTopology from "../data/world-countries.topo.json";
+import { fitView } from "./fitView";
+import { useMapZoom } from "./useMapZoom";
+import { useViewTransition } from "./useViewTransition";
+import { ANTIMERIDIAN_JUMP, WORLD_VIEW_BOX, isWorldView, projectToScreen, type ViewBox } from "./worldProjection";
 import "./world-map.css";
 
 /*
- * Плоская карта мира на чистом SVG, без внешних библиотек. Страна = <path>,
- * заливка зависит от статуса (посещена / в планах / не была), города —
- * маленькие точки по координатам. Под курсором страна затемняется, а тултип
- * показывает её название и — для посещённых — список городов с годами визитов.
- * Это черновой движок под дизайн: контракт пропсов (страны по ISO-3166 alpha-2
- * + города с годами) совпадёт с будущим ответом API.
+ * Flat world map in plain SVG, no external libraries. Country = <path>, fill depends on status
+ * (visited / wishlist / not visited), cities are small dots at their coordinates. The hovered
+ * country darkens and a tooltip shows its name and, for visited ones, cities with visit years.
+ * The map is zoomed and panned by gestures (see useMapZoom); a custom overlay layer can be drawn
+ * over the countries in canvas coordinates.
  */
 
-// --- Проекция Equal Earth (Šavrič, Patterson, Jenny, 2018) ----------------
-// Равноплощадная: честно показывает «сколько объехал», без раздувания полюсов.
-const A1 = 1.340264;
-const A2 = -0.081106;
-const A3 = 0.000893;
-const A4 = 0.003796;
-const M = Math.sqrt(3) / 2;
-const DEG2RAD = Math.PI / 180;
+// --- Parsing geo data into SVG paths (once, at module import) ------------
+type CountryGeometry = Polygon | MultiPolygon;
 
-function project(lng: number, lat: number): [number, number] {
-  const lambda = lng * DEG2RAD;
-  const phi = lat * DEG2RAD;
-  const theta = Math.asin(M * Math.sin(phi));
-  const t2 = theta * theta;
-  const t6 = t2 * t2 * t2;
-  const x =
-    (2 * Math.sqrt(3) * lambda * Math.cos(theta)) /
-    (3 * (A1 + 3 * A2 * t2 + 7 * A3 * t6 + 9 * A4 * t6 * t2));
-  const y = theta * (A1 + A2 * t2 + A3 * t6 + A4 * t6 * t2);
-  return [x, y];
+interface CountryProperties {
+  name: string;
 }
 
-// Габариты viewBox выводим из реальных границ проекции, а не подбираем на глаз.
-const VIEW_WIDTH = 1000;
-const X_MAX = project(180, 0)[0];
-const Y_MAX = project(0, 90)[1];
-const VIEW_HEIGHT = Math.round((VIEW_WIDTH * Y_MAX) / X_MAX);
+type CountryFeature = Feature<CountryGeometry, CountryProperties> & { id: string };
 
-function toScreenX(x: number): number {
-  return ((x + X_MAX) / (2 * X_MAX)) * VIEW_WIDTH;
-}
+type WorldTopology = Topology<{ countries: GeometryCollection<CountryProperties> }>;
 
-function toScreenY(y: number): number {
-  return ((Y_MAX - y) / (2 * Y_MAX)) * VIEW_HEIGHT;
-}
-
-// --- Разбор geo-данных в SVG-пути (один раз при импорте модуля) ------------
-type Position = [number, number];
-type LinearRing = Position[];
-type GeoGeometry =
-  | { type: "Polygon"; coordinates: LinearRing[] }
-  | { type: "MultiPolygon"; coordinates: LinearRing[][] };
-
-interface CountryFeature {
-  id: string;
-  properties: { name: string };
-  geometry: GeoGeometry;
-}
-
-interface WorldCollection {
-  features: CountryFeature[];
-}
-
-// Если соседние точки кольца «перепрыгивают» антимеридиан (Россия, Фиджи),
-// рвём путь, иначе через всю карту тянется горизонтальная клякса.
-const ANTIMERIDIAN_JUMP = 180;
-
-function ringToPath(ring: LinearRing): string {
+function ringToPath(ring: Position[]): string {
   const segments: string[] = [];
   let prevLng: number | null = null;
   for (const [lng, lat] of ring) {
-    const [px, py] = project(lng, lat);
+    const [x, y] = projectToScreen(lng, lat);
     const command =
       prevLng === null || Math.abs(lng - prevLng) > ANTIMERIDIAN_JUMP ? "M" : "L";
-    segments.push(`${command}${toScreenX(px).toFixed(1)} ${toScreenY(py).toFixed(1)}`);
+    segments.push(`${command}${x.toFixed(1)} ${y.toFixed(1)}`);
     prevLng = lng;
   }
 
   return segments.length > 0 ? `${segments.join("")}Z` : "";
 }
 
-function geometryToPath(geometry: GeoGeometry): string {
+function geometryToPath(geometry: CountryGeometry): string {
   if (geometry.type === "Polygon") {
     return geometry.coordinates.map(ringToPath).join("");
   }
@@ -98,23 +68,29 @@ interface CountryShape {
   path: string;
 }
 
-const COUNTRY_SHAPES: readonly CountryShape[] = (
-  worldData as unknown as WorldCollection
-).features.map((feature) => ({
-  id: feature.id,
-  name: feature.properties.name,
-  path: geometryToPath(feature.geometry),
+// scripts/build-world-topology.ts builds the topology from country polygons that each have a
+// string id and a name, so the features unpacked back are CountryFeature.
+const WORLD = worldTopology as unknown as WorldTopology;
+const COUNTRY_FEATURES = feature(WORLD, WORLD.objects.countries).features as CountryFeature[];
+
+const COUNTRY_SHAPES: readonly CountryShape[] = COUNTRY_FEATURES.map((country) => ({
+  id: country.id,
+  name: country.properties.name,
+  path: geometryToPath(country.geometry),
 }));
 
 const COUNTRY_NAMES: ReadonlyMap<string, string> = new Map(
   COUNTRY_SHAPES.map((shape) => [shape.id, shape.name]),
 );
 
-// --- Публичный API компонента ---------------------------------------------
+// --- Component public API ---------------------------------------------
 export type CountryStatus = "visited" | "wishlist";
 
 export interface MapCity {
-  name: string;
+  /** Place id in geo. */
+  id: string;
+  /** Name in the UI language; absent while names are loading. */
+  name?: string;
   lat: number;
   lng: number;
   years: readonly number[];
@@ -127,15 +103,15 @@ export interface MapCountry {
 }
 
 export interface WorldMapTone {
-  /** Заливка непосещённой страны. */
+  /** Fill of a not-visited country. */
   land: string;
-  /** Цвет границ. */
+  /** Border colour. */
   border: string;
-  /** Заливка посещённой страны. */
+  /** Fill of a visited country. */
   visited: string;
-  /** Заливка страны из планов/мечт (без городов). */
+  /** Fill of a wishlist country (no cities). */
   wishlist: string;
-  /** Цвет точки-города. */
+  /** City dot colour. */
   cityDot: string;
 }
 
@@ -143,19 +119,93 @@ interface WorldMapProps {
   countries: readonly MapCountry[];
   tone: WorldMapTone;
   className?: string;
+  /**
+   * Layer over the countries, in canvas coordinates (see `projectToScreen`). Receives the current
+   * visible area so labels and icons do not grow with the map when zoomed.
+   */
+  overlay?: (view: ViewBox) => ReactNode;
+  /** What to show initially (canvas units); without it the map opens on the whole world. */
+  fitBounds?: ViewBox | null;
+  /**
+   * Element over the left part of the map (a panel): the initial view fits into the uncovered
+   * part and the map fades toward its edge so lines do not pop out from under it.
+   */
+  occluderRef?: RefObject<HTMLElement | null>;
+  /**
+   * `false`: the map does not fade toward the `occluderRef` edge because the element over it is
+   * transparent and the map shows through. The initial view still fits the uncovered part.
+   */
+  shouldFadeUnderOccluder?: boolean;
+  /** A `fitBounds` change eases the map to the new view instead of jumping. */
+  isFitAnimated?: boolean;
+  /** `false`: no hover highlight and no tooltip; zoom still works. */
+  isInteractive?: boolean;
 }
 
-// Отступ тултипа от курсора и запасные размеры (до первого замера ref'а).
+// City dot radius in canvas units at the whole-world view; proportionally smaller when zoomed.
+const CITY_DOT_RADIUS = 1.8;
+
+// Tooltip offset from the cursor, and fallback sizes (before the first ref measurement).
 const TOOLTIP_OFFSET = 14;
 const TOOLTIP_FALLBACK_WIDTH = 160;
 const TOOLTIP_FALLBACK_HEIGHT = 80;
 
-export function WorldMap({ countries, tone, className }: WorldMapProps) {
+export function WorldMap({
+  countries,
+  tone,
+  className,
+  overlay,
+  fitBounds = null,
+  occluderRef,
+  shouldFadeUnderOccluder = true,
+  isFitAnimated = false,
+  isInteractive = true,
+}: WorldMapProps) {
   const { t, i18n } = useTranslation("common");
   const wrapRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  // Геометрию контейнера кешируем на входе курсора, а не дёргаем
-  // getBoundingClientRect (форсит reflow) на каждое движение мыши.
+
+  // How many pixels the panel covers on the left and the initial view both depend on the map
+  // area size, so recompute before paint and on every resize.
+  const [initialView, setInitialView] = useState<ViewBox>(WORLD_VIEW_BOX);
+  const [occludedLeft, setOccludedLeft] = useState(0);
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if ((!fitBounds && !occluderRef) || !canvas) {
+      setInitialView(WORLD_VIEW_BOX);
+      setOccludedLeft(0);
+      return;
+    }
+
+    const measure = () => {
+      const canvasRect = canvas.getBoundingClientRect();
+      const occluderRect = occluderRef?.current?.getBoundingClientRect();
+      // The panel covers the map only if it lies over it; on mobile width it sits above the map.
+      const isOverlapping =
+        occluderRect !== undefined &&
+        occluderRect.left < canvasRect.right &&
+        occluderRect.right > canvasRect.left &&
+        occluderRect.top < canvasRect.bottom &&
+        occluderRect.bottom > canvasRect.top;
+      const occluded = isOverlapping ? occluderRect.right - canvasRect.left : 0;
+      setOccludedLeft(occluded);
+      setInitialView(fitBounds ? fitView(fitBounds, canvasRect, occluded) : WORLD_VIEW_BOX);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [fitBounds, occluderRef]);
+
+  const fittedView = useViewTransition(initialView, isFitAnimated);
+  const view = useMapZoom(canvasRef, svgRef, fittedView);
+  const isFadedUnderOccluder = shouldFadeUnderOccluder && occludedLeft > 0;
+  const isZoomed = !isWorldView(view);
+  // Cache the container geometry on cursor enter instead of calling getBoundingClientRect
+  // (forces reflow) on every mouse move.
   const rectRef = useRef<DOMRect | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [pointer, setPointer] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -166,8 +216,8 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
     [countries],
   );
 
-  // Имя страны резолвим из ISO-кода через CLDR по активному языку; безкодовые
-  // территории (id=имя) и неизвестные коды → fallback на имя из geojson.
+  // Resolve the country name from the ISO code via CLDR in the active language; territories
+  // without a code (id = name) and unknown codes fall back to the name in the border data.
   const countryNames = useMemo(
     () => new Intl.DisplayNames([i18n.language], { type: "region", fallback: "none" }),
     [i18n.language],
@@ -189,12 +239,12 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
   }, []);
 
   const handleMouseMove = useCallback((event: MouseEvent<HTMLDivElement>) => {
-    // Обычно геометрия закеширована на onMouseEnter, но он не срабатывает, если
-    // курсор уже был над картой в момент её появления (клиентская навигация после
-    // добавления поездки). Тогда меряем лениво здесь — иначе rect=null, ранний
-    // выход, и тултип залипает в левом верхнем углу (pointer остаётся {0,0}).
+    // Geometry is normally cached on onMouseEnter, but that does not fire if the cursor was
+    // already over the map when it appeared (client navigation after adding a journey). Measure
+    // lazily here, otherwise rect=null, an early return, and the tooltip sticks to the top-left
+    // corner (pointer stays {0,0}).
     const rect = rectRef.current ?? wrapRef.current?.getBoundingClientRect() ?? null;
-    // Оборонительный guard: getBoundingClientRect у смонтированного узла всегда даёт rect.
+    // Defensive guard: getBoundingClientRect on a mounted node always returns a rect.
     /* v8 ignore next 3 */
     if (!rect) {
       return;
@@ -202,9 +252,9 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
 
     rectRef.current = rect;
     setPointer({ x: event.clientX - rect.left, y: event.clientY - rect.top });
-    // Флип у края экрана: если справа/снизу тултип не помещается — рисуем его
-    // слева/сверху от курсора. Меряем по viewport (clientX/Y), чтобы не вылезти
-    // за экран; размеры берём с прошлого кадра (меняются только при смене страны).
+    // Flip near the screen edge: if the tooltip does not fit right/below, draw it left/above the
+    // cursor. Measure against the viewport (clientX/Y) to stay on screen; sizes come from the
+    // previous frame (they change only when the country changes).
     const tooltip = tooltipRef.current;
     const width = tooltip?.offsetWidth ?? TOOLTIP_FALLBACK_WIDTH;
     const height = tooltip?.offsetHeight ?? TOOLTIP_FALLBACK_HEIGHT;
@@ -214,87 +264,118 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
     });
   }, []);
 
-  // Страны и точки городов не зависят от hover/позиции курсора (подсветка —
-  // через CSS :hover), поэтому мемоизируем: перемещение мыши перерисовывает
-  // только тултип, а не все ~180 path'ей.
-  const shapes = useMemo(() => {
-    const cityDots = countries.flatMap((country) =>
-      country.cities.map((city) => {
-        const [px, py] = project(city.lng, city.lat);
-        return { key: `${country.id}:${city.name}`, cx: toScreenX(px), cy: toScreenY(py) };
-      }),
-    );
-
-    return (
-      <>
-        <g>
-          {COUNTRY_SHAPES.map((country) => {
-            const status = byId.get(country.id)?.status;
-            const fill =
-              status === "visited"
-                ? tone.visited
-                : status === "wishlist"
-                  ? tone.wishlist
-                  : tone.land;
-            return (
-              <path
-                key={country.id}
-                className="world-map__country"
-                d={country.path}
-                fill={fill}
-                stroke={tone.border}
-                strokeWidth={0.6}
-                vectorEffect="non-scaling-stroke"
-                onMouseEnter={() => setHoveredId(country.id)}
-                onMouseLeave={() => setHoveredId(null)}
-              />
-            );
-          })}
-        </g>
-        <g className="world-map__cities">
-          {cityDots.map((dot) => (
-            <circle
-              key={dot.key}
-              className="world-map__city-dot"
-              cx={dot.cx}
-              cy={dot.cy}
-              r={1.8}
-              fill={tone.cityDot}
-              stroke="#ffffff"
-              strokeWidth={0.5}
+  // Countries depend on neither hover/cursor position (highlight is CSS :hover) nor zoom (it only
+  // changes the viewBox), so memoize: mouse moves and zoom do not redraw ~180 paths.
+  const countryShapes = useMemo(
+    () => (
+      <g>
+        {COUNTRY_SHAPES.map((country) => {
+          const status = byId.get(country.id)?.status;
+          const fill =
+            status === "visited"
+              ? tone.visited
+              : status === "wishlist"
+                ? tone.wishlist
+                : tone.land;
+          return (
+            <path
+              key={country.id}
+              className="world-map__country"
+              d={country.path}
+              fill={fill}
+              stroke={tone.border}
+              strokeWidth={0.6}
               vectorEffect="non-scaling-stroke"
+              onMouseEnter={isInteractive ? () => setHoveredId(country.id) : undefined}
+              onMouseLeave={isInteractive ? () => setHoveredId(null) : undefined}
             />
-          ))}
-        </g>
-      </>
-    );
-  }, [byId, countries, tone]);
+          );
+        })}
+      </g>
+    ),
+    [byId, tone, isInteractive],
+  );
+
+  const cityDots = useMemo(
+    () =>
+      countries.flatMap((country) =>
+        country.cities.map((city) => {
+          const [cx, cy] = projectToScreen(city.lng, city.lat);
+          return { key: city.id, cx, cy };
+        }),
+      ),
+    [countries],
+  );
+  const cityDotRadius = CITY_DOT_RADIUS * (view.width / WORLD_VIEW_BOX.width);
 
   const hovered = hoveredId ? byId.get(hoveredId) : undefined;
   const hoveredName = hoveredId ? resolveCountryName(hoveredId) : "";
+  // Cities without a name (still loading) stay out of the tooltip until they arrive. Order: by
+  // first visit year (years arrive ascending), then by name within a year.
+  const hoveredCities = useMemo(
+    () =>
+      (hovered?.cities ?? [])
+        .filter((city): city is MapCity & { name: string } => city.name !== undefined)
+        .sort(
+          (left, right) =>
+            left.years[0] - right.years[0] || left.name.localeCompare(right.name, i18n.language),
+        ),
+    [hovered, i18n.language],
+  );
+
+  const wrapClassName = [
+    "world-map-wrap",
+    isInteractive ? null : "world-map-wrap--static",
+    isZoomed ? "world-map-wrap--zoomed" : null,
+    isFadedUnderOccluder ? "world-map-wrap--occluded" : null,
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div
       ref={wrapRef}
-      className={className ? `world-map-wrap ${className}` : "world-map-wrap"}
-      onMouseEnter={cacheRect}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={() => setHoveredId(null)}
+      className={wrapClassName}
+      onMouseEnter={isInteractive ? cacheRect : undefined}
+      onMouseMove={isInteractive ? handleMouseMove : undefined}
+      onMouseLeave={isInteractive ? () => setHoveredId(null) : undefined}
     >
-      {/* Карта всегда заполняет высоту (height:100%/width:auto в CSS), выступ по
-          ширине обрезается canvas'ом — верх/низ карты прижаты к padding и не
-          зависят от пропорций окна. Тултип лежит вне canvas, чтобы не обрезаться. */}
-      <div className="world-map-canvas">
-        {/* Доступное имя через aria-label, НЕ <title>: <title> браузер рисует как
-            нативный tooltip, который налезает на наш кастомный (role="img" тут
-            ловит jsx-a11y/prefer-tag-over-role, поэтому просто aria-label). */}
+      {/* The map always fills the height (height:100%/width:auto in CSS); width overflow is
+          cropped by the canvas, so the top/bottom stay at the padding regardless of window
+          proportions. The tooltip is outside the canvas so it is not clipped. */}
+      <div
+        ref={canvasRef}
+        className="world-map-canvas"
+        style={isFadedUnderOccluder ? ({ "--map-occluded-left": `${occludedLeft}px` } as CSSProperties) : undefined}
+      >
+        {/* Accessible name via aria-label, NOT <title>: browsers draw <title> as a native tooltip
+            that overlaps our custom one (role="img" trips jsx-a11y/prefer-tag-over-role, so
+            just aria-label). */}
         <svg
+          ref={svgRef}
           className="world-map"
-          viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+          viewBox={`${view.x} ${view.y} ${view.width} ${view.height}`}
           aria-label={t("map.aria")}
           preserveAspectRatio="xMidYMid meet"
         >
-          {shapes}
+          {countryShapes}
+          <g className="world-map__cities">
+            {cityDots.map((dot) => (
+              <circle
+                key={dot.key}
+                className="world-map__city-dot"
+                cx={dot.cx}
+                cy={dot.cy}
+                r={cityDotRadius}
+                fill={tone.cityDot}
+                stroke="#ffffff"
+                strokeWidth={0.5}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </g>
+          {overlay && <g className="world-map__overlay">{overlay(view)}</g>}
         </svg>
       </div>
 
@@ -311,15 +392,17 @@ export function WorldMap({ countries, tone, className }: WorldMapProps) {
           }}
         >
           <span className="world-map__tooltip-title">{hoveredName}</span>
-          {hovered?.status === "visited" && hovered.cities.length > 0 ? (
-            <ul className="world-map__tooltip-cities">
-              {hovered.cities.map((city) => (
-                <li key={city.name}>
-                  <span className="world-map__tooltip-city">{city.name}</span>
-                  <span className="world-map__tooltip-years">{city.years.join(", ")}</span>
-                </li>
-              ))}
-            </ul>
+          {hovered?.status === "visited" ? (
+            hoveredCities.length > 0 && (
+              <ul className="world-map__tooltip-cities">
+                {hoveredCities.map((city) => (
+                  <li key={city.id}>
+                    <span className="world-map__tooltip-city">{city.name}</span>
+                    <span className="world-map__tooltip-years">{city.years.join(", ")}</span>
+                  </li>
+                ))}
+              </ul>
+            )
           ) : (
             <span className="world-map__tooltip-muted">
               {hovered?.status === "wishlist" ? t("map.wishlist") : t("map.notVisited")}

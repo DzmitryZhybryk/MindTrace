@@ -23,7 +23,6 @@ from typing import Any
 import pytest
 from fastapi import APIRouter
 
-from app.auth import auth_router
 from app.auth.application.settings import EmailVerificationConfig
 from app.auth.presentation.dependencies import (
     auth_uow_dependency,
@@ -32,6 +31,7 @@ from app.auth.presentation.dependencies import (
     task_bus_dependency,
     users_client_dependency,
 )
+from app.auth.presentation.routes import auth_router
 from tests.fakes import (
     FakeAuthUnitOfWork,
     FakeSaltedHasher,

@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
@@ -79,10 +79,24 @@ jobs:
       - name: Provide .env for ephemeral e2e stack (test-only values)
         run: cp ops/.env.e2e .env
 
+      # geo-load e2e-стека берёт датасет мест из backend/.geo-cache и качает с GitHub Releases
+      # только при промахе. Ключ — манифест: новый датасет = новый ключ.
+      - name: Cache geo datasets
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: backend/.geo-cache
+          key: geo-datasets-${{ hashFiles('backend/app/geo/infra/datasets/manifest.toml') }}
+
       # make test-e2e (из корня) сам поднимает одноразовый стек (ops/docker-compose.e2e.yaml),
       # гоняет Playwright (config CI-aware: retries=1, workers=2) и сносит стек с -v.
       - name: E2E (ephemeral stack + Playwright)
         run: make test-e2e
+
+      # Контейнер пишет кеш от root с правами 0600 — без смены владельца пост-шаг кеша
+      # не прочитает файл и молча ничего не сохранит.
+      - name: Hand geo cache back to runner user
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" backend/.geo-cache || true
 
   # ── Сборка образов: только push main И только после зелёных тяжёлых тестов (строгая связка) ──
   build-push:
@@ -106,7 +120,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
 
       - name: Log in to GHCR
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
@@ -116,7 +130,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
         with:
           context: ${{ matrix.context }}
           target: final

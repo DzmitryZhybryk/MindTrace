@@ -1,6 +1,6 @@
 [project]
 name = "MindTrace"
-version = "1.0.4"
+version = "3.1.0"
 description = "Service for managing mindtrace"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
@@ -9,19 +9,19 @@ requires-python = ">=3.14"
 readme = "README.md"
 
 dependencies = [
-    "fastapi[standard]>=0.141.1",
-    "alembic>=1.19.0",
-    "orjson>=3.11.9",
-    "pydantic-settings>=2.14.2",
-    "sqlalchemy[asyncio]>=2.0.51",
+    "fastapi[standard]>=0.142.2",
+    "alembic>=1.20.0",
+    "orjson>=3.12.0",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy[asyncio]>=2.1.1",
     "structlog>=26.1.0",
-    "uvicorn>=0.52.1",
+    "uvicorn>=0.54.0",
     "argon2-cffi>=25.1.0",
-    "pyjwt>=2.10.0",
+    "pyjwt>=2.15.1",
     "httpx>=0.28.0",
-    "procrastinate>=3.9.0",
+    "procrastinate>=3.10.0",
     "jinja2>=3.1.6",
-    "psycopg[binary]>=3.3.4",
+    "psycopg[binary]>=3.3.6",
 ]
 
 [dependency-groups]
@@ -29,10 +29,10 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
-    "ruff>=0.16.1",
-    "tach>=0.35.0",
+    "ruff>=0.16.9",
+    "tach>=0.35.1",
     "testcontainers[postgres]>=4.15.0",
-    "ty>=0.0.66",
+    "ty>=0.0.84",
     "vulture>=2.16",
 ]
 
@@ -55,11 +55,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-# Чистый entry-point клей — только запуск uvicorn/asyncio, тестировать нечего, а его
-# «непокрытие» искажало бы гейт. Реальную логику воркера (_ensure_procrastinate_schema)
-# здесь НЕ прячем: её обёртка run_worker помечена ``# pragma: no cover`` точечно в самом
-# модуле, а сама функция покрыта integration-тестом (tests/integration/shared/...).
-omit = ["app/__main__.py"]
+omit = ["app/__main__.py", "app/geo/infra/datasets/__main__.py", "app/geo/infra/datasets/wikidata/__main__.py"]
 
 [tool.ruff]
 line-length = 120

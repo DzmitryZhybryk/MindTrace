@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 from fastapi import APIRouter
 
-from app.health import health_router
+from app.health.presentation.routes import health_router
 
 
 @pytest.fixture

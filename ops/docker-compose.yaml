@@ -35,6 +35,8 @@ services:
       - ./backend/migrations:/src/migrations
       - ./backend/alembic.ini:/src/alembic.ini:ro
       - ./backend/pyproject.toml:/src/pyproject.toml:ro
+      # Кеш датасетов газеттира (make be-geo-load), общий с e2e-стеком.
+      - ./backend/.geo-cache:/src/.geo-cache
     depends_on:
       mindtrace_pg:
         condition: service_healthy
@@ -144,7 +146,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_LOG_LEVEL: warn
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:

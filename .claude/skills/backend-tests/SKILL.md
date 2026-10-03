@@ -53,8 +53,8 @@ Protocols, determinism, coverage, anti-patterns).
    make typecheck                   # ty — catches fake/Protocol drift
    ```
 7. **Coverage.** `make coverage`. The 90% threshold is already enforced (`--cov-fail-under=90`
-   in the Makefile, forced by the pre-push hook) — below it the code does not merge, so check
-   before pushing rather than after.
+   in the Makefile, forced by the pre-commit hook) — below it the code does not merge, so check
+   before committing rather than after.
 8. **Review (optional).** For non-trivial additions, ask the user to run `/code-review` — it
    reviews the diff in a fresh subagent. It is user-invoked; you cannot launch it yourself.
 

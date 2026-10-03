@@ -38,6 +38,7 @@ class UserCredentialsRepositoryPort(Protocol):
 
     async def find_user_credentials_by_email_or_username(
         self,
+        *,
         email: str,
         username: str,
     ) -> list[UserCredentialsEntity]: ...
@@ -62,6 +63,7 @@ class ChallengeRepositoryPort(Protocol):
 
     async def find_active_challenge_for_update(
         self,
+        *,
         user_id: UUID,
         challenge_type: ChallengeType,
     ) -> ChallengeEntity | None: ...

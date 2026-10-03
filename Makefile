@@ -76,8 +76,8 @@ prod-down: ## Остановить прод-стек (тома/данные со
 	$(COMPOSE_PROD) down
 
 # --- Git hooks: мерж-гейт покрытия без CI ---
-# Разовая активация pre-push hook'а (.githooks/pre-push): блокирует push при покрытии < 90%.
-hooks: ## Активировать git-хуки репозитория (pre-push coverage-гейт, core.hooksPath=.githooks)
+# Разовая активация pre-commit hook'а (.githooks/pre-commit): блокирует commit при покрытии < 90%.
+hooks: ## Активировать git-хуки репозитория (pre-commit coverage-гейт, core.hooksPath=.githooks)
 	@git config core.hooksPath .githooks
 	@echo "${GREEN}INFO :  ${AZURE}git hooks активированы: ${PURPLE}core.hooksPath=.githooks${RESET}"
 
@@ -117,7 +117,7 @@ test-e2e: ## Frontend e2e (Playwright; сам поднимает однораз�
 	status=$$?; \
 	if [ $$status -ne 0 ]; then \
 		echo "${GREEN}INFO :  ${AZURE}e2e failed (exit $$status) — tail логов сервисов перед сносом${RESET}"; \
-		$(COMPOSE_E2E) logs --tail=50 migrate worker app frontend 2>/dev/null || true; \
+		$(COMPOSE_E2E) logs --tail=50 migrate geo-load worker app frontend 2>/dev/null || true; \
 	fi; \
 	echo "${GREEN}INFO :  ${AZURE}Tearing down ephemeral e2e stack (containers + network + volumes)${RESET}"; \
 	$(COMPOSE_E2E) down -v --remove-orphans; \

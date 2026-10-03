@@ -62,12 +62,23 @@ make typecheck                             # tsc -b
 make test                                  # vitest run (один прогон)
 make coverage                              # vitest run --coverage
 make check                                 # lint + typecheck + audit + test (CI-стиль; тот же таргет гоняет CI)
+make budget                                # прод-сборка + бюджет бандла по страницам (.claude/rules/web/performance.md)
+make generate-world                        # границы стран: data/world-countries.geo.json → src/data/world-countries.topo.json
+
+# Контракт API: бэк → backend/openapi.json → frontend/src/api/generated/ (оба коммитятся)
+make be-openapi-dump                       # схема приложения изменилась → перезаписать openapi.json
+make fe-generate-api                       # затем перегенерировать SDK (@hey-api/openapi-ts)
 
 # Database migrations — из backend/, против запущенного контейнера
 make migrate-create "description"          # создать миграцию (autogenerate)
 make migrate-upgrade                       # применить миграции
 make migrate-downgrade                     # откатить одну
 make migrate-history                       # история миграций
+make geo-load                              # догрузить справочник мест (manifest.toml) в дев-базу; уже загруженное пропускает
+
+# Пересоздать дев-базу с нуля (init-миграция редактируется на месте, прода нет) — из корня:
+# make stop && docker volume rm mindtrace_pg_data && make run, затем из backend/:
+# make migrate-upgrade && make geo-load   (файл датасета берётся из backend/.geo-cache, если уже скачан)
 
 # Доступ к ДЕВ-базе (для EXPLAIN, инспекции схемы). Прода на этом хосте нет.
 # POSTGRES_HOST=mindtrace_pg работает только ВНУТРИ docker-сети; с хоста порт проброшен на 5439.
@@ -82,9 +93,9 @@ cd backend && uv run alembic upgrade <base>:<head> --sql
 
 DDD с **доменной** организацией модулей (`auth`, `users`, `geo`), каждый домен — четыре слоя
 `domain/` / `application/` / `infra/` / `presentation/`. Слои, порты (DIP), транзакционная
-граница UoW и правила именования вынесены в **@~/.claude/rules/python/ddd.md**, конвенции
+граница UoW и правила именования вынесены в **@.claude/rules/python/ddd.md**, конвенции
 переноса данных между слоями (pydantic vs dataclass, `*Command`/`*Result`/`*Request`/`*Response`,
-где валидация, кто маппит) — в **@~/.claude/rules/python/dto.md**. Оба подключены в конце этого
+где валидация, кто маппит) — в **@.claude/rules/python/dto.md**. Оба подключены в конце этого
 файла и являются источником истины по своим темам. Ниже — только то, что специфично для MindTrace.
 
 Технологическая привязка слоёв: `infra/` — SQLAlchemy-модели, `presentation/` — FastAPI-роуты.
@@ -98,16 +109,18 @@ DDD с **доменной** организацией модулей (`auth`, `us
 - **procrastinate** (`infra/procrastinate/`) — `ProcrastinateComponent`+`ProcrastinateApp`, Protocol'ы `TaskBusPort`+`SessionBoundTaskBusPort` с реализацией `ProcrastinateTaskBus`+`ProcrastinateSessionBoundTaskBus` (вертикаль владеет своими протоколами, как `crypto`; фасад для defer'а: `TaskBusPort` без сессии для fire-and-forget, `bus.bind_to(uow.session)` — atomic defer в текущей SA-транзакции), `TaskBusComponent` (регистрирует impl под ключом `ProcrastinateTaskBus`). Application зависит от Protocol'а `TaskBusPort`. Импорт: `from app.shared.infra.procrastinate import TaskBusPort`.
 - **email** (`infra/email/`) — `EmailTransportPort` Protocol, `ResendClient`, `ResendComponent`, `EmailMessage`. Импорт: `from app.shared.infra.email import EmailTransportPort`.
 - **http** (`infra/http/`) — `BaseHTTPClient` (используют клиенты-наследники), `HTTPClientConfig`, `ExternalAPI*Error`. Импорт: `from app.shared.infra.http import BaseHTTPClient`.
-- **jwt** (`infra/jwt/`) — `JWTService` + `JWTDecodeError`. Импорт: `from app.shared.infra.jwt import JWTService`.
+- **jwt** (`infra/jwt/`) — `JWTService` + `JWTDecodeError`, а также request-аутентификация: `current_user_id_dependency` (Bearer → UUID) + `InvalidAccessTokenError` (код `auth.invalid_access_token` сохранён как внешний контракт). Вертикаль shared, чтобы presentation-слои доменов не зависели от `auth.presentation`. Импорт: `from app.shared.infra.jwt import JWTService, current_user_id_dependency`.
 - **crypto** (`infra/crypto/`) — два независимых Protocol'а: `SaltedHasherPort` (с реализацией `Argon2SaltedHasher` — для паролей и других плейнтекст-секретов, где требуется уникальная соль и timing-safe verify) и `DeterministicHasherPort` (с реализацией `Sha256DeterministicHasher` — для refresh-token lookup'а по индексу). Импорт: `from app.shared.infra.crypto import SaltedHasherPort, Argon2SaltedHasher, DeterministicHasherPort, Sha256DeterministicHasher`.
 - **logging** (`logging/`) — `configure_logging`, `get_logger`, `HTTPLoggingMiddleware` + helper-модули (`events`, `classify`, `context`). Импорт: `from app.shared.logging import get_logger`.
+- **pagination** (`pagination/`) — курсорная (keyset) пагинация для любого списка: `CursorPageRequest` / `CursorPageResponse[ItemT]` на HTTP-границе (запрос списка наследует первый и добавляет фильтры, ответ — наследник второго), `PageQuery` / `CursorPage[ItemT]` в application (`PageQuery` — поле команды списка), `encode_cursor` / `decode_cursor` / `split_page` для репозитория (курсор — непрозрачная строка с ключом сортировки последней строки; кривой курсор → `InvalidCursorError`, код `invalid_cursor`). Импорт: `from app.shared.pagination import CursorPageRequest, PageQuery, split_page`.
+- **fractional_index** (`fractional_index/`) — ручной порядок строк дробным ключом: `generate_key_between` (ключ строго между двумя, base-62, побайтный порядок), `SortKeyModel` (абстрактная модель с колонкой `sort_key` `COLLATE "C"`), общий порт `SortKeyRepositoryPort[ScopeT]` и его реализация `BaseSortKeyRepository[ModelT, ScopeT]` (`lock_sort_keys` / `find_last|next|previous_sort_key`). Домен задаёт только область порядка: frozen dataclass (`JourneyOrderScope`) и хук `_sort_key_scope` → условия `WHERE`; уникальный индекс по области + `sort_key` модель объявляет сама. Импорт: `from app.shared.fractional_index import generate_key_between, BaseSortKeyRepository`.
 - **BaseDBRepository[ModelT]** (`repositories/base_repository.py`) — generic async repository с `_fetch_one` (выполнить SELECT и вернуть одну модель или `None`) и `insert` (добавить модель в сессию без коммита). Доменные репозитории наследуются и добавляют собственные SELECT'ы поверх `_fetch_one`.
 - **Exception hierarchy** (`exceptions/`) — `BaseDomainError` базовый класс. Исключения **транспортно-нейтральны**: НЕ несут HTTP-статус, а классифицируются нейтральной `ErrorCategory` (`INVALID_INPUT`, `UNAUTHENTICATED`, `NOT_FOUND`, ...). Базовые подклассы (`InvalidInputError`, `UnauthenticatedError`, `PermissionDeniedError`, `NotFoundError`, `ConflictError`, `GoneError`, `UnprocessableError`, `RateLimitedError`, `InternalError`) задают `category` + дефолтный `code`/`message`. Перевод категории в HTTP-статус живёт единственным маппингом `resolve_http_status` в HTTP-адаптере (`mappings.py`), его переиспользуют и handler, и логирование; для другого транспорта (gRPC) заводится отдельный адаптер, домен не трогается. `code` — стабильный машинный идентификатор и часть внешнего API-контракта (фронт мапит его в текст). Global handler в `handlers.py` конвертирует доменные исключения в `ErrorResponse`.
 - **Settings** (`settings.py`) — pydantic-settings loading из `.env`, frozen model. Доступ через cached `settings` singleton.
 
 #### Component+Registry vs `@cache`-factory (когда что)
 
-Критерий выбора и правила composition root — в @~/.claude/rules/python/component-lifecycle.md
+Критерий выбора и правила composition root — в @.claude/rules/python/component-lifecycle.md
 (этот проект и есть его reference implementation). Здесь — только распределение:
 
 - **Компоненты** (lifecycle-ресурс): `SqlAlchemyComponent`, `ResendComponent`, `ProcrastinateComponent`, `TaskBusComponent`.
@@ -129,7 +142,7 @@ DDD с **доменной** организацией модулей (`auth`, `us
 
 - Line length: 120
 - Quotes: double
-- Cyrillic is allowed in strings, comments, and user-facing error messages (RUF001-003 ignored)
+- Cyrillic is allowed in strings, comments, and user-facing error messages (RUF001-003 ignored) — **backend only**. Во `frontend/` комментарии пишутся только для ассистента и только на английском (см. `.claude/rules/typescript/coding-style.md` → «Comments»)
 
 ### Toolchain
 
@@ -166,6 +179,41 @@ User(id=user_entity.user_id, email=user_entity.email)
 Password(user_model.password)
 User(user_entity.user_id, user_entity.email)
 ```
+
+The declaring side enforces it: a function, method or constructor with **more than one**
+parameter makes them all keyword-only with `*`. A single parameter may stay positional.
+`self` / `cls` are not counted.
+
+```python
+# correct
+def decode_cursor(*, cursor: str, parsers: Sequence[CursorParser]) -> tuple[object, ...]: ...
+def find_journey_years_by_user_id(self, user_id: UUID) -> list[int]: ...
+
+# wrong — two parameters, the first one still positional
+def decode_cursor(cursor: str, *, parsers: Sequence[CursorParser]) -> tuple[object, ...]: ...
+```
+
+Exempt are only signatures that something else calls **positionally**: framework hooks
+(pydantic validators, Starlette exception handlers and middleware `dispatch`, procrastinate
+`pass_context` tasks), pytest test functions and fixtures (pytest injects them by name; fakes and
+helpers under `tests/` still follow the rule), dunder protocol methods (`__eq__`, `__aexit__`; `__init__` is not
+exempt), callbacks passed to `map`/`sorted`/`key=`, and `Protocol` methods mirroring a
+third-party API.
+
+### Collection types
+
+`list` is not the default. Pick the type by what the data means — on return types of ports and
+repositories, application DTOs and response schemas alike:
+
+- ordered, not changed after it is built → `tuple[T, ...]`
+- distinct values, order means nothing → `frozenset[T]`
+- ordered **and** distinct (years ascending) → `tuple[T, ...]`; the source guarantees uniqueness
+  (`DISTINCT`) and the docstring says so — Python has no ordered set, and a `set` loses the order
+- `list[T]` — only a local accumulator inside one function
+
+Response schemas are also frozen (`model_config = ConfigDict(frozen=True)`). Neighbouring code
+that still uses `list` is not a precedent. Details and the reasoning — `.claude/rules/python/dto.md`
+→ «Immutable by default».
 
 ### Self return type
 
@@ -230,6 +278,7 @@ Examples:
 
 - **Backend** — версия в `backend/pyproject.toml`, реальный SemVer по контракту HTTP-API и машинным кодам ошибок (`code`). Бамп бэка тянет за собой `backend/uv.lock`, если менялись зависимости. Теги — `backend-vX.Y.Z`.
 - **Frontend** — версия в `frontend/package.json`, маркер релиза SPA (внешнего контракта нет, SemVer формален). Теги — `frontend-vX.Y.Z`.
+- **Датасеты справочника мест** — не версия кода, а данные: ассет GitHub Release под тегом `geo-data-vN`, версия и sha256 — в `backend/app/geo/infra/datasets/manifest.toml`. Новый датасет = новый тег + правка манифеста.
 
 Не бампать версию одного артефакта на изменения другого: чисто фронтовая фича не трогает `pyproject`, чисто бэковая — не трогает `package.json`.
 
@@ -243,9 +292,46 @@ CHANGELOG — **один** файл в корне. Новые записи гр�
 
 ### Coverage gate (merge)
 
-Код с покрытием **< 90%** мержить нельзя — на обеих сторонах. Порог задан в самих coverage-таргетах: backend `make coverage` (`--cov-fail-under=90`), frontend `make coverage` (vitest `thresholds` в `vite.config.ts`). Форсится **локальным pre-push hook'ом** (`.githooks/pre-push`), а не CI: перед каждым push гоняет coverage обеих сторон и роняет push при провале порога.
+Код с покрытием **< 90%** мержить нельзя — на обеих сторонах. Порог задан в самих coverage-таргетах: backend `make coverage` (`--cov-fail-under=90`), frontend `make coverage` (vitest `thresholds` в `vite.config.ts`). Форсится **локальным pre-commit hook'ом** (`.githooks/pre-commit`), а не CI: перед каждым commit гоняет coverage обеих сторон и роняет commit при провале порога.
 
-Активация разовая: `make hooks` (== `git config core.hooksPath .githooks`). Обход в исключительном случае — `git push --no-verify`.
+Активация разовая: `make hooks` (== `git config core.hooksPath .githooks`). Обход в исключительном случае — `git commit --no-verify`.
+
+### Codegen drift gate
+
+Контракт фронта генерируется из OpenAPI, поэтому в гите лежат два производных артефакта:
+`backend/openapi.json` и `frontend/src/api/generated/`. Устареть они могут независимо, и на
+каждый есть свой гейт:
+
+- **бэк** — снапшот-тест `tests/api/test_openapi_schema.py`, входит в `make check`/`check-ci`;
+- **фронт** — шаг CI: `make generate-api` + `git diff --exit-code`.
+
+Красный гейт чинится не правкой артефакта руками, а пересборкой: `make be-openapi-dump`, затем
+`make fe-generate-api`, оба результата в тот же коммит.
+
+**PR'ы от dependabot этого сделать не могут.** Бамп fastapi/pydantic меняет рендер схемы, бамп
+`@hey-api/openapi-ts` — вывод генератора; в обоих случаях гейт краснеет на ветке бота, и
+пересборку делает человек, дописывая коммит в его ветку.
+
+Генератор запинен **точной** версией: `@hey-api/openapi-ts` пре-1.0, минорные релизы меняют
+вывод. Пин на предрелизной ветке (`0.0.0-next-*`) — вынужденный: стабильная линия падает на
+TypeScript 7 (`ts.SyntaxKind` отсутствует в нативном компиляторе), предрелизная не зависит от
+compiler API вовсе. Снять, когда TS 7 поедет в стабильном релизе (проверено 2026-10-01: стабильная
+0.99.0 всё ещё падает на `ts.SyntaxKind`).
+
+Побочный эффект пина: по semver `0.0.0-next-*` меньше любой стабильной версии, поэтому dependabot
+считает уязвимым каждый advisory с диапазоном «`< X.Y.Z`», даже когда исправление уже в
+предрелизе. Проверять по коду: уязвимый код генератора копируется в
+`frontend/src/api/generated/`, там и смотреть (так закрыт GHSA-hhx9-57xq-r5rw: слоты в
+`core/params.gen.ts` уже на `Object.create(null)`, PoC из advisory прототип не подменяет).
+
+Оттуда же `overrides` на `js-yaml` в `frontend/package.json`: парсер схемы у предрелиза тянет
+версию из уязвимого диапазона, и `make check` краснеет на `npm audit`. Override поднимает
+только этот транзитивный пакет; снимается вместе с пином.
+
+Тот же приём — для границ стран плоских карт: источник `frontend/data/world-countries.geo.json`
+(контракт и провенанс — в `frontend/data/README.md`), производный
+`frontend/src/data/world-countries.topo.json`, пересборка `make fe-generate-world`, гейт — шаг CI
+с `git diff --exit-code`. `topojson-server` запинен точной версией: от него зависит вывод.
 
 ## Always-follow rules
 
@@ -260,12 +346,12 @@ Python (бэкенд `app/`, `tests/`, `migrations/`):
 @.claude/rules/python/testing.md
 
 DDD-конвенции (слои, порты, UoW, именование), перенос данных между слоями (DTO) и composition
-root (выбор component/`@cache`, порядок старта) — **личные файлы вне репозитория**,
-переиспользуются другими проектами:
+root (выбор component/`@cache`, порядок старта) — **личные правила, в git не попадают**
+(`.gitignore`); канон — `~/.claude/optional/rules/python/`, здесь рабочие копии:
 
-@~/.claude/rules/python/ddd.md
-@~/.claude/rules/python/dto.md
-@~/.claude/rules/python/component-lifecycle.md
+@.claude/rules/python/ddd.md
+@.claude/rules/python/dto.md
+@.claude/rules/python/component-lifecycle.md
 
 TypeScript / React (фронтенд `frontend/src/`):
 
@@ -278,7 +364,7 @@ TypeScript / React (фронтенд `frontend/src/`):
 
 > **Приоритет при конфликтах:** правила, описанные выше в этом файле (Code Style, Docstrings, Named arguments, Shared infrastructure), всегда побеждают над подключёнными rules. Подключённые rules — базовый каркас; конкретика проекта в первой части CLAUDE.md является источником истины.
 >
-> **Файлы из `~/.claude/rules/`** (`ddd.md`, `dto.md`, `component-lifecycle.md`) живут вне репозитория, поэтому у клонировавшего репо они не разрешатся: в CLAUDE.md останутся ссылки на файлы, которых у него нет. Конвенции при этом видны по коду и по `.claude/rules/python/testing.md`.
+> **`ddd.md`, `dto.md`, `component-lifecycle.md`** — личные конвенции: канонический экземпляр лежит в `~/.claude/optional/rules/python/`, здесь рабочая копия, исключённая из git (`.gitignore`). У клонировавшего репо этих файлов не будет — в CLAUDE.md останутся ссылки на отсутствующие файлы; конвенции при этом видны по коду и по `.claude/rules/python/testing.md`. Правишь канон — перекопируй сюда (кросс-проектный `@`-импорт в `~/.claude/` не работает, симлинк тоже).
 
 ## Available toolkit
 

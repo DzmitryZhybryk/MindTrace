@@ -7,6 +7,7 @@
 """
 
 import datetime as dt
+import hashlib
 from uuid import UUID, uuid4
 
 from app.auth.domain.entities import ChallengeEntity, RefreshTokenEntity, UserCredentialsEntity
@@ -14,14 +15,17 @@ from app.auth.domain.enums import ChallengeType, UserRole
 from app.auth.domain.value_objects import Password
 from app.geo.domain.entities import PlaceEntity
 from app.geo.domain.value_objects import PlaceNames
+from app.geo.infra.datasets.manifest import DatasetSpec
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
-from app.journeys.domain.value_objects import ApproximateDate, GeoPoint
+from app.journeys.domain.value_objects import GeoPoint
 from app.users.domain.entities import UserEntity
 
 # Опорные координаты для детерминированных journeys/geo тестов (Москва→Лондон ≈ 2500 км).
 _MOSCOW_LAT, _MOSCOW_LNG = 55.75, 37.62
 _LONDON_LAT, _LONDON_LNG = 51.5, -0.12
+MOSCOW_PLACE_ID = UUID("00000000-0000-0000-0000-000000000001")
+LONDON_PLACE_ID = UUID("00000000-0000-0000-0000-000000000002")
 
 
 def make_password(*, hash: str = "argon2-hash") -> Password:
@@ -128,16 +132,12 @@ def make_challenge(
 
 def make_geo_point(
     *,
-    name: str = "Moscow",
+    place_id: UUID = MOSCOW_PLACE_ID,
     country_code: str = "RU",
     latitude: float = _MOSCOW_LAT,
     longitude: float = _MOSCOW_LNG,
 ) -> GeoPoint:
-    return GeoPoint(name=name, country_code=country_code, latitude=latitude, longitude=longitude)
-
-
-def make_approximate_date(*, year: int = 2020, month: int | None = None, day: int | None = None) -> ApproximateDate:
-    return ApproximateDate.from_parts(year=year, month=month, day=day)
+    return GeoPoint(place_id=place_id, country_code=country_code, latitude=latitude, longitude=longitude)
 
 
 def make_journey(
@@ -147,7 +147,9 @@ def make_journey(
     origin: GeoPoint | None = None,
     destination: GeoPoint | None = None,
     transport_type: TransportType = TransportType.AIR,
-    traveled_on: ApproximateDate | None = None,
+    distance_km: int = 2500,
+    traveled_year: int = 2020,
+    sort_key: str | None = None,
     created_at: dt.datetime | None = None,
     updated_at: dt.datetime | None = None,
     deleted_at: dt.datetime | None = None,
@@ -155,11 +157,13 @@ def make_journey(
     return JourneyEntity(
         journey_id=journey_id or uuid4(),
         user_id=user_id or uuid4(),
-        origin=origin or make_geo_point(name="Moscow", country_code="RU"),
+        origin=origin or make_geo_point(country_code="RU"),
         destination=destination
-        or make_geo_point(name="London", country_code="GB", latitude=_LONDON_LAT, longitude=_LONDON_LNG),
+        or make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=_LONDON_LAT, longitude=_LONDON_LNG),
         transport_type=transport_type,
-        traveled_on=traveled_on or make_approximate_date(),
+        distance_km=distance_km,
+        traveled_year=traveled_year,
+        sort_key=sort_key if sort_key is not None else f"{uuid4().hex}1",
         created_at=created_at,
         updated_at=updated_at,
         deleted_at=deleted_at,
@@ -171,10 +175,10 @@ def make_place(
     place_id: UUID | None = None,
     en: str = "Moscow",
     ru: str | None = "Москва",
-    country_code: str = "RU",
+    country_code: str | None = "RU",
     latitude: float = _MOSCOW_LAT,
     longitude: float = _MOSCOW_LNG,
-    population: int = 10_000_000,
+    population: int | None = 10_000_000,
 ) -> PlaceEntity:
     return PlaceEntity(
         place_id=place_id or uuid4(),
@@ -184,3 +188,14 @@ def make_place(
         longitude=longitude,
         population=population,
     )
+
+
+def make_dataset_spec(
+    *,
+    content: bytes,
+    name: str = "test-cities",
+    version: str = "2026-01-01",
+    url: str = "https://example.test/test-cities.csv.gz",
+) -> DatasetSpec:
+    """Датасет манифеста, чей sha256 совпадает с ``content`` — байтами «скачиваемого» файла."""
+    return DatasetSpec(name=name, version=version, url=url, sha256=hashlib.sha256(content).hexdigest())

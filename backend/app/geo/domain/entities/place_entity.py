@@ -6,14 +6,10 @@ from app.geo.domain.value_objects import PlaceNames
 
 class PlaceEntity:
     """
-    Место из газеттира (read-only справочник-кэш).
+    Место из газеттира. Только для чтения: газеттир меняет лишь загрузчик датасетов.
 
-    Идентичность — собственный суррогатный ``place_id`` (UUID), а НЕ вендорский ключ
-    источника: справочник переживёт смену гео-вендора (GeoNames → Google), поэтому наружу
-    отдаём свой стабильный id, а провенанс источника (``external_id`` вида
-    ``"GeoNames:524901"``) живёт только в infra-модели. Сущность read-only: газеттир —
-    справочник, поездка хранит снапшот места, сам справочник из домена не меняется.
-    Разноязычные имена инкапсулированы в ``PlaceNames`` — резолв под язык делегируется ему.
+    ``place_id`` — наш id места, не ключ поставщика: его можно отдавать наружу и хранить.
+    Названия на разных языках — в ``PlaceNames``.
     """
 
     def __init__(
@@ -21,10 +17,10 @@ class PlaceEntity:
         *,
         place_id: UUID,
         names: PlaceNames,
-        country_code: str,
+        country_code: str | None,
         latitude: float,
         longitude: float,
-        population: int,
+        population: int | None,
     ) -> None:
         self.place_id = place_id
         self.names = names
