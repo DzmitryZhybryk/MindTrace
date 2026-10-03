@@ -1,19 +1,19 @@
 import { clamp } from "../../../components/globe/route";
 
-// Центры подписей годов не ближе этого — иначе они налезли бы друг на друга; и половина этого —
-// отступ подписи от края ползунка. Год — 4 моноширинных символа 13px и поля кнопки, px.
+// Year label centers are no closer than this, otherwise they would overlap; half of it is the
+// label's inset from the slider edge. A year is 4 monospace 13px characters plus button padding, px.
 const LABEL_SPACING_PX = 48;
 
-/** Ручка ползунка: 0 — левая, 1 — правая. */
+/** Slider thumb: 0 is the left one, 1 the right. */
 export type ThumbIndex = 0 | 1;
 
 /**
- * Где по горизонтали стоят центры подписей годов (px от левого края ползунка).
+ * Horizontal centers of the year labels (px from the slider's left edge).
  *
- * Обычно — ровно под своими ручками. Сошлись ручки ближе `LABEL_SPACING_PX` — подпись той, что
- * стоит, остаётся на месте, а подпись той, что двигают, дальше не приближается: держится на этом
- * расстоянии от соседней. Ни одна подпись не выходит за края ползунка; у самого края, где уступить
- * некуда, отходит уже стоящая подпись.
+ * Normally exactly under their thumbs. When thumbs get closer than `LABEL_SPACING_PX`, the label
+ * of the stationary one stays put, and the label of the one being moved does not come closer:
+ * it holds that distance from its neighbour. No label leaves the slider edges; at the very edge,
+ * where there is nowhere to yield, the already stationary label moves aside.
  */
 export function yearLabelCenters(
   thumbs: readonly [number, number],

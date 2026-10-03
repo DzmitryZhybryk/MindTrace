@@ -3,11 +3,10 @@ import { createContext, useContext } from "react";
 import type { CurrentUserResponse } from "../api/sdk";
 
 /**
- * Состояние профиля текущего пользователя.
+ * Current user profile state.
  *
- * `anonymous` — сессии нет (публичные страницы); `loading` — auth-bootstrap или
- * запрос `/me` в полёте; `error` — профиль не загрузился (рендер сам решает,
- * что показывать без него); `ready` — профиль на руках.
+ * `anonymous`: no session (public pages); `loading`: auth bootstrap or the `/me` request in
+ * flight; `error`: the profile failed to load (the caller decides what to show); `ready`: loaded.
  */
 export type CurrentUserState =
   | { status: "anonymous" }

@@ -63,11 +63,11 @@ describe("HomePage", () => {
   it("дата видна сразу, приветствие появляется после загрузки профиля с фоллбэком на username", async () => {
     renderHome(makeAuthValue({ isAuthenticated: true, emailVerified: true }));
 
-    // Дата не зависит от сети — есть с первого рендера; строки приветствия ещё нет.
+    // The date does not depend on the network and is there from the first render; the greeting line is not yet.
     expect(screen.getByText(/^[A-Za-z]+ · [A-Za-z]+ \d{4}$/u)).toBeInTheDocument();
     expect(screen.queryByText(/Hello,/u)).not.toBeInTheDocument();
 
-    // Дефолтный MSW-профиль: displayName=null → здороваемся по username.
+    // The default MSW profile: displayName=null, so greet by username.
     expect(await screen.findByText("Hello, traveler")).toBeInTheDocument();
   });
 
@@ -92,7 +92,7 @@ describe("HomePage", () => {
 
     renderHome(makeAuthValue({ isAuthenticated: true, emailVerified: true }));
 
-    // Дожидаемся завершения запроса (провайдер перейдёт в error), затем проверяем DOM.
+    // Wait for the request to finish (the provider moves to error), then check the DOM.
     await waitFor(() => {
       expect(screen.getByText(/^[A-Za-z]+ · [A-Za-z]+ \d{4}$/u)).toBeInTheDocument();
     });
@@ -106,7 +106,7 @@ describe("HomePage", () => {
     expect(screen.queryByText(BANNER_MESSAGE)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Open profile menu" }));
-    // Снимаем все пункты разом и проверяем по тексту, что Verify email среди них нет.
+    // Grab all items at once and check by text that Verify email is not among them.
     const names = (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
     expect(names).toContain("Logout");
     expect(names).not.toContain("Verify email");

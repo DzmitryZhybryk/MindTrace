@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from "react";
 interface YearHeaderProps {
   id: string;
   year: number;
-  /** Сдвиг по вертикали, px, пока строку несут через этот год. */
+  /** Vertical offset, px, while a row is carried across this year. */
   shift: number;
 }
 
-/** Ближайший прокручиваемый предок; `null` — прокручивается сама страница. */
+/** Nearest scrollable ancestor; `null` means the page itself scrolls. */
 function scrollParentOf(element: HTMLElement): HTMLElement | null {
   for (let parent = element.parentElement; parent; parent = parent.parentElement) {
     const { overflowY } = getComputedStyle(parent);
@@ -20,18 +20,18 @@ function scrollParentOf(element: HTMLElement): HTMLElement | null {
 }
 
 /**
- * Заголовок года в ленте; прилипает к верху, пока его поездки на экране.
+ * Year heading in the feed; sticks to the top while its journeys are on screen.
  *
- * Фон у заголовка только прилипшего — под него уезжают строки. В остальное время он прозрачный,
- * как и строки, иначе лента читалась бы зеброй. Прилипший заголовок стоит на пиксель выше края
- * прокрутки (`top: -1px`), поэтому наблюдатель видит его не целиком.
+ * Only a stuck heading has a background, since rows scroll under it. Otherwise it is transparent
+ * like the rows, or the feed would read as a zebra. A stuck heading sits one pixel above the
+ * scroll edge (`top: -1px`), so the observer sees it as not fully visible.
  */
 export function YearHeader({ id, year, shift }: YearHeaderProps) {
   const ref = useRef<HTMLHeadingElement>(null);
   const [isStuck, setIsStuck] = useState(false);
   useEffect(() => {
     const header = ref.current;
-    /* v8 ignore next 3 -- заголовок рендерится вместе с эффектом */
+    /* v8 ignore next 3 -- the heading renders together with the effect */
     if (!header) {
       return;
     }

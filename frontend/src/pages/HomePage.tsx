@@ -5,10 +5,10 @@ import { useCurrentUser } from "../user/useCurrentUser";
 import "./home.css";
 
 /*
- * ЗАГЛУШКИ. Дашборд ещё не подключён к бэку: ни статистики, ни рекомендаций, ни списка
- * недавних поездок API пока не отдаёт. Данные оставлены английскими намеренно — переводить
- * вымышленные цифры и описания на два языка значит удваивать работу, которая удалится
- * вместе с моком. Подписи разделов вокруг них — настоящий UI, и они через i18n.
+ * PLACEHOLDERS. The dashboard is not wired to the backend yet: the API returns no statistics,
+ * recommendations or recent trips. The data is English on purpose: translating fictional numbers
+ * and descriptions into two languages doubles work that goes away with the mock. The section
+ * labels around them are real UI and go through i18n.
  */
 const STAT_KEYS = ["countries", "cities", "streak"] as const;
 const STAT_VALUES: Record<(typeof STAT_KEYS)[number], number> = {
@@ -37,9 +37,9 @@ const RECENT = [
 ] as const;
 
 /**
- * «Saturday · May 2026» — текущая дата в языке интерфейса. Собрана из частей
- * (weekday + standalone-месяц + год), а не одним форматом: единый ru-формат Intl
- * добавил бы «г.» после года и склонял бы месяц («мая» вместо «май»).
+ * "Saturday · May 2026": the current date in the UI language. Built from parts (weekday +
+ * standalone month + year) rather than one format: the single Russian Intl format would add
+ * "г." after the year and decline the month ("мая" instead of "май").
  */
 function formatGreetingDate(locale: string): string {
   const now = new Date();
@@ -57,9 +57,9 @@ export function HomePage() {
       <AppHeader />
 
       <main className="home-main">
-        {/* Дата не зависит от сети — видна сразу; за /me гейтится только строка
-            приветствия. Пока профиля нет (loading/error) её место держит nbsp —
-            имя появляется на зарезервированной строке без скачка вёрстки. */}
+        {/* The date does not depend on the network and shows immediately; only the greeting line
+            is gated on /me. While there is no profile (loading/error) an nbsp holds its place, so
+            the name appears on a reserved line with no layout jump. */}
         <div className="home-greeting">
           <span className="home-greeting__hello">
             {currentUser.status === "ready"
@@ -69,10 +69,10 @@ export function HomePage() {
           <span className="home-greeting__date">{formatGreetingDate(i18n.language)}</span>
         </div>
 
-        {/* Пустой центральный слот: место, где визуально стоит app-global глобус-фон (корневой
-            PersistentGlobeHost, кадрируется по data-screen="home"). Держит вертикальный ритм
-            greeting → планета → подпись; сам прозрачен и для глаз, и для событий — жесты сквозь
-            него уходят планете (драг-вращение, контракт — persistent-globe.css). */}
+        {/* Empty center slot where the app-global globe background visually sits (the root
+            PersistentGlobeHost, framed by data-screen="home"). Holds the vertical rhythm greeting ->
+            planet -> caption; it is transparent to both eyes and events, so gestures pass through
+            to the planet (drag rotation, contract in persistent-globe.css). */}
         <div className="home-stage" aria-hidden data-globe-slot />
 
         <p className="home-aura">{t("home.aura")}</p>

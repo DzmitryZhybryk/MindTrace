@@ -11,16 +11,16 @@ import { GeoNamesAttribution } from "./GeoNamesAttribution";
 import { JourneysLegendCard } from "./JourneysLegendCard";
 import { MAP_TONE } from "./journeys-data";
 
-// Стабильная ссылка на «стран нет»: `WorldMap` пересчитывает раскраску по идентичности пропа.
+// Stable "no countries" reference: `WorldMap` recomputes colouring by prop identity.
 const NO_COUNTRIES: MapCountry[] = [];
 
 /**
- * Переводит агрегат карты в модель `WorldMap`.
+ * Converts the map aggregate into the `WorldMap` model.
  *
- * Эндпоинт по смыслу отдаёт только посещённые страны (wishlist — отдельный запрос), поэтому
- * статус проставляем здесь. Имя страны фронт резолвит из кода сам, бэк его не шлёт.
+ * The endpoint returns only visited countries (wishlist is a separate request), so the status is
+ * set here. The frontend resolves the country name from the code; the backend does not send it.
  *
- * Модульная (а не инлайн-стрелка) — Query мемоизирует результат `select` по ссылке на функцию.
+ * Module-level (not an inline arrow): Query memoizes the `select` result by function reference.
  */
 function toMapCountries(response: JourneysMapResponse): MapCountry[] {
   return response.countries.map((country) => ({
@@ -36,15 +36,15 @@ function toMapCountries(response: JourneysMapResponse): MapCountry[] {
 }
 
 /**
- * Под-вкладка «Карта путешествий» — индексный маршрут /journeys. Тянет агрегат поездок
- * пользователя с бэка и раскрашивает карту мира; пустой набор → карта серая (поездок нет).
- * Загрузка/ошибка показываются оверлеем поверх карты — сама карта рендерится сразу.
+ * "Journey map" sub-tab, the index route /journeys. Fetches the user's journey aggregate from
+ * the backend and colours the world map; an empty set means a grey map (no journeys).
+ * Loading/error show as an overlay over the map; the map itself renders immediately.
  */
 export function JourneysMapView() {
   const { t } = useTranslation("journeys");
   const { t: tCommon } = useTranslation("common");
-  // `staleTime: 0` — своя свежесть поверх общего с глобусом-фоном queryKey: вкладку карты
-  // открывают, чтобы увидеть актуальные поездки, поэтому на каждый маунт идём за данными.
+  // `staleTime: 0`: own freshness on top of the queryKey shared with the globe background. The map
+  // tab is opened to see current journeys, so fetch on every mount.
   const { data, isPending, isError, isFetching, refetch } = useQuery({
     ...getJourneysMapOptions(),
     staleTime: 0,
@@ -79,8 +79,8 @@ export function JourneysMapView() {
           <Text size="sm" fw={500} c="var(--text-error)">
             {t("map.error")}
           </Text>
-          {/* Алерт остаётся на экране на время повтора — спиннер живёт в самой кнопке,
-              иначе управление пропадало бы вместе с сообщением. */}
+          {/* The alert stays on screen during a retry; the spinner lives in the button itself,
+              otherwise the control would vanish together with the message. */}
           <Button size="xs" variant="subtle" color="gray" loading={isFetching} onClick={() => refetch()}>
             {t("map.retry")}
           </Button>

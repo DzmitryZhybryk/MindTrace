@@ -13,8 +13,8 @@ describe("createGlobeLabel", () => {
   });
 
   it("вставляет название текстом, а не разметкой", () => {
-    // Ключевая гарантия: подписи приходят из данных, и HTML-строка вместо textContent
-    // сделала бы из них XSS. Проверяем именно это, а не внешний вид.
+    // The key guarantee: labels come from data, and an HTML string instead of textContent would make
+    // them an XSS vector. This is what is checked, not the look.
     const label = createGlobeLabel("<img src=x onerror=alert(1)>", "xss|0|0");
 
     expect(label.querySelector("img")).toBeNull();

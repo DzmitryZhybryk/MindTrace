@@ -16,28 +16,28 @@ import { citiesFromJourneysGlobe, type UserCityPoint } from "./userCities";
 import "./persistent-globe.css";
 
 /*
- * Холст — лениво, отдельным chunk'ом: three/react-globe.gl (~1.8 МБ) не должны попадать на
- * критический путь первой отрисовки НИ ОДНОГО экрана. Обёртка ниже (тёмный фон + кадрирование
- * по data-screen) — чистый CSS, появляется в первом кадре без WebGL; отсюда `fallback={null}`.
+ * The canvas is lazy, in its own chunk: three/react-globe.gl (~1.8 MB) must stay off the
+ * first-paint critical path of EVERY screen. The wrapper below (dark backdrop + framing by
+ * data-screen) is pure CSS and appears in the first frame without WebGL, hence `fallback={null}`.
  */
 const GlobeCanvas = lazy(() => import("./GlobeCanvas").then((m) => ({ default: m.GlobeCanvas })));
 
 /**
- * «Экран» глобуса — грань камеры и кадрирование сферы (`data-screen`). Публичные грани
- * (landing/signup/login), авторизованный `home` и `journeyAdd` — колонка формы поездки,
- * кадрируемая по слоту, который публикует страница. Остальные `/journeys*` своей грани не
- * дают — там глобус прячется (`visible=false`), оставаясь на последней.
+ * A globe "screen": a camera face plus sphere framing (`data-screen`). Public faces
+ * (landing/signup/login), authenticated `home`, and `journeyAdd` (the journey form column, framed
+ * by the slot the page publishes). Other `/journeys*` routes have no face: the globe hides there
+ * (`visible=false`), staying on the last one.
  */
 type Screen = "landing" | "signup" | "login" | "home" | "journeyAdd";
 
-// Стабильная ссылка на «точек нет»: `react-globe.gl` сравнивает данные слоя по идентичности,
-// и новый `[]` на каждом рендере заставлял бы его пересобирать слой подписей впустую.
+// Stable "no points" reference: `react-globe.gl` compares layer data by identity, and a new `[]`
+// each render would make it rebuild the label layer for nothing.
 const NO_CITIES: GlobeCity[] = [];
 const NO_USER_CITIES: UserCityPoint[] = [];
 
-// Точка обзора камеры для каждой грани: разные стороны планеты, чтобы переход читался
-// «перелётом». `home` — грань дашборда (наследует прежний HomeGlobe), отдельная от login,
-// поэтому вход login→home идёт видимым перелётом камеры.
+// Camera point of view per face: different sides of the planet so a transition reads as a
+// fly-over. `home` is the dashboard face, separate from login, so login -> home is a visible
+// camera flight.
 const SCREEN_POV: Record<Screen, GlobePov> = {
   landing: { lat: 22, lng: 24, altitude: 2.35 },
   signup: { lat: 44, lng: -34, altitude: 1.85 },
@@ -50,22 +50,22 @@ interface GlobeView {
   screen: Screen;
   pov: GlobePov;
   autoRotate: boolean;
-  /** Драг-вращение курсором/пальцем. Включено только там, где планета — главный объект экрана. */
+  /** Drag rotation by cursor/finger. On only where the planet is the screen's main object. */
   interactive: boolean;
-  /** Виден ли глобус-фон. `false` на `/journeys*` — там его место занимает 2D-карта/форма. */
+  /** Whether the globe background is visible. `false` on `/journeys*`, where a 2D map/form takes its place. */
   visible: boolean;
 }
 
 /**
- * Выбирает грань, режим вращения, интерактивность и видимость по текущему пути.
+ * Picks the face, rotation mode, interactivity and visibility for the current path.
  *
- * `/journeys/add` с опубликованным слотом — грань `journeyAdd` (планета в колонке формы,
- * крутится рукой). Пока в форме не выбрано ни одного места, она вращается, как на дашборде;
- * с первым городом замирает — камера кадрирует маршрут, и вращение уводило бы его из кадра.
- * Без слота (узкий экран: колонка скрыта) и на остальных `/journeys*` (2D-`WorldMap`) глобус
- * спрятан. На auth-форме (login/signup) планета замирает спокойным фоном; лендинг и дашборд
- * вращаются. Драг-вращение — на дашборде и в форме поездки: на остальных гранях глобус чисто
- * декоративен и слой держит `pointer-events: none` (см. persistent-globe.css).
+ * `/journeys/add` with a published slot is the `journeyAdd` face (planet in the form column,
+ * hand-rotatable). While no place is picked in the form it spins as on the dashboard; with the
+ * first city it stops: the camera frames the route and spinning would carry it out of frame.
+ * Without a slot (narrow screen: column hidden) and on other `/journeys*` routes (2D `WorldMap`)
+ * the globe is hidden. On auth forms (login/signup) the planet rests as a calm background;
+ * landing and dashboard spin. Drag rotation is on the dashboard and journey form: on other faces
+ * the globe is purely decorative and the layer keeps `pointer-events: none` (see persistent-globe.css).
  */
 function viewForPath(pathname: string, hasSlot: boolean, hasRoutePlace: boolean): GlobeView {
   if (pathname.startsWith("/journeys/add") && hasSlot) {
@@ -79,7 +79,7 @@ function viewForPath(pathname: string, hasSlot: boolean, hasRoutePlace: boolean)
   }
 
   if (pathname.startsWith("/journeys")) {
-    // Спрятан и на паузе — вращение ему не нужно (защита на случай, если пауза не успела встать).
+    // Hidden and paused: no rotation needed (a guard in case the pause has not landed yet).
     return { screen: "home", pov: SCREEN_POV.home, autoRotate: false, interactive: false, visible: false };
   }
 
@@ -99,11 +99,10 @@ function viewForPath(pathname: string, hasSlot: boolean, hasRoutePlace: boolean)
 }
 
 /**
- * CSS-переменные кадрирования грани `journeyAdd`: холст размером во вьюпорт лишь
- * переносится центром в центр слота — масштаб у него тот же, что на дашборде (см.
- * persistent-globe.css), поэтому уход на /home двигает сферу, а не меняет её размер.
- * Обрезка ограничивает холст прямоугольником слота — иначе на ближнем зуме текстура
- * просвечивала бы сквозь стекло формы.
+ * CSS variables for framing the `journeyAdd` face: the viewport-sized canvas is only moved so its
+ * center lands on the slot center; its scale equals the dashboard's (see persistent-globe.css),
+ * so leaving for /home moves the sphere rather than resizing it. The clip limits the canvas to
+ * the slot rectangle, otherwise at close zoom the texture would show through the form glass.
  */
 function slotFramingStyle(slot: GlobeSlot): CSSProperties {
   const viewportWidth = window.innerWidth;
@@ -121,14 +120,14 @@ function slotFramingStyle(slot: GlobeSlot): CSSProperties {
 }
 
 /**
- * App-global персистентный глобус-фон. Смонтирован один раз на корне (сиблинг `<Routes>`) и
- * НЕ размонтируется ни при какой навигации — камера перелетает между гранями (`pov`), а
- * WebGL-инстанс живёт непрерывно, включая переход `/login` → `/home` после логина.
+ * App-global persistent globe background. Mounted once at the root (sibling of `<Routes>`) and
+ * NOT unmounted by any navigation: the camera flies between faces (`pov`) and the WebGL instance
+ * lives continuously, including `/login` -> `/home` after login.
  *
- * Источник точек зависит от авторизации: аноним видит курируемые маршруты
- * (`ROUTE_ARCS`/`ROUTE_CITIES`), залогиненный — свои реальные посещённые города без дуг
- * (дуги маршрутов — отдельная будущая задача). Реальные города приходят из общего с 2D-картой
- * запроса `/v1/journeys/map`; кэш и его сброс на смене сессии держит Query (см. `AuthProvider`).
+ * The point source depends on auth: anonymous users see curated routes (`ROUTE_ARCS` /
+ * `ROUTE_CITIES`), logged-in ones their own real visited cities without arcs. The real cities
+ * come from the same request as the 2D map (`/v1/journeys/map`); Query owns the cache and its
+ * reset on session change (see `AuthProvider`).
  */
 export function PersistentGlobeHost() {
   const { pathname } = useLocation();
@@ -137,17 +136,17 @@ export function PersistentGlobeHost() {
   const hasRoutePlace = isRealPlace(route?.origin ?? null) || isRealPlace(route?.destination ?? null);
   const view = viewForPath(pathname, slot !== null, hasRoutePlace);
   const isJourneyAdd = view.screen === "journeyAdd";
-  // На грани формы камера кадрирует маршрут; GlobeCanvas сравнивает pov по полям, не по ссылке.
+  // On the form face the camera frames the route; GlobeCanvas compares pov by fields, not by reference.
   const pov = isJourneyAdd ? routeCameraPov(route) : view.pov;
   const [reducedMotion] = useState(prefersReducedMotion);
 
   /*
-   * Уход с формы на дашборд: маршрут не пропадает, а гаснет, пока камера и рамка перелетают
-   * на грань home. Переход ловится сменой грани прямо в рендере (а не эффектом — иначе один
-   * кадр home прошёл бы без маршрута): в этом рендере сцена ещё держит маршрут формы —
-   * страница очистит его в своём unmount-cleanup'е, уже после. Только на /home: выход из
-   * аккаунта или уход на 2D-карту маршрут не удерживают (на login он лёг бы поверх
-   * курируемых дуг).
+   * Leaving the form for the dashboard: the route does not vanish but fades while the camera and
+   * frame fly to the home face. The transition is caught by the face change right in render (not
+   * an effect, otherwise one home frame would pass without the route): in this render the scene
+   * still holds the form route, the page clears it in its unmount cleanup afterwards. Only on
+   * /home: logging out or going to the 2D map does not keep the route (on login it would lie
+   * over the curated arcs).
    */
   const [previousScreen, setPreviousScreen] = useState<Screen>(view.screen);
   const [fadingRoute, setFadingRoute] = useState<GlobeRoute | null>(null);
@@ -171,8 +170,8 @@ export function PersistentGlobeHost() {
     canvasRoute = fadingRoute;
   }
 
-  // Фон снимок не обновляет — новая поездка доезжает сюда инвалидацией из формы, а не
-  // рефетчем по маунту. Ошибку намеренно не разбираем: без точек глобус остаётся глобусом.
+  // The background does not refresh the snapshot: a new journey arrives via invalidation from the
+  // form, not a refetch on mount. Errors are deliberately ignored: without points the globe is still a globe.
   const { data: userCityPoints = NO_USER_CITIES } = useQuery({
     ...getJourneysGlobeOptions(),
     enabled: isAuthenticated,
@@ -180,9 +179,8 @@ export function PersistentGlobeHost() {
     select: citiesFromJourneysGlobe,
   });
 
-  // Названия городов — тот же запрос и кэш, что у 2D-карты. Город, чьё название ещё
-  // грузится или не пришло из-за сбоя, — точка без подписи; город, которого geo не знает, —
-  // подписан как неизвестный.
+  // City names use the same request and cache as the 2D map. A city whose name is still loading
+  // or failed to arrive is a dot without a label; a city geo does not know is labelled as unknown.
   const { t } = useTranslation("common");
   const unknownLabel = t("map.unknownPlace");
   const nameOf = usePlaceNames(userCityPoints.map((city) => city.id));
@@ -196,13 +194,13 @@ export function PersistentGlobeHost() {
     return cities.length > 0 ? cities : NO_CITIES;
   }, [userCityPoints, nameOf, unknownLabel]);
 
-  // Курируемые города гостя подписываются на языке интерфейса; `t` меняется со сменой языка.
+  // Curated guest cities are labelled in the UI language; `t` changes with the language.
   const routeCities = useMemo<GlobeCity[]>(
     () => ROUTE_CITIES.map((city) => ({ name: t(`globe.cities.${city.id}`), lat: city.lat, lng: city.lng })),
     [t],
   );
 
-  // На грани формы — только маршрут, посещённые города не рисуем.
+  // On the form face only the route is drawn, not visited cities.
   let labelCities = isAuthenticated ? userCities : routeCities;
   if (isJourneyAdd) {
     labelCities = NO_CITIES;
@@ -218,16 +216,16 @@ export function PersistentGlobeHost() {
       aria-hidden
     >
       {/*
-       * Обрезка — на отдельной НЕтрансформированной обёртке: clip-path на stage считался бы в
-       * его локальных (масштабированных) координатах, а на самом хосте срезал бы и его ночь.
+       * Clip lives on a separate NON-transformed wrapper: a clip-path on the stage would be
+       * computed in its local (scaled) coordinates, and on the host itself it would cut its night too.
        */}
       <div className="persistent-globe__clip">
-        {/* Кадрирование сферы (сдвиг/масштаб) задаёт CSS по data-screen. */}
+        {/* Sphere framing (shift/scale) is set by CSS per data-screen. */}
         <div className="persistent-globe__stage">
           {/*
-           * Boundary ровно вокруг холста: сбой WebGL/three.js (или chunk'а GlobeCanvas) гасит
-           * только сферу, а CSS-слой хоста — ночной градиент, кадрирование по data-screen и
-           * скрим под auth-форму — живёт без WebGL. Fallback не нужен: фон и так держит хост.
+           * Boundary right around the canvas: a WebGL/three.js (or GlobeCanvas chunk) failure drops
+           * only the sphere, while the host's CSS layer (night gradient, data-screen framing and
+           * the auth form scrim) lives without WebGL. No fallback needed: the host holds the backdrop.
            */}
           <ErrorBoundary fallback={null}>
             <Suspense fallback={null}>
@@ -237,7 +235,7 @@ export function PersistentGlobeHost() {
                 route={canvasRoute}
                 routeFading={!isJourneyAdd && fadingRoute !== null}
                 pov={pov}
-                // Появление на грани формы — подлётом к планете, а не только проявлением.
+                // On the form face the globe appears with a fly-in to the planet, not just a fade.
                 reveal={isJourneyAdd}
                 autoRotate={view.autoRotate}
                 interactive={view.interactive}
@@ -248,7 +246,7 @@ export function PersistentGlobeHost() {
         </div>
       </div>
 
-      {/* Боковой скрим под форму (auth-экраны); на лендинге/дашборде прозрачен. */}
+      {/* Side scrim behind the form (auth screens); transparent on landing/dashboard. */}
       <div className="persistent-globe__scrim" />
     </div>
   );

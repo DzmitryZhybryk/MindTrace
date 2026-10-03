@@ -10,7 +10,7 @@ import { act } from "../../test/render";
 import { ROUTE_FADE_MS, type GlobeRoute } from "./route";
 import { createRouteElement, useRouteScene } from "./routeScene";
 
-// На экваторе середина пути известна без повторения расчётов great-circle из production.
+// On the equator the path midpoint is known without repeating the production great-circle math.
 const EASTBOUND_ROUTE: GlobeRoute = {
   origin: { ...GEO_PLACES[0], latitude: 0, longitude: 10 },
   destination: { ...GEO_PLACES[1], latitude: 0, longitude: 70 },
@@ -56,7 +56,7 @@ describe("useRouteScene", () => {
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
-    // Граница WebGL: предсказуемая экранная проекция, геометрия маршрута остаётся настоящей.
+    // The WebGL boundary: a predictable screen projection, the route geometry stays real.
     getScreenCoords.mockReset().mockImplementation((lat, lng) => ({ x: lng, y: -lat }));
     container = document.createElement("div");
     options = {
@@ -95,7 +95,7 @@ describe("useRouteScene", () => {
 
     act(() => vi.advanceTimersByTime(durationMs / 2));
     expect(vehicle.lat).toBeCloseTo(0);
-    // rAF идёт с шагом 16 мс, середина цикла может лежать между соседними кадрами.
+    // rAF runs in 16 ms steps; the cycle midpoint may fall between adjacent frames.
     expect(vehicle.lng).toBeCloseTo(40, 0);
     expect(vehicle.alt).toBeCloseTo(apex, 3);
     expect(element.querySelector<HTMLElement>(".globe-route-vehicle__icon")?.style.transform).toBe(transform);
@@ -143,7 +143,7 @@ describe("useRouteScene", () => {
   ] as const)("при reduced motion транспорт $transportType стоит в конце с полным следом и верным курсом", ({
     transportType, transform,
   }) => {
-    // Диагональная проекция проверяет обе компоненты курса на последней точке пути.
+    // A diagonal projection checks both heading components at the last path point.
     getScreenCoords.mockImplementation((_lat, lng) => ({ x: lng, y: -lng }));
     const sceneOptions = {
       ...options,

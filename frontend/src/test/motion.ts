@@ -1,8 +1,8 @@
 import { vi } from "vitest";
 
 /**
- * Включает media-запросы, в тексте которых есть один из фрагментов; остальные не совпадают, как в
- * дефолтной заглушке `setup.ts`. Снимается `vi.restoreAllMocks()`.
+ * Enables media queries whose text contains one of the fragments; the rest do not match, as in the
+ * default stub in `setup.ts`. Undone by `vi.restoreAllMocks()`.
  */
 export function matchMediaQueries(...fragments: string[]): void {
   vi.spyOn(window, "matchMedia").mockImplementation(
@@ -21,8 +21,8 @@ export function matchMediaQueries(...fragments: string[]): void {
 }
 
 /**
- * Включает `prefers-reduced-motion: reduce`: код, который смотрит на эту настройку, заменяет
- * анимации мгновенной сменой. Остальные media-запросы не совпадают. Снимается `vi.restoreAllMocks()`.
+ * Enables `prefers-reduced-motion: reduce`: code that checks this setting replaces animations with
+ * an instant change. Other media queries do not match. Undone by `vi.restoreAllMocks()`.
  */
 export function preferReducedMotion(): void {
   matchMediaQueries("prefers-reduced-motion");

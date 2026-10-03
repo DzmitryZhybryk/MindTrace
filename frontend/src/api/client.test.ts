@@ -7,16 +7,16 @@ import { appFetch, ensureRefreshed } from "./client";
 import { ApiError } from "./errors";
 
 const REFRESH_PATH = "/v1/auth/refresh/";
-// Транспорт конструирует `Request`, а он не резолвит относительный путь вне браузера —
-// поэтому в тестах адреса абсолютные (в приложении baseUrl подставляет `sdk.ts`).
+// The transport builds a `Request`, which does not resolve a relative path outside a browser, so
+// addresses in tests are absolute (in the app `sdk.ts` supplies the baseUrl).
 const ORIGIN = "https://app.test";
 
-/** Запрос, который стаб `fetch` получил n-м по счёту. */
+/** The n-th request the `fetch` stub received. */
 function requestAt(mock: ReturnType<typeof vi.fn<FetchSignature>>, index: number): Request {
   return mock.mock.calls[index][0] as Request;
 }
 
-/** Управляемый промис: позволяет держать запрос «в полёте» и резолвить его вручную. */
+/** A controllable promise: keeps a request "in flight" and resolves it by hand. */
 function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; reject: (reason: unknown) => void } {
   let resolve!: (value: T) => void;
   let reject!: (reason: unknown) => void;
@@ -28,7 +28,7 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; reje
   return { promise, resolve, reject };
 }
 
-/** Считает, сколько раз дёрнули именно `/v1/auth/refresh/`. */
+/** Counts how many times exactly `/v1/auth/refresh/` was called. */
 function refreshCallCount(mock: ReturnType<typeof vi.fn<FetchSignature>>): number {
   return mock.mock.calls.filter(([url]) => url === REFRESH_PATH).length;
 }
@@ -98,8 +98,8 @@ describe("appFetch", () => {
   });
 
   it("на прочий 401 делает один refresh и повторяет запрос ВМЕСТЕ С ТЕЛОМ", async () => {
-    // Тело запроса — одноразовый поток: без клона до первой отправки повтор ушёл бы пустым,
-    // и POST после протухшего токена молча терял бы payload.
+    // A request body is a one-shot stream: without a clone before the first send the retry would go
+    // out empty and a POST after an expired token would silently lose its payload.
     fetchMock
       .mockResolvedValueOnce(jsonResponse(401, { code: "auth.invalid_access_token", message: "x" }))
       .mockResolvedValueOnce(jsonResponse(200, { accessToken: "new-token" }))

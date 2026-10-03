@@ -16,7 +16,7 @@ const JOURNEY_BODY = {
 
 let fetchMock: ReturnType<typeof vi.fn<FetchSignature>>;
 
-/** Запрос, который стаб `fetch` получил n-м по счёту (SDK всегда шлёт `Request`). */
+/** The n-th request the `fetch` stub received (the SDK always sends a `Request`). */
 function requestAt(index: number): Request {
   return fetchMock.mock.calls[index][0] as Request;
 }
@@ -32,9 +32,9 @@ afterEach(() => {
 });
 
 /*
- * Сшивка сгенерированного SDK с нашим транспортом: сам SDK покрывать нечем (он генерируется),
- * а вот `sdk.ts` — наш код, и именно он решает, дойдёт ли запрос до `appFetch` вообще.
- * Проверяем стык целиком, от вызова операции до повторной отправки после refresh.
+ * The seam between the generated SDK and our transport: the SDK itself is not ours to cover (it is
+ * generated), but `sdk.ts` is our code and decides whether a request reaches `appFetch` at all.
+ * The whole seam is checked, from an operation call to the resend after refresh.
  */
 describe("sdk", () => {
   it("шлёт запрос через транспорт приложения: Bearer, credentials, абсолютный URL", async () => {
@@ -46,8 +46,8 @@ describe("sdk", () => {
     await getCurrentUser({ throwOnError: true });
 
     const request = requestAt(0);
-    // baseUrl обязателен: без него клиент собрал бы относительный URL, а `Request` вне
-    // браузера его не резолвит.
+    // baseUrl is required: without it the client would build a relative URL, which `Request` does
+    // not resolve outside a browser.
     expect(new URL(request.url).pathname).toBe("/v1/users/me");
     expect(request.headers.get("Authorization")).toBe("Bearer my-token");
     expect(request.credentials).toBe("include");
@@ -77,8 +77,8 @@ describe("sdk", () => {
   });
 
   it("ответ не по контракту — invalid_response, а не голый ZodError", async () => {
-    // Успешный статус, но тело не проходит сгенерированную zod-схему: без интерсептора
-    // ошибок наружу ушёл бы ZodError мимо applyApiError и всей i18n ошибок.
+    // A success status but the body fails the generated zod schema: without the error interceptor a
+    // ZodError would escape past applyApiError and the whole error i18n.
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { username: 42 }));
 
     await expect(getCurrentUser({ throwOnError: true })).rejects.toMatchObject({
@@ -88,8 +88,8 @@ describe("sdk", () => {
   });
 
   it("сетевой сбой остаётся сетевым, а не подменяется invalid_response", async () => {
-    // Ответа нет вовсе — интерсептор обязан пропустить ошибку как есть, иначе обрыв связи
-    // отрендерился бы пользователю как «сервер прислал ерунду».
+    // There is no response at all: the interceptor must pass the error through as is, otherwise a
+    // dropped connection would render to the user as "the server sent garbage".
     fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
     const error = await getCurrentUser({ throwOnError: true }).catch((err: unknown) => err);

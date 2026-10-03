@@ -6,17 +6,10 @@ import type { ViewBox } from "./worldProjection";
 const TRANSITION_MS = 600;
 
 /**
- * Плавный переход видимой области карты к новой цели — вместо прыжка.
+ * Smoothly eases the map's visible area to a new target instead of jumping.
  *
- * Новая цель посреди перехода подхватывается с того вида, что сейчас на экране. При «меньше
- * движения» и при выключенном переходе вид сменяется сразу.
- *
- * Args:
- *     target: Вид, к которому идём.
- *     isEnabled: Плавно ли переходить.
- *
- * Returns:
- *     Вид для текущего кадра.
+ * A new target mid-transition continues from the view currently on screen. With reduced motion,
+ * or when disabled, the view changes immediately. Returns the view for the current frame.
  */
 export function useViewTransition(target: ViewBox, isEnabled: boolean): ViewBox {
   const [shown, setShown] = useState(target);
@@ -38,7 +31,7 @@ export function useViewTransition(target: ViewBox, isEnabled: boolean): ViewBox 
     const start = performance.now();
     const tick = (now: number) => {
       const progress = Math.min((now - start) / TRANSITION_MS, 1);
-      // Плавно трогается и плавно встаёт.
+      // Ease in-out cubic.
       const eased = progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2;
       const next =
         progress === 1

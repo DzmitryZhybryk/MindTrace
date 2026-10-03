@@ -3,15 +3,15 @@ import { createJourney, findPlace } from "../helpers/journeys";
 import { getStoredAccessToken } from "../helpers/session";
 
 /**
- * E2E: карта перемещений (/journeys/movements) на реальных данных пользователя.
+ * E2E: the movements map (/journeys/movements) on the user's real data.
  *
- * Две поездки по API (Москва → Лондон самолётом в 2019, Лондон → Париж по суше в 2022) →
- * вкладка рисует по линии на маршрут. Фильтры меняют карту: вид транспорта уходит запросом на
- * бэк (`transportType`), окно лет применяется на клиенте — линия пропадает без запроса.
- * Покрывает цепочку create → БД → GET /movements → фильтры → рендер, которую unit/component
- * не достают (SQL-выборка и раскладка — реальные, jsdom их не видит).
+ * Two journeys via the API (Moscow -> London by plane in 2019, London -> Paris by land in 2022);
+ * the tab draws a line per route. Filters change the map: the transport type goes to the backend
+ * as a request (`transportType`), the year window applies on the client, so a line vanishes with
+ * no request. Covers the chain create -> DB -> GET /movements -> filters -> render that
+ * unit/component tests cannot reach (the SQL selection and layout are real, jsdom cannot see them).
  *
- * Язык интерфейса зафиксирован в playwright-конфиге (en), поэтому имена контролов — английские.
+ * The UI language is pinned in the playwright config (en), so control names are English.
  */
 
 test.describe("Journeys movements map", () => {
@@ -42,12 +42,12 @@ test.describe("Journeys movements map", () => {
     const lines = authedPage.locator(".movement-line");
     await expect(lines).toHaveCount(2);
 
-    // Выключаем самолёт: бэк возвращает только сухопутный маршрут.
+    // Turn off the plane: the backend returns only the land route.
     await authedPage.locator(".movements-controls__chip", { hasText: "Air" }).click();
     await expect(lines).toHaveCount(1);
 
-    // Без выбранного транспорта (по умолчанию включены все три вида) карта пуста и подсказывает
-    // выбрать хотя бы один.
+    // With no transport selected (all three are on by default) the map is empty and hints to pick at
+    // least one.
     await authedPage.locator(".movements-controls__chip", { hasText: "Land" }).click();
     await authedPage.locator(".movements-controls__chip", { hasText: "Water" }).click();
     await expect(lines).toHaveCount(0);
@@ -58,7 +58,7 @@ test.describe("Journeys movements map", () => {
     const lines = authedPage.locator(".movement-line");
     await expect(lines).toHaveCount(2);
 
-    // Начало окна — 2022: поездка 2019 выпадает из него.
+    // The window starts at 2022: the 2019 journey drops out of it.
     await authedPage.getByRole("button", { name: "From year" }).click();
     await authedPage.getByRole("textbox", { name: "From year" }).fill("2022");
     await authedPage.getByRole("textbox", { name: "From year" }).press("Enter");

@@ -15,7 +15,7 @@ import {
   type GlobeRoute,
 } from "./route";
 
-// Минск как «реальное» место из автокомплита; координаты переопределяются под кейс.
+// Minsk as a "real" place from autocomplete; coordinates are overridden per case.
 function makePlace(overrides: Partial<PlaceSearchItem> = {}): PlaceSearchItem {
   return {
     placeId: "1",
@@ -42,7 +42,7 @@ describe("greatCirclePoint", () => {
   });
 
   it("при t=0.5 попадает в середину дуги экватора", () => {
-    // Большой круг (0,0)→(0,90) по экватору: середина — (0, 45).
+    // The great circle (0,0)->(0,90) along the equator: the midpoint is (0, 45).
     const point = greatCirclePoint(0, 0, 0, 90, 0.5);
     expect(point.lat).toBeCloseTo(0);
     expect(point.lng).toBeCloseTo(45);
@@ -136,7 +136,7 @@ describe("buildTrail", () => {
   });
 
   it("обрезает след по прогрессу — голова на середине, не на финише", () => {
-    // progress=0.5 по экватору (0,0)→(0,90): голова в (0, 45).
+    // progress=0.5 along the equator (0,0)->(0,90): the head is at (0, 45).
     const trail = buildTrail(0, 0, 0, 90, 0.14, 0.5);
     const last = trail[trail.length - 1];
     expect(last.lng).toBeCloseTo(45);
@@ -171,7 +171,7 @@ describe("routeCameraPov", () => {
   }
 
   it("без формы — нейтральный вид на дальнем зуме, центр подтянут к экватору", () => {
-    // Нейтральная широта 20° на дальнем зуме отдаёт экватору 40%: 20 × 0.6.
+    // The neutral latitude 20° at far zoom gives 40% to the equator: 20 x 0.6.
     expect(routeCameraPov(null)).toEqual({ lat: 12, lng: 0, altitude: CAMERA_MAX_ALTITUDE });
   });
 

@@ -3,7 +3,7 @@ import type { FormValidateInput, UseFormReturnType } from "@mantine/form";
 import { ApiError, errorCodeToken } from "../../api/errors";
 import type { PlaceRef, PlaceSearchItem, TransportType } from "../../api/sdk";
 
-/** Поля поездки — общие для добавления и правки. */
+/** Journey fields, shared by add and edit. */
 export type JourneyFormValues = {
   origin: PlaceSearchItem | null;
   destination: PlaceSearchItem | null;
@@ -16,17 +16,17 @@ const UNKNOWN_PLACE_CODE = "journeys.unknown_place";
 type PlaceWithCountry = PlaceSearchItem & { countryCode: string };
 
 /**
- * Валидаторы полей поездки.
+ * Journey field validators.
  *
- * Возвращают i18n-ТОКЕН (`journeys:addJourney.validation.*`), а не готовый текст: резолв в строку —
- * при рендере (`resolveErrorToken`), чтобы ошибка переключалась на новый язык вместе с интерфейсом.
+ * They return an i18n TOKEN (`journeys:addJourney.validation.*`), not text: it is resolved at
+ * render (`resolveErrorToken`) so the error follows a language switch.
  */
 export const JOURNEY_FORM_VALIDATE: FormValidateInput<JourneyFormValues> = {
   origin: (value) => {
     if (!value) {
       return "journeys:addJourney.validation.originRequired";
     }
-    // Поездка хранит страну места; справочник допускает места без неё (моря, океаны).
+    // A journey stores the place's country; the gazetteer allows places without one (seas, oceans).
     return value.countryCode ? null : "journeys:addJourney.validation.placeWithoutCountry";
   },
   destination: (value, values) => {
@@ -36,7 +36,7 @@ export const JOURNEY_FORM_VALIDATE: FormValidateInput<JourneyFormValues> = {
     if (!value.countryCode) {
       return "journeys:addJourney.validation.placeWithoutCountry";
     }
-    // Тот же город отсекаем ещё на фронте; бэк проверит то же самое по placeId.
+    // Reject the same city on the frontend too; the backend checks the same by placeId.
     if (values.origin && values.origin.placeId === value.placeId) {
       return "journeys:addJourney.validation.sameCity";
     }
@@ -46,24 +46,23 @@ export const JOURNEY_FORM_VALIDATE: FormValidateInput<JourneyFormValues> = {
   year: (value) => (value ? null : "journeys:addJourney.validation.yearRequired"),
 };
 
-/** Поездке нужна страна места; место без неё валидатор формы не пропускает до сабмита. */
+/** A journey needs the place's country; the form validator stops a place without one before submit. */
 export function hasCountry(place: PlaceSearchItem): place is PlaceWithCountry {
   return Boolean(place.countryCode);
 }
 
-/** Место из подсказок → тело запроса: бэк проверяет место по `placeId`. */
+/** Suggested place -> request body: the backend verifies the place by `placeId`. */
 export function toPlaceRef(place: PlaceWithCountry): PlaceRef {
   return { placeId: place.placeId, countryCode: place.countryCode, latitude: place.latitude, longitude: place.longitude };
 }
 
 /**
- * Подсвечивает поля с местами, которых бэк не нашёл (`journeys.unknown_place`).
+ * Highlights fields whose places the backend did not find (`journeys.unknown_place`).
  *
- * Бэк возвращает только id ненайденных мест — какое поле подсветить, форма решает сама,
- * сравнивая их с выбранными местами.
+ * The backend returns only the ids of unknown places; the form decides which field to highlight
+ * by comparing them with the picked places.
  *
- * Returns:
- *     `true`, если ошибка разобрана и показана у полей.
+ * Returns `true` if the error was handled and shown at the fields.
  */
 export function applyUnknownPlaceError(
   err: unknown,

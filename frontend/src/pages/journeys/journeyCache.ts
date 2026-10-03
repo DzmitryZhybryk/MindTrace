@@ -10,12 +10,12 @@ import {
 } from "../../api/sdk";
 
 /*
- * Ключи без параметров совпадают с ключами для любых фильтров — сбрасываются все варианты карты
- * перемещений и ленты. Всё это живёт с `staleTime: Infinity`, поэтому без явного сброса
- * изменённая поездка не появилась бы до перезагрузки страницы.
+ * A key without parameters matches the keys for any filters, so all variants of the movements map
+ * and feed are invalidated. All of it lives with `staleTime: Infinity`, so without an explicit
+ * invalidation a changed journey would not show up until a page reload.
  */
 
-/** Сбрасывает всё, что строится по поездкам, кроме ленты: карты, глобус, годы. */
+/** Invalidates everything built from journeys except the feed: maps, globe, years. */
 export function invalidateJourneyAggregates(queryClient: QueryClient): Promise<unknown> {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: getJourneysMapQueryKey() }),
@@ -26,12 +26,10 @@ export function invalidateJourneyAggregates(queryClient: QueryClient): Promise<u
 }
 
 /**
- * Сбрасывает все загруженные варианты ленты.
+ * Invalidates all loaded feed variants.
  *
- * Args:
- *     queryClient: Клиент запросов.
- *     refetchType: Какие варианты перезапросить сразу: `"active"` — показанную ленту тоже,
- *         `"inactive"` — только скрытые, показанная остаётся как есть до следующего обновления.
+ * `refetchType` picks which to refetch immediately: `"active"` includes the shown feed,
+ * `"inactive"` only hidden ones (the shown feed stays as is until the next refresh).
  */
 export function invalidateJourneyFeed(
   queryClient: QueryClient,
@@ -41,10 +39,10 @@ export function invalidateJourneyFeed(
 }
 
 /**
- * Убирает поездку из всех загруженных вариантов ленты без запроса.
+ * Removes a journey from all loaded feed variants without a request.
  *
- * Курсоры следующих порций остаются верными: они указывают на последнюю строку своей порции, а не
- * на номер позиции.
+ * Cursors of the next pages stay valid: they point at the last row of their page, not at a
+ * position number.
  */
 export function removeJourneyFromFeed(queryClient: QueryClient, journeyId: string): void {
   queryClient.setQueriesData<InfiniteData<JourneysFeedResponse>>(

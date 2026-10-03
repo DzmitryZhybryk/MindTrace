@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { useCurrentUser } from "./useCurrentUser";
 
-/** Компонент, дёргающий useCurrentUser — для проверки контракта «только внутри провайдера». */
+/** A component calling useCurrentUser, to check the "only inside the provider" contract. */
 function Consumer() {
   useCurrentUser();
   return null;
@@ -11,7 +11,7 @@ function Consumer() {
 
 describe("useCurrentUser", () => {
   it("бросает, если вызван вне <CurrentUserProvider>", () => {
-    // React печатает ошибку рендера в console.error — глушим, чтобы не зашумлять вывод.
+    // React prints the render error to console.error; silence it to keep the output clean.
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() => render(<Consumer />)).toThrow("useCurrentUser must be used within a <CurrentUserProvider>");

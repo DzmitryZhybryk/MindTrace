@@ -12,12 +12,12 @@ interface JourneyYearFieldProps {
   form: UseFormReturnType<JourneyFormValues>;
 }
 
-/** Год поездки: список от текущего года на 100 лет назад. */
+/** Journey year: a list from the current year back 100 years. */
 export function JourneyYearField({ form }: JourneyYearFieldProps) {
   const { t } = useTranslation("journeys");
   const values = form.getValues();
 
-  // Текущий год читается один раз, при появлении поля: чтение часов при каждом рендере нечисто.
+  // The current year is read once when the field appears: reading the clock every render is impure.
   const [yearOptions] = useState(() => {
     const currentYear = new Date().getFullYear();
     return Array.from({ length: YEARS_BACK + 1 }, (_, i) => String(currentYear - i));

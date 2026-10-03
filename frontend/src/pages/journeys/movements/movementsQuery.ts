@@ -1,12 +1,12 @@
 import { getMovementsMapOptions, zTransportType, type GetMovementsMapData, type TransportType } from "../../../api/sdk";
 
 /**
- * Опции запроса карты перемещений — единственное место, где фильтр транспорта превращается в
- * ключ. Окна лет в запросе нет: годы приходят в каждом маршруте, окно применяется на клиенте.
+ * Movements map query options: the only place where the transport filter becomes a key. There is
+ * no year window in the request: years arrive in every route and the window applies on the client.
  *
- * Одинаковый набор транспорта даёт одинаковый ключ при любом порядке выбора: виды сортируются,
- * а «выбраны все» (или набор не задан) равносильно «без фильтра». Ответ не устаревает сам — его
- * сбрасывает добавление поездки.
+ * The same transport set gives the same key in any selection order: types are sorted, and "all
+ * selected" (or no set) equals "no filter". The response never goes stale by itself; adding a
+ * journey invalidates it.
  */
 export function movementsQueryOptions(transportTypes?: readonly TransportType[]) {
   const query: NonNullable<GetMovementsMapData["query"]> = {};

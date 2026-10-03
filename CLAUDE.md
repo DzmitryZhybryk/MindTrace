@@ -142,7 +142,7 @@ DDD с **доменной** организацией модулей (`auth`, `us
 
 - Line length: 120
 - Quotes: double
-- Cyrillic is allowed in strings, comments, and user-facing error messages (RUF001-003 ignored)
+- Cyrillic is allowed in strings, comments, and user-facing error messages (RUF001-003 ignored) — **backend only**. Во `frontend/` комментарии пишутся только для ассистента и только на английском (см. `.claude/rules/typescript/coding-style.md` → «Comments»)
 
 ### Toolchain
 

@@ -1,7 +1,7 @@
 /*
- * Персистентный глобус публичной зоны: фиксированный фон во весь вьюпорт под всем
- * контентом. `pointer-events: none` — глобус декоративен, скролл и клики проходят
- * сквозь него к контенту (заодно снимает конфликт с блокировкой зума в GlobeCanvas).
+ * Persistent globe of the public zone: a fixed full-viewport background under all content.
+ * `pointer-events: none`: the globe is decorative, scroll and clicks pass through it to the
+ * content (which also avoids a conflict with the zoom blocking in GlobeCanvas).
  */
 .persistent-globe {
   position: fixed;
@@ -9,11 +9,11 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  /* Тёмная база на весь вьюпорт на время инициализации WebGL (сфера ниже кадрируется,
-     поэтому фон держит именно эта обёртка, а не трансформируемый stage). */
+  /* Dark base across the viewport while WebGL initializes (the sphere below is cropped, so this
+     wrapper holds the backdrop, not the transformed stage). */
   background: var(--night-bg);
-  /* Масштаб рамки дашборда. Его же берёт грань формы поездки — сфера одного размера на обеих,
-     и переход между ними только двигает её (без баннера / с баннером — ниже). */
+  /* Dashboard frame scale. The journey form face uses the same one: the sphere is the same size
+     on both and the transition between them only moves it (without banner / with banner below). */
   --globe-home-scale: 1.05;
 }
 
@@ -22,22 +22,22 @@ body.has-verify-banner .persistent-globe {
 }
 
 /*
- * Интерактивная грань (дашборд): слой ловит события сам — драг-вращение планеты. Прозрачность
- * для кликов/скролла МИМО сферы обеспечивает не CSS, а пиксельный хит-тест в GlobeCanvas:
- * жест, начатый вне шара, глобус игнорирует, и страница живёт как обычно. Сквозь оболочку
- * страницы события доходят по контракту ниже.
+ * Interactive face (dashboard): the layer catches events itself for drag rotation of the planet.
+ * Transparency to clicks/scroll OFF the sphere comes not from CSS but from the pixel hit test in
+ * GlobeCanvas: a gesture started outside the ball is ignored by the globe and the page lives as
+ * usual. Events reach through the page shell by the contract below.
  */
 .persistent-globe[data-interactive="true"] {
   pointer-events: auto;
 }
 
 /*
- * Сквозной проход событий к глобусу. Интерактивный хост лежит ПОД оболочкой страницы, поэтому
- * оболочка ([data-globe-passthrough]) и каждый предок пустого слота ([data-globe-slot])
- * прозрачны для указателя, а их дети, ответвляющиеся от пути к слоту, получают события
- * обратно (потомки наследуют как обычно). Глубина вложенности слота роли не играет — путь к
- * нему находит :has(). Действует, только пока хост сам ловит события (data-interactive): на
- * узкой форме поездки, на 2D-карте и при упавшем chunk'е глобуса страница остаётся обычной.
+ * Event pass-through to the globe. The interactive host lies UNDER the page shell, so the shell
+ * ([data-globe-passthrough]) and every ancestor of the empty slot ([data-globe-slot]) are
+ * transparent to the pointer, while their children branching off the path to the slot get events
+ * back (descendants inherit as usual). The slot nesting depth does not matter: :has() finds the
+ * path to it. Active only while the host itself catches events (data-interactive): on the narrow
+ * journey form, on the 2D map and when the globe chunk failed, the page stays ordinary.
  */
 body:has(.persistent-globe[data-interactive="true"])
   :is([data-globe-passthrough], [data-globe-passthrough] :has([data-globe-slot]), [data-globe-slot]) {
@@ -51,19 +51,19 @@ body:has(.persistent-globe[data-interactive="true"])
 }
 
 /*
- * Спрятан роутом (/journeys*, `data-visible="false"`): убираем из отрисовки. `visibility: hidden`
- * (а не `display: none`) намеренно — коробка и её размер сохраняются, поэтому ResizeObserver в
- * GlobeCanvas не видит 0×0 и WebGL-канвас не пере-инициализируется при возврате. Рендер там уже
- * на паузе (проп `paused`), а свою ночь /journeys рисует непрозрачным `.app-shell`.
+ * Hidden by the route (/journeys*, `data-visible="false"`): removed from rendering. `visibility:
+ * hidden` (not `display: none`) on purpose: the box and its size are kept, so ResizeObserver in
+ * GlobeCanvas does not see 0x0 and the WebGL canvas is not reinitialized on return. Rendering is
+ * already paused there (the `paused` prop) and /journeys paints its own night with an opaque `.app-shell`.
  */
 .persistent-globe[data-visible="false"] {
   visibility: hidden;
 }
 
 /*
- * Обрезка сферы. На всех гранях — во весь вьюпорт (`inset(0)`, а не `none`: между
- * двумя inset() переход интерполируется, с `none` — прыгает). Анимируется синхронно с
- * кадрированием stage: уход с грани формы на /home раскрывает рамку колонки в полный экран.
+ * Sphere clip. On every face it is full viewport (`inset(0)`, not `none`: between two inset()
+ * values the transition interpolates, with `none` it jumps). Animated in sync with the stage
+ * framing: leaving the form face for /home opens the column frame to full screen.
  */
 .persistent-globe__clip {
   position: absolute;
@@ -76,11 +76,11 @@ body:has(.persistent-globe[data-interactive="true"])
 }
 
 /*
- * Проявление после скрытия роутом (например, 2D-карта → форма поездки): сфера проступает
- * прозрачностью НА МЕСТЕ — рамка грани встаёт сразу, камера ставится без перелёта (см.
- * GlobeCanvas). Гасится только сфера, а не весь хост: его ночь-подложка нужна сразу, иначе
- * во время проявления сквозь прозрачную оболочку страницы проступал бы плоский `body`.
- * Уход в скрытие мгновенный (`transition: none`): там оболочку и так закрашивает своя ночь.
+ * Reveal after being hidden by the route (e.g. 2D map -> journey form): the sphere fades in IN
+ * PLACE: the face frame snaps immediately and the camera is set without a flight (see
+ * GlobeCanvas). Only the sphere fades, not the whole host: its night backdrop is needed at once,
+ * otherwise a flat `body` would show through the transparent page shell during the reveal.
+ * Hiding is instant (`transition: none`): the own night of the opaque shell paints over it there anyway.
  */
 .persistent-globe[data-visible="false"] .persistent-globe__clip {
   opacity: 0;
@@ -88,10 +88,9 @@ body:has(.persistent-globe[data-interactive="true"])
 }
 
 /*
- * Кадрирование сферы под экран: на
- * лендинге чуть уводим вправо, на auth-экранах — сильно вбок, освобождая место под
- * форму. Камера (pov) и рамка (transform) едут одновременно — отсюда «полёт».
- * Трансформ чисто визуальный: слой замера в GlobeCanvas остаётся размером вьюпорта.
+ * Sphere framing per screen: on the landing it is nudged right, on auth screens moved far aside
+ * to make room for the form. The camera (pov) and the frame (transform) move together, hence the
+ * "flight". The transform is purely visual: the measuring layer in GlobeCanvas stays viewport-sized.
  */
 .persistent-globe__stage {
   position: absolute;
@@ -113,26 +112,26 @@ body:has(.persistent-globe[data-interactive="true"])
 }
 
 /*
- * Кадрирование глобуса на дашборде (/home): планета заполняет промежуток между приветствием
- * (сверху) и подписью «атмосфера · тихо» (снизу) как фон-подложка. Низ держится у подписи,
- * верх поднимается к приветствию. Это состояние БЕЗ email-баннера: доступной высоты больше →
- * планета крупнее и выше.
+ * Globe framing on the dashboard (/home): the planet fills the gap between the greeting (top) and
+ * the "atmosphere · quiet" caption (bottom) as a backdrop. The bottom holds at the caption, the
+ * top rises toward the greeting. This is the state WITHOUT the email banner: more height is
+ * available, so the planet is larger and higher.
  */
 .persistent-globe[data-screen="home"] .persistent-globe__stage {
   transform: translateY(5%) scale(var(--globe-home-scale));
 }
 
 /*
- * Грань формы поездки (/journeys/add): планета в колонке справа от формы. Геометрия —
- * из измеренного страницей слота (CSS-переменные ставит PersistentGlobeHost), поэтому
- * процентами, как у остальных граней, её не выразить. Масштаб — ОБЩИЙ с дашбордом
- * (`--globe-home-scale`), а высота камеры без маршрута та же, что у грани home: сфера одного
- * размера, и уход на /home только переносит её. Свой масштаб у грани давал раздувание на
- * переходе — рамка и камера меняли размер двумя анимациями с разными кривыми.
+ * Journey form face (/journeys/add): the planet in the column right of the form. Geometry comes
+ * from the slot measured by the page (CSS variables set by PersistentGlobeHost), so percentages,
+ * as on the other faces, cannot express it. The scale is SHARED with the dashboard
+ * (`--globe-home-scale`) and the camera height without a route equals the home face's: the sphere
+ * is the same size and leaving for /home only moves it. A separate scale would balloon on the
+ * transition, as the frame and camera resized with two animations on different curves.
  *
- * `transition: none` — на ВХОД и ресайз: рамка встаёт в колонку сразу (проявление идёт
- * прозрачностью, а не влётом из центра экрана), и не плывёт 1.3s за окном при ресайзе.
- * Уход анимируется: переход берётся из правила целевой грани, у которой он есть.
+ * `transition: none` on ENTRY and resize: the frame snaps into the column at once (the reveal is a
+ * fade, not a fly-in from screen center) and does not drift for 1.3s behind the window on resize.
+ * Leaving animates: the transition comes from the target face's rule, which has one.
  */
 .persistent-globe[data-screen="journeyAdd"] .persistent-globe__clip {
   clip-path: var(--globe-slot-clip);
@@ -145,29 +144,29 @@ body:has(.persistent-globe[data-interactive="true"])
 }
 
 /*
- * Пока висит email-баннер, доступной высоты меньше (баннер съедает верх): планета опускается
- * и мельчает, освобождая место, но НИЗ остаётся у подписи. Приветствие в это время тоже
- * сдвинуто вниз под баннер (трансформом, см. home.css). Смена класса анимируется плавно — на
- * `.persistent-globe__stage` уже есть `transition: transform`, поэтому глобус мягко подрастает
- * при закрытии баннера, синхронно с уезжающим вверх приветствием.
+ * While the email banner shows, less height is available (the banner eats the top): the planet
+ * lowers and shrinks to make room, but the BOTTOM stays at the caption. The greeting is shifted
+ * down under the banner meanwhile (by transform, see home.css). The class change animates smoothly:
+ * `.persistent-globe__stage` already has `transition: transform`, so the globe grows back softly
+ * when the banner closes, in sync with the greeting moving up.
  */
 body.has-verify-banner .persistent-globe[data-screen="home"] .persistent-globe__stage {
   transform: translateY(8%) scale(var(--globe-home-scale));
 }
 
 /*
- * Скрим ПОД ШАПКОЙ. Отдельный от бокового, потому что решает другую задачу: тот
- * защищает сторону формы, а марка всегда в левом верхнем углу. На регистрации они
- * случайно совпадали (глобус уходит вправо, скрим темнит слева), а на входе
- * расходились — глобус уезжал влево ровно под марку, и та ложилась на облака.
+ * Scrim UNDER THE HEADER. Separate from the side one because it solves a different problem: that
+ * one protects the form side, while the brand mark is always in the top-left corner. On signup
+ * they coincided by accident (the globe moves right, the scrim darkens the left), while on login
+ * they diverged: the globe moved left right under the mark, which then lay on clouds.
  *
- * Почему не сдвиг глобуса: на лендинге он ВРАЩАЕТСЯ, и под маркой по очереди
- * проплывает то океан, то Гималаи с облаками; набор маршрутов вдобавок выбирается
- * случайно при загрузке. Фиксированная геометрия такое не покрывает, затемнение — да.
+ * Why not shift the globe: on the landing it ROTATES, and ocean and Himalayan clouds drift under
+ * the mark in turn; the route set is also picked at random on load. Fixed geometry cannot cover
+ * that, darkening can.
  *
- * Непрозрачность не на глаз: 0.55 даёт марке 3.61:1 в ХУДШЕМ случае (белые облака)
- * при пороге 3:1 для крупного текста; без скрима там было 1.16:1. Над сушей — 5.9:1.
- * Держим 0.55 на всю высоту шапки и гасим к 180px, чтобы планета ниже осталась чистой.
+ * The opacity is not by eye: 0.55 gives the mark 3.61:1 in the WORST case (white clouds) against
+ * the 3:1 large-text threshold; without the scrim it was 1.16:1. Over land it is 5.9:1.
+ * Hold 0.55 across the header height and fade out by 180px so the planet below stays clean.
  */
 .persistent-globe::before {
   content: "";
@@ -186,8 +185,8 @@ body.has-verify-banner .persistent-globe[data-screen="home"] .persistent-globe__
 }
 
 /*
- * Скрим auth-экранов (порт `.flow-scrim`): затемняет край, где стоит форма, чтобы
- * текст на стекле не спорил с дугами. На лендинге прозрачен — там свой градиент.
+ * Auth screen scrim: darkens the edge where the form stands so text on the glass does not fight
+ * the arcs. Transparent on the landing, which has its own gradient.
  */
 .persistent-globe__scrim {
   position: absolute;
@@ -205,7 +204,7 @@ body.has-verify-banner .persistent-globe[data-screen="home"] .persistent-globe__
   background: linear-gradient(260deg, var(--ink) 0%, rgb(var(--ink-rgb) / 0.86) 40%, rgb(var(--ink-rgb) / 0) 78%);
 }
 
-/* Узкие экраны: сфера уходит за спину формы, скрим становится общим затемнением. */
+/* Narrow screens: the sphere goes behind the form, the scrim becomes a general dim. */
 @media (max-width: 720px) {
   .persistent-globe[data-screen="signup"] .persistent-globe__stage,
   .persistent-globe[data-screen="login"] .persistent-globe__stage {

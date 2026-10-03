@@ -9,7 +9,7 @@ interface TransportLabelProps {
   type: TransportType;
 }
 
-/** Вид транспорта иконкой и подписью — для чипов и выбора транспорта. */
+/** Transport type as icon plus label, for chips and the transport picker. */
 export function TransportLabel({ type }: TransportLabelProps) {
   const { t } = useTranslation("journeys");
 

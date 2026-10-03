@@ -12,32 +12,32 @@ import { placeLabels } from "../movements/labelPlacement";
 import { piecePath, projectArc } from "../movements/movementGeometry";
 
 const NO_COUNTRIES: MapCountry[] = [];
-// Размеры в единицах холста при виде на весь мир.
+// Sizes in canvas units at the whole-world view.
 const DOT_RADIUS = 2.6;
 const LINE_WIDTH = 1.8;
 const LABEL_FONT_SIZE = 8;
-// Отступ подписи от края точки, зазор до дуги, обводка-подложка под текстом.
+// Label offset from the dot edge, clearance from the arc, halo stroke behind the text.
 const LABEL_GAP = 2;
 const LABEL_CLEARANCE = 1.2;
 const LABEL_HALO_WIDTH = 2.4;
 
 interface FeedBackdropMapProps {
-  /** Загруженные поездки ленты — кадр до первого наведения охватывает их все. */
+  /** Loaded feed journeys: before the first hover the frame covers all of them. */
   journeys: readonly JourneyFeedEntry[];
-  /** Поездка, чью дугу показать; `null` — карта без дуги. */
+  /** Journey whose arc to show; `null` means a map without an arc. */
   activeJourney: JourneyFeedEntry | null;
-  /** Колонка ленты поверх карты: кадр подгоняется в незакрытую ею часть. */
+  /** Feed column over the map: the frame fits into the part it does not cover. */
   occluderRef: RefObject<HTMLElement | null>;
 }
 
 /**
- * Приглушённая карта мира за лентой, видная сквозь колонку: дуга поездки, на которой сейчас
- * пользователь, — под курсором, в фокусе, в правке или в перетаскивании, — с названиями мест
- * на концах. Карта — фон: не нажимается.
+ * Muted world map behind the feed, visible through the column: the arc of the journey the user is
+ * on (hovered, focused, edited or dragged) with place names at the ends. The map is background and
+ * not clickable.
  *
- * Кадр плавно переезжает к поездке, на которую навели, и остаётся на ней, когда курсор ушёл с
- * ленты, — карта не прыгает туда-обратно. До первого наведения кадр охватывает все загруженные
- * поездки. Дуга прочерчивается заново на каждую новую поездку — ключом служит её id.
+ * The frame glides to the hovered journey and stays on it after the cursor leaves the feed, so the
+ * map does not jump back and forth. Before the first hover the frame covers all loaded journeys.
+ * The arc is redrawn for each new journey, keyed by its id.
  */
 export function FeedBackdropMap({ journeys, activeJourney, occluderRef }: FeedBackdropMapProps) {
   const { t } = useTranslation("common");
@@ -46,7 +46,7 @@ export function FeedBackdropMap({ journeys, activeJourney, occluderRef }: FeedBa
     setFramedJourney(activeJourney);
   }
 
-  // Тот же набор мест, что у ленты, — названия приходят из её запроса, без нового на наведение.
+  // Same place set as the feed: names come from its request, no new one per hover.
   const nameOf = usePlaceNames(journeys.flatMap((journey) => [journey.origin.placeId, journey.destination.placeId]));
   const unknownLabel = t("map.unknownPlace");
 
@@ -70,7 +70,7 @@ export function FeedBackdropMap({ journeys, activeJourney, occluderRef }: FeedBa
         const [x, y] = projectToScreen(place.longitude, place.latitude);
         return { placeId: place.placeId, x, y };
       });
-      // Поездка из места в него же — одна точка и одна подпись.
+      // A journey from a place to itself is one dot and one label.
       const places = ends[0].placeId === ends[1].placeId ? [ends[0]] : ends;
       const labels = placeLabels(
         places.flatMap((place) => {

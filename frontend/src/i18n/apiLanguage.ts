@@ -1,10 +1,10 @@
 import type { Language } from "../api/sdk";
 
 /**
- * Язык, на котором просить у бэка названия мест, по языку интерфейса.
+ * Language to request place names in from the backend, given the UI language.
  *
- * i18n может держать региональный вариант (`ru-RU`), а бэк знает только `en` и `ru`;
- * всё, что не русский, получает английские названия.
+ * i18n may hold a regional variant (`ru-RU`) while the backend knows only `en` and `ru`;
+ * anything that is not Russian gets English names.
  */
 export function toApiLanguage(language: string): Language {
   return language.startsWith("ru") ? "ru" : "en";

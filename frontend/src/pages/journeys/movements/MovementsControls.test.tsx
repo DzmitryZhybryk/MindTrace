@@ -8,13 +8,13 @@ import { MovementsControls } from "./MovementsControls";
 
 const POSITION_KEY = "journeys-movements-controls-position";
 
-// Область карты 1200×800, панель навигации слева: (32, 100), 260×400 — низ на 500.
-// Карточка 260×160; ушко внутри неё (offsetTop ≥ 0), над карточкой ничего не торчит.
+// The map area is 1200x800, the navigation panel is on the left: (32, 100), 260x400, bottom at 500.
+// The card is 260x160; the tab is inside it (offsetTop >= 0), nothing sticks out above the card.
 const STAGE = { width: 1200, height: 800 };
 const CARD = { width: 260, height: 160 };
 const DEFAULT_POSITION = { left: 32, top: STAGE.height - 32 - CARD.height };
 
-/** Карточка в области карты рядом с панелью — как её ставит экран перемещений. */
+/** The card in the map area beside the panel, as the movements screen places it. */
 function ControlsOnStage() {
   const panelRef = useRef<HTMLDivElement>(null);
   return (
@@ -83,7 +83,7 @@ describe("MovementsControls: перетаскиваемая карточка", (
   it("на панель не заезжает — встаёт рядом с ней", () => {
     renderWithProviders(<ControlsOnStage />);
 
-    // Тянем вверх, прямо на панель: ближайшее свободное место — под ней, с зазором.
+    // Drag up, right onto the panel: the nearest free spot is under it, with a gap.
     dragHandle({ x: 100, y: 700 }, { x: 100, y: 500 });
 
     expect(cardPosition()).toEqual({ left: DEFAULT_POSITION.left, top: 100 + 400 + 16 });

@@ -6,16 +6,10 @@ const ODOMETER_MS = 600;
 const FLIP_MS = 260;
 
 /**
- * Число, которое при смене значения докручивается до нового, как одометр.
+ * A number that rolls to a new value like an odometer when it changes; returns the currently
+ * displayed value.
  *
- * Первое значение показывается сразу — анимируются только изменения (например, расстояние после
- * правки поездки).
- *
- * Args:
- *     value: Целевое значение.
- *
- * Returns:
- *     Текущее показываемое значение.
+ * The first value shows immediately; only changes animate (e.g. the distance after editing a journey).
  */
 export function useAnimatedNumber(value: number): number {
   const [shown, setShown] = useState(value);
@@ -37,7 +31,7 @@ export function useAnimatedNumber(value: number): number {
     const start = performance.now();
     const tick = (now: number) => {
       const progress = Math.min((now - start) / ODOMETER_MS, 1);
-      // Плавное замедление к концу: последние цифры докручиваются медленнее.
+      // Ease out: the last digits roll slower.
       const eased = 1 - (1 - progress) ** 3;
       shownRef.current = from + (value - from) * eased;
       setShown(shownRef.current);
@@ -54,22 +48,18 @@ export function useAnimatedNumber(value: number): number {
 }
 
 /**
- * FLIP-анимация списка: элементы с `data-flip-id`, сменившие место после рендера, плавно
- * доезжают со старого места на новое, а новые — проявляются.
+ * FLIP list animation: elements with `data-flip-id` that changed place after a render glide from
+ * the old place to the new one, and new ones fade in.
  *
- * Места замеряются после каждого рендера, поэтому анимация срабатывает на любую смену порядка —
- * фильтр, перенос, правку с другим годом. Пока `isPaused` (идёт перетаскивание — строки двигает
- * dnd-kit), только замеряем. Элементы должны быть позиционированы относительно контейнера.
- *
- * Args:
- *     containerRef: Контейнер списка.
- *     isPaused: Не анимировать в этот рендер.
+ * Positions are measured after every render, so the animation fires on any reorder: a filter, a
+ * move, an edit with another year. While `isPaused` (a drag is in progress and dnd-kit moves the
+ * rows) it only measures. Elements must be positioned relative to the container.
  */
 export function useFlip(containerRef: RefObject<HTMLElement | null>, isPaused: boolean): void {
-  // Место — `offsetTop` внутри ленты, а не позиция на экране: прокрутка места не меняет.
+  // Position is `offsetTop` within the feed, not the on-screen position: scrolling does not change it.
   const tops = useRef(new Map<string, number>());
 
-  // Без массива зависимостей: замер нужен после каждого рендера, сравнивать есть с чем всегда.
+  // No dependency array: measuring is needed after every render, and there is always something to compare against.
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) {
@@ -83,7 +73,7 @@ export function useFlip(containerRef: RefObject<HTMLElement | null>, isPaused: b
       const top = element.offsetTop;
       next.set(id, top);
 
-      // jsdom и старые браузеры без Web Animations — просто без анимации.
+      // jsdom and old browsers without Web Animations: no animation.
       if (!isAnimated || typeof element.animate !== "function") {
         continue;
       }

@@ -5,22 +5,22 @@ import { useTranslation } from "react-i18next";
 import { toApiLanguage } from "../i18n/apiLanguage";
 import { resolvePlaces, type Language } from "./sdk";
 
-// Бэк принимает не больше 1000 id за запрос — большие списки режем на части.
+// The backend accepts at most 1000 ids per request, so larger lists are split into chunks.
 const RESOLVE_CHUNK_SIZE = 1000;
 
 /**
- * Название места для показа:
- * - строка — название на языке интерфейса;
- * - `null` — geo ответил, но такого места не знает (показываем «неизвестное место»);
- * - `undefined` — названия ещё грузятся (или запрос не удался) — ничего не показываем.
+ * Place name to display:
+ * - string: the name in the UI language;
+ * - `null`: geo answered but does not know the place (show an "unknown place" label);
+ * - `undefined`: still loading (or the request failed), show nothing.
  */
 export type PlaceName = string | null | undefined;
 
 export type PlaceNameLookup = (placeId: string) => PlaceName;
 
 /**
- * Подпись места для показа: место, которого geo не знает, подписывается `unknownLabel` —
- * иначе оно тихо пропало бы с карты; пока названия грузятся — подписи нет.
+ * Label for a place. A place geo does not know gets `unknownLabel` (otherwise it would vanish
+ * from the map silently); while names load there is no label.
  */
 export function placeLabel(name: PlaceName, unknownLabel: string): string | undefined {
   return name === null ? unknownLabel : name;
@@ -53,18 +53,13 @@ async function fetchPlaceNames(placeIds: readonly string[], language: Language, 
 }
 
 /**
- * Названия мест на языке интерфейса — для карты и глобуса, где поездки хранят только id мест.
+ * Place names in the UI language, for the map and globe, where journeys store only place ids.
  *
- * Порядок и повторы id не важны: список нормализуется, поэтому карта и глобус с одними и теми
- * же местами делят один запрос и один кэш. Названия мест не меняются — кэш вечный, а при
- * добавлении поездки прошлые названия остаются на экране, пока догружаются новые.
+ * Id order and duplicates do not matter: the list is normalized, so the map and globe share one
+ * request and one cache. Names never change, so the cache is permanent, and previous names stay
+ * on screen while names for a newly added journey load.
  *
- * Args:
- *     placeIds: Id мест, которым нужны названия.
- *
- * Returns:
- *     Функция `id → название`: строка, `null` для места, которого geo не знает, `undefined`
- *     пока названия грузятся.
+ * Returns an `id -> name` lookup (see `PlaceName`).
  */
 export function usePlaceNames(placeIds: Iterable<string>): PlaceNameLookup {
   const { i18n } = useTranslation();
@@ -86,8 +81,8 @@ export function usePlaceNames(placeIds: Iterable<string>): PlaceNameLookup {
       return NOTHING_LOADED;
     }
 
-    // Предыдущие данные (keepPreviousData) могли не спрашивать о новом id — тогда его
-    // название ещё грузится, а не «неизвестно».
+    // keepPreviousData may hold results that never asked about a new id: its name is still
+    // loading, not "unknown".
     return (placeId) => data.names.get(placeId) ?? (data.requested.has(placeId) ? null : undefined);
   }, [data]);
 }

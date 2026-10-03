@@ -5,11 +5,11 @@ import { clamp } from "../../../components/globe/route";
 import type { YearWindow } from "./MovementsControls";
 import { yearLabelCenters, type ThumbIndex } from "./yearLabelCenters";
 
-// Ручки едут за указателем плавно: шаг — сотая года, а не целый год.
+// Thumbs follow the pointer smoothly: the step is a hundredth of a year, not a whole year.
 const SMOOTH_STEP = 0.01;
-// Высота дорожки; Mantine отступает на неё же по бокам — ручки ездят внутри этих отступов, px.
+// Track height; Mantine insets the sides by the same amount, so thumbs travel inside those insets, px.
 const TRACK_SIZE = 4;
-// Засечки лет не теснее этого: за полвека шкала иначе превращается в бусы, px.
+// Year ticks are no closer than this: over half a century the scale would turn into beads, px.
 const MIN_TICK_SPACING_PX = 10;
 const TICK_STEPS = [1, 2, 5, 10, 20, 50, 100] as const;
 
@@ -31,7 +31,7 @@ interface YearRangeSliderProps {
   toLabel: string;
 }
 
-/** Окно лет под ручками: каждая ручка относится к ближайшему году. */
+/** The year window under the thumbs: each thumb maps to its nearest year. */
 function toWindow([from, to]: SliderPosition): YearWindow {
   return [Math.round(from), Math.round(to)];
 }
@@ -40,12 +40,12 @@ function isSameWindow(left: YearWindow, right: YearWindow): boolean {
   return left[0] === right[0] && left[1] === right[1];
 }
 
-// Год — не длиннее четырёх цифр.
+// A year is at most four digits.
 const YEAR_DIGITS = 4;
 
 interface EditableYearProps {
   year: number;
-  /** Допустимые годы для этой ручки, включительно: от края шкалы до соседней ручки. */
+  /** Allowed years for this thumb, inclusive: from the scale edge to the neighbouring thumb. */
   min: number;
   max: number;
   label: string;
@@ -53,11 +53,11 @@ interface EditableYearProps {
 }
 
 /**
- * Год под ручкой, который можно вписать руками: щелчок превращает его в поле ввода, Enter или
- * уход из поля — применить, Escape — отменить.
+ * The year under a thumb, which can be typed by hand: a click turns it into an input, Enter or
+ * leaving the field applies, Escape cancels.
  *
- * Год за пределами допустимого встаёт на ближайшую границу: 200 при шкале с 1976 — это 1976.
- * Пустое поле ничего не меняет. Подсказка на поле называет допустимые годы.
+ * A year outside the allowed range snaps to the nearest bound: 200 on a scale starting at 1976
+ * becomes 1976. An empty field changes nothing. The field hint names the allowed years.
  */
 function EditableYear({ year, min, max, label, onCommit }: EditableYearProps) {
   const [draft, setDraft] = useState<string | null>(null);
@@ -85,7 +85,7 @@ function EditableYear({ year, min, max, label, onCommit }: EditableYearProps) {
       inputMode="numeric"
       maxLength={YEAR_DIGITS}
       value={draft}
-      // Поле появляется по щелчку пользователя — фокус в него и есть ожидаемое поведение.
+      // The field appears on a user click, so focusing it is the expected behaviour.
       // eslint-disable-next-line jsx-a11y/no-autofocus
       autoFocus
       onFocus={(event) => event.currentTarget.select()}
@@ -103,18 +103,18 @@ function EditableYear({ year, min, max, label, onCommit }: EditableYearProps) {
 }
 
 /**
- * Ползунок окна лет: ручки двигаются плавно, а окно — по целым годам.
+ * Year window slider: thumbs move smoothly while the window moves by whole years.
  *
- * Пока ручку тянут, окно меняется, когда она проходит середину между годами — карта следует
- * сразу. Под каждой ручкой — год, к которому она сейчас ближе; его можно вписать руками, и ручка
- * переедет. Сблизившиеся подписи не наезжают друг на друга (см. yearLabelCenters). Отпущенная
- * ручка мягко доезжает до своего года. Стрелки двигают ручку на целый год, а не на шаг плавного хода.
+ * While a thumb is dragged the window changes when it passes the midpoint between years, so the
+ * map follows immediately. Under each thumb is the year it is currently closest to; it can be
+ * typed by hand and the thumb moves. Labels that get close do not overlap (see yearLabelCenters).
+ * A released thumb glides to its year. Arrow keys move a thumb by a whole year, not a smooth step.
  */
 export function YearRangeSlider({ firstYear, lastYear, window, onWindowChange, fromLabel, toLabel }: YearRangeSliderProps) {
   const [position, setPosition] = useState<SliderPosition>([window[0], window[1]]);
   const [movingThumb, setMovingThumb] = useState<ThumbIndex>(1);
   const [trackedWindow, setTrackedWindow] = useState<YearWindow>(window);
-  // Окно сменили снаружи — ручки встают на него; своё же округлённое положение не трогаем.
+  // The window changed from outside: thumbs move to it; our own rounded position is left alone.
   if (trackedWindow !== window) {
     setTrackedWindow(window);
     if (!isSameWindow(toWindow(position), window)) {
@@ -122,12 +122,12 @@ export function YearRangeSlider({ firstYear, lastYear, window, onWindowChange, f
     }
   }
 
-  // Ширина ползунка в пикселях: от неё зависят шаг засечек и места подписей.
+  // Slider width in pixels: tick spacing and label positions depend on it.
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [trackWidth, setTrackWidth] = useState(0);
   useLayoutEffect(() => {
     const wrapper = wrapperRef.current;
-    /* v8 ignore next 3 -- обёртка рендерится вместе с ползунком, эффект после монтирования */
+    /* v8 ignore next 3 -- the wrapper renders with the slider, the effect runs after mount */
     if (!wrapper) {
       return;
     }
@@ -148,7 +148,7 @@ export function YearRangeSlider({ firstYear, lastYear, window, onWindowChange, f
   }, [firstYear, lastYear, pxPerYear]);
 
   const changePosition = (next: SliderPosition) => {
-    // Двигалась та ручка, чьё значение изменилось: её подпись и уступает при сближении.
+    // The thumb whose value changed is the one that moved: its label is the one that yields when they get close.
     if (next[0] !== position[0]) {
       setMovingThumb(0);
     } else if (next[1] !== position[1]) {
@@ -162,11 +162,11 @@ export function YearRangeSlider({ firstYear, lastYear, window, onWindowChange, f
     }
   };
 
-  /** Ставит ручку на год: в пределах шкалы и не дальше соседней ручки. */
+  /** Puts a thumb on a year: within the scale and no further than the neighbouring thumb. */
   const moveThumbTo = (thumbIndex: ThumbIndex, year: number) => {
     const next: SliderPosition = [window[0], window[1]];
     next[thumbIndex] = clamp(year, firstYear, lastYear);
-    // Ручки не перескакивают друг через друга: упёршись в соседнюю, ручка встаёт вровень с ней.
+    // Thumbs never jump over each other: hitting the neighbour, a thumb stops level with it.
     if (next[0] > next[1]) {
       next[thumbIndex] = next[1 - thumbIndex];
     }
@@ -181,7 +181,7 @@ export function YearRangeSlider({ firstYear, lastYear, window, onWindowChange, f
       return;
     }
 
-    // Перехватываем до Mantine: её шаг — сотая года, со стрелок ползунок еле полз бы.
+    // Intercept before Mantine: its step is a hundredth of a year, the slider would crawl on arrow keys.
     event.preventDefault();
     event.stopPropagation();
     const thumbIndex = target.getAttribute("aria-label") === toLabel ? 1 : 0;
@@ -189,7 +189,7 @@ export function YearRangeSlider({ firstYear, lastYear, window, onWindowChange, f
   };
 
   const [fromYear, toYear] = toWindow(position);
-  // Центр ручки на экране — по той же формуле, что у Mantine: внутри боковых отступов дорожки.
+  // Thumb center on screen, by the same formula as Mantine: inside the track's side insets.
   const thumbX = (value: number) => TRACK_SIZE + (value - firstYear) * pxPerYear;
   const [fromCenter, toCenter] = yearLabelCenters([thumbX(position[0]), thumbX(position[1])], movingThumb, trackWidth);
 
@@ -213,7 +213,7 @@ export function YearRangeSlider({ firstYear, lastYear, window, onWindowChange, f
         thumbFromLabel={fromLabel}
         thumbToLabel={toLabel}
       />
-      {/* Годы под ручками едут вместе с ними; сойдясь, подписи не наезжают друг на друга. */}
+      {/* Years under the thumbs move with them; when they meet, the labels do not overlap. */}
       <div className="movements-controls__years">
         <span className="movements-controls__year-group" style={{ left: fromCenter }}>
           <EditableYear year={fromYear} min={firstYear} max={toYear} label={fromLabel} onCommit={(year) => moveThumbTo(0, year)} />

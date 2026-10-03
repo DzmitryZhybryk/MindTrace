@@ -1,6 +1,6 @@
 import type { CardPosition } from "./controlsPosition";
 
-/** Прямоугольник в координатах области карты, px. */
+/** Rectangle in map area coordinates, px. */
 export interface Box {
   left: number;
   top: number;
@@ -9,19 +9,19 @@ export interface Box {
 }
 
 interface PlacementLayout {
-  /** Размер области карты. */
+  /** Map area size. */
   area: { width: number; height: number };
-  /** Размер карточки (без ушка). */
+  /** Card size (without the tab). */
   card: { width: number; height: number };
-  /** Сколько ушко торчит над карточкой. */
+  /** How far the tab sticks out above the card. */
   overhangTop: number;
-  /** Панель навигации поверх карты; `null` — её нет поверх (мобильная раскладка). */
+  /** Navigation panel over the map; `null` if it is not over it (mobile layout). */
   panel: Box | null;
 }
 
-// Отступ от краёв области карты, когда панели нет — тот же, что у панели слева.
+// Inset from the map area edges when there is no panel: the same as the panel's on the left.
 const EDGE_GAP = 32;
-// Зазор между карточкой и панелью, если карточка встала рядом с ней.
+// Gap between the card and the panel when the card sits beside it.
 const PANEL_GAP = 16;
 
 function overlaps(first: Box, second: Box): boolean {
@@ -34,12 +34,12 @@ function overlaps(first: Box, second: Box): boolean {
 }
 
 /**
- * Где встать карточке фильтров, если её хотят поставить в `wanted`.
+ * Where the filter card ends up if it is asked to go to `wanted`.
  *
- * Рамка, внутри которой ездит карточка, выровнена по панели навигации: левый край карточки —
- * не левее левого края панели, верх (с ушком) — не выше верха панели; справа и снизу — тот же
- * отступ от края области карты, что у панели слева. На саму панель карточка не наезжает: если
- * её тянут туда, она встаёт рядом — правее панели или под ней, смотря что ближе.
+ * The frame the card travels in is aligned to the navigation panel: the card's left edge is no
+ * further left than the panel's, its top (with the tab) no higher than the panel's top; on the
+ * right and bottom the inset from the map area edge equals the panel's on the left. The card never
+ * overlaps the panel: dragged there, it lands beside it, right of the panel or under it, whichever is closer.
  */
 export function placeCard(wanted: CardPosition, { area, card, overhangTop, panel }: PlacementLayout): CardPosition {
   const edge = panel ? panel.left : EDGE_GAP;
@@ -63,7 +63,7 @@ export function placeCard(wanted: CardPosition, { area, card, overhangTop, panel
     return placed;
   }
 
-  // Наехала на панель — ближайшее из двух мест рядом с ней, которое помещается в рамку.
+  // Overlapping the panel: the nearer of two spots beside it that fits in the frame.
   const besidePanel = [
     { left: panel.left + panel.width + PANEL_GAP, top: placed.top },
     { left: placed.left, top: panel.top + panel.height + PANEL_GAP + overhangTop },

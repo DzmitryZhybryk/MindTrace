@@ -4,7 +4,7 @@ import { expect } from "../fixtures";
 
 export type PlaceRef = { placeId: string; countryCode: string; latitude: number; longitude: number };
 
-/** Находит город через поиск geo и отдаёт его в форме, которую принимает создание поездки. */
+/** Finds a city via geo search and returns it in the form journey creation accepts. */
 export async function findPlace(request: APIRequestContext, token: string, searchText: string): Promise<PlaceRef> {
   const response = await request.get("/v1/geo/places/search/", {
     headers: { Authorization: `Bearer ${token}` },
@@ -24,7 +24,7 @@ interface JourneyInput {
   traveledYear: number;
 }
 
-/** Создаёт поездку через API от имени владельца токена. */
+/** Creates a journey via the API on behalf of the token owner. */
 export async function createJourney(request: APIRequestContext, token: string, journey: JourneyInput): Promise<void> {
   const created = await request.post("/v1/journeys/", {
     headers: { Authorization: `Bearer ${token}` },

@@ -4,7 +4,7 @@ import { revealPov } from "./cameraReveal";
 
 const TARGET = { lat: 12, lng: 40, altitude: 2.4 };
 const DURATION_MS = 1400;
-// Автовращение globe.gl в градусах долготы камеры в секунду (уменьшает долготу).
+// globe.gl auto-rotation in degrees of camera longitude per second (it decreases longitude).
 const SPIN = -2.52;
 
 describe("revealPov", () => {
@@ -18,7 +18,7 @@ describe("revealPov", () => {
   it("старт развёрнут против хода вращения: за подлёт глобус докручивается к цели", () => {
     const start = revealPov(TARGET, 0, SPIN, DURATION_MS);
 
-    // Автовращение уменьшает долготу — значит, стартуем восточнее цели.
+    // Auto-rotation decreases longitude, so start east of the target.
     expect(start.lng).toBeGreaterThan(TARGET.lng);
   });
 

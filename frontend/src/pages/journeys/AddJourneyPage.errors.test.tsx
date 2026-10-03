@@ -9,7 +9,7 @@ const [MOSCOW, LONDON] = GEO_PLACES;
 
 const UNKNOWN_PLACE_TEXT = "This place wasn't found. Pick it from the suggestions again";
 
-/** Бэк не нашёл места с этими id — отвечает `journeys.unknown_place`. */
+/** The backend did not find places with these ids and answers `journeys.unknown_place`. */
 function respondUnknownPlaces(placeIds: string[]): void {
   server.use(
     http.post("/v1/journeys/", () =>
@@ -33,9 +33,9 @@ describe("AddJourneyPage — ошибки бэка", () => {
   });
 
   it("рендерит ошибку года под полем года, а не теряет её", async () => {
-    // Регресс на два бага аудита разом: (1) код journeys.* замаплен в errors-namespace
-    // (иначе был бы generic fallback); (2) details.field='year' ложится на реальное поле
-    // формы (раньше слался 'traveled_year' → setFieldError бил в фантомное поле, текст исчезал).
+    // Regression for two audit bugs at once: (1) journeys.* codes are mapped in the errors namespace
+    // (otherwise a generic fallback would show); (2) details.field='year' lands on the real form
+    // field (it used to send 'traveled_year', so setFieldError hit a phantom field and the text vanished).
     server.use(
       http.post("/v1/journeys/", () =>
         HttpResponse.json(
@@ -60,7 +60,7 @@ describe("AddJourneyPage — ошибки бэка", () => {
 
     const destinationError = await screen.findByText(UNKNOWN_PLACE_TEXT);
     expect(screen.getAllByText(UNKNOWN_PLACE_TEXT)).toHaveLength(1);
-    // Ошибка стоит у поля «To» — его описание ссылается на текст ошибки.
+    // The error sits at the "To" field: its description references the error text.
     expect(screen.getByLabelText("To")).toHaveAccessibleDescription(destinationError.textContent ?? "");
     expect(screen.queryByText("journeys-landing")).not.toBeInTheDocument();
   });

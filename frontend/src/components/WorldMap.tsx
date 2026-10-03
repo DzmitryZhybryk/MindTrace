@@ -22,15 +22,14 @@ import { ANTIMERIDIAN_JUMP, WORLD_VIEW_BOX, isWorldView, projectToScreen, type V
 import "./world-map.css";
 
 /*
- * Плоская карта мира на чистом SVG, без внешних библиотек. Страна = <path>,
- * заливка зависит от статуса (посещена / в планах / не была), города —
- * маленькие точки по координатам. Под курсором страна затемняется, а тултип
- * показывает её название и — для посещённых — список городов с годами визитов.
- * Карту приближают и двигают жестами (см. useMapZoom); поверх стран можно нарисовать
- * свой слой (overlay) в координатах холста.
+ * Flat world map in plain SVG, no external libraries. Country = <path>, fill depends on status
+ * (visited / wishlist / not visited), cities are small dots at their coordinates. The hovered
+ * country darkens and a tooltip shows its name and, for visited ones, cities with visit years.
+ * The map is zoomed and panned by gestures (see useMapZoom); a custom overlay layer can be drawn
+ * over the countries in canvas coordinates.
  */
 
-// --- Разбор geo-данных в SVG-пути (один раз при импорте модуля) ------------
+// --- Parsing geo data into SVG paths (once, at module import) ------------
 type CountryGeometry = Polygon | MultiPolygon;
 
 interface CountryProperties {
@@ -69,8 +68,8 @@ interface CountryShape {
   path: string;
 }
 
-// Топологию собирает scripts/build-world-topology.ts из стран-полигонов, у каждой есть
-// строковый id и имя, — поэтому раскрытые обратно фичи и есть CountryFeature.
+// scripts/build-world-topology.ts builds the topology from country polygons that each have a
+// string id and a name, so the features unpacked back are CountryFeature.
 const WORLD = worldTopology as unknown as WorldTopology;
 const COUNTRY_FEATURES = feature(WORLD, WORLD.objects.countries).features as CountryFeature[];
 
@@ -84,13 +83,13 @@ const COUNTRY_NAMES: ReadonlyMap<string, string> = new Map(
   COUNTRY_SHAPES.map((shape) => [shape.id, shape.name]),
 );
 
-// --- Публичный API компонента ---------------------------------------------
+// --- Component public API ---------------------------------------------
 export type CountryStatus = "visited" | "wishlist";
 
 export interface MapCity {
-  /** Id места в geo. */
+  /** Place id in geo. */
   id: string;
-  /** Название на языке интерфейса; нет, пока названия ещё грузятся. */
+  /** Name in the UI language; absent while names are loading. */
   name?: string;
   lat: number;
   lng: number;
@@ -104,15 +103,15 @@ export interface MapCountry {
 }
 
 export interface WorldMapTone {
-  /** Заливка непосещённой страны. */
+  /** Fill of a not-visited country. */
   land: string;
-  /** Цвет границ. */
+  /** Border colour. */
   border: string;
-  /** Заливка посещённой страны. */
+  /** Fill of a visited country. */
   visited: string;
-  /** Заливка страны из планов/мечт (без городов). */
+  /** Fill of a wishlist country (no cities). */
   wishlist: string;
-  /** Цвет точки-города. */
+  /** City dot colour. */
   cityDot: string;
 }
 
@@ -121,32 +120,32 @@ interface WorldMapProps {
   tone: WorldMapTone;
   className?: string;
   /**
-   * Слой поверх стран, в координатах холста (см. `projectToScreen`). Получает текущую
-   * видимую область — чтобы подписи и значки не росли при приближении вместе с картой.
+   * Layer over the countries, in canvas coordinates (see `projectToScreen`). Receives the current
+   * visible area so labels and icons do not grow with the map when zoomed.
    */
   overlay?: (view: ViewBox) => ReactNode;
-  /** Что показать на старте (в единицах холста); без него карта открывается всем миром. */
+  /** What to show initially (canvas units); without it the map opens on the whole world. */
   fitBounds?: ViewBox | null;
   /**
-   * Элемент поверх левой части карты (панель): стартовый вид подгоняется в незакрытую часть, а
-   * карта растворяется к его кромке — линии не выныривают из-под него.
+   * Element over the left part of the map (a panel): the initial view fits into the uncovered
+   * part and the map fades toward its edge so lines do not pop out from under it.
    */
   occluderRef?: RefObject<HTMLElement | null>;
   /**
-   * `false` — карта не растворяется к кромке `occluderRef`: элемент поверх неё прозрачный, и
-   * карту видно сквозь него. Стартовый вид всё равно подгоняется в незакрытую часть.
+   * `false`: the map does not fade toward the `occluderRef` edge because the element over it is
+   * transparent and the map shows through. The initial view still fits the uncovered part.
    */
   shouldFadeUnderOccluder?: boolean;
-  /** Смена `fitBounds` переводит карту к новому виду плавно, а не прыжком. */
+  /** A `fitBounds` change eases the map to the new view instead of jumping. */
   isFitAnimated?: boolean;
-  /** `false` — страны не подсвечиваются под курсором и тултипа нет; масштаб при этом работает. */
+  /** `false`: no hover highlight and no tooltip; zoom still works. */
   isInteractive?: boolean;
 }
 
-// Точка города в единицах холста при виде на весь мир; при приближении пропорционально меньше.
+// City dot radius in canvas units at the whole-world view; proportionally smaller when zoomed.
 const CITY_DOT_RADIUS = 1.8;
 
-// Отступ тултипа от курсора и запасные размеры (до первого замера ref'а).
+// Tooltip offset from the cursor, and fallback sizes (before the first ref measurement).
 const TOOLTIP_OFFSET = 14;
 const TOOLTIP_FALLBACK_WIDTH = 160;
 const TOOLTIP_FALLBACK_HEIGHT = 80;
@@ -168,8 +167,8 @@ export function WorldMap({
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Сколько пикселей слева закрывает панель и каким быть стартовому виду — зависит от размера
-  // области карты, поэтому пересчитываем до отрисовки и при каждом изменении размера.
+  // How many pixels the panel covers on the left and the initial view both depend on the map
+  // area size, so recompute before paint and on every resize.
   const [initialView, setInitialView] = useState<ViewBox>(WORLD_VIEW_BOX);
   const [occludedLeft, setOccludedLeft] = useState(0);
   useLayoutEffect(() => {
@@ -183,7 +182,7 @@ export function WorldMap({
     const measure = () => {
       const canvasRect = canvas.getBoundingClientRect();
       const occluderRect = occluderRef?.current?.getBoundingClientRect();
-      // Панель закрывает карту, только если лежит поверх неё; на мобильной ширине она над картой.
+      // The panel covers the map only if it lies over it; on mobile width it sits above the map.
       const isOverlapping =
         occluderRect !== undefined &&
         occluderRect.left < canvasRect.right &&
@@ -205,8 +204,8 @@ export function WorldMap({
   const view = useMapZoom(canvasRef, svgRef, fittedView);
   const isFadedUnderOccluder = shouldFadeUnderOccluder && occludedLeft > 0;
   const isZoomed = !isWorldView(view);
-  // Геометрию контейнера кешируем на входе курсора, а не дёргаем
-  // getBoundingClientRect (форсит reflow) на каждое движение мыши.
+  // Cache the container geometry on cursor enter instead of calling getBoundingClientRect
+  // (forces reflow) on every mouse move.
   const rectRef = useRef<DOMRect | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [pointer, setPointer] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -217,8 +216,8 @@ export function WorldMap({
     [countries],
   );
 
-  // Имя страны резолвим из ISO-кода через CLDR по активному языку; безкодовые
-  // территории (id=имя) и неизвестные коды → fallback на имя из данных границ.
+  // Resolve the country name from the ISO code via CLDR in the active language; territories
+  // without a code (id = name) and unknown codes fall back to the name in the border data.
   const countryNames = useMemo(
     () => new Intl.DisplayNames([i18n.language], { type: "region", fallback: "none" }),
     [i18n.language],
@@ -240,12 +239,12 @@ export function WorldMap({
   }, []);
 
   const handleMouseMove = useCallback((event: MouseEvent<HTMLDivElement>) => {
-    // Обычно геометрия закеширована на onMouseEnter, но он не срабатывает, если
-    // курсор уже был над картой в момент её появления (клиентская навигация после
-    // добавления поездки). Тогда меряем лениво здесь — иначе rect=null, ранний
-    // выход, и тултип залипает в левом верхнем углу (pointer остаётся {0,0}).
+    // Geometry is normally cached on onMouseEnter, but that does not fire if the cursor was
+    // already over the map when it appeared (client navigation after adding a journey). Measure
+    // lazily here, otherwise rect=null, an early return, and the tooltip sticks to the top-left
+    // corner (pointer stays {0,0}).
     const rect = rectRef.current ?? wrapRef.current?.getBoundingClientRect() ?? null;
-    // Оборонительный guard: getBoundingClientRect у смонтированного узла всегда даёт rect.
+    // Defensive guard: getBoundingClientRect on a mounted node always returns a rect.
     /* v8 ignore next 3 */
     if (!rect) {
       return;
@@ -253,9 +252,9 @@ export function WorldMap({
 
     rectRef.current = rect;
     setPointer({ x: event.clientX - rect.left, y: event.clientY - rect.top });
-    // Флип у края экрана: если справа/снизу тултип не помещается — рисуем его
-    // слева/сверху от курсора. Меряем по viewport (clientX/Y), чтобы не вылезти
-    // за экран; размеры берём с прошлого кадра (меняются только при смене страны).
+    // Flip near the screen edge: if the tooltip does not fit right/below, draw it left/above the
+    // cursor. Measure against the viewport (clientX/Y) to stay on screen; sizes come from the
+    // previous frame (they change only when the country changes).
     const tooltip = tooltipRef.current;
     const width = tooltip?.offsetWidth ?? TOOLTIP_FALLBACK_WIDTH;
     const height = tooltip?.offsetHeight ?? TOOLTIP_FALLBACK_HEIGHT;
@@ -265,9 +264,8 @@ export function WorldMap({
     });
   }, []);
 
-  // Страны не зависят ни от hover/позиции курсора (подсветка — через CSS :hover), ни от
-  // масштаба (он меняет только viewBox), поэтому мемоизируем: движение мыши и зум не
-  // перерисовывают ~180 path'ей.
+  // Countries depend on neither hover/cursor position (highlight is CSS :hover) nor zoom (it only
+  // changes the viewBox), so memoize: mouse moves and zoom do not redraw ~180 paths.
   const countryShapes = useMemo(
     () => (
       <g>
@@ -312,8 +310,8 @@ export function WorldMap({
 
   const hovered = hoveredId ? byId.get(hoveredId) : undefined;
   const hoveredName = hoveredId ? resolveCountryName(hoveredId) : "";
-  // Города без названия (ещё грузятся) в тултип не попадают — показываем их, как только придут.
-  // Порядок — по году первого визита (годы приходят по возрастанию), в одном году — по названию.
+  // Cities without a name (still loading) stay out of the tooltip until they arrive. Order: by
+  // first visit year (years arrive ascending), then by name within a year.
   const hoveredCities = useMemo(
     () =>
       (hovered?.cities ?? [])
@@ -343,17 +341,17 @@ export function WorldMap({
       onMouseMove={isInteractive ? handleMouseMove : undefined}
       onMouseLeave={isInteractive ? () => setHoveredId(null) : undefined}
     >
-      {/* Карта всегда заполняет высоту (height:100%/width:auto в CSS), выступ по
-          ширине обрезается canvas'ом — верх/низ карты прижаты к padding и не
-          зависят от пропорций окна. Тултип лежит вне canvas, чтобы не обрезаться. */}
+      {/* The map always fills the height (height:100%/width:auto in CSS); width overflow is
+          cropped by the canvas, so the top/bottom stay at the padding regardless of window
+          proportions. The tooltip is outside the canvas so it is not clipped. */}
       <div
         ref={canvasRef}
         className="world-map-canvas"
         style={isFadedUnderOccluder ? ({ "--map-occluded-left": `${occludedLeft}px` } as CSSProperties) : undefined}
       >
-        {/* Доступное имя через aria-label, НЕ <title>: <title> браузер рисует как
-            нативный tooltip, который налезает на наш кастомный (role="img" тут
-            ловит jsx-a11y/prefer-tag-over-role, поэтому просто aria-label). */}
+        {/* Accessible name via aria-label, NOT <title>: browsers draw <title> as a native tooltip
+            that overlaps our custom one (role="img" trips jsx-a11y/prefer-tag-over-role, so
+            just aria-label). */}
         <svg
           ref={svgRef}
           className="world-map"

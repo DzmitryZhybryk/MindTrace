@@ -1,12 +1,11 @@
 /**
- * Общий шов unit-тестов, стабающих `fetch` напрямую (мимо MSW — см. client.test.ts).
- * Единственная точка правды для сигнатуры стаба и JSON-ответов: до выноса сюда
- * каждый api-сьют держал собственную копию.
+ * Shared seam of unit tests that stub `fetch` directly (bypassing MSW, see client.test.ts).
+ * The single source of truth for the stub signature and JSON responses.
  */
 
 export type FetchSignature = (input: string | Request, init?: RequestInit) => Promise<Response>;
 
-/** JSON-ответ с заданным статусом. */
+/** A JSON response with the given status. */
 export function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,

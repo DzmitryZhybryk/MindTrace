@@ -1,6 +1,6 @@
-/* ---- Метки концов маршрута ------------------------------------------------- */
-/* Нулевой по размеру якорь: three-globe ставит его origin ровно на координату.
-   Точка центрируется на ней, подпись — absolute сбоку и точку не смещает. */
+/* ---- Route end pins ------------------------------------------------- */
+/* A zero-size anchor: three-globe puts its origin exactly on the coordinate. The dot is centered
+   on it, the label is absolute at the side and does not shift the dot. */
 .globe-route-pin {
   position: relative;
   width: 0;
@@ -36,16 +36,16 @@
   backdrop-filter: blur(4px);
 }
 
-/* Подпись слева от точки (когда маршрут уходит вправо) — чтобы не накрывать дугу. */
+/* Label left of the dot (when the route goes right) so it does not cover the arc. */
 .globe-route-pin--left .globe-route-pin__name {
   left: auto;
   right: 12px;
   transform-origin: right center;
 }
 
-/* ---- Транспорт, бегущий по маршруту --------------------------------------- */
-/* Внешний контейнер позиционирует (и центрирует — translate(-50%,-50%) инлайном) CSS2D-рендерер
-   three-globe; поворот по курсу — на вложенной иконке, её transform пишет rAF. */
+/* ---- Vehicle travelling along the route --------------------------------------- */
+/* The outer container is positioned (and centered via inline translate(-50%,-50%)) by three-globe's
+   CSS2D renderer; the heading rotation is on the nested icon, whose transform rAF writes. */
 .globe-route-vehicle {
   pointer-events: none;
 }
@@ -55,7 +55,7 @@
   height: 28px;
   transform-origin: center;
   will-change: transform;
-  /* Белый ореол отделяет цветную иконку от тёмного океана + лёгкая тень для объёма. */
+  /* A white halo separates the coloured icon from the dark ocean, plus a light shadow for volume. */
   filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.95)) drop-shadow(0 1px 3px rgba(2, 6, 23, 0.5));
 }
 
@@ -66,9 +66,9 @@
 }
 
 /*
- * Угасание маршрута при уходе с формы на /home. Гасим ДЕТЕЙ, а не обёртку: inline-стили
- * обёрток пишет globe.gl (позиция CSS2D-рендерера, окклюзия дальней стороны). 0.7s =
- * ROUTE_FADE_MS в route.ts; след гаснет в routeScene.ts альфой своего цвета.
+ * Route fade-out when leaving the form for /home. Fade the CHILDREN, not the wrapper: globe.gl
+ * writes the wrappers' inline styles (CSS2D renderer position, far-side occlusion). 0.7s =
+ * ROUTE_FADE_MS in route.ts; the trail fades in routeScene.ts via its colour's alpha.
  */
 .globe-route-pin__dot,
 .globe-route-pin__name,

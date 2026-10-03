@@ -14,7 +14,7 @@ const UNKNOWN_ID = "99999999-9999-4999-8999-999999999999";
 
 type ResolveBody = { placeIds: string[]; language: string };
 
-/** Подменяет `resolve` на тот же фейк, но запоминает тела запросов. */
+/** Replaces `resolve` with the same fake but records request bodies. */
 function recordResolveRequests(): ResolveBody[] {
   const bodies: ResolveBody[] = [];
   server.use(
@@ -45,7 +45,7 @@ function renderPlaceNames(placeIds: string[], queryClient: QueryClient = createT
 }
 
 afterEach(async () => {
-  // Язык — глобальный singleton i18n: возвращаем en, чтобы тесты не влияли друг на друга.
+  // The language is a global i18n singleton: restore en so tests do not affect each other.
   await i18n.changeLanguage("en");
 });
 
@@ -68,7 +68,7 @@ describe("usePlaceNames", () => {
     const queryClient = createTestQueryClient();
     const { result } = renderPlaceNames([], queryClient);
 
-    // Запрос выключен сразу — клиент ничего не грузит, и в geo ничего не ушло.
+    // The query is disabled at once: the client loads nothing and nothing went to geo.
     expect(queryClient.isFetching()).toBe(0);
     expect(bodies).toHaveLength(0);
     expect(result.current(MOSCOW.placeId)).toBeUndefined();
@@ -102,7 +102,7 @@ describe("usePlaceNames", () => {
     const { result, rerender } = renderPlaceNames([MOSCOW.placeId], queryClient);
     await waitFor(() => expect(result.current(MOSCOW.placeId)).toBe("Moscow"));
 
-    // Ответ на второй набор держим, чтобы поймать промежуточное состояние.
+    // Hold the response for the second set to catch the intermediate state.
     let release: () => void = () => {};
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -119,7 +119,7 @@ describe("usePlaceNames", () => {
     expect(result.current(PARIS.placeId)).toBeUndefined();
 
     release();
-    // Ответ пришёл без Paris — теперь это действительно «неизвестно».
+    // The response came without Paris: now it really is "unknown".
     await waitFor(() => expect(result.current(PARIS.placeId)).toBeNull());
   });
 

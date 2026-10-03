@@ -12,21 +12,20 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
 import { SoonBadge } from "./SoonBadge";
 import "./app-header.css";
 
-// `soon: true` — раздел ещё не реализован: таб рендерится неактивным (не ссылка)
-// с бейджем «Soon». Так пункт остаётся видимым как анонс, но не ведёт в никуда.
+// `soon: true` marks an unimplemented section: the tab renders inactive (not a link) with a
+// "Soon" badge, visible as an announcement but leading nowhere.
 const TABS = [
   { key: "journeys", to: "/journeys", soon: false },
   { key: "mind", to: "/mind", soon: true },
 ] as const;
 
 /**
- * Шапка приложения, общая для всех внутренних экранов (Home, Journeys, ...).
- * Держит бренд, первичную навигацию с подсветкой активного раздела, выбор
- * языка и меню профиля (logout идемпотентен на бэке). Под шапкой рендерит
- * баннер верификации email — единая точка, чтобы он не дублировался по страницам.
+ * App header shared by all inner screens (Home, Journeys, ...): brand, primary navigation with
+ * the active section highlighted, language picker and profile menu (logout is idempotent on the
+ * backend). Renders the email verification banner under itself, the single place for it.
  *
- * На узких экранах (<sm) первичная навигация уезжает в бургер-Drawer, чтобы шапка
- * не переполнялась; язык и профиль остаются в шапке.
+ * On narrow screens (<sm) primary navigation moves into a burger Drawer; language and profile
+ * stay in the header.
  */
 export function AppHeader() {
   const { t } = useTranslation("common");
@@ -36,8 +35,7 @@ export function AppHeader() {
   const currentUser = useCurrentUser();
   const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false);
 
-  // Пока профиль не загружен, name=undefined — Mantine Avatar рендерит генерик-иконку
-  // вместо инициалов.
+  // Until the profile loads, name is undefined and Mantine Avatar shows a generic icon.
   const profileName =
     currentUser.status === "ready"
       ? (currentUser.user.displayName ?? currentUser.user.username)
@@ -47,8 +45,8 @@ export function AppHeader() {
     try {
       await logout({ throwOnError: true });
     } catch {
-      // Logout идемпотентен на бэке (204 даже без cookie); сетевая ошибка
-      // не должна оставить пользователя залогиненным локально.
+      // Logout is idempotent on the backend (204 even without a cookie); a network error must
+      // not leave the user logged in locally.
     } finally {
       clearSession();
       navigate("/login");

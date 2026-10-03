@@ -1,27 +1,27 @@
 import { WORLD_ASPECT, WORLD_VIEW_BOX, clampView, type ViewBox } from "./worldProjection";
 
-/** Размер области карты на экране, px. */
+/** On-screen size of the map area, px. */
 interface CanvasSize {
   width: number;
   height: number;
 }
 
-// Поля вокруг содержимого — доля его размера с каждой стороны.
+// Margin around the content, as a share of its size on each side.
 const PADDING_RATIO = 0.15;
-// Содержимое уже этой доли мира не растягивается: одна короткая поездка не заполняет весь экран.
+// Content narrower than this share of the world is not stretched: one short trip does not fill the screen.
 const MIN_CONTENT_WIDTH_RATIO = 0.25;
 
 /**
- * Подбирает видимую область так, чтобы `bounds` (в единицах холста) целиком поместились
- * в ту часть области карты, которую ничто не закрывает.
+ * Picks a visible area so `bounds` (in canvas units) fit entirely into the part of the map area
+ * that nothing covers.
  *
- * Карта вписана по высоте, а лишняя ширина обрезана поровну с краёв, поэтому видимую часть
- * считаем в пикселях, а не в долях холста. `occludedLeft` — сколько пикселей слева закрыто
- * (панелью навигации).
+ * The map fits by height and extra width is cropped equally from both edges, so the visible
+ * part is computed in pixels, not canvas fractions. `occludedLeft` is how many pixels on the
+ * left are covered (by the navigation panel).
  */
 export function fitView(bounds: ViewBox, canvas: CanvasSize, occludedLeft: number): ViewBox {
   const svgWidth = canvas.height * WORLD_ASPECT;
-  // Сдвиг от левого края области карты к левому краю SVG (отрицательный, если SVG шире).
+  // Offset from the map area's left edge to the SVG's left edge (negative if the SVG is wider).
   const svgOffset = (canvas.width - svgWidth) / 2;
   const areaLeft = Math.max(0, occludedLeft - svgOffset);
   const areaRight = Math.min(svgWidth, canvas.width - svgOffset);
@@ -38,7 +38,7 @@ export function fitView(bounds: ViewBox, canvas: CanvasSize, occludedLeft: numbe
     return WORLD_VIEW_BOX;
   }
 
-  // Центр содержимого — в центр незакрытой части; у края мира рамка сдвигается внутрь.
+  // Center the content in the uncovered part; near the world edge the frame shifts inward.
   return clampView({
     x: bounds.x + bounds.width / 2 - ((areaLeft + areaRight) / 2) * unitsPerPx,
     y: bounds.y + bounds.height / 2 - (canvas.height / 2) * unitsPerPx,

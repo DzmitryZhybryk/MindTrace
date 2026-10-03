@@ -6,13 +6,13 @@ import { renderWithProviders, screen, waitFor } from "../../test/render";
 import { MAP_TONE } from "./journeys-data";
 import { JourneysMapView } from "./JourneysMapView";
 
-// Точки-города — SVG <circle> без доступного имени (роль/текст недоступны, это графика),
-// поэтому долёт данных до карты наблюдаем по маркеру-классу.
+// City dots are SVG <circle> without an accessible name (no role/text, it is graphics), so data
+// reaching the map is observed via the marker class.
 const CITY_DOT = ".world-map__city-dot";
 
 const UNKNOWN_PLACE_ID = "99999999-9999-4999-8999-999999999999";
 
-/** Карта с одной посещённой страной (RU) и заданными городами. */
+/** A map with one visited country (RU) and the given cities. */
 function respondWithRussianCities(placeIds: string[]): void {
   server.use(
     http.get("/v1/journeys/map", () =>
@@ -28,7 +28,7 @@ function respondWithRussianCities(placeIds: string[]): void {
   );
 }
 
-/** Единственная посещённая страна на карте — по её заливке (SVG-path без доступного имени). */
+/** The only visited country on the map, found by its fill (an SVG path has no accessible name). */
 function visitedCountry(container: HTMLElement): SVGPathElement {
   const path = container.querySelector<SVGPathElement>(`.world-map__country[fill="${MAP_TONE.visited}"]`);
   if (!path) {
@@ -71,7 +71,7 @@ describe("JourneysMapView", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Couldn't load your journeys");
 
-    // Следующий запрос успешен → по retry алерт уходит, карта наполняется городами.
+    // The next request succeeds: on retry the alert goes away and the map fills with cities.
     server.use(
       http.get("/v1/journeys/map", () =>
         HttpResponse.json({

@@ -21,21 +21,21 @@ describe("resolveLabelVisibility", () => {
   });
 
   it("при пересечении прячет подпись дальше от центра диска", () => {
-    // Бишкек у центра, Ташкент наезжает на него, но сам ближе к краю.
+    // Bishkek is near the center, Tashkent overlaps it but is closer to the edge itself.
     const hidden = resolveLabelVisibility([box("Ташкент", 350, 296), box("Бишкек", 390, 294)], CENTER, NONE);
 
     expect(hidden).toEqual(new Set(["Ташкент"]));
   });
 
   it("при равном расстоянии от центра порядок стабилен: выигрывает меньшее имя", () => {
-    // Центры подписей зеркальны относительно центра диска — расстояния совпадают бит-в-бит.
+    // The label centers are mirrored about the disk center: distances match bit for bit.
     const hidden = resolveLabelVisibility([box("Бишкек", 390, 300), box("Ташкент", 350, 300)], CENTER, NONE);
 
     expect(hidden).toEqual(new Set(["Ташкент"]));
   });
 
   it("гистерезис: спрятанная подпись не возвращается без запаса зазора", () => {
-    // Пересечения уже нет, но зазор меньше SHOW_CLEARANCE_PX — остаётся спрятанной.
+    // There is no overlap anymore but the gap is below SHOW_CLEARANCE_PX: it stays hidden.
     const gap = SHOW_CLEARANCE_PX - 2;
     const hidden = resolveLabelVisibility(
       [box("Бишкек", 400, 300), box("Ташкент", 400 + 60 + gap, 300)],
@@ -57,8 +57,8 @@ describe("resolveLabelVisibility", () => {
   });
 
   it("спрятанная подпись не отнимает место у остальных", () => {
-    // Алматы пересекает Бишкек (проигрывает), Ташкент пересекает только Алматы —
-    // и место получает: конфликт считается лишь с ПРИНЯТЫМИ подписями.
+    // Almaty overlaps Bishkek (loses), Tashkent overlaps only Almaty and gets its place: a conflict
+    // counts only against ACCEPTED labels.
     const hidden = resolveLabelVisibility(
       [box("Бишкек", 400, 300), box("Алматы", 430, 302), box("Ташкент", 470, 304)],
       CENTER,
@@ -75,7 +75,7 @@ describe("resolveLabelVisibility", () => {
   });
 
   it("одноимённые города различаются ключами: прячется только проигравший", () => {
-    // Два разных Спрингфилда (ключ = имя|координаты): гаснуть должен ровно дальний.
+    // Two different Springfields (key = name|coordinates): exactly the farther one must hide.
     const hidden = resolveLabelVisibility(
       [box("Спрингфилд|40.0|-89.6", 350, 296), box("Спрингфилд|37.2|-93.3", 390, 294)],
       CENTER,

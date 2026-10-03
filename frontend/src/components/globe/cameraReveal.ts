@@ -1,41 +1,34 @@
 import type { GlobePov } from "./GlobeCanvas";
 
 /*
- * Подлёт камеры при появлении глобуса: камера стартует дальше и с экватора, приближается и
- * одновременно поворачивается. Поворот — часть того же движения: его скорость плавно спадает
- * ровно до скорости автовращения, поэтому к концу подлёта вращение переходит к OrbitControls
- * без шва. Штатный перелёт globe.gl (`pointOfView` с длительностью) так не умеет: его tween
- * каждый кадр перезаписывает позицию камеры, и автовращение во время перелёта съедается.
+ * Camera fly-in when the globe appears: the camera starts farther away and at the equator,
+ * approaches and rotates at the same time. The rotation is part of the same motion: its speed
+ * eases down exactly to the auto-rotation speed, so at the end the spin hands over to
+ * OrbitControls seamlessly. The stock globe.gl flight (`pointOfView` with a duration) cannot do
+ * this: its tween overwrites the camera position every frame and swallows auto-rotation.
  */
 
-/** Во сколько раз дальше стартует камера (прежний глобус формы: 2.5 → 1.7 ≈ 1.45). */
+/** How many times farther the camera starts (the old form globe: 2.5 -> 1.7 is about 1.45). */
 const REVEAL_DISTANCE_FACTOR = 1.45;
-/** На сколько градусов долготы глобус «докручивается» за подлёт сверх автовращения. */
+/** Degrees of longitude the globe spins during the fly-in on top of auto-rotation. */
 const REVEAL_SPIN_DEG = 30;
 
-/** Кубическое замедление к концу: производная в конце нулевая — скорость сдаётся плавно. */
+/** Cubic ease-out: the derivative is zero at the end, so the speed hands over smoothly. */
 function easeOutCubic(progress: number): number {
   return 1 - (1 - progress) ** 3;
 }
 
 /**
- * Точка обзора на заданном шаге подлёта.
- *
- * Args:
- *     target: Куда прилетает камера.
- *     progress: Доля подлёта, 0..1 (значения за пределами зажимаются).
- *     spinDegPerSec: Скорость автовращения по долготе в конце подлёта (со знаком), 0 — без него.
- *     durationMs: Длительность подлёта.
- *
- * Returns:
- *     Точка обзора камеры на этом шаге; при `progress = 1` — ровно `target`.
+ * Point of view at a given fly-in step. `progress` is 0..1 (clamped); `spinDegPerSec` is the
+ * signed auto-rotation speed in longitude at the end of the fly-in (0 for none). At
+ * `progress = 1` the result is exactly `target`.
  */
 export function revealPov(target: GlobePov, progress: number, spinDegPerSec: number, durationMs: number): GlobePov {
   const t = Math.min(Math.max(progress, 0), 1);
   const eased = easeOutCubic(t);
   const startAltitude = target.altitude * REVEAL_DISTANCE_FACTOR;
   const remainingSeconds = ((1 - t) * durationMs) / 1000;
-  // Докрутка идёт в сторону автовращения (или, без него, в ту же сторону, что оно шло бы).
+  // The extra spin goes in the auto-rotation direction (or, without it, the way it would go).
   const spinDirection = spinDegPerSec > 0 ? 1 : -1;
 
   return {

@@ -19,16 +19,16 @@ import {
 import "./globe-route.css";
 
 /*
- * Императивная часть сцены маршрута на глобусе: DOM пинов и транспорта, rAF-движение
- * транспорта и поворот его иконки по экранному курсу. Чистая геометрия — в route.ts (покрыта
- * unit-тестами); этот модуль исключён из покрытия (vite.config.ts): three/WebGL-рендер и
- * `getScreenCoords` в jsdom не исполняются.
+ * Imperative part of the globe route scene: pin and vehicle DOM, rAF vehicle motion, and rotating
+ * its icon to the on-screen heading. Pure geometry is in route.ts (unit-tested); this module is
+ * excluded from coverage (vite.config.ts) because three/WebGL rendering and `getScreenCoords`
+ * do not run in jsdom.
  */
 
-// Иконка транспорта = та же Noto-эмодзи, что в селекте формы (src/assets/emoji).
-// Нативная ориентация (проверено рендером): машина и корабль — вид сбоку, нос ВЛЕВО
-// (их нельзя крутить — перевернутся, только зеркалим по ходу); самолёт — диагональ,
-// нос в ВЕРХ-ВПРАВО (~45°), его крутим на курс с офсетом 45°.
+// Vehicle icon = the same Noto emoji as in the form select (src/assets/emoji).
+// Native orientation (verified by rendering): car and ship are side views, nose LEFT (they cannot
+// be rotated, they would flip upside down; only mirror them by direction); the plane is a
+// diagonal with its nose UP-RIGHT (~45°) and is rotated to the heading with a 45° offset.
 type TransportVisual = {
   icon: string;
   altitude: number;
@@ -37,7 +37,7 @@ type TransportVisual = {
   nativeFacesRight: boolean;
 };
 
-// Высота дуги (apex): у самолёта заметная, у машины/корабля вдвое меньше — трасса более плоская.
+// Arc apex height: noticeable for the plane, half as much for car/ship (a flatter track).
 const ARC_ALTITUDE_AIR = 0.14;
 const ARC_ALTITUDE_GROUND = ARC_ALTITUDE_AIR / 2;
 const TRANSPORT_VISUAL: Record<TransportType, TransportVisual> = {
@@ -46,24 +46,24 @@ const TRANSPORT_VISUAL: Record<TransportType, TransportVisual> = {
   water: { icon: shipIcon, altitude: ARC_ALTITUDE_GROUND, durationMs: 6000, orient: "flip", nativeFacesRight: false },
 };
 
-// След транспорта — закатный акцент продукта (`--sun`, литералом: цвет уходит в материал
-// three.js, где CSS-переменные не работают). RGB без альфы — альфу добавляет угасание.
+// Vehicle trail is the product's sunset accent (`--sun`, as a literal: the colour goes into a
+// three.js material where CSS variables do not work). RGB without alpha; fading adds the alpha.
 const TRAIL_RGB = "232, 147, 92";
 
-// Noto-самолёт нативно смотрит в верх-вправо (~45°); поворот к экранному курсу = atan2(dy,dx) + 45°.
+// The Noto plane natively points up-right (~45°); rotation to the screen heading = atan2(dy,dx) + 45°.
 const ICON_ROTATION_OFFSET_DEG = 45;
-// Шаг «вперёд по курсу» для расчёта направления иконки (доля пути).
+// "Look ahead" step for the icon direction (share of the path).
 const HEADING_LOOKAHEAD = 0.012;
 const PIN_ALTITUDE = 0.01;
 const RAD = 180 / Math.PI;
 
-/** Класс-маркер DOM-элементов маршрута: по нему модификатор видимости отличает их от подписей. */
+/** Marker class of route DOM elements: the visibility modifier uses it to tell them from labels. */
 const ROUTE_ELEMENT_CLASS = "globe-route";
 const VEHICLE_ICON_CLASS = "globe-route-vehicle__icon";
 
 type LabelSide = "left" | "right";
 
-/** Элемент маршрута в html-слое globe.gl (общем с подписями городов). */
+/** Route element in the globe.gl html layer (shared with city labels). */
 export interface RouteHtmlDatum {
   kind: "route-pin" | "route-vehicle";
   lat: number;
@@ -76,7 +76,7 @@ export interface RouteHtmlDatum {
 
 export interface RouteTrail {
   coords: TrailPoint[];
-  /** rgba-цвет следа: альфа падает к нулю, пока маршрут гаснет. */
+  /** rgba trail colour: alpha drops to zero while the route fades. */
   color: string;
 }
 
@@ -86,7 +86,7 @@ export function isRouteDatum(datum: object): datum is RouteHtmlDatum {
 
 function createPinElement(name: string, side: LabelSide): HTMLElement {
   const wrapper = document.createElement("div");
-  // Подпись — на сторону, противоположную маршруту (side), чтобы не перекрывать дугу.
+  // The label goes on the side opposite the route (side) so it does not cover the arc.
   wrapper.className =
     side === "left" ? `${ROUTE_ELEMENT_CLASS} globe-route-pin globe-route-pin--left` : `${ROUTE_ELEMENT_CLASS} globe-route-pin`;
 
@@ -102,7 +102,7 @@ function createPinElement(name: string, side: LabelSide): HTMLElement {
 }
 
 function createVehicleElement(icon: string): HTMLElement {
-  // Внешний контейнер позиционирует three-globe, поворот по курсу — на вложенной иконке.
+  // The outer container is positioned by three-globe; heading rotation is on the nested icon.
   const wrapper = document.createElement("div");
   wrapper.className = `${ROUTE_ELEMENT_CLASS} globe-route-vehicle`;
 
@@ -118,7 +118,7 @@ function createVehicleElement(icon: string): HTMLElement {
   return wrapper;
 }
 
-/** DOM элемента маршрута для `htmlElement` globe.gl. */
+/** DOM of a route element for globe.gl `htmlElement`. */
 export function createRouteElement(datum: RouteHtmlDatum): HTMLElement {
   if (datum.kind === "route-vehicle") {
     return createVehicleElement(datum.icon ?? "");
@@ -132,9 +132,9 @@ export function isRouteElement(el: HTMLElement): boolean {
 }
 
 /**
- * Окклюзия дальней стороны для элементов маршрута — мгновенно, без fade: так их прятал
- * globe.gl по умолчанию (`obj.visible`), пока у слоя не было модификатора. Inline-opacity
- * при этом не трогаем — она остаётся свободной под угасание маршрута.
+ * Far-side occlusion for route elements: instant, no fade, as globe.gl hid them by default
+ * (`obj.visible`) before the layer had a modifier. Inline opacity is left alone so it stays free
+ * for the route fade-out.
  */
 export function applyRouteVisibility(el: HTMLElement, isVisible: boolean): void {
   el.style.visibility = isVisible ? "" : "hidden";
@@ -145,14 +145,14 @@ interface RouteSceneOptions {
   globeRef: RefObject<GlobeMethods | undefined>;
   containerRef: RefObject<HTMLDivElement | null>;
   reducedMotion: boolean;
-  /** Маршрут гаснет (уход с формы): след теряет альфу за ROUTE_FADE_MS, транспорт едет дальше. */
+  /** The route is fading (leaving the form): the trail loses alpha over ROUTE_FADE_MS, the vehicle keeps going. */
   fading: boolean;
 }
 
 interface RouteScene {
-  /** Пины и транспорт для html-слоя; пусто, если реальных мест нет. */
+  /** Pins and vehicle for the html layer; empty if there are no real places. */
   htmlData: RouteHtmlDatum[];
-  /** След транспорта для `pathsData`; пусто, пока маршрут не полный. */
+  /** Vehicle trail for `pathsData`; empty until the route is complete. */
   trails: RouteTrail[];
 }
 
@@ -160,12 +160,12 @@ const NO_ROUTE_HTML: RouteHtmlDatum[] = [];
 const NO_TRAILS: RouteTrail[] = [];
 
 /**
- * Сцена маршрута: пины только для реально выбранных мест; дуга и транспорт — когда выбраны
- * оба места и среда передвижения. Транспорт летит/едет/плывёт по great-circle траектории,
- * оставляя растущий пунктирный след; иконка повёрнута по направлению движения.
+ * Route scene: pins only for really picked places; the arc and vehicle appear once both places
+ * and a transport type are picked. The vehicle moves along a great-circle path leaving a growing
+ * dashed trail, with its icon rotated to the heading.
  *
- * Пока маршрут анимируется, хук форсирует ре-рендер владельца каждый кадр: three-globe
- * пересчитывает позиции только при set данных.
+ * While the route animates the hook forces a re-render of its owner every frame: three-globe
+ * recomputes positions only when data is set.
  */
 export function useRouteScene({
   route,
@@ -176,7 +176,7 @@ export function useRouteScene({
 }: RouteSceneOptions): RouteScene {
   const progressRef = useRef(0);
   const trailAlphaRef = useRef(1);
-  // Инкремент покадрово пересобирает данные следа/транспорта. Значение само по себе не используется.
+  // The increment rebuilds trail/vehicle data each frame. The value itself is unused.
   const [, setFrame] = useState(0);
 
   const origin = route?.origin ?? null;
@@ -194,17 +194,16 @@ export function useRouteScene({
   const endLat = destination?.latitude ?? 0;
   const endLng = destination?.longitude ?? 0;
 
-  // Высоту дуги масштабируем по длине маршрута, иначе у близких городов при зуме дуга
-  // станет вертикальным шпилем.
+  // Scale arc height by route length, otherwise at zoom an arc between near cities becomes a vertical spike.
   const separation = originReal && destinationReal ? centralAngleRad(startLat, startLng, endLat, endLng) : 0;
   const apex = (transportType ? TRANSPORT_VISUAL[transportType].altitude : 0) * apexScale(separation);
 
-  // Подпись каждого пина — на сторону, противоположную второму концу. Восточнее ≈ правее на экране.
+  // Each pin's label goes opposite the other end. Further east is roughly further right on screen.
   const originSide: LabelSide = endLng > startLng ? "left" : "right";
   const destinationSide: LabelSide = startLng > endLng ? "left" : "right";
 
-  // Стабильная identity в пределах координат/подписи: смена ввода пересоберёт DOM с новым
-  // текстом, внутри анимации DOM переиспользуется.
+  // Stable identity per coordinates/label: changing input rebuilds the DOM with new text, while
+  // within an animation the DOM is reused.
   const pins = useMemo<RouteHtmlDatum[]>(() => {
     const result: RouteHtmlDatum[] = [];
     if (originReal) {
@@ -243,8 +242,8 @@ export function useRouteScene({
     destinationSide,
   ]);
 
-  // Identity транспорта завязана на иконку (смена среды → новый DOM). Координаты — изменяемые
-  // поля, их покадрово мутирует rAF.
+  // Vehicle identity is tied to the icon (a transport change means new DOM). Coordinates are
+  // mutable fields that rAF mutates every frame.
   const vehicle = useMemo<RouteHtmlDatum>(
     () => ({
       kind: "route-vehicle",
@@ -282,11 +281,11 @@ export function useRouteScene({
       }
 
       if (config.orient === "rotate") {
-        // Top-down (самолёт): крутим на полный экранный курс.
+        // Top-down (plane): rotate to the full screen heading.
         iconEl.style.transform = `rotate(${Math.atan2(dy, dx) * RAD + ICON_ROTATION_OFFSET_DEG}deg)`;
       } else {
-        // Вид сбоку (машина/корабль): держим вертикально, только зеркалим по ходу движения —
-        // иначе при движении в обратную сторону перевернётся вверх ногами.
+        // Side view (car/ship): keep upright and only mirror by direction, otherwise moving the
+        // other way would turn it upside down.
         const facesRight = dx >= 0;
         iconEl.style.transform = `scaleX(${facesRight === config.nativeFacesRight ? 1 : -1})`;
       }
@@ -294,10 +293,10 @@ export function useRouteScene({
 
     const place = (t: number) => {
       const point = greatCirclePoint(startLat, startLng, endLat, endLng, t);
-      // Мутация намеренная: three-globe диффит htmlElementsData по identity объекта и
-      // переиспользует DOM, только если ссылка стабильна. Новый объект на каждый кадр
-      // пересобирал бы DOM-иконку 60 раз в секунду вместо обновления её позиции.
-      /* oxlint-disable react/immutability -- см. комментарий выше */
+      // The mutation is intentional: three-globe diffs htmlElementsData by object identity and
+      // reuses the DOM only if the reference is stable. A new object per frame would rebuild the
+      // icon DOM 60 times a second instead of updating its position.
+      /* oxlint-disable react/immutability -- see the comment above */
       vehicle.lat = point.lat;
       vehicle.lng = point.lng;
       vehicle.alt = arcAltitude(t, apex);
@@ -308,9 +307,9 @@ export function useRouteScene({
 
     if (reducedMotion) {
       place(1);
-      // `place` мутирует `vehicle`/`progressRef` мимо React — подхватить конечную позицию в
-      // данных слоёв можно только форсированным ре-рендером.
-      // oxlint-disable-next-line react/set-state-in-effect -- намеренный форс ре-рендера после внешней мутации, см. выше
+      // `place` mutates `vehicle`/`progressRef` behind React's back; the layer data picks up the
+      // final position only through a forced re-render.
+      // oxlint-disable-next-line react/set-state-in-effect -- intentional forced re-render after an external mutation, see above
       setFrame((f) => f + 1);
       return;
     }
@@ -340,8 +339,8 @@ export function useRouteScene({
     containerRef,
   ]);
 
-  // Альфу следа ведёт свой rAF, а в данные слоя её подхватывает покадровый ре-рендер цикла
-  // движения выше (он крутится, пока маршрут показан).
+  // The trail alpha has its own rAF; the per-frame re-render of the motion loop above (running
+  // while the route is shown) feeds it into the layer data.
   useEffect(() => {
     if (!fading) {
       trailAlphaRef.current = 1;
@@ -369,9 +368,9 @@ export function useRouteScene({
     return { htmlData: pins, trails: NO_TRAILS };
   }
 
-  // progressRef пишется только внутри rAF-колбэка, а этот рендер форсирует тот же колбэк через
-  // setFrame — к моменту чтения значение уже устоялось.
-  /* oxlint-disable react/refs -- намеренное чтение вне эффекта, см. комментарий выше */
+  // progressRef is written only inside the rAF callback, and this render is forced by the same
+  // callback via setFrame, so the value has settled by the time it is read.
+  /* oxlint-disable react/refs -- intentional read outside an effect, see the comment above */
   const trails = [
     {
       coords: buildTrail(startLat, startLng, endLat, endLng, apex, progressRef.current),
