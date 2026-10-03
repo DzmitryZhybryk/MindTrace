@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { MapPoint } from "../../../api/sdk";
 import { projectToScreen } from "../../../components/worldProjection";
 import { placeLabels } from "./labelPlacement";
-import { fadeAlong, piecePath, type ArcPieces } from "./movementGeometry";
+import { piecePath, splitEdgeFade, type ArcPieces } from "./movementGeometry";
 
 /** Маршрут «откуда → куда» с уже спроецированной дугой. */
 export interface ProjectedConnection {
@@ -125,15 +125,20 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
           }
 
           // Дуга через край мира — два куска: первый гаснет к разрезу, второй из него проявляется.
+          // Гаснет только хвост у разреза, остальная дуга — сплошная.
           const fadeLength = EDGE_FADE_LENGTH * unitScale;
           const pieces = [
-            { piece: first, fade: fadeAlong(first, "end", fadeLength), hasArrow: false },
-            { piece: second, fade: fadeAlong(second, "start", fadeLength), hasArrow: true },
+            { split: splitEdgeFade(first, "end", fadeLength), endsAtDestination: false },
+            { split: splitEdgeFade(second, "start", fadeLength), endsAtDestination: true },
           ];
           return (
             <g key={connection.key}>
-              {pieces.map(({ piece, fade: [[innerX, innerY], [edgeX, edgeY]], hasArrow }, pieceIndex) => {
+              {pieces.map(({ split, endsAtDestination }, pieceIndex) => {
                 const gradientId = `movement-edge-fade-${connectionIndex}-${pieceIndex}`;
+                const [[innerX, innerY], [edgeX, edgeY]] = split.fadeAxis;
+                const hasSolid = split.solid.length > 1;
+                // Стрелка — на той части, что кончается в точке назначения.
+                const arrow = `url(#${ARROW_MARKER_ID})`;
                 return (
                   <g key={gradientId}>
                     <defs>
@@ -153,10 +158,18 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
                       className="movement-line"
                       // Инлайн, а не атрибутом: stroke из CSS-класса линии перебил бы атрибут.
                       style={{ stroke: `url(#${gradientId})` }}
-                      d={piecePath(piece)}
-                      markerEnd={hasArrow ? `url(#${ARROW_MARKER_ID})` : undefined}
+                      d={piecePath(split.fade)}
+                      markerEnd={endsAtDestination && !hasSolid ? arrow : undefined}
                       vectorEffect="non-scaling-stroke"
                     />
+                    {hasSolid && (
+                      <path
+                        className="movement-line"
+                        d={piecePath(split.solid)}
+                        markerEnd={endsAtDestination ? arrow : undefined}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )}
                   </g>
                 );
               })}

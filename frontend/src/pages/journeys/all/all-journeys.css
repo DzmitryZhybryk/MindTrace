@@ -33,6 +33,17 @@
   animation: feed-arc-dot 0.3s ease-out both;
 }
 
+/* Название места: обводка цветом фона под текстом держит его читаемым поверх суши и дуги. */
+.feed-arc__label {
+  fill: var(--text);
+  stroke: var(--surface);
+  stroke-linejoin: round;
+  paint-order: stroke;
+  font-family: var(--font-body);
+  font-weight: 500;
+  animation: feed-arc-dot 0.3s ease-out both;
+}
+
 @keyframes feed-arc-draw {
   from {
     stroke-dashoffset: 1;
@@ -63,6 +74,11 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+/* Карта — фон и под колонкой тоже: стекло карточек без размытия, суша и дуга видны сквозь него. */
+.all-journeys__column .journeys-card {
+  backdrop-filter: none;
 }
 
 .all-journeys__filters {
@@ -113,8 +129,8 @@
   text-decoration: underline;
 }
 
-/* ---- Чипы лет ------------------------------------------------------------- */
-.year-chips,
+/* ---- Фильтры: шкала лет (ползунок карты перемещений) и чипы транспорта ------ */
+.all-journeys__years,
 .transport-chips {
   margin: 0;
   padding: 0;
@@ -122,53 +138,10 @@
   min-width: 0;
 }
 
-.year-chips__row,
 .transport-chips__row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-.year-chip {
-  min-height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--hairline);
-  border-radius: 999px;
-  background: none;
-  color: var(--text-muted);
-  font: 500 var(--fs-13)/1 var(--font-body);
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition: background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
-}
-
-.year-chip:hover {
-  background: rgb(var(--ink-on-dark-rgb) / 0.07);
-  color: var(--text);
-}
-
-.year-chip:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* «Все» выбрано и границы диапазона — полный акцент; годы внутри диапазона — слабее. */
-.year-chip[aria-pressed="true"],
-.year-chip--edge {
-  border-color: rgb(var(--sun-rgb) / 0.6);
-  background: rgb(var(--sun-rgb) / 0.2);
-  color: var(--text);
-}
-
-.year-chip--inside {
-  border-color: rgb(var(--sun-rgb) / 0.3);
-  background: rgb(var(--sun-rgb) / 0.08);
-}
-
-.year-chips__hint {
-  margin: 6px 0 0;
-  font: 400 var(--fs-12)/1.3 var(--font-body);
-  color: var(--text-muted);
 }
 
 /* ---- Чипы транспорта и подпись транспорта ---------------------------------- */
@@ -194,17 +167,33 @@
   opacity: 0.55;
 }
 
-/* Год прилипает к верху карточки. Фон плотнее стекла карточки, чтобы строки под ним не читались. */
+/*
+ * Год прилипает к верху карточки. Фон — только у прилипшего: под него уезжают строки, и он
+ * плотнее стекла карточки, чтобы они не читались. На месте заголовок прозрачный, как строки.
+ * `top: -1px` — чтобы прилипший был виден наблюдателю не целиком (см. YearHeader).
+ */
 .year-header {
   position: sticky;
-  top: 0;
+  top: -1px;
   z-index: 1;
   margin: 0 -24px;
   padding: 16px 24px 8px;
-  background: rgb(var(--ink-glass-rgb) / 0.94);
   font: 600 var(--fs-22)/1 var(--font-display);
   font-variant-numeric: tabular-nums;
   color: var(--text);
+  transition: background-color var(--dur-fast) ease;
+}
+
+.year-header[data-stuck] {
+  background: rgb(var(--ink-glass-rgb) / 0.94);
+}
+
+/* Пока строку несут, заголовок уступает ей место в такт строкам (переход как у dnd-kit). На
+   отпускании перехода нет: заголовок встаёт на место вместе с перестройкой ленты. */
+.journey-feed--sorting .year-header {
+  transition:
+    transform 250ms ease,
+    background-color var(--dur-fast) ease;
 }
 
 .journey-feed__rows {
@@ -458,13 +447,16 @@
 @media (prefers-reduced-motion: reduce) {
   .feed-arc__line,
   .feed-arc__dot,
+  .feed-arc__label,
   .journey-row__drop-year,
   .journey-row--saved,
   .journey-row--collapsing {
     animation: none;
   }
 
-  .journey-feed {
+  .journey-feed,
+  .year-header,
+  .journey-feed--sorting .year-header {
     transition: none;
   }
 }
@@ -488,10 +480,6 @@
 
   .all-journeys__feed {
     overflow: visible;
-  }
-
-  .year-chip {
-    min-height: 44px;
   }
 
   .journey-editor__route {

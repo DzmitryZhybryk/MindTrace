@@ -24,7 +24,7 @@ import {
 } from "../journeyFormRules";
 import { JourneyYearField } from "../JourneyYearField";
 import { TransportPicker } from "../TransportPicker";
-import { prefersReducedMotion } from "./motion";
+import { prefersReducedMotion } from "../../../components/reducedMotion";
 
 const JOURNEY_NOT_FOUND_CODE = "journeys.journey_not_found";
 

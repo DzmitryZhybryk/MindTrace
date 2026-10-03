@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { JourneysFeedResponse } from "../../../api/sdk";
 import { makeFeedJourney as journey } from "../../../test/feedJourney";
-import { moveJourneyInPages, resolveMoveTarget } from "./feedMove";
+import { feedSortingStrategy, moveJourneyInPages, resolveMoveTarget, yearHeaderShift } from "./feedMove";
 
 const FEED = [journey("a", 2021), journey("b", 2021), journey("c", 2019), journey("d", 2019)];
 
@@ -55,5 +55,53 @@ describe("moveJourneyInPages", () => {
 
     expect(withoutNeighbor).toEqual(pages);
     expect(withoutJourney).toEqual(pages);
+  });
+});
+
+describe("feedSortingStrategy", () => {
+  // Строки FEED по 44 px вплотную; между b (2021) и c (2019) — заголовок года высотой 56 px.
+  const ROW = 44;
+  const rects = [0, 44, 144, 188].map((top) => ({ top, left: 0, width: 600, height: ROW, right: 600, bottom: top + ROW }));
+  const shiftsFor = (activeIndex: number, overIndex: number) =>
+    rects.map((_, index) =>
+      feedSortingStrategy({ activeIndex, overIndex, index, rects, activeNodeRect: rects[activeIndex] })?.y ?? 0,
+    );
+
+  it("строку из 2019 держат над последней строкой 2021 — строки уступают ровно её высоту, без заголовка", () => {
+    expect(shiftsFor(2, 1)).toEqual([0, ROW, 0, 0]);
+  });
+
+  it("строку тянут вниз через границу года — строки до цели поднимаются на её высоту", () => {
+    expect(shiftsFor(0, 2)).toEqual([0, -ROW, -ROW, 0]);
+  });
+
+  it("строку держат над своим местом — ничего не сдвигается", () => {
+    expect(shiftsFor(1, 1)).toEqual([0, 0, 0, 0]);
+  });
+});
+
+describe("yearHeaderShift", () => {
+  const ROW = 44;
+  // В FEED год 2021 начинается со строки 0, год 2019 — со строки 2.
+  const shiftOf2019 = (activeIndex: number, overIndex: number) =>
+    yearHeaderShift({ activeIndex, overIndex, firstRowIndex: 2, height: ROW });
+
+  it("строку из 2019 несут вверх в 2021 — заголовок 2019 опускается вместе со строками", () => {
+    expect(shiftOf2019(2, 1)).toBe(ROW);
+  });
+
+  it("строку из 2021 несут вниз в 2019 — заголовок 2019 поднимается вместе со строками", () => {
+    expect(shiftOf2019(0, 2)).toBe(-ROW);
+  });
+
+  it("строку держат над первой строкой года снизу — заголовок на месте, строка встанет под ним", () => {
+    expect(shiftOf2019(3, 2)).toBe(0);
+  });
+
+  it("перенос не пересекает заголовок или строки нет в ленте — заголовок на месте", () => {
+    expect(shiftOf2019(0, 1)).toBe(0);
+    expect(yearHeaderShift({ activeIndex: 2, overIndex: 1, firstRowIndex: 0, height: ROW })).toBe(0);
+    expect(shiftOf2019(-1, 1)).toBe(0);
+    expect(shiftOf2019(2, -1)).toBe(0);
   });
 });

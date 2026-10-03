@@ -5,7 +5,7 @@ import { FEED_JOURNEYS, server } from "../../../test/handlers";
 import { renderWithProviders, screen, waitFor, within } from "../../../test/render";
 import { AllJourneysView } from "./AllJourneysView";
 
-const [, LONDON_TO_PARIS, PARIS_TO_MOSCOW] = FEED_JOURNEYS;
+const [FIRST_2021, LONDON_TO_PARIS, PARIS_TO_MOSCOW] = FEED_JOURNEYS;
 const ROW_HEIGHT = 44;
 const ROW_STEP = 50;
 
@@ -19,6 +19,9 @@ function stackRowsVertically() {
     return index === -1
       ? DOMRect.fromRect({ x: 0, y: 0, width: 0, height: 0 })
       : DOMRect.fromRect({ x: 0, y: index * ROW_STEP, width: 600, height: ROW_HEIGHT });
+  });
+  vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function topOf(this: HTMLElement) {
+    return Math.max([...document.querySelectorAll("[data-flip-id]")].indexOf(this), 0) * ROW_STEP;
   });
 }
 
@@ -61,6 +64,36 @@ describe("AllJourneysView — перенос", () => {
     expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(2);
     expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(1);
     releaseResponse();
+  });
+
+  it("брошенная строка остаётся там, где её отпустили: перенос не проигрывается заново ни сразу, ни с приходом ленты", async () => {
+    stackRowsVertically();
+    // Web Animations в jsdom нет — шпион в прототипе; без него FLIP молча пропускает анимацию.
+    const animate = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "animate", { configurable: true, writable: true, value: animate });
+    // Перезапрос после переноса отдаёт ленту в том порядке, который сервер сохранил.
+    const movedFeed = [FIRST_2021, PARIS_TO_MOSCOW, { ...LONDON_TO_PARIS, traveledYear: 2019 }];
+    let feedRequests = 0;
+    server.use(
+      http.get("/v1/journeys/", () => {
+        feedRequests += 1;
+        return HttpResponse.json({ items: feedRequests > 1 ? movedFeed : FEED_JOURNEYS, nextCursor: null });
+      }),
+      http.post("/v1/journeys/:journeyId/move", () => HttpResponse.json({ traveledYear: 2019 })),
+    );
+    try {
+      const { user } = renderWithProviders(<AllJourneysView />);
+
+      await dragLondonToParisDown(user);
+
+      await waitFor(() => expect(feedRequests).toBe(2));
+      await waitFor(() =>
+        expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(2),
+      );
+      expect(animate).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(HTMLElement.prototype, "animate");
+    }
   });
 
   it("бэк отказал в переносе — строка возвращается на место сама, не дожидаясь перезапроса ленты", async () => {
@@ -108,6 +141,26 @@ describe("AllJourneysView — перенос", () => {
     expect(screen.queryByText("344 km")).not.toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.getByText("344 km")).toBeInTheDocument();
+  });
+
+  it("пока строку несут в другой год, заголовок этого года уступает ей место, а после отмены возвращается", async () => {
+    stackRowsVertically();
+    const { user } = renderWithProviders(<AllJourneysView />);
+    const year2021 = await screen.findByRole("region", { name: "2021" });
+    within(year2021).getAllByRole("button", { name: "Drag to reorder" })[1].focus();
+    const header2019 = screen.getByRole("heading", { name: "2019" });
+
+    await user.keyboard(" ");
+    await user.keyboard("{ArrowDown}");
+    // Перенос завершаем при любом исходе: незавершённый утёк бы в следующий тест.
+    try {
+      await waitFor(() => expect(header2019.style.transform).toBe(`translateY(-${ROW_HEIGHT}px)`));
+      expect(screen.getByRole("heading", { name: "2021" }).style.transform).toBe("");
+    } finally {
+      await user.keyboard("{Escape}");
+    }
+
+    expect(header2019.style.transform).toBe("");
   });
 
   it("Esc во время переноса отменяет его без запроса", async () => {

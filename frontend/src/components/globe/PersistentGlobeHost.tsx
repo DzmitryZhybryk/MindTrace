@@ -7,6 +7,7 @@ import { placeLabel, usePlaceNames } from "../../api/placeNames";
 import { getJourneysGlobeOptions } from "../../api/sdk";
 import { useAuth } from "../../auth/useAuth";
 import { ErrorBoundary } from "../ErrorBoundary";
+import { prefersReducedMotion } from "../reducedMotion";
 import type { GlobePov } from "./GlobeCanvas";
 import { useGlobeScene, type GlobeSlot } from "./globeScene";
 import { CAMERA_MAX_ALTITUDE, isRealPlace, ROUTE_FADE_MS, routeCameraPov, type GlobeRoute } from "./route";
@@ -138,9 +139,7 @@ export function PersistentGlobeHost() {
   const isJourneyAdd = view.screen === "journeyAdd";
   // На грани формы камера кадрирует маршрут; GlobeCanvas сравнивает pov по полям, не по ссылке.
   const pov = isJourneyAdd ? routeCameraPov(route) : view.pov;
-  const [reducedMotion] = useState(
-    () => typeof window !== "undefined" && (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false),
-  );
+  const [reducedMotion] = useState(prefersReducedMotion);
 
   /*
    * Уход с формы на дашборд: маршрут не пропадает, а гаснет, пока камера и рамка перелетают
@@ -197,8 +196,14 @@ export function PersistentGlobeHost() {
     return cities.length > 0 ? cities : NO_CITIES;
   }, [userCityPoints, nameOf, unknownLabel]);
 
+  // Курируемые города гостя подписываются на языке интерфейса; `t` меняется со сменой языка.
+  const routeCities = useMemo<GlobeCity[]>(
+    () => ROUTE_CITIES.map((city) => ({ name: t(`globe.cities.${city.id}`), lat: city.lat, lng: city.lng })),
+    [t],
+  );
+
   // На грани формы — только маршрут, посещённые города не рисуем.
-  let labelCities = isAuthenticated ? userCities : ROUTE_CITIES;
+  let labelCities = isAuthenticated ? userCities : routeCities;
   if (isJourneyAdd) {
     labelCities = NO_CITIES;
   }

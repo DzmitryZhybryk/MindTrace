@@ -1,12 +1,12 @@
 import { Text } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
-import { lazy, Suspense, useRef, useState } from "react";
+import { lazy, Suspense, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getJourneyYearsOptions, zTransportType, type JourneyFeedEntry, type TransportType } from "../../../api/sdk";
+import { YearRangeSlider } from "../movements/YearRangeSlider";
 import { JourneyFeed } from "./JourneyFeed";
 import { TransportChips } from "./TransportChips";
-import { YearRangeChips } from "./YearRangeChips";
 import type { YearRange } from "./yearRange";
 import "./all-journeys.css";
 
@@ -20,8 +20,9 @@ const FeedBackdropMap = lazy(() => import("./FeedBackdropMap").then((m) => ({ de
  * Под-вкладка «Все поездки» — маршрут /journeys/all: лента поездок по годам с фильтрами по годам
  * и транспорту.
  *
- * Чипы лет строятся по всем годам пользователя, без учёта фильтров: это меню выбора, и оно не
- * должно сжиматься от собственного выбора. За колонкой — приглушённая карта с дугой активной поездки.
+ * Шкала лет — от первого до последнего года пользователя, без учёта фильтров: она не должна
+ * сжиматься от собственного выбора. Ручки, разведённые по краям шкалы, — все годы, без фильтра.
+ * За колонкой — приглушённая карта с дугой активной поездки.
  */
 export function AllJourneysView() {
   const { t } = useTranslation("journeys");
@@ -29,6 +30,13 @@ export function AllJourneysView() {
   const [yearRange, setYearRange] = useState<YearRange | null>(null);
   const [transportTypes, setTransportTypes] = useState<TransportType[]>(ALL_TRANSPORT_TYPES);
   const yearList = years.data?.years ?? [];
+  const firstYear = yearList.at(0);
+  const lastYear = yearList.at(-1);
+  // Ползунок сверяет окно по ссылке — «все годы» не пересоздаём на каждый рендер.
+  const yearWindow = useMemo<YearRange>(
+    () => yearRange ?? [firstYear ?? 0, lastYear ?? 0],
+    [yearRange, firstYear, lastYear],
+  );
   const hasTransport = transportTypes.length > 0;
   const columnRef = useRef<HTMLDivElement>(null);
   const [loadedJourneys, setLoadedJourneys] = useState<readonly JourneyFeedEntry[]>(NO_JOURNEYS);
@@ -50,7 +58,20 @@ export function AllJourneysView() {
       <div ref={columnRef} className="all-journeys__column">
         <section className="all-journeys__filters journeys-card" aria-label={t("all.filters")}>
           <h1 className="all-journeys__title">{t("nav.all")}</h1>
-          {yearList.length > 0 && <YearRangeChips years={yearList} range={yearRange} onRangeChange={setYearRange} />}
+          {/* Один год — выбирать не из чего, шкалы нет. */}
+          {firstYear !== undefined && lastYear !== undefined && firstYear < lastYear && (
+            <fieldset className="all-journeys__years">
+              <legend className="all-journeys__filter-label">{t("all.years")}</legend>
+              <YearRangeSlider
+                firstYear={firstYear}
+                lastYear={lastYear}
+                window={yearWindow}
+                onWindowChange={([from, to]) => setYearRange(from === firstYear && to === lastYear ? null : [from, to])}
+                fromLabel={t("movements.yearFrom")}
+                toLabel={t("movements.yearTo")}
+              />
+            </fieldset>
+          )}
           <TransportChips transportTypes={transportTypes} onTransportTypesChange={setTransportTypes} />
         </section>
 

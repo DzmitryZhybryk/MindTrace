@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { JourneysFeedResponse } from "../../../api/sdk";
 import { makeFeedJourney as journey } from "../../../test/feedJourney";
-import { feedQueryOptions, groupFeedByYear } from "./feedQuery";
+import { feedQueryOptions, filterFeedPages, groupFeedByYear, isFeedFullyLoaded } from "./feedQuery";
 
 describe("feedQueryOptions", () => {
   it("один и тот же набор транспорта в любом порядке даёт один ключ", () => {
@@ -30,6 +30,44 @@ describe("feedQueryOptions", () => {
 
     expect(getNextPageParam({ items: [], nextCursor: "next" })).toBe("next");
     expect(getNextPageParam({ items: [], nextCursor: null })).toBeUndefined();
+  });
+});
+
+describe("filterFeedPages", () => {
+  const pages: JourneysFeedResponse[] = [
+    { items: [journey("a", 2021), { ...journey("b", 2021), transportType: "water" }], nextCursor: "c1" },
+    { items: [journey("c", 2019), journey("d", 2017)], nextCursor: null },
+  ];
+  const idsOf = (filtered: JourneysFeedResponse[]) => filtered.flatMap((page) => page.items.map((item) => item.journeyId));
+
+  it("оставляет строки диапазона лет включительно, в порядке ленты", () => {
+    const filtered = filterFeedPages(pages, { yearRange: [2019, 2021], transportTypes: ["land", "air", "water"] });
+
+    expect(idsOf(filtered)).toEqual(["a", "b", "c"]);
+  });
+
+  it("оставляет только выбранный транспорт", () => {
+    const filtered = filterFeedPages(pages, { yearRange: null, transportTypes: ["water"] });
+
+    expect(idsOf(filtered)).toEqual(["b"]);
+  });
+
+  it("у выборки нет курсоров — догружать её нечем", () => {
+    const filtered = filterFeedPages(pages, { yearRange: null, transportTypes: ["land", "air", "water"] });
+
+    expect(filtered.map((page) => page.nextCursor)).toEqual([null, null]);
+  });
+});
+
+describe("isFeedFullyLoaded", () => {
+  it("лента загружена до конца, когда у последней порции нет курсора", () => {
+    expect(isFeedFullyLoaded([{ items: [], nextCursor: "c1" }, { items: [], nextCursor: null }])).toBe(true);
+  });
+
+  it("есть следующая порция, порций нет или ленты нет в кэше — не до конца", () => {
+    expect(isFeedFullyLoaded([{ items: [], nextCursor: "c1" }])).toBe(false);
+    expect(isFeedFullyLoaded([])).toBe(false);
+    expect(isFeedFullyLoaded(undefined)).toBe(false);
   });
 });
 

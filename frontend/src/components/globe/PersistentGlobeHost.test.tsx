@@ -4,6 +4,9 @@ import { useNavigate } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getJourneysGlobeQueryKey } from "../../api/sdk";
+import { i18n } from "../../i18n";
+import enCommon from "../../locales/en/common.json";
+import ruCommon from "../../locales/ru/common.json";
 import { GEO_PLACES, server } from "../../test/handlers";
 import { act, createTestQueryClient, makeAuthValue, renderWithProviders, screen, waitFor } from "../../test/render";
 import type { AuthContextValue } from "../../auth/useAuth";
@@ -11,6 +14,7 @@ import type { GlobePov } from "./GlobeCanvas";
 import { useGlobeSceneActions, type GlobeSlot } from "./globeScene";
 import { PersistentGlobeHost } from "./PersistentGlobeHost";
 import { routeCameraPov, type GlobeRoute } from "./route";
+import { ROUTE_CITIES } from "./routes";
 
 /*
  * Холст мокаем: он тянет three/WebGL, которых в jsdom нет. Мок отражает переданные пропы в
@@ -140,6 +144,27 @@ describe("PersistentGlobeHost — источник данных глобуса",
     expect(Number(globe.getAttribute("data-arcs"))).toBeGreaterThan(0);
     expect(Number(globe.getAttribute("data-cities"))).toBeGreaterThan(0);
     expect(globe).toHaveAttribute("data-paused", "false");
+  });
+
+  it("курируемые города аноним видит на языке интерфейса, смена языка их переподписывает", async () => {
+    i18n.addResourceBundle("ru", "common", ruCommon, true, true);
+    const namesIn = (cities: Record<string, string>) => ROUTE_CITIES.map((city) => cities[city.id]).join("|");
+    try {
+      renderWithProviders(<PersistentGlobeHost />, { route: "/", authValue: makeAuthValue() });
+
+      const globe = await screen.findByTestId("globe-canvas");
+      expect(globe).toHaveAttribute("data-city-names", namesIn(enCommon.globe.cities));
+
+      await act(async () => {
+        await i18n.changeLanguage("ru");
+      });
+
+      expect(globe).toHaveAttribute("data-city-names", namesIn(ruCommon.globe.cities));
+    } finally {
+      await act(async () => {
+        await i18n.changeLanguage("en");
+      });
+    }
   });
 
   it("залогиненный получает реальные города без дуг (fade-in по приходе /journeys/globe)", async () => {

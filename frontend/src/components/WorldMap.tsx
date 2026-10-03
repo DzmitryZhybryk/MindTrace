@@ -17,6 +17,7 @@ import type { GeometryCollection, Topology } from "topojson-specification";
 import worldTopology from "../data/world-countries.topo.json";
 import { fitView } from "./fitView";
 import { useMapZoom } from "./useMapZoom";
+import { useViewTransition } from "./useViewTransition";
 import { ANTIMERIDIAN_JUMP, WORLD_VIEW_BOX, isWorldView, projectToScreen, type ViewBox } from "./worldProjection";
 import "./world-map.css";
 
@@ -131,6 +132,13 @@ interface WorldMapProps {
    * карта растворяется к его кромке — линии не выныривают из-под него.
    */
   occluderRef?: RefObject<HTMLElement | null>;
+  /**
+   * `false` — карта не растворяется к кромке `occluderRef`: элемент поверх неё прозрачный, и
+   * карту видно сквозь него. Стартовый вид всё равно подгоняется в незакрытую часть.
+   */
+  shouldFadeUnderOccluder?: boolean;
+  /** Смена `fitBounds` переводит карту к новому виду плавно, а не прыжком. */
+  isFitAnimated?: boolean;
   /** `false` — страны не подсвечиваются под курсором и тултипа нет; масштаб при этом работает. */
   isInteractive?: boolean;
 }
@@ -150,6 +158,8 @@ export function WorldMap({
   overlay,
   fitBounds = null,
   occluderRef,
+  shouldFadeUnderOccluder = true,
+  isFitAnimated = false,
   isInteractive = true,
 }: WorldMapProps) {
   const { t, i18n } = useTranslation("common");
@@ -191,7 +201,9 @@ export function WorldMap({
     return () => observer.disconnect();
   }, [fitBounds, occluderRef]);
 
-  const view = useMapZoom(canvasRef, svgRef, initialView);
+  const fittedView = useViewTransition(initialView, isFitAnimated);
+  const view = useMapZoom(canvasRef, svgRef, fittedView);
+  const isFadedUnderOccluder = shouldFadeUnderOccluder && occludedLeft > 0;
   const isZoomed = !isWorldView(view);
   // Геометрию контейнера кешируем на входе курсора, а не дёргаем
   // getBoundingClientRect (форсит reflow) на каждое движение мыши.
@@ -317,7 +329,7 @@ export function WorldMap({
     "world-map-wrap",
     isInteractive ? null : "world-map-wrap--static",
     isZoomed ? "world-map-wrap--zoomed" : null,
-    occludedLeft > 0 ? "world-map-wrap--occluded" : null,
+    isFadedUnderOccluder ? "world-map-wrap--occluded" : null,
     className,
   ]
     .filter(Boolean)
@@ -337,7 +349,7 @@ export function WorldMap({
       <div
         ref={canvasRef}
         className="world-map-canvas"
-        style={occludedLeft > 0 ? ({ "--map-occluded-left": `${occludedLeft}px` } as CSSProperties) : undefined}
+        style={isFadedUnderOccluder ? ({ "--map-occluded-left": `${occludedLeft}px` } as CSSProperties) : undefined}
       >
         {/* Доступное имя через aria-label, НЕ <title>: <title> браузер рисует как
             нативный tooltip, который налезает на наш кастомный (role="img" тут

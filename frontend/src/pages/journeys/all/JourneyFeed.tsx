@@ -10,18 +10,24 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Button, Loader, Text } from "@mantine/core";
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import { resolveErrorToken } from "../../../api/errors";
 import { placeLabel, usePlaceNames } from "../../../api/placeNames";
-import type { JourneyFeedEntry, TransportType } from "../../../api/sdk";
-import { resolveMoveTarget } from "./feedMove";
-import { feedQueryOptions, groupFeedByYear } from "./feedQuery";
+import type { JourneyFeedEntry, JourneysFeedResponse, TransportType } from "../../../api/sdk";
+import {
+  feedSortingStrategy,
+  moveJourneyInPages,
+  resolveMoveTarget,
+  yearHeaderShift,
+  type MoveTarget,
+} from "./feedMove";
+import { feedQueryOptions, filterFeedPages, groupFeedByYear, isFeedFullyLoaded, NO_FEED_FILTERS } from "./feedQuery";
 import { JourneyFeedRow } from "./JourneyFeedRow";
 import { JourneyRowEditor, type JourneyEditField } from "./JourneyRowEditor";
 import { useFlip } from "./motion";
@@ -60,12 +66,38 @@ export function JourneyFeed({
 }: JourneyFeedProps) {
   const { t, i18n } = useTranslation("journeys");
   const { t: tCommon } = useTranslation("common");
-  const options = feedQueryOptions({ yearRange, transportTypes });
-  const feed = useInfiniteQuery({ ...options, placeholderData: keepPreviousData });
+  const queryClient = useQueryClient();
+  const filters = { yearRange, transportTypes };
+  const options = feedQueryOptions(filters);
+  // Пока сервер не ответил по новым фильтрам, лента собирается из уже загруженного: больше всего
+  // строк — в ленте без фильтров, иначе берём то, что было на экране.
+  const allJourneysFeed = queryClient.getQueryData(feedQueryOptions(NO_FEED_FILTERS).queryKey);
+  const feed = useInfiniteQuery({
+    ...options,
+    // У выборки нет курсоров: её не догружают, она живёт до ответа сервера.
+    placeholderData: (previous) => {
+      const pages = (allJourneysFeed ?? previous)?.pages;
+      return pages && { pages: filterFeedPages(pages, filters), pageParams: pages.map(() => null) };
+    },
+  });
   const { data, hasNextPage, isFetching, isFetchNextPageError, fetchNextPage } = feed;
+  // Выборка из полностью загруженной ленты совпадает с ответом сервера — её не приглушаем.
+  const isStale = feed.isPlaceholderData && !isFeedFullyLoaded(allJourneysFeed?.pages);
   const { move, isMoving, errorToken: moveErrorToken } = useJourneyMove(options.queryKey);
 
-  const groups = useMemo(() => groupFeedByYear(data?.pages ?? []), [data]);
+  // Перестановку из кэша Query доносит до ленты рендером позже, а dnd-kit снимает сдвиги строк
+  // сразу на отпускании — строки на кадр прыгнули бы назад. Поэтому брошенную строку ставим на
+  // новое место сами, пока лента показывает те же порции, от которых посчитан перенос.
+  const [drop, setDrop] = useState<{ pages: readonly JourneysFeedResponse[]; journeyId: string; target: MoveTarget } | null>(
+    null,
+  );
+  const pages = data?.pages;
+  const isDropShown = drop !== null && drop.pages === pages;
+  const shownPages = useMemo(
+    () => (drop !== null && drop.pages === pages ? moveJourneyInPages(drop.pages, drop.journeyId, drop.target) : (pages ?? [])),
+    [drop, pages],
+  );
+  const groups = useMemo(() => groupFeedByYear(shownPages), [shownPages]);
   const journeys = useMemo(() => groups.flatMap((group) => group.journeys), [groups]);
   const journeyIds = useMemo(() => journeys.map((journey) => journey.journeyId), [journeys]);
   const nameOf = usePlaceNames(journeys.flatMap((journey) => [journey.origin.placeId, journey.destination.placeId]));
@@ -77,16 +109,18 @@ export function JourneyFeed({
   // Правится не больше одной строки: клик по другой строке переключает правку на неё.
   const [editing, setEditing] = useState<{ journeyId: string; field: JourneyEditField } | null>(null);
   const [dropYear, setDropYear] = useState<number | null>(null);
-  // Перетаскиваемая строка; сбрасывается вместе с перестановкой в кэше, а не на отпускании —
-  // иначе FLIP принял бы перестановку за прыжок со старого места.
   const [dragId, setDragId] = useState<string | null>(null);
+  // Над какой строкой держат перетаскиваемую и её высота — по ним сдвигаются заголовки лет.
+  const [dragOver, setDragOver] = useState<{ overId: string; rowHeight: number } | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   // Только что сохранённая строка — мигнёт подсветкой.
   const [savedId, setSavedId] = useState<string | null>(null);
   const isDragDisabled = editing !== null || isMoving || feed.isPlaceholderData;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  useFlip(containerRef, dragId !== null);
+  // Брошенная строка уже стоит там, где её видно, — FLIP только запоминает новые места, иначе
+  // проиграл бы перенос заново со старого места.
+  useFlip(containerRef, dragId !== null || isDropShown);
 
   // Строка под курсором или с фокусом внутри — одним слушателем на всю ленту. Фокус, перешедший
   // на соседнюю кнопку той же строки, строку не меняет.
@@ -166,23 +200,27 @@ export function JourneyFeed({
 
   const handleDragOver = ({ active, over }: DragOverEvent) => {
     if (over) {
+      // Высоту берём здесь: на старте перетаскивания dnd-kit строку ещё не замерил.
+      setDragOver({ overId: String(over.id), rowHeight: active.rect.current.initial?.height ?? 0 });
       setDropYear(targetYearOf(active.id, over.id) ?? null);
     }
   };
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    setDragId(null);
+    setDragOver(null);
     setDropYear(null);
     const journey = journeys.find((item) => item.journeyId === active.id);
     const target = over ? resolveMoveTarget(journeys, String(active.id), String(over.id)) : null;
-    if (journey && target) {
-      void move(journey, target, () => setDragId(null));
-    } else {
-      setDragId(null);
+    if (journey && target && pages) {
+      setDrop({ pages, journeyId: journey.journeyId, target });
+      void move(journey, target);
     }
   };
 
   const handleDragCancel = () => {
     setDragId(null);
+    setDragOver(null);
     setDropYear(null);
   };
 
@@ -252,7 +290,9 @@ export function JourneyFeed({
   return (
     <div
       ref={containerRef}
-      className={feed.isPlaceholderData ? "journey-feed journey-feed--stale" : "journey-feed"}
+      className={["journey-feed", isStale && "journey-feed--stale", dragId !== null && "journey-feed--sorting"]
+        .filter(Boolean)
+        .join(" ")}
       aria-busy={isFetching}
     >
       {moveErrorToken && (
@@ -270,12 +310,21 @@ export function JourneyFeed({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <SortableContext items={journeyIds} strategy={verticalListSortingStrategy}>
+        <SortableContext items={journeyIds} strategy={feedSortingStrategy}>
           {groups.map((group) => {
             const headerId = `journey-year-${group.year}`;
+            const headerShift =
+              dragId === null || dragOver === null
+                ? 0
+                : yearHeaderShift({
+                    activeIndex: journeyIds.indexOf(dragId),
+                    overIndex: journeyIds.indexOf(dragOver.overId),
+                    firstRowIndex: journeyIds.indexOf(group.journeys[0].journeyId),
+                    height: dragOver.rowHeight,
+                  });
             return (
               <section key={group.year} className="journey-feed__year" aria-labelledby={headerId}>
-                <YearHeader id={headerId} year={group.year} />
+                <YearHeader id={headerId} year={group.year} shift={headerShift} />
                 <ol className="journey-feed__rows">
                   {group.journeys.map((journey) =>
                     editing?.journeyId === journey.journeyId ? (

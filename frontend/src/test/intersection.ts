@@ -34,6 +34,13 @@ export class IntersectionObserverStub {
     return [];
   }
 
+  /** Сообщает наблюдателю запись для элемента, если он его наблюдает. */
+  report(target: Element, entry: Partial<IntersectionObserverEntry>): void {
+    if (this.targets.has(target)) {
+      this.callback([{ target, ...entry } as IntersectionObserverEntry], this as unknown as IntersectionObserver);
+    }
+  }
+
   /** Сообщает наблюдателю, что все его элементы на экране. */
   intersectAll(): void {
     const entries = [...this.targets].map(
@@ -52,5 +59,15 @@ export class IntersectionObserverStub {
 export function intersectAllObserved(): void {
   for (const observer of liveObservers) {
     observer.intersectAll();
+  }
+}
+
+/**
+ * Сообщает всем, кто наблюдает элемент, заданную запись: место элемента и области наблюдения,
+ * долю видимого. Вызывать внутри `act`, если колбэк меняет состояние.
+ */
+export function reportIntersection(target: Element, entry: Partial<IntersectionObserverEntry>): void {
+  for (const observer of liveObservers) {
+    observer.report(target, entry);
   }
 }

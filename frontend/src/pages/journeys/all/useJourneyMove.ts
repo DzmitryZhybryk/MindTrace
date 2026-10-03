@@ -25,11 +25,7 @@ export function useJourneyMove(feedKey: QueryKey) {
   const [errorToken, setErrorToken] = useState<string | null>(null);
   const { mutateAsync, isPending } = useMutation(moveJourneyMutation());
 
-  /**
-   * `onApplied` вызывается в том же такте, что и перестановка в кэше, — React отрисует их одним
-   * рендером.
-   */
-  const move = async (journey: JourneyFeedEntry, target: MoveTarget, onApplied: () => void) => {
+  const move = async (journey: JourneyFeedEntry, target: MoveTarget) => {
     setErrorToken(null);
     // Запрос ленты, вернувшийся после перестановки, затёр бы её старым порядком.
     await queryClient.cancelQueries({ queryKey: feedKey });
@@ -38,7 +34,6 @@ export function useJourneyMove(feedKey: QueryKey) {
       feedKey,
       (data) => data && { ...data, pages: moveJourneyInPages(data.pages, journey.journeyId, target) },
     );
-    onApplied();
 
     try {
       const result = await mutateAsync({

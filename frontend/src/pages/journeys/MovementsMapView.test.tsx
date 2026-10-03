@@ -97,16 +97,18 @@ describe("MovementsMapView", () => {
 
     const { container } = renderMovements();
 
+    // У каждого куска — хвост у разреза, гаснущий градиентом, и сплошная остальная часть.
     await waitFor(() => {
-      expect(container.querySelectorAll(ARC)).toHaveLength(2);
+      expect(container.querySelectorAll(ARC)).toHaveLength(4);
     });
-    const [beforeCut, afterCut] = container.querySelectorAll<SVGPathElement>(ARC);
-    expect(beforeCut.getAttribute("marker-end")).toBeNull();
-    expect(afterCut.getAttribute("marker-end")).toBe("url(#movement-arrow)");
-    // Каждый кусок покрашен своим градиентом прозрачности, а не сплошным цветом.
-    expect(beforeCut.style.stroke).toMatch(/^url\(/u);
-    expect(afterCut.style.stroke).toMatch(/^url\(/u);
+    const arcs = [...container.querySelectorAll<SVGPathElement>(ARC)];
+    const fading = arcs.filter((arc) => arc.style.stroke.startsWith("url("));
+    expect(fading).toHaveLength(2);
     expect(container.querySelectorAll("linearGradient")).toHaveLength(2);
+    // Стрелка одна — в конце сплошной части второго куска, у точки назначения.
+    const withArrow = arcs.filter((arc) => arc.getAttribute("marker-end") === "url(#movement-arrow)");
+    expect(withArrow).toEqual([arcs[3]]);
+    expect(arcs[3].style.stroke).toBe("");
   });
 
   it("подписывает места их названиями и указывает источник названий", async () => {

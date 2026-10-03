@@ -1,12 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
+import { prefersReducedMotion } from "../../../components/reducedMotion";
+
 const ODOMETER_MS = 600;
 const FLIP_MS = 260;
-
-/** Пользователь просил меньше движения — анимации заменяются мгновенной сменой. */
-export function prefersReducedMotion(): boolean {
-  return typeof window !== "undefined" && (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
-}
 
 /**
  * Число, которое при смене значения докручивается до нового, как одометр.

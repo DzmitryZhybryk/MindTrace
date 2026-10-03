@@ -35,8 +35,6 @@
     "filters": "Journey filters",
     "feed": "Journeys by year",
     "years": "Years",
-    "allYears": "All",
-    "yearsHint": "Pick a year, then another one to select a range",
     "transport": "Transport",
     "routeTo": "to",
     "loading": "Loading your journeys…",

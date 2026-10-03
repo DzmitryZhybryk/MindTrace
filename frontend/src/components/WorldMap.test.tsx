@@ -3,7 +3,8 @@ import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { stubScreenLayout, type ScreenRect } from "../test/layout";
-import { renderWithProviders, screen } from "../test/render";
+import { preferReducedMotion } from "../test/motion";
+import { renderWithProviders, screen, waitFor } from "../test/render";
 import type { MapCountry, WorldMapTone } from "./WorldMap";
 import { WorldMap } from "./WorldMap";
 import { WORLD_VIEW_BOX, type ViewBox } from "./worldProjection";
@@ -224,15 +225,24 @@ function gesture(type: string, scale: number, clientX: number, clientY: number):
 interface OccludedMapProps {
   fitBounds: ViewBox;
   occluderClass: string;
+  shouldFadeUnderOccluder?: boolean;
+  isFitAnimated?: boolean;
 }
 
 /** Карта с панелью поверх: ref панели, как его передаёт каркас раздела. */
-function OccludedMap({ fitBounds, occluderClass }: OccludedMapProps) {
+function OccludedMap({ fitBounds, occluderClass, shouldFadeUnderOccluder, isFitAnimated }: OccludedMapProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   return (
     <>
       <div ref={panelRef} className={occluderClass} />
-      <WorldMap countries={COUNTRIES} tone={TONE} fitBounds={fitBounds} occluderRef={panelRef} />
+      <WorldMap
+        countries={COUNTRIES}
+        tone={TONE}
+        fitBounds={fitBounds}
+        occluderRef={panelRef}
+        shouldFadeUnderOccluder={shouldFadeUnderOccluder}
+        isFitAnimated={isFitAnimated}
+      />
     </>
   );
 }
@@ -430,5 +440,59 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
     const above = renderWithProviders(<OccludedMap fitBounds={bounds} occluderClass="occluder-above-map" />);
     expect(above.container.querySelector(".world-map-wrap--occluded")).toBeNull();
     expect(canvasOf(above.container).style.getPropertyValue("--map-occluded-left")).toBe("");
+  });
+
+  it("сквозь прозрачную панель карта видна целиком, а кадр всё равно правее панели", () => {
+    const bounds: ViewBox = { x: 400, y: 180, width: 200, height: 20 };
+    const faded = renderWithProviders(<OccludedMap fitBounds={bounds} occluderClass="occluder-over-map" />);
+    const fadedView = viewBoxOf(faded.container);
+    faded.unmount();
+
+    const { container } = renderWithProviders(
+      <OccludedMap fitBounds={bounds} occluderClass="occluder-over-map" shouldFadeUnderOccluder={false} />,
+    );
+
+    expect(container.querySelector(".world-map-wrap--occluded")).toBeNull();
+    expect(canvasOf(container).style.getPropertyValue("--map-occluded-left")).toBe("");
+    expect(viewBoxOf(container)).toEqual(fadedView);
+  });
+
+  it("с плавной сменой кадра карта переезжает к новому кадру, а не прыгает", async () => {
+    const first: ViewBox = { x: 400, y: 180, width: 200, height: 20 };
+    const second: ViewBox = { x: 100, y: 100, width: 300, height: 30 };
+    const target = renderWithProviders(<OccludedMap fitBounds={second} occluderClass="occluder-above-map" />);
+    const secondView = viewBoxOf(target.container);
+    target.unmount();
+    const { container, rerender } = renderWithProviders(
+      <OccludedMap fitBounds={first} occluderClass="occluder-above-map" isFitAnimated />,
+    );
+    const firstView = viewBoxOf(container);
+
+    rerender(<OccludedMap fitBounds={second} occluderClass="occluder-above-map" isFitAnimated />);
+
+    // Сразу после смены кадр ещё старый, через кадры анимации — промежуточный, в конце — новый.
+    expect(viewBoxOf(container)).toEqual(firstView);
+    await waitFor(() => {
+      const view = viewBoxOf(container);
+      expect(view.x).not.toBe(firstView.x);
+      expect(view.x).not.toBe(secondView.x);
+    });
+    await waitFor(() => expect(viewBoxOf(container)).toEqual(secondView));
+  });
+
+  it("при «меньше движения» новый кадр показывается сразу, без переезда", () => {
+    preferReducedMotion();
+    const first: ViewBox = { x: 400, y: 180, width: 200, height: 20 };
+    const second: ViewBox = { x: 100, y: 100, width: 300, height: 30 };
+    const target = renderWithProviders(<OccludedMap fitBounds={second} occluderClass="occluder-above-map" />);
+    const secondView = viewBoxOf(target.container);
+    target.unmount();
+    const { container, rerender } = renderWithProviders(
+      <OccludedMap fitBounds={first} occluderClass="occluder-above-map" isFitAnimated />,
+    );
+
+    rerender(<OccludedMap fitBounds={second} occluderClass="occluder-above-map" isFitAnimated />);
+
+    expect(viewBoxOf(container)).toEqual(secondView);
   });
 });
