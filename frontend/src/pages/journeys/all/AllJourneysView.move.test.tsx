@@ -5,7 +5,7 @@ import { FEED_JOURNEYS, server } from "../../../test/handlers";
 import { renderWithProviders, screen, waitFor, within } from "../../../test/render";
 import { AllJourneysView } from "./AllJourneysView";
 
-const [, LONDON_TO_PARIS, PARIS_TO_MOSCOW] = FEED_JOURNEYS;
+const [FIRST_2021, LONDON_TO_PARIS, PARIS_TO_MOSCOW] = FEED_JOURNEYS;
 const ROW_HEIGHT = 44;
 const ROW_STEP = 50;
 
@@ -115,10 +115,13 @@ describe("AllJourneysView — перенос", () => {
     server.use(
       http.get("/v1/journeys/", async () => {
         feedRequests += 1;
-        if (feedRequests > 1) {
-          await refetchGate;
+        if (feedRequests === 1) {
+          return HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null });
         }
-        return HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null });
+
+        // Перезапрос отдаёт ленту, которую на сервере успели поменять: соседа из 2019 уже нет.
+        await refetchGate;
+        return HttpResponse.json({ items: [FIRST_2021, LONDON_TO_PARIS], nextCursor: null });
       }),
       http.post("/v1/journeys/:journeyId/move", () =>
         HttpResponse.json({ code: "journeys.invalid_move_target", message: "нет" }, { status: 400 }),
@@ -132,7 +135,10 @@ describe("AllJourneysView — перенос", () => {
     await waitFor(() => expect(feedRequests).toBe(2));
     expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(2);
     expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(1);
+
     releaseRefetch();
+    // Лента приходит с сервера; ждём её, чтобы запрос не оборвался размонтированием после теста.
+    await waitFor(() => expect(screen.queryByRole("region", { name: "2019" })).not.toBeInTheDocument());
   });
 
   it("пока строку несут в другой год, вместо расстояния у неё подсказка «→ год»", async () => {
