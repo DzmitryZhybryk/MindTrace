@@ -469,10 +469,6 @@
     padding: 0;
   }
 
-  .all-journeys__map {
-    display: none;
-  }
-
   .all-journeys__column {
     flex: 1 1 auto;
     margin-left: 0;

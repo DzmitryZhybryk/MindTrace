@@ -7,7 +7,7 @@ import { preferReducedMotion } from "../../../test/motion";
 import { act, renderWithProviders, screen, waitFor, within } from "../../../test/render";
 import { AllJourneysView } from "./AllJourneysView";
 
-const [MOSCOW_TO_LONDON] = FEED_JOURNEYS;
+const [MOSCOW_TO_LONDON, , PARIS_TO_MOSCOW] = FEED_JOURNEYS;
 
 /** Открывает ленту и правку строки Москва → Лондон кликом по её месту отправления. */
 async function openMoscowToLondonEditor() {
@@ -197,6 +197,41 @@ describe("AllJourneysView — правка и удаление", () => {
 
     await waitFor(() => expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(1));
     expect(deletedPath).toBe(`/v1/journeys/${MOSCOW_TO_LONDON.journeyId}`);
+  });
+
+  it("удалена последняя поездка выбранного года — его нет на шкале, выбор снят и лента показывает все годы", async () => {
+    preferReducedMotion();
+    let isParisToMoscowDeleted = false;
+    server.use(
+      http.get("/v1/journeys/years", () => HttpResponse.json({ years: isParisToMoscowDeleted ? [2021] : [2019, 2021] })),
+      http.get("/v1/journeys/", ({ request }) => {
+        const yearFrom = new URL(request.url).searchParams.get("yearFrom");
+        const journeys = FEED_JOURNEYS.filter(
+          (journey) =>
+            !(isParisToMoscowDeleted && journey.journeyId === PARIS_TO_MOSCOW.journeyId) &&
+            (yearFrom === null || journey.traveledYear === Number(yearFrom)),
+        );
+        return HttpResponse.json({ items: journeys, nextCursor: null });
+      }),
+      http.delete("/v1/journeys/:journeyId", () => {
+        isParisToMoscowDeleted = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { user } = renderWithProviders(<AllJourneysView />);
+    await screen.findByRole("region", { name: "2021" });
+    screen.getByRole("slider", { name: "To year" }).focus();
+    await user.keyboard("{ArrowLeft}{ArrowLeft}");
+    await waitFor(() => expect(screen.queryByRole("region", { name: "2021" })).not.toBeInTheDocument());
+
+    await user.click(within(screen.getByRole("region", { name: "2019" })).getByRole("button", { name: "Paris" }));
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Yes" }));
+
+    expect(await screen.findByRole("region", { name: "2021" })).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+    expect(screen.queryByText("No journeys match these filters")).not.toBeInTheDocument();
   });
 
   it("уже удалённая поездка (404 на DELETE) просто пропадает — цель достигнута", async () => {

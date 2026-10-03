@@ -5,7 +5,7 @@ import { FEED_JOURNEYS, server } from "../../../test/handlers";
 import { renderWithProviders, screen, waitFor, within } from "../../../test/render";
 import { AllJourneysView } from "./AllJourneysView";
 
-const [FIRST_2021, LONDON_TO_PARIS, PARIS_TO_MOSCOW] = FEED_JOURNEYS;
+const [, LONDON_TO_PARIS, PARIS_TO_MOSCOW] = FEED_JOURNEYS;
 const ROW_HEIGHT = 44;
 const ROW_STEP = 50;
 
@@ -64,20 +64,27 @@ describe("AllJourneysView — перенос", () => {
     expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(2);
     expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(1);
     releaseResponse();
+    // Перенос доводим до конца здесь: его запоздалые запросы ушли бы в моки следующего теста.
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: "Drag to reorder" }).every((handle) => !handle.hasAttribute("disabled"))).toBe(true),
+    );
   });
 
-  it("брошенная строка остаётся там, где её отпустили: перенос не проигрывается заново ни сразу, ни с приходом ленты", async () => {
+  it("брошенная строка остаётся там, где её отпустили, без повтора анимации; показанная лента не перезапрашивается", async () => {
     stackRowsVertically();
     // Web Animations в jsdom нет — шпион в прототипе; без него FLIP молча пропускает анимацию.
     const animate = vi.fn();
     Object.defineProperty(HTMLElement.prototype, "animate", { configurable: true, writable: true, value: animate });
-    // Перезапрос после переноса отдаёт ленту в том порядке, который сервер сохранил.
-    const movedFeed = [FIRST_2021, PARIS_TO_MOSCOW, { ...LONDON_TO_PARIS, traveledYear: 2019 }];
     let feedRequests = 0;
+    let yearsRequests = 0;
     server.use(
       http.get("/v1/journeys/", () => {
         feedRequests += 1;
-        return HttpResponse.json({ items: feedRequests > 1 ? movedFeed : FEED_JOURNEYS, nextCursor: null });
+        return HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null });
+      }),
+      http.get("/v1/journeys/years", () => {
+        yearsRequests += 1;
+        return HttpResponse.json({ years: [2019, 2021] });
       }),
       http.post("/v1/journeys/:journeyId/move", () => HttpResponse.json({ traveledYear: 2019 })),
     );
@@ -86,10 +93,11 @@ describe("AllJourneysView — перенос", () => {
 
       await dragLondonToParisDown(user);
 
-      await waitFor(() => expect(feedRequests).toBe(2));
-      await waitFor(() =>
-        expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(2),
-      );
+      // Год сменился — годы перезапрошены; лента сбрасывается тем же шагом, сразу после них.
+      await waitFor(() => expect(yearsRequests).toBe(2));
+      expect(within(screen.getByRole("region", { name: "2019" })).getAllByRole("listitem")).toHaveLength(2);
+      expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(1);
+      expect(feedRequests).toBe(1);
       expect(animate).not.toHaveBeenCalled();
     } finally {
       Reflect.deleteProperty(HTMLElement.prototype, "animate");

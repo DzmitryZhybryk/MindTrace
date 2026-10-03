@@ -5,9 +5,11 @@ import { describe, expect, it } from "vitest";
 import { FEED_JOURNEYS, server } from "../../../test/handlers";
 import { intersectAllObserved, reportIntersection } from "../../../test/intersection";
 import { stubScreenLayout } from "../../../test/layout";
-import { preferReducedMotion } from "../../../test/motion";
+import { matchMediaQueries } from "../../../test/motion";
 import { act, renderWithProviders, screen, waitFor, within } from "../../../test/render";
 import { AllJourneysView } from "./AllJourneysView";
+
+const DESKTOP_QUERY = "(min-width: 62em)";
 
 /** Подменяет ленту и запоминает query каждого запроса — тест смотрит, какие фильтры ушли. */
 function recordFeedRequests(
@@ -39,6 +41,7 @@ describe("AllJourneysView", () => {
   });
 
   it("наведённая поездка — дуга на карте с названиями её мест; другая строка меняет подписи", async () => {
+    matchMediaQueries(DESKTOP_QUERY);
     const { container } = renderWithProviders(<AllJourneysView />);
     const year2021 = await screen.findByRole("region", { name: "2021" });
     await within(year2021).findByRole("button", { name: "Moscow" });
@@ -52,8 +55,15 @@ describe("AllJourneysView", () => {
     await waitFor(() => expect(mapLabels()).toEqual(["London", "Paris"]));
   });
 
+  it("на узком экране карты за лентой нет — её даже не загружаем", async () => {
+    const { container } = renderWithProviders(<AllJourneysView />);
+    await screen.findByRole("region", { name: "2021" });
+
+    expect(container.querySelector(".all-journeys__map")).toBeNull();
+  });
+
   it("кадр карты переезжает к наведённой поездке и остаётся на ней, когда курсор ушёл с ленты", async () => {
-    preferReducedMotion();
+    matchMediaQueries(DESKTOP_QUERY, "prefers-reduced-motion");
     stubScreenLayout({
       "world-map": { left: 0, top: 0, width: 1000, height: 487 },
       "world-map-canvas": { left: 0, top: 0, width: 1000, height: 487 },

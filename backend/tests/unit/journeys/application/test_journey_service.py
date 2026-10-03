@@ -508,6 +508,72 @@ async def test_move_journey_invalid_neighbor_raises_invalid_move_target(
     fake_journey_uow.commit_mock.assert_not_awaited()
 
 
+async def test_move_journey_neighbor_repositioned_while_waiting_for_lock_uses_its_fresh_key(
+    journey_service: JourneyService,
+    fake_journey_repository: FakeJourneyRepository,
+) -> None:
+    """move_journey: соседа переставили, пока ждали блокировку года, — поездка встаёт рядом с его новым местом."""
+    user_id = uuid4()
+    neighbor_entity = make_journey(user_id=user_id, traveled_year=2020, sort_key="c")
+    other_entity = make_journey(user_id=user_id, traveled_year=2020, sort_key="m")
+    moved_entity = make_journey(user_id=user_id, traveled_year=2019, sort_key="m")
+    fake_journey_repository.journeys = [neighbor_entity, other_entity, moved_entity]
+    fake_journey_repository.journeys_after_lock = [
+        make_journey(journey_id=neighbor_entity.journey_id, user_id=user_id, traveled_year=2020, sort_key="t"),
+        other_entity,
+        moved_entity,
+    ]
+
+    await journey_service.move_journey(
+        command=MoveJourneyCommand(
+            journey_id=moved_entity.journey_id,
+            user_id=user_id,
+            neighbor_journey_id=neighbor_entity.journey_id,
+            placement=MovePlacement.AFTER,
+        )
+    )
+
+    assert moved_entity.traveled_year == 2020
+    assert moved_entity.sort_key > "t"
+
+
+@pytest.mark.parametrize("case", ["another_year", "deleted"])
+async def test_move_journey_neighbor_gone_while_waiting_for_lock_raises_invalid_move_target(
+    journey_service: JourneyService,
+    fake_journey_uow: FakeJourneyUnitOfWork,
+    fake_journey_repository: FakeJourneyRepository,
+    case: str,
+) -> None:
+    """move_journey: соседа унесли в другой год или удалили, пока ждали блокировку, → InvalidMoveTargetError."""
+    user_id = uuid4()
+    neighbor_entity = make_journey(user_id=user_id, traveled_year=2020, sort_key="c")
+    moved_entity = make_journey(user_id=user_id, traveled_year=2019, sort_key="m")
+    fake_journey_repository.journeys = [neighbor_entity, moved_entity]
+    fake_journey_repository.journeys_after_lock = [
+        make_journey(
+            journey_id=neighbor_entity.journey_id,
+            user_id=user_id,
+            traveled_year=2018 if case == "another_year" else 2020,
+            sort_key="c",
+            deleted_at=_DELETED_AT if case == "deleted" else None,
+        ),
+        moved_entity,
+    ]
+
+    with pytest.raises(InvalidMoveTargetError):
+        await journey_service.move_journey(
+            command=MoveJourneyCommand(
+                journey_id=moved_entity.journey_id,
+                user_id=user_id,
+                neighbor_journey_id=neighbor_entity.journey_id,
+                placement=MovePlacement.AFTER,
+            )
+        )
+
+    assert (moved_entity.traveled_year, moved_entity.sort_key) == (2019, "m")
+    fake_journey_uow.commit_mock.assert_not_awaited()
+
+
 @pytest.mark.parametrize("case", ["missing", "deleted"])
 async def test_move_journey_unavailable_journey_raises_not_found(
     journey_service: JourneyService,

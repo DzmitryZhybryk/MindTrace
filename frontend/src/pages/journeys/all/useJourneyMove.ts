@@ -9,9 +9,10 @@ import { moveJourneyInPages, type MoveTarget } from "./feedMove";
 /**
  * Перенос поездки с оптимистичной перестановкой в ленте.
  *
- * Строка встаёт на новое место сразу, до ответа. Бэк отказал (сосед удалён, чужой) — лента
- * возвращается как была и показывается ошибка. В любом случае лента потом тихо перезапрашивается:
- * при фильтрах между соседями могут быть скрытые строки, и место на сервере точнее догадки.
+ * Строка встаёт на новое место сразу, до ответа. Сервер ставит её вплотную к соседу, поэтому
+ * показанная лента после успеха уже верна и не перезапрашивается; сбрасываются только скрытые
+ * варианты ленты (другие фильтры). Бэк отказал (сосед удалён, чужой) — лента возвращается как
+ * была, показывается ошибка и перезапрашивается: отказ значит, что она разошлась с сервером.
  * Карты и годы сбрасываются, только если сменился год: порядок внутри года на них не влияет.
  *
  * Args:
@@ -43,10 +44,11 @@ export function useJourneyMove(feedKey: QueryKey) {
       if (result.traveledYear !== journey.traveledYear) {
         void invalidateJourneyAggregates(queryClient);
       }
+
+      void invalidateJourneyFeed(queryClient, "inactive");
     } catch (err) {
       queryClient.setQueryData(feedKey, previous);
       setErrorToken(errorCodeToken(err instanceof ApiError ? err.code : "network"));
-    } finally {
       void invalidateJourneyFeed(queryClient);
     }
   };

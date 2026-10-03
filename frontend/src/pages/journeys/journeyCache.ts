@@ -25,9 +25,19 @@ export function invalidateJourneyAggregates(queryClient: QueryClient): Promise<u
   ]);
 }
 
-/** Перезапрашивает все загруженные варианты ленты. */
-export function invalidateJourneyFeed(queryClient: QueryClient): Promise<void> {
-  return queryClient.invalidateQueries({ queryKey: listJourneysInfiniteQueryKey() });
+/**
+ * Сбрасывает все загруженные варианты ленты.
+ *
+ * Args:
+ *     queryClient: Клиент запросов.
+ *     refetchType: Какие варианты перезапросить сразу: `"active"` — показанную ленту тоже,
+ *         `"inactive"` — только скрытые, показанная остаётся как есть до следующего обновления.
+ */
+export function invalidateJourneyFeed(
+  queryClient: QueryClient,
+  refetchType: "active" | "inactive" = "active",
+): Promise<void> {
+  return queryClient.invalidateQueries({ queryKey: listJourneysInfiniteQueryKey(), refetchType });
 }
 
 /**

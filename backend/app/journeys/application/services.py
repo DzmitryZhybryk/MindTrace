@@ -160,10 +160,21 @@ class JourneyService:
             Год поездки после переноса
 
         Raises:
-            InvalidMoveTargetError: соседа у пользователя нет, он удалён или это сама переносимая поездка
+            InvalidMoveTargetError: соседа у пользователя нет, он удалён, это сама переносимая поездка
+                или он ушёл в другой год, пока перенос ждал блокировку
             JourneyNotFoundError: у пользователя нет переносимой поездки или она удалена
         """
         async with self._uow.transaction():
+            neighbor_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id(
+                journey_id=command.neighbor_journey_id,
+                user_id=command.user_id,
+            )
+            if neighbor_entity is None:
+                raise InvalidMoveTargetError()
+
+            target_scope = JourneyOrderScope(user_id=command.user_id, traveled_year=neighbor_entity.traveled_year)
+            await self._uow.journey_repository.lock_sort_keys(scope=target_scope)
+            # Пока ждали блокировку года, соседа могли переставить, перенести в другой год или удалить.
             neighbor_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id(
                 journey_id=command.neighbor_journey_id,
                 user_id=command.user_id,
@@ -172,11 +183,10 @@ class JourneyService:
                 neighbor_entity is None
                 or neighbor_entity.is_deleted
                 or neighbor_entity.journey_id == command.journey_id
+                or neighbor_entity.traveled_year != target_scope.traveled_year
             ):
                 raise InvalidMoveTargetError()
 
-            target_scope = JourneyOrderScope(user_id=command.user_id, traveled_year=neighbor_entity.traveled_year)
-            await self._uow.journey_repository.lock_sort_keys(scope=target_scope)
             journey_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id_for_update(
                 journey_id=command.journey_id,
                 user_id=command.user_id,

@@ -43,6 +43,9 @@ class FakeJourneyRepository(JourneyRepositoryPort):
         self.movement_connections_by_user_id: dict[UUID, list[MovementConnection]] = {}
         # С каким фильтром спрашивали маршруты: сам фильтр фейк не применяет (его правило — в SQL).
         self.movement_connection_queries: list[MovementConnectionQuery] = []
+        # Поездки, которые транзакция увидит, дождавшись блокировки области: их успела изменить
+        # параллельная транзакция. ``None`` — никто не вмешался.
+        self.journeys_after_lock: list[JourneyEntity] | None = None
 
     async def insert_journey(self, journey_entity: JourneyEntity) -> None:
         self.journeys.append(journey_entity)
@@ -75,8 +78,10 @@ class FakeJourneyRepository(JourneyRepositoryPort):
         )
 
     async def lock_sort_keys(self, scope: JourneyOrderScope) -> None:
-        """Блокировка в in-memory фейке не нужна: тесты не конкурируют за область."""
-        return
+        """Блокировать нечего; заданные ``journeys_after_lock`` подменяют хранилище, как параллельная транзакция."""
+        if self.journeys_after_lock is not None:
+            self.journeys = self.journeys_after_lock
+            self.journeys_after_lock = None
 
     async def find_last_sort_key(self, scope: JourneyOrderScope) -> str | None:
         """Наибольший ключ среди неудалённых поездок области."""
