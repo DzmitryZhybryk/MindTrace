@@ -1,6 +1,6 @@
 ---
 name: backend-tests
-description: Write or extend backend unit tests for the MindTrace FastAPI service (DDD, pytest, async). Use when the user asks to write/add/cover backend tests, test a domain/service/entity, or scaffold the test suite. Follows the conventions in .claude/rules/python/testing.md (structure, hand-written fakes, thin repository Protocols, determinism). Backend integration/api tests are separate later phases.
+description: Write or extend backend unit tests for the MindTrace FastAPI service (DDD, pytest, async). Use when the user asks to write/add/cover backend tests, test a domain/service/entity, or scaffold the test suite. Conventions are in .claude/rules/python/testing.md and testing-layout.md. Unit tests by default; integration and api only on explicit request.
 ---
 
 # Backend tests
@@ -10,10 +10,10 @@ from `backend/` (self-contained uv project).
 
 ## Source of truth
 
-**Conventions live in `.claude/rules/python/testing.md`** — it is `@`-included in `CLAUDE.md`, so
-it's always in context. Do **not** restate or fork those rules here; this skill is only the
-*procedure*. Re-read that file before writing if anything is unclear (pyramid, layout, fakes,
-Protocols, determinism, coverage, anti-patterns).
+Conventions live in `.claude/rules/python/testing.md` (style, fakes, determinism) and
+`.claude/rules/python/testing-layout.md` (levels, layout, markers, fixture placement, targets).
+They load when Claude reads anything under `backend/tests/`; read both explicitly before the first
+test of a session. Do **not** restate or fork them here — this skill is only the *procedure*.
 
 ## Scope
 
