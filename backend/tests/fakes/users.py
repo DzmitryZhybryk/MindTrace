@@ -1,7 +1,7 @@
 """
 In-memory фейки домена users: репозиторий и UoW.
 
-Реализуют порты из ``app.users.application.ports`` — тот же контракт, что и боевой
+Реализуют порты из ``app.users.application.ports.*`` — тот же контракт, что и боевой
 SQLAlchemy-репозиторий/UoW. ``ty`` сверяет обе реализации с портом, поэтому фейк не
 может молча разойтись с реальной сигнатурой. Сторадж — ``dict`` по ``user_id``;
 сущность кладётся по ссылке (моделирует identity map SA-сессии).
@@ -12,7 +12,8 @@ from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
 from uuid import UUID
 
-from app.users.application.ports import UserRepositoryPort, UserUnitOfWorkPort
+from app.users.application.ports.unit_of_work import UserUnitOfWorkPort
+from app.users.application.ports.user_repository import UserRepositoryPort
 from app.users.domain.entities import UserEntity
 
 

@@ -1,13 +1,11 @@
 from typing import Final
 
 from app.auth.application.email_verification_service import EmailVerificationService
-from app.auth.application.ports import AuthUnitOfWorkPort, UsersClientPort
-from app.auth.application.schemas import (
-    ClientMetadata,
-    LoginCommand,
-    RegistrationCommand,
-    TokenPairResult,
-)
+from app.auth.application.ports.unit_of_work import AuthUnitOfWorkPort
+from app.auth.application.ports.users_client import CreateUserRequest, UsersClientPort
+from app.auth.application.schemas.commands import LoginCommand, RegistrationCommand
+from app.auth.application.schemas.metadata import ClientMetadata
+from app.auth.application.schemas.results import TokenPairResult
 from app.auth.application.token_issuer import TokenIssuer
 from app.auth.domain.entities import UserCredentialsEntity
 from app.auth.domain.value_objects import Password
@@ -46,16 +44,16 @@ class AuthService:
     async def register(
         self,
         *,
-        registration: RegistrationCommand,
+        command: RegistrationCommand,
         client_metadata: ClientMetadata,
     ) -> TokenPairResult:
         async with self._uow.transaction():
-            await self._ensure_credentials_unique(email=registration.email, username=registration.username)
+            await self._ensure_credentials_unique(email=command.email, username=command.username)
 
-            password = Password(hash=self._salted_hasher.hash(secret=registration.password.get_secret_value()))
+            password = Password(hash=self._salted_hasher.hash(secret=command.password.get_secret_value()))
             user_credentials_entity = UserCredentialsEntity.create(
-                email=registration.email,
-                username=registration.username,
+                email=command.email,
+                username=command.username,
                 password=password,
             )
             await self._uow.user_credentials_repository.insert_user_credentials(
@@ -67,11 +65,13 @@ class AuthService:
             # commit'е не гарантирован, поэтому фиксируем его явным flush'ем здесь.
             await self._uow.flush()
             await self._users_client.create_user(
-                user_id=user_credentials_entity.user_id,
-                username=registration.username,
-                email=registration.email,
-                marketing_emails_consent=registration.marketing_emails_consent,
-                terms_accepted_at=user_credentials_entity.created_at,
+                request=CreateUserRequest(
+                    user_id=user_credentials_entity.user_id,
+                    username=command.username,
+                    email=command.email,
+                    marketing_emails_consent=command.marketing_emails_consent,
+                    terms_accepted_at=user_credentials_entity.created_at,
+                ),
             )
 
             refresh_secret, refresh_token_entity = self._token_issuer.issue_refresh_token(

@@ -3,7 +3,7 @@ from uuid import UUID
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.application.ports import UserCredentialsRepositoryPort
+from app.auth.application.ports.user_credentials_repository import UserCredentialsRepositoryPort
 from app.auth.domain.entities import UserCredentialsEntity
 from app.auth.domain.enums import UserRole
 from app.auth.domain.value_objects import Password
@@ -73,7 +73,7 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
         *,
         email: str,
         username: str,
-    ) -> list[UserCredentialsEntity]:
+    ) -> tuple[UserCredentialsEntity, ...]:
         """
         Загружает все записи, у которых совпадает email или username.
 
@@ -87,14 +87,16 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
             username: Username из запроса регистрации
 
         Returns:
-            Список найденных доменных сущностей (0..2 элементов)
+            Найденные доменные сущности (0..2 элементов)
         """
         query = sa.select(UserCredentials).where(
             (UserCredentials.email == email) | (UserCredentials.username == username),
         )
         result = await self._session.execute(query)
         models = result.scalars().all()
-        return [self._to_entity(user_credentials_model=user_credentials_model) for user_credentials_model in models]
+        return tuple(
+            self._to_entity(user_credentials_model=user_credentials_model) for user_credentials_model in models
+        )
 
     def _to_columns(self, user_credentials_entity: UserCredentialsEntity) -> DictStrAny:
         """

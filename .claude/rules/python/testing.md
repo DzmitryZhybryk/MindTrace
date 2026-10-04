@@ -33,7 +33,7 @@ How a backend test is written. Where it lives, markers, fixtures placement and r
 ### Thin Protocols keep fakes honest
 
 The first time a fake is written for a repository, its port is a `Protocol` in
-`app/<domain>/application/ports.py` declaring only the methods in use; the real repository and the
+`app/<domain>/application/ports/<port>.py` declaring only the methods in use; the real repository and the
 fake are both typed with it, so `ty` catches drift. Port rules (layer, naming, imports) —
 `ddd.md`.
 

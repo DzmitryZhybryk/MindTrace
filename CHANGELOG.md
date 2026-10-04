@@ -13,12 +13,23 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 ## 2026-10-04
 
+### Backend 3.1.1
+
+HTTP-контракт и коды ошибок не менялись; правки — во внутренних слоях.
+
+- **Раскладка application-слоя во всех доменах:** входы и выходы use case'ов — пакет `application/schemas/` по ролям (`commands.py`, `results.py`, `metadata.py`), порты — пакет `application/ports/`, модуль на порт; типы, которые объявляет порт (`*Scope`, `*Filters`, исходящие `*Request`, read models), лежат рядом с ним
+- **Сигнатуры use case'ов разделяют роли:** кто вызывает (`user_id` из токена) и какую запись трогает (`journey_id` из пути) — отдельные параметры, в команде — только данные из тела и query. `DeleteJourneyCommand` больше не нужна; подтверждение email принимает `VerifyEmailCommand`
+- `UsersClientPort.create_user` принимает `CreateUserRequest` вместо пяти отдельных значений; проверка мест для journeys в geo — `GetMissingPlaceIdsCommand` → `MissingPlaceIdsResult`
+- Порты репозиториев, ответы `geo` и загрузчик справочника мест отдают `tuple` вместо `list`; ответы `geo` заморожены, как в остальных доменах
+
 ### Project
 
 - **Конфигурация Claude Code пересобрана:** `CLAUDE.md` сокращён с ~35 до ~10 КБ, остальное разложено по `.claude/rules/` с `paths:` (правило подгружается, только когда Claude работает с подходящими файлами) и по skills. Правила тестов бэка и фронта разделены на «стиль» и «раскладка/окружение», из `CLAUDE.md` вынесены стиль Python, shared-инфраструктура и дрейф-гейты кодогенерации
 - Новые skills: `git-workflow` (коммиты, версии, CHANGELOG, `uv lock`, гейт покрытия), `dev-database` (миграции, дев-база), `dead-code-audit`; правило `web/ui-design.md` — дизайн UI начинается с `frontend-design`
 - Бэклог отложенных фич переехал из `.claude/feature_plan.md` в `docs/feature-backlog.md`
 - Из проекта удалён плагин `skill-creator` (ни разу не вызывался)
+- Отключены `pyright-lsp` и `typescript-lsp` (language server'ов на машине нет, плагины не работали); у `security-guidance` выключено LLM-ревью на каждой остановке, ревью на коммит и мгновенные предупреждения остались
+- В `.claude/rules/common/security.md` — проектные инварианты для ревью: владелец берётся только из токена, проверка владельца — в самом запросе к хранилищу, чужая запись — 404
 
 ## 2026-10-03
 

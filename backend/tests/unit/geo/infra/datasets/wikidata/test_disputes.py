@@ -54,7 +54,7 @@ def test_find_disputes_reports_different_names() -> None:
     """find_disputes: имя GeoNames и метка Wikidata разные → спор с обоими вариантами."""
     disputes = find_disputes(rows=[_HUANGSHAN_ROW], labels={"1792359": frozenset({"Хуаншань"})})
 
-    assert disputes == [_HUANGSHAN_DISPUTE]
+    assert disputes == (_HUANGSHAN_DISPUTE,)
 
 
 @pytest.mark.parametrize(
@@ -64,7 +64,7 @@ def test_find_disputes_reports_different_names() -> None:
 )
 def test_find_disputes_ignores_same_name(label: str) -> None:
     """find_disputes: совпадение с точностью до регистра и уточнения в скобках — не спор."""
-    assert find_disputes(rows=[_HUANGSHAN_ROW], labels={"1792359": frozenset({label})}) == []
+    assert find_disputes(rows=[_HUANGSHAN_ROW], labels={"1792359": frozenset({label})}) == ()
 
 
 @pytest.mark.parametrize(
@@ -76,7 +76,7 @@ def test_find_disputes_ignores_yo_and_hyphen_differences(geonames_ru: str, label
     """find_disputes: «ё»/«е» и дефис вместо пробела — то же имя, не спор."""
     row = {**_HUANGSHAN_ROW, "name_ru": geonames_ru}
 
-    assert find_disputes(rows=[row], labels={"1792359": frozenset({label})}) == []
+    assert find_disputes(rows=[row], labels={"1792359": frozenset({label})}) == ()
 
 
 @pytest.mark.parametrize(
@@ -91,7 +91,7 @@ def test_find_disputes_ignores_yo_and_hyphen_differences(geonames_ru: str, label
 )
 def test_find_disputes_needs_both_names(row: dict[str, str], labels: dict[str, frozenset[str]]) -> None:
     """find_disputes: спор только когда есть и имя GeoNames, и годная метка Wikidata."""
-    assert find_disputes(rows=[row], labels=labels) == []
+    assert find_disputes(rows=[row], labels=labels) == ()
 
 
 def test_apply_decisions_uses_current_decision() -> None:
@@ -112,7 +112,7 @@ def test_apply_decisions_uses_current_decision() -> None:
     )
 
     assert rows[0]["name_ru"] == "Хуаншань"
-    assert unresolved == []
+    assert unresolved == ()
     assert report == DisputesReport(disputes=1, resolved=1, unresolved=0, corrected=0, stale=0)
 
 
@@ -139,7 +139,7 @@ def test_apply_decisions_ignores_stale_decision(geonames_ru: str, wikidata_ru: f
     )
 
     assert rows[0]["name_ru"] == "Туньси"
-    assert unresolved == [_HUANGSHAN_DISPUTE]
+    assert unresolved == (_HUANGSHAN_DISPUTE,)
     assert report == DisputesReport(disputes=1, resolved=0, unresolved=1, corrected=0, stale=0)
 
 
@@ -148,7 +148,7 @@ def test_apply_decisions_without_decision_keeps_geonames_name() -> None:
     rows, unresolved, _ = apply_decisions(rows=[_HUANGSHAN_ROW], disputes=[_HUANGSHAN_DISPUTE], decisions={})
 
     assert rows[0]["name_ru"] == "Туньси"
-    assert unresolved == [_HUANGSHAN_DISPUTE]
+    assert unresolved == (_HUANGSHAN_DISPUTE,)
 
 
 def test_apply_decisions_corrects_broken_name_without_dispute() -> None:
@@ -166,7 +166,7 @@ def test_apply_decisions_corrects_broken_name_without_dispute() -> None:
     rows, unresolved, report = apply_decisions(rows=[row], disputes=[], decisions={decision.external_id: decision})
 
     assert rows[0]["name_ru"] == "Камогава"
-    assert unresolved == []
+    assert unresolved == ()
     assert report == DisputesReport(disputes=0, resolved=0, unresolved=0, corrected=1, stale=0)
 
 
@@ -209,7 +209,7 @@ def test_apply_decisions_sends_stale_decision_without_dispute_to_arbitration(nam
     )
 
     assert rows[0]["name_ru"] == name_ru
-    assert unresolved == [
+    assert unresolved == (
         RuNameDispute(
             external_id="GeoNames:1792359",
             name_en="Huangshan City",
@@ -218,7 +218,7 @@ def test_apply_decisions_sends_stale_decision_without_dispute_to_arbitration(nam
             geonames_ru=name_ru,
             wikidata_ru=frozenset(),
         ),
-    ]
+    )
     assert report == DisputesReport(disputes=0, resolved=0, unresolved=0, corrected=0, stale=1)
 
 
@@ -251,7 +251,7 @@ def test_apply_decisions_accepts_already_applied_decision_without_dispute() -> N
     )
 
     assert rows[0]["name_ru"] == "Хуаншань"
-    assert unresolved == []
+    assert unresolved == ()
     assert report == DisputesReport(disputes=0, resolved=0, unresolved=0, corrected=0, stale=0)
 
 
@@ -282,7 +282,7 @@ def test_apply_decisions_accepts_already_applied_third_name() -> None:
     )
 
     assert rows[0]["name_ru"] == "Хуаншань"
-    assert unresolved == []
+    assert unresolved == ()
     assert report == DisputesReport(disputes=1, resolved=1, unresolved=0, corrected=0, stale=0)
 
 

@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.shared.repositories.base_repository import BaseDBRepository
-from app.users.application.ports import UserRepositoryPort
+from app.users.application.ports.user_repository import UserRepositoryPort
 from app.users.domain.entities import UserEntity
 from app.users.infra.models import User
 

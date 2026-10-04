@@ -155,7 +155,7 @@ def enrich_rows(
     rows: Iterable[Mapping[str, str]],
     labels: Mapping[str, frozenset[str]],
     min_population: int,
-) -> tuple[list[dict[str, str]], EnrichmentReport]:
+) -> tuple[tuple[dict[str, str], ...], EnrichmentReport]:
     """
     Дописывает русские имена местам без них; уже заполненные имена не меняются.
 
@@ -195,4 +195,4 @@ def enrich_rows(
         ambiguous=ambiguous,
         rejected=rejected,
     )
-    return enriched, report
+    return tuple(enriched), report

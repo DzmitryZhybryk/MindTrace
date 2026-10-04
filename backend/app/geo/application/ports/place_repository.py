@@ -1,25 +1,16 @@
-"""
-Порты (контракты) исходящих зависимостей geo, которыми пользуется application-слой.
-
-По инверсии зависимостей контракт, на который опирается ``PlaceService``, принадлежит
-application-слою, а ``infra`` его **реализует** (``infra`` импортирует порт отсюда, не
-наоборот). На этот же порт опирается in-memory фейк в тестах — ``ty`` ловит расхождение
-сигнатур между реальным репозиторием и фейком.
-
-Зависит только от ``domain`` — модуль остаётся листом графа импортов без циклов.
-"""
-
 from collections.abc import Collection
 from typing import Protocol
 from uuid import UUID
 
 from app.geo.domain.entities import PlaceEntity
 
+__all__ = ["PlaceRepositoryPort"]
+
 
 class PlaceRepositoryPort(Protocol):
     """Контракт read-only поиска мест по газеттиру, на который опирается application-слой."""
 
-    async def search_places_by_name(self, *, search_text: str, limit: int) -> list[PlaceEntity]:
+    async def search_places_by_name(self, *, search_text: str, limit: int) -> tuple[PlaceEntity, ...]:
         """
         Ищет места по имени (en/ru), отсортированные по убыванию населения.
 
@@ -32,11 +23,11 @@ class PlaceRepositoryPort(Protocol):
             limit: Максимум кандидатов в выдаче
 
         Returns:
-            Список мест, отсортированный по убыванию населения
+            Места, отсортированные по убыванию населения
         """
         ...
 
-    async def find_places_by_ids(self, *, place_ids: Collection[UUID]) -> list[PlaceEntity]:
+    async def find_places_by_ids(self, *, place_ids: Collection[UUID]) -> tuple[PlaceEntity, ...]:
         """
         Находит места по id; несуществующие id пропускаются.
 

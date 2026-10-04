@@ -21,7 +21,7 @@ def test_enrich_rows_fills_missing_name_from_single_label() -> None:
 
     enriched, report = enrich_rows(rows=rows, labels={"1": frozenset({"Кукши"})}, min_population=100_000)
 
-    assert enriched == [{"external_id": "GeoNames:1", "name_en": "Kukshi", "name_ru": "Кукши", "population": "128000"}]
+    assert enriched == ({"external_id": "GeoNames:1", "name_en": "Kukshi", "name_ru": "Кукши", "population": "128000"},)
     assert report == EnrichmentReport(candidates=1, filled=1, not_found=0, ambiguous=0, rejected=0)
 
 

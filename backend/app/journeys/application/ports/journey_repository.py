@@ -1,28 +1,68 @@
-"""
-Порты (контракты) исходящих зависимостей journeys, которыми пользуется application-слой.
-
-По инверсии зависимостей контракт, на который опирается ``JourneyService``, принадлежит
-application-слою, а реализация живёт в ``infra``: репозиторий и UoW — поверх Postgres.
-``infra`` импортирует порт отсюда, не наоборот.
-
-На эти же порты опираются in-memory фейки в тестах — ``ty`` ловит расхождение сигнатур
-между реальной реализацией и фейком. Зависит только от ``domain`` и типов выдачи из
-``application.schemas`` — модуль остаётся листом графа импортов без внутренних циклов.
-
-В geo journeys ходит только за одним: проверить при создании поездки, что места существуют
-(``PlacesClientPort``).
-"""
-
 from collections.abc import Collection
-from contextlib import AbstractAsyncContextManager
+from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
-from app.journeys.application.schemas import JourneyFilters, JourneyOrderScope, MovementConnection, VisitedPlace
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
+from app.journeys.domain.value_objects import GeoPoint
 from app.shared.fractional_index import SortKeyRepositoryPort
 from app.shared.pagination import CursorPage, PageQuery
+
+__all__ = [
+    "JourneyFilters",
+    "JourneyOrderScope",
+    "JourneyRepositoryPort",
+    "MovementConnection",
+    "VisitedPlace",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class JourneyOrderScope:
+    """Область ручного порядка поездок: поездки одного пользователя за один год."""
+
+    user_id: UUID
+    traveled_year: int
+
+
+@dataclass(frozen=True, slots=True)
+class JourneyFilters:
+    """
+    Фильтр ленты поездок.
+
+    Годы — включительно, ``None`` — без границы. ``transport_types`` — виды транспорта, поездки на
+    которых учитываются; ``None`` — все.
+    """
+
+    year_from: int | None
+    year_to: int | None
+    transport_types: frozenset[TransportType] | None
+
+
+@dataclass(frozen=True, slots=True)
+class VisitedPlace:
+    """
+    Место, где пользователь побывал, — строка выдачи репозитория.
+
+    ``years`` — годы всех поездок с местом, по возрастанию.
+    """
+
+    place: GeoPoint
+    years: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class MovementConnection:
+    """
+    Стрелка на карте перемещений: откуда и куда пользователь ездил, без повторов.
+
+    ``years`` — годы поездок по этому маршруту, по возрастанию.
+    """
+
+    origin: GeoPoint
+    destination: GeoPoint
+    years: tuple[int, ...]
 
 
 class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
@@ -145,39 +185,3 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
             Годы поездок; пусто, если поездок нет
         """
         ...
-
-
-class PlacesClientPort(Protocol):
-    """Исходящий вызов в geo, справочник мест."""
-
-    async def get_missing_place_ids(self, *, place_ids: Collection[UUID]) -> frozenset[UUID]:
-        """
-        Возвращает те id из переданных, которых нет в справочнике geo.
-
-        Нужен при создании поездки: места отправления и назначения проверяются одним вызовом,
-        чтобы поездка не ссылалась на несуществующее место.
-
-        Args:
-            place_ids: Id мест для проверки
-
-        Returns:
-            Id ненайденных мест; пусто, если все на месте
-        """
-        ...
-
-
-class JourneyUnitOfWorkPort(Protocol):
-    """
-    Контракт транзакционной границы journeys, на который опирается ``JourneyService``.
-
-    Объединяет доступ к репозиторию (через его порт), транзакционную область
-    ``transaction()`` и явный ``commit``. Как и ``UserUnitOfWorkPort``, без
-    ``session``-шва: создание поездки не делает atomic-defer procrastinate-таски,
-    поэтому raw-сессия в контракте не нужна (YAGNI).
-    """
-
-    journey_repository: JourneyRepositoryPort
-
-    def transaction(self) -> AbstractAsyncContextManager[None]: ...
-
-    async def commit(self) -> None: ...

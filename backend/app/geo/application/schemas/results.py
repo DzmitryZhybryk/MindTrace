@@ -1,30 +1,13 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from app.geo.domain.enums import Language
-
 __all__ = [
+    "MissingPlaceIdsResult",
     "PlaceSearchItem",
     "PlaceSearchResult",
-    "ResolvePlacesCommand",
     "ResolvePlacesResult",
     "ResolvedPlace",
-    "SearchPlacesCommand",
 ]
-
-
-@dataclass(frozen=True, slots=True)
-class SearchPlacesCommand:
-    """
-    Намерение «найти места по префиксу имени» — вход ``PlaceService.search_places``.
-
-    Транспортный объект без валидации/семантических типов → dataclass (см. DTO
-    conventions).
-    """
-
-    search_text: str
-    language: Language
-    limit: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,14 +30,6 @@ class PlaceSearchResult:
 
 
 @dataclass(frozen=True, slots=True)
-class ResolvePlacesCommand:
-    """Запрос названий мест по их id на нужном языке."""
-
-    place_ids: tuple[UUID, ...]
-    language: Language
-
-
-@dataclass(frozen=True, slots=True)
 class ResolvedPlace:
     """Название места на языке запроса."""
 
@@ -67,3 +42,10 @@ class ResolvePlacesResult:
     """Названия найденных мест."""
 
     items: tuple[ResolvedPlace, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class MissingPlaceIdsResult:
+    """Id мест, которых нет в газеттире; пусто, если все на месте."""
+
+    place_ids: frozenset[UUID]

@@ -117,7 +117,7 @@ async def test_search_prefix_does_not_match_substring(db_session: AsyncSession) 
 
     places = await PlaceRepository(session=db_session).search_places_by_name(search_text="York", limit=10)
 
-    assert places == []
+    assert places == ()
 
 
 async def test_search_escapes_like_metacharacters(db_session: AsyncSession) -> None:

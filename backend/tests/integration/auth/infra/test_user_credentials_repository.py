@@ -71,13 +71,13 @@ async def test_find_by_email_or_username_returns_matching_rows(
 async def test_find_by_email_or_username_no_match_returns_empty(
     db_session: AsyncSession,
 ) -> None:
-    """OR-выборка без совпадений возвращает пустой список, а не падает."""
+    """OR-выборка без совпадений возвращает пустой результат, а не падает."""
     found = await UserCredentialsRepository(session=db_session).find_user_credentials_by_email_or_username(
         email="nobody@example.com",
         username="nobody",
     )
 
-    assert found == []
+    assert found == ()
 
 
 async def test_insert_duplicate_email_raises_integrity_error(

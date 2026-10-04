@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from app.geo.application.schemas import ResolvePlacesCommand, SearchPlacesCommand
+from app.geo.application.schemas.commands import ResolvePlacesCommand, SearchPlacesCommand
 from app.geo.application.services import PlaceService
 from app.geo.domain.enums import Language
 from app.geo.presentation.dependencies import place_service_dependency
@@ -37,7 +37,7 @@ async def search_places(
 ) -> PlaceSearchResponse:
     command = SearchPlacesCommand(search_text=search_text, language=language, limit=limit)
     result = await place_service.search_places(command=command)
-    items = [PlaceSearchItem.model_validate(item, from_attributes=True) for item in result.items]
+    items = tuple(PlaceSearchItem.model_validate(item, from_attributes=True) for item in result.items)
     return PlaceSearchResponse(items=items)
 
 
@@ -54,5 +54,5 @@ async def resolve_places(
 ) -> ResolvePlacesResponse:
     command = ResolvePlacesCommand(place_ids=tuple(body.place_ids), language=body.language)
     result = await place_service.resolve_places(command=command)
-    items = [PlaceName.model_validate(item, from_attributes=True) for item in result.items]
+    items = tuple(PlaceName.model_validate(item, from_attributes=True) for item in result.items)
     return ResolvePlacesResponse(items=items)

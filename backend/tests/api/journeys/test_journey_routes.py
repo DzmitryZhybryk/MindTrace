@@ -18,7 +18,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.geo.presentation.dependencies import place_repository_dependency
-from app.journeys.application.schemas import MovementConnection, VisitedPlace
+from app.journeys.application.ports.journey_repository import MovementConnection, VisitedPlace
 from app.journeys.domain.enums import TransportType
 from app.journeys.presentation.dependencies import places_client_dependency
 from app.shared.schemas.base import BFastAPI

@@ -1,7 +1,7 @@
 """
 In-memory фейки journeys: репозиторий поверх ``list``/``dict`` и UoW с мокнутым commit.
 
-Каждый фейк реализует соответствующий порт из ``app.journeys.application.ports`` — тот же
+Каждый фейк реализует соответствующий порт из ``app.journeys.application.ports.*`` — тот же
 контракт, что и боевые реализации, поэтому ``ty`` ловит расхождение сигнатур. ``transaction``
 у UoW — no-op область (rollback реальной сессии проверяется в integration), ``commit`` —
 ``AsyncMock`` (``commit_mock``) для проверки факта фиксации. Те же фейки переиспользуются на
@@ -19,8 +19,14 @@ from typing import cast
 from unittest.mock import AsyncMock
 from uuid import UUID
 
-from app.journeys.application.ports import JourneyRepositoryPort, JourneyUnitOfWorkPort
-from app.journeys.application.schemas import JourneyFilters, JourneyOrderScope, MovementConnection, VisitedPlace
+from app.journeys.application.ports.journey_repository import (
+    JourneyFilters,
+    JourneyOrderScope,
+    JourneyRepositoryPort,
+    MovementConnection,
+    VisitedPlace,
+)
+from app.journeys.application.ports.unit_of_work import JourneyUnitOfWorkPort
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
 from app.shared.pagination import CursorPage, PageQuery, decode_cursor, split_page

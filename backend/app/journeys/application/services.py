@@ -1,26 +1,28 @@
 from itertools import groupby
 from uuid import UUID
 
-from app.journeys.application.ports import JourneyUnitOfWorkPort, PlacesClientPort
-from app.journeys.application.schemas import (
+from app.journeys.application.ports.journey_repository import JourneyOrderScope
+from app.journeys.application.ports.places_client import PlacesClientPort
+from app.journeys.application.ports.unit_of_work import JourneyUnitOfWorkPort
+from app.journeys.application.schemas.commands import (
     CreateJourneyCommand,
-    DeleteJourneyCommand,
     EstimateJourneyDistanceCommand,
     GetMovementsMapCommand,
+    ListJourneysCommand,
+    MoveJourneyCommand,
+    UpdateJourneyCommand,
+)
+from app.journeys.application.schemas.results import (
     JourneyDistanceResult,
     JourneyFeedItem,
-    JourneyOrderScope,
     JourneysGlobeResult,
     JourneysMapResult,
     JourneyYearsResult,
-    ListJourneysCommand,
     ListJourneysResult,
     MapCityVisit,
     MapCountryVisits,
-    MoveJourneyCommand,
     MoveJourneyResult,
     MovementsMapResult,
-    UpdateJourneyCommand,
 )
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.exceptions import InvalidMoveTargetError, JourneyNotFoundError, UnknownPlaceError
@@ -35,13 +37,14 @@ class JourneyService:
         self._uow = uow
         self._places_client = places_client
 
-    async def create_journey(self, command: CreateJourneyCommand) -> None:
+    async def create_journey(self, *, user_id: UUID, command: CreateJourneyCommand) -> None:
         """
         Создаёт поездку в конце её года.
 
         Перед сохранением спрашивает у geo, существуют ли места отправления и назначения.
 
         Args:
+            user_id: Владелец поездки
             command: Данные для создания поездки (места, транспорт, год)
 
         Raises:
@@ -61,11 +64,11 @@ class JourneyService:
             destination_longitude=command.destination.longitude,
         )
         async with self._uow.transaction():
-            order_scope = JourneyOrderScope(user_id=command.user_id, traveled_year=command.traveled_year)
+            order_scope = JourneyOrderScope(user_id=user_id, traveled_year=command.traveled_year)
             await self._uow.journey_repository.lock_sort_keys(scope=order_scope)
             last_sort_key = await self._uow.journey_repository.find_last_sort_key(scope=order_scope)
             journey_entity = JourneyEntity.create(
-                user_id=command.user_id,
+                user_id=user_id,
                 origin=command.origin,
                 destination=command.destination,
                 transport_type=command.transport_type,
@@ -76,12 +79,14 @@ class JourneyService:
             await self._uow.journey_repository.insert_journey(journey_entity=journey_entity)
             await self._uow.commit()
 
-    async def update_journey(self, command: UpdateJourneyCommand) -> None:
+    async def update_journey(self, *, user_id: UUID, journey_id: UUID, command: UpdateJourneyCommand) -> None:
         """
         Заменяет все поля поездки; при смене года поездка встаёт в конец нового года.
 
         Args:
-            command: Какая поездка и её новые места, транспорт и год
+            user_id: Владелец поездки
+            journey_id: Какая поездка
+            command: Новые места, транспорт и год
 
         Raises:
             UnknownPlaceError: какого-то из мест нет в справочнике geo
@@ -100,11 +105,11 @@ class JourneyService:
             destination_longitude=command.destination.longitude,
         )
         async with self._uow.transaction():
-            target_scope = JourneyOrderScope(user_id=command.user_id, traveled_year=command.traveled_year)
+            target_scope = JourneyOrderScope(user_id=user_id, traveled_year=command.traveled_year)
             await self._uow.journey_repository.lock_sort_keys(scope=target_scope)
             journey_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id_for_update(
-                journey_id=command.journey_id,
-                user_id=command.user_id,
+                journey_id=journey_id,
+                user_id=user_id,
             )
             if journey_entity is None:
                 raise JourneyNotFoundError()
@@ -126,20 +131,21 @@ class JourneyService:
             await self._uow.journey_repository.update_journey_by_id(journey_entity=journey_entity)
             await self._uow.commit()
 
-    async def delete_journey(self, command: DeleteJourneyCommand) -> None:
+    async def delete_journey(self, *, user_id: UUID, journey_id: UUID) -> None:
         """
         Удаляет поездку (soft-delete, без восстановления).
 
         Args:
-            command: Какая поездка
+            user_id: Владелец поездки
+            journey_id: Какая поездка
 
         Raises:
             JourneyNotFoundError: у пользователя нет такой поездки или она уже удалена
         """
         async with self._uow.transaction():
             journey_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id_for_update(
-                journey_id=command.journey_id,
-                user_id=command.user_id,
+                journey_id=journey_id,
+                user_id=user_id,
             )
             if journey_entity is None:
                 raise JourneyNotFoundError()
@@ -149,12 +155,14 @@ class JourneyService:
             await self._uow.journey_repository.update_journey_by_id(journey_entity=journey_entity)
             await self._uow.commit()
 
-    async def move_journey(self, command: MoveJourneyCommand) -> MoveJourneyResult:
+    async def move_journey(self, *, user_id: UUID, journey_id: UUID, command: MoveJourneyCommand) -> MoveJourneyResult:
         """
         Переносит поездку после или перед поездкой-соседом; год берётся от соседа.
 
         Args:
-            command: Какая поездка, сосед и с какой стороны от него встать
+            user_id: Владелец поездки
+            journey_id: Какая поездка
+            command: Сосед и с какой стороны от него встать
 
         Returns:
             Год поездки после переноса
@@ -167,29 +175,29 @@ class JourneyService:
         async with self._uow.transaction():
             neighbor_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id(
                 journey_id=command.neighbor_journey_id,
-                user_id=command.user_id,
+                user_id=user_id,
             )
             if neighbor_entity is None:
                 raise InvalidMoveTargetError()
 
-            target_scope = JourneyOrderScope(user_id=command.user_id, traveled_year=neighbor_entity.traveled_year)
+            target_scope = JourneyOrderScope(user_id=user_id, traveled_year=neighbor_entity.traveled_year)
             await self._uow.journey_repository.lock_sort_keys(scope=target_scope)
             # Пока ждали блокировку года, соседа могли переставить, перенести в другой год или удалить.
             neighbor_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id(
                 journey_id=command.neighbor_journey_id,
-                user_id=command.user_id,
+                user_id=user_id,
             )
             if (
                 neighbor_entity is None
                 or neighbor_entity.is_deleted
-                or neighbor_entity.journey_id == command.journey_id
+                or neighbor_entity.journey_id == journey_id
                 or neighbor_entity.traveled_year != target_scope.traveled_year
             ):
                 raise InvalidMoveTargetError()
 
             journey_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id_for_update(
-                journey_id=command.journey_id,
-                user_id=command.user_id,
+                journey_id=journey_id,
+                user_id=user_id,
             )
             if journey_entity is None:
                 raise JourneyNotFoundError()
@@ -236,12 +244,13 @@ class JourneyService:
         )
         return JourneyDistanceResult(distance_km=distance_km)
 
-    async def list_journeys(self, command: ListJourneysCommand) -> ListJourneysResult:
+    async def list_journeys(self, *, user_id: UUID, command: ListJourneysCommand) -> ListJourneysResult:
         """
         Отдаёт страницу ленты поездок пользователя: свежий год сверху, внутри года — порядок пользователя.
 
         Args:
-            command: Владелец поездок, страница и фильтр
+            user_id: Владелец поездок
+            command: Страница и фильтр
 
         Returns:
             Поездки страницы и курсор следующей
@@ -250,7 +259,7 @@ class JourneyService:
             InvalidCursorError: курсор не разбирается или выдан другим списком
         """
         journeys_page = await self._uow.journey_repository.find_journeys_page_by_user_id(
-            user_id=command.user_id,
+            user_id=user_id,
             page=command.page,
             filters=command.filters,
         )
@@ -327,7 +336,7 @@ class JourneyService:
         visited_places = await self._uow.journey_repository.find_visited_places_by_user_id(user_id=user_id)
         return JourneysGlobeResult(places=tuple(visited_place.place for visited_place in visited_places))
 
-    async def get_movements_map(self, command: GetMovementsMapCommand) -> MovementsMapResult:
+    async def get_movements_map(self, *, user_id: UUID, command: GetMovementsMapCommand) -> MovementsMapResult:
         """
         Собирает карту перемещений: маршруты поездок пользователя с их годами.
 
@@ -335,17 +344,18 @@ class JourneyService:
         ним фронт строит шкалу лет, и она не должна меняться от выбранного транспорта.
 
         Args:
-            command: Владелец поездок и виды транспорта
+            user_id: Владелец поездок
+            command: Виды транспорта
 
         Returns:
             Маршруты поездок и годы первой и последней поездки
         """
-        years = await self._uow.journey_repository.find_journey_years_by_user_id(user_id=command.user_id)
+        years = await self._uow.journey_repository.find_journey_years_by_user_id(user_id=user_id)
         if not years:
             return MovementsMapResult(first_year=None, last_year=None, connections=())
 
         connections = await self._uow.journey_repository.find_movement_connections_by_user_id(
-            user_id=command.user_id,
+            user_id=user_id,
             transport_types=command.transport_types,
         )
         return MovementsMapResult(first_year=min(years), last_year=max(years), connections=connections)

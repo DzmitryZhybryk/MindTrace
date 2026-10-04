@@ -1,7 +1,7 @@
 import datetime as dt
 from uuid import uuid4
 
-from app.auth.application.schemas import ClientMetadata
+from app.auth.application.schemas.metadata import ClientMetadata
 from app.auth.application.token_issuer import TokenIssuer
 from app.shared.infra.crypto import Sha256DeterministicHasher
 from app.shared.infra.jwt import JWTService

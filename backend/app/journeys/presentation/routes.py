@@ -3,12 +3,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
-from app.journeys.application.schemas import (
+from app.journeys.application.ports.journey_repository import JourneyFilters
+from app.journeys.application.schemas.commands import (
     CreateJourneyCommand,
-    DeleteJourneyCommand,
     EstimateJourneyDistanceCommand,
     GetMovementsMapCommand,
-    JourneyFilters,
     ListJourneysCommand,
     MoveJourneyCommand,
     UpdateJourneyCommand,
@@ -61,7 +60,6 @@ async def create_journey(
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> Response:
     command = CreateJourneyCommand(
-        user_id=user_id,
         origin=GeoPoint(
             place_id=body.origin.place_id,
             country_code=body.origin.country_code,
@@ -77,7 +75,7 @@ async def create_journey(
         transport_type=body.transport_type,
         traveled_year=body.traveled_year,
     )
-    await journey_service.create_journey(command=command)
+    await journey_service.create_journey(user_id=user_id, command=command)
     return Response(status_code=status.HTTP_201_CREATED)
 
 
@@ -94,8 +92,6 @@ async def update_journey(
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> Response:
     command = UpdateJourneyCommand(
-        user_id=user_id,
-        journey_id=journey_id,
         origin=GeoPoint(
             place_id=body.origin.place_id,
             country_code=body.origin.country_code,
@@ -111,7 +107,7 @@ async def update_journey(
         transport_type=body.transport_type,
         traveled_year=body.traveled_year,
     )
-    await journey_service.update_journey(command=command)
+    await journey_service.update_journey(user_id=user_id, journey_id=journey_id, command=command)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -126,7 +122,7 @@ async def delete_journey(
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> Response:
-    await journey_service.delete_journey(command=DeleteJourneyCommand(user_id=user_id, journey_id=journey_id))
+    await journey_service.delete_journey(user_id=user_id, journey_id=journey_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -142,13 +138,8 @@ async def move_journey(
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> MoveJourneyResponse:
-    command = MoveJourneyCommand(
-        user_id=user_id,
-        journey_id=journey_id,
-        neighbor_journey_id=body.neighbor_journey_id,
-        placement=body.placement,
-    )
-    result = await journey_service.move_journey(command=command)
+    command = MoveJourneyCommand(neighbor_journey_id=body.neighbor_journey_id, placement=body.placement)
+    result = await journey_service.move_journey(user_id=user_id, journey_id=journey_id, command=command)
     return MoveJourneyResponse.model_validate(result, from_attributes=True)
 
 
@@ -185,7 +176,6 @@ async def list_journeys(
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> JourneysFeedResponse:
     command = ListJourneysCommand(
-        user_id=user_id,
         page=PageQuery(cursor=query.cursor, limit=query.limit),
         filters=JourneyFilters(
             year_from=query.year_from,
@@ -193,7 +183,7 @@ async def list_journeys(
             transport_types=query.transport_type,
         ),
     )
-    result = await journey_service.list_journeys(command=command)
+    result = await journey_service.list_journeys(user_id=user_id, command=command)
     return JourneysFeedResponse.model_validate(result, from_attributes=True)
 
 
@@ -250,9 +240,6 @@ async def get_movements_map(
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> MovementsMapResponse:
-    command = GetMovementsMapCommand(
-        user_id=user_id,
-        transport_types=filters.transport_type,
-    )
-    result = await journey_service.get_movements_map(command=command)
+    command = GetMovementsMapCommand(transport_types=filters.transport_type)
+    result = await journey_service.get_movements_map(user_id=user_id, command=command)
     return MovementsMapResponse.model_validate(result, from_attributes=True)
