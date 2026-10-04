@@ -100,7 +100,7 @@ class EmailVerificationService:
 
         Args:
             user_id: ID пользователя
-            command: Plaintext-код, который пользователь ввёл
+            command: Команда с кодом, который ввёл пользователь
 
         Raises:
             UserCredentialsNotFoundError: Если учётной записи с таким ``user_id`` не существует

@@ -247,7 +247,7 @@ async def test_find_places_by_ids_returns_only_existing(db_session: AsyncSession
     )
     await db_session.commit()
 
-    places = await PlaceRepository(session=db_session).find_places_by_ids(place_ids=(moscow_id, uuid4()))
+    places = await PlaceRepository(session=db_session).find_places_by_ids(place_ids=frozenset({moscow_id, uuid4()}))
 
     [moscow] = places
     assert moscow.place_id == moscow_id
