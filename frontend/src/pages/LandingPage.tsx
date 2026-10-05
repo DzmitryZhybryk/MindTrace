@@ -33,8 +33,8 @@ const BRAND = "MyJourney";
  * missing: i18next returns the key string itself, `.map` on a string throws, and the landing (the
  * only page for anonymous users) goes blank over a JSON typo. Check the shape at the boundary.
  */
-function itemsFromTranslation<T>(value: unknown): T[] {
-  return Array.isArray(value) ? (value as T[]) : [];
+function itemsFromTranslation<T>(value: unknown): readonly T[] {
+  return Array.isArray(value) ? (value as readonly T[]) : [];
 }
 
 /**

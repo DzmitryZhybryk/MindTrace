@@ -6,7 +6,7 @@ import { TransportLabel } from "../../../components/TransportLabel";
 
 interface TransportChipsProps {
   transportTypes: readonly TransportType[];
-  onTransportTypesChange: (transportTypes: TransportType[]) => void;
+  onTransportTypesChange: (transportTypes: readonly TransportType[]) => void;
 }
 
 /** Multi-select of feed transport types: icon and label, selection shown by fill. */

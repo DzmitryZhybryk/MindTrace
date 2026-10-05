@@ -19,14 +19,13 @@ import { projectArc } from "./movements/movementGeometry";
 import { movementsQueryOptions } from "./movements/movementsQuery";
 
 // Stable "empty" references: `WorldMap` and the arrow layer recompute by prop identity.
-const NO_COUNTRIES: MapCountry[] = [];
-const NO_CONNECTIONS: ProjectedConnection[] = [];
-const ALL_TRANSPORT_TYPES: TransportType[] = [...zTransportType.options];
+const NO_COUNTRIES: readonly MapCountry[] = [];
+const NO_CONNECTIONS: readonly ProjectedConnection[] = [];
 
 interface MovementsData {
   firstYear: number | null;
   lastYear: number | null;
-  connections: ProjectedConnection[];
+  connections: readonly ProjectedConnection[];
 }
 
 /**
@@ -69,7 +68,7 @@ export function MovementsMapView() {
 
   // The year window is unset until the user touches the slider; then it means all years.
   const [selectedWindow, setSelectedWindow] = useState<YearWindow | null>(null);
-  const [transportTypes, setTransportTypes] = useState<TransportType[]>(ALL_TRANSPORT_TYPES);
+  const [transportTypes, setTransportTypes] = useState<readonly TransportType[]>(zTransportType.options);
   const hasTransport = transportTypes.length > 0;
   const window = useMemo<YearWindow | null>(
     () => selectedWindow ?? (firstYear !== null && lastYear !== null ? [firstYear, lastYear] : null),

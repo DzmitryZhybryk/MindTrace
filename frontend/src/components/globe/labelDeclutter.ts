@@ -70,7 +70,7 @@ export function resolveLabelVisibility(
   boxes: readonly LabelBox[],
   center: DiskCenter,
   previouslyHidden: ReadonlySet<string>,
-): Set<string> {
+): ReadonlySet<string> {
   const byPriority = boxes
     .map((box) => ({ box, distanceSq: distanceSqToCenter(box, center) }))
     .sort((a, b) => a.distanceSq - b.distanceSq || (a.box.id < b.box.id ? -1 : 1))

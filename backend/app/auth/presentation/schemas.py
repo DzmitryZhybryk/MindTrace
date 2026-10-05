@@ -1,6 +1,6 @@
 from typing import Annotated, Self
 
-from pydantic import EmailStr, Field, SecretStr, model_validator
+from pydantic import ConfigDict, EmailStr, Field, SecretStr, model_validator
 
 from app.auth.exceptions import TermsNotAcceptedError
 from app.shared.schemas import CamelModel
@@ -50,6 +50,8 @@ class LoginRequest(CamelModel):
 
 
 class TokenResponse(CamelModel):
+    model_config = ConfigDict(frozen=True)
+
     access_token: str
     token_type: str = "bearer"  # noqa: S105
 

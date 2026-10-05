@@ -23,6 +23,6 @@ export interface UserCityPoint {
  * an inline arrow would return a new array every render, and `react-globe.gl` compares
  * `htmlElementsData` by identity and would rebuild the whole label layer.
  */
-export function citiesFromJourneysGlobe(response: JourneysGlobeResponse): UserCityPoint[] {
+export function citiesFromJourneysGlobe(response: JourneysGlobeResponse): readonly UserCityPoint[] {
   return response.places.map((place) => ({ id: place.placeId, lat: place.latitude, lng: place.longitude }));
 }

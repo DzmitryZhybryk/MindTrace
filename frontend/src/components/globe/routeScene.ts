@@ -75,7 +75,7 @@ export interface RouteHtmlDatum {
 }
 
 export interface RouteTrail {
-  coords: TrailPoint[];
+  coords: readonly TrailPoint[];
   /** rgba trail colour: alpha drops to zero while the route fades. */
   color: string;
 }
@@ -151,13 +151,13 @@ interface RouteSceneOptions {
 
 interface RouteScene {
   /** Pins and vehicle for the html layer; empty if there are no real places. */
-  htmlData: RouteHtmlDatum[];
+  htmlData: readonly RouteHtmlDatum[];
   /** Vehicle trail for `pathsData`; empty until the route is complete. */
-  trails: RouteTrail[];
+  trails: readonly RouteTrail[];
 }
 
-const NO_ROUTE_HTML: RouteHtmlDatum[] = [];
-const NO_TRAILS: RouteTrail[] = [];
+const NO_ROUTE_HTML: readonly RouteHtmlDatum[] = [];
+const NO_TRAILS: readonly RouteTrail[] = [];
 
 /**
  * Route scene: pins only for really picked places; the arc and vehicle appear once both places
@@ -204,7 +204,7 @@ export function useRouteScene({
 
   // Stable identity per coordinates/label: changing input rebuilds the DOM with new text, while
   // within an animation the DOM is reused.
-  const pins = useMemo<RouteHtmlDatum[]>(() => {
+  const pins = useMemo<readonly RouteHtmlDatum[]>(() => {
     const result: RouteHtmlDatum[] = [];
     if (originReal) {
       result.push({
