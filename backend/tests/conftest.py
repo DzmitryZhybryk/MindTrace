@@ -37,7 +37,7 @@ for _key, _value in _TEST_ENV_DEFAULTS.items():
 
 # Импорты app/tests.fakes — строго ПОСЛЕ env-bootstrap: ``app`` на импорте строит
 # синглтон ``settings``, которому нужны заполненные env-поля (E402 осознанно).
-from app.auth.application.settings import EmailVerificationConfig  # noqa: E402
+from app.auth.application.config import EmailVerificationConfig  # noqa: E402
 from app.shared.infra.crypto import Sha256DeterministicHasher  # noqa: E402
 from tests.builders import LONDON_PLACE_ID, MOSCOW_PLACE_ID  # noqa: E402
 from tests.fakes import (  # noqa: E402
@@ -190,9 +190,9 @@ def fake_journey_uow(fake_journey_repository: FakeJourneyRepository) -> FakeJour
 
 
 @pytest.fixture
-def email_verification_settings() -> EmailVerificationConfig:
+def email_verification_config() -> EmailVerificationConfig:
     return EmailVerificationConfig(
-        email_verification_ttl_minutes=_EMAIL_VERIFICATION_TTL_MINUTES,
-        email_verification_max_attempts=_EMAIL_VERIFICATION_MAX_ATTEMPTS,
-        email_verification_resend_cooldown_seconds=_EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS,
+        ttl_minutes=_EMAIL_VERIFICATION_TTL_MINUTES,
+        max_attempts=_EMAIL_VERIFICATION_MAX_ATTEMPTS,
+        resend_cooldown_seconds=_EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS,
     )

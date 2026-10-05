@@ -1,6 +1,6 @@
 from app.auth.application.ports.users_client import CreateUserRequest, UsersClientPort
 from app.users.application.schemas.commands import CreateUserCommand
-from app.users.application.services import UserService
+from app.users.application.services.user import UserService
 
 
 class InternalUsersClient(UsersClientPort):

@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.geo.application.schemas.commands import ResolvePlacesCommand, SearchPlacesCommand
-from app.geo.application.services import PlaceService
+from app.geo.application.services.place import PlaceService
 from app.geo.domain.enums import Language
 from app.geo.presentation.dependencies import place_service_dependency
 from app.geo.presentation.responses import RESOLVE_PLACES_RESPONSES, SEARCH_PLACES_RESPONSES

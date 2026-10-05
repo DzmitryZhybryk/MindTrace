@@ -7,7 +7,7 @@
 
 import pytest
 
-from app.users.application.services import UserService
+from app.users.application.services.user import UserService
 from tests.fakes import FakeUserUnitOfWork
 
 

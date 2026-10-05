@@ -8,7 +8,7 @@ journeys подменяют клиента целиком, поэтому сты
 
 from uuid import uuid4
 
-from app.geo.application.services import PlaceService
+from app.geo.application.services.place import PlaceService
 from app.journeys.infra.clients.internal_places_client import InternalPlacesClient
 from tests.builders import make_place
 from tests.fakes import FakePlaceRepository

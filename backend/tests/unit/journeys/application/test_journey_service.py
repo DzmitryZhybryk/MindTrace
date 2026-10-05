@@ -31,7 +31,7 @@ from app.journeys.application.schemas.results import (
     MoveJourneyResult,
     MovementsMapResult,
 )
-from app.journeys.application.services import JourneyService
+from app.journeys.application.services.journey import JourneyService
 from app.journeys.domain.enums import TransportType
 from app.journeys.exceptions import InvalidMoveTargetError, JourneyNotFoundError, UnknownPlaceError
 from app.shared.fractional_index import MovePlacement

@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from httpx import AsyncClient
 
-from app.auth.application.settings import EmailVerificationConfig
+from app.auth.application.config import EmailVerificationConfig
 from tests.builders import make_challenge, make_user_credentials
 from tests.fakes import (
     FakeChallengeRepository,
@@ -259,7 +259,7 @@ async def test_verify_attempts_exceeded_returns_429(
     fake_user_credentials_repository: FakeUserCredentialsRepository,
     fake_challenge_repository: FakeChallengeRepository,
     fake_salted_hasher: FakeSaltedHasher,
-    email_verification_settings: EmailVerificationConfig,
+    email_verification_config: EmailVerificationConfig,
     mint_access_token: Callable[..., str],
 ) -> None:
     """verify при выбранном лимите попыток → 429 auth.challenge_attempts_exceeded."""
@@ -268,7 +268,7 @@ async def test_verify_attempts_exceeded_returns_429(
     challenge = make_challenge(
         user_id=user_credentials_entity.user_id,
         code_hash=fake_salted_hasher.hash(code),
-        attempts=email_verification_settings.email_verification_max_attempts,
+        attempts=email_verification_config.max_attempts,
     )
     fake_user_credentials_repository.by_user_id[user_credentials_entity.user_id] = user_credentials_entity
     fake_challenge_repository.challenges.append(challenge)

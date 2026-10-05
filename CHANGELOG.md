@@ -13,6 +13,15 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 ## 2026-10-05
 
+### Backend 3.1.3
+
+HTTP-контракт и коды ошибок не менялись; правки — во внутренних слоях.
+
+- **Use case'ы во всех доменах — пакет `application/services/`, модуль на сервис** (`services/journey.py`, `services/place.py`, `services/user.py`; в auth — `services/auth.py`, `services/email_verification.py` и их помощник `services/token_issuer.py`). В корне `application/` остались только `schemas/`, `ports/`, `services/` и `config.py`
+- Имена procrastinate-задач auth переехали в `application/ports/tasks.py` — это контракт с infra, как у портов
+- **Конфиг подтверждения email:** `EmailVerificationConfig` — frozen dataclass в `auth/application/config.py` (поля `ttl_minutes`, `max_attempts`, `resend_cooldown_seconds`); из глобальных настроек его собирает `email_verification_config_dependency` в presentation, application больше не читает `settings`
+- Приватные помощники `AuthService._ensure_credentials_unique` и `PlaceService._build_item` встроены в свои use case'ы
+
 ### Backend 3.1.2
 
 HTTP-контракт не менялся.

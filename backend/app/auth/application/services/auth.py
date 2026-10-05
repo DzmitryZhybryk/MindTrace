@@ -1,12 +1,12 @@
 from typing import Final
 
-from app.auth.application.email_verification_service import EmailVerificationService
 from app.auth.application.ports.unit_of_work import AuthUnitOfWorkPort
 from app.auth.application.ports.users_client import CreateUserRequest, UsersClientPort
 from app.auth.application.schemas.commands import LoginCommand, RegistrationCommand
 from app.auth.application.schemas.metadata import ClientMetadata
 from app.auth.application.schemas.results import TokenPairResult
-from app.auth.application.token_issuer import TokenIssuer
+from app.auth.application.services.email_verification import EmailVerificationService
+from app.auth.application.services.token_issuer import TokenIssuer
 from app.auth.domain.entities import UserCredentialsEntity
 from app.auth.domain.value_objects import Password
 from app.auth.exceptions import (
@@ -48,7 +48,15 @@ class AuthService:
         client_metadata: ClientMetadata,
     ) -> TokenPairResult:
         async with self._uow.transaction():
-            await self._ensure_credentials_unique(email=command.email, username=command.username)
+            conflicts = await self._uow.user_credentials_repository.find_user_credentials_by_email_or_username(
+                email=command.email,
+                username=command.username,
+            )
+            if any(conflict.email == command.email for conflict in conflicts):
+                raise EmailAlreadyExistError()
+
+            if any(conflict.username == command.username for conflict in conflicts):
+                raise UsernameAlreadyExistError()
 
             password = Password(hash=self._salted_hasher.hash(secret=command.password.get_secret_value()))
             user_credentials_entity = UserCredentialsEntity.create(
@@ -240,25 +248,3 @@ class AuthService:
             refresh_secret=new_refresh_secret,
             refresh_token_entity=new_refresh_token_entity,
         )
-
-    async def _ensure_credentials_unique(self, *, email: str, username: str) -> None:
-        """
-        Проверяет уникальность email и username.
-
-        Args:
-            email: Email из запроса регистрации.
-            username: Username из запроса регистрации.
-
-        Raises:
-            EmailAlreadyExistError: Если email уже зарегистрирован.
-            UsernameAlreadyExistError: Если username уже занят.
-        """
-        conflicts = await self._uow.user_credentials_repository.find_user_credentials_by_email_or_username(
-            email=email,
-            username=username,
-        )
-        if any(c.email == email for c in conflicts):
-            raise EmailAlreadyExistError()
-
-        if any(c.username == username for c in conflicts):
-            raise UsernameAlreadyExistError()
