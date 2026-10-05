@@ -5,7 +5,7 @@ import pytest
 
 from app.users.application.schemas.commands import CreateUserCommand
 from app.users.application.schemas.results import CurrentUserResult
-from app.users.application.services import UserService
+from app.users.application.services.user import UserService
 from app.users.exceptions import UserDeletedError, UserNotFoundError
 from tests.builders import make_user_entity
 from tests.fakes import FakeUserRepository, FakeUserUnitOfWork

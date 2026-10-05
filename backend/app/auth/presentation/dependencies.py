@@ -3,11 +3,11 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.application.auth_service import AuthService
-from app.auth.application.email_verification_service import EmailVerificationService
+from app.auth.application.config import EmailVerificationConfig
 from app.auth.application.schemas.metadata import ClientMetadata
-from app.auth.application.settings import EmailVerificationConfig, get_email_verification_settings
-from app.auth.application.token_issuer import TokenIssuer
+from app.auth.application.services.auth import AuthService
+from app.auth.application.services.email_verification import EmailVerificationService
+from app.auth.application.services.token_issuer import TokenIssuer
 from app.auth.exceptions import InvalidRefreshTokenError
 from app.auth.infra.clients.internal_users_client import InternalUsersClient
 from app.auth.infra.uow import AuthUnitOfWork
@@ -23,7 +23,7 @@ from app.shared.infra.postgres.dependency import db_session_dependency
 from app.shared.infra.procrastinate import ProcrastinateTaskBus, TaskBusPort
 from app.shared.schemas.base import BFastAPI
 from app.shared.settings import settings
-from app.users.application.services import UserService
+from app.users.application.services.user import UserService
 from app.users.presentation.dependencies import user_service_dependency
 
 
@@ -46,8 +46,12 @@ def users_client_dependency(
     return InternalUsersClient(user_service=user_service)
 
 
-def email_verification_settings_dependency() -> EmailVerificationConfig:
-    return get_email_verification_settings()
+def email_verification_config_dependency() -> EmailVerificationConfig:
+    return EmailVerificationConfig(
+        ttl_minutes=settings.EMAIL_VERIFICATION_TTL_MINUTES,
+        max_attempts=settings.EMAIL_VERIFICATION_MAX_ATTEMPTS,
+        resend_cooldown_seconds=settings.EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS,
+    )
 
 
 def task_bus_dependency(request: Request) -> TaskBusPort:
@@ -106,13 +110,13 @@ def email_verification_service_dependency(
     uow: Annotated[AuthUnitOfWork, Depends(auth_uow_dependency)],
     salted_hasher: Annotated[SaltedHasherPort, Depends(salted_hasher_dependency)],
     task_bus: Annotated[TaskBusPort, Depends(task_bus_dependency)],
-    email_verification_settings: Annotated[EmailVerificationConfig, Depends(email_verification_settings_dependency)],
+    config: Annotated[EmailVerificationConfig, Depends(email_verification_config_dependency)],
 ) -> EmailVerificationService:
     return EmailVerificationService(
         uow=uow,
         salted_hasher=salted_hasher,
         task_bus=task_bus,
-        email_verification_settings=email_verification_settings,
+        config=config,
     )
 
 

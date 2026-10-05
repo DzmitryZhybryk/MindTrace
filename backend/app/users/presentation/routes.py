@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from app.shared.infra.jwt import current_user_id_dependency
-from app.users.application.services import UserService
+from app.users.application.services.user import UserService
 from app.users.presentation.dependencies import user_service_dependency
 from app.users.presentation.responses import GET_CURRENT_USER_RESPONSES
 from app.users.presentation.schemas import CurrentUserResponse

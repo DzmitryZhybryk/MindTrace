@@ -3,9 +3,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.auth.application.email_verification_service import EmailVerificationService
+from app.auth.application.ports.tasks import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.application.schemas.commands import VerifyEmailCommand
-from app.auth.application.task_names import SEND_VERIFICATION_EMAIL_TASK
+from app.auth.application.services.email_verification import EmailVerificationService
 from app.auth.domain.enums import ChallengeType
 from app.auth.exceptions import (
     ChallengeAttemptsExceededError,

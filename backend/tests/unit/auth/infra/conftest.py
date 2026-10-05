@@ -12,7 +12,7 @@ from procrastinate import App, JobContext
 from procrastinate.jobs import Job
 from procrastinate.testing import InMemoryConnector
 
-from app.auth.application.task_names import SEND_VERIFICATION_EMAIL_TASK
+from app.auth.application.ports.tasks import SEND_VERIFICATION_EMAIL_TASK
 from tests.fakes import FakeEmailTransport
 
 

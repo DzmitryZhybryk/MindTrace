@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from app.auth.application.ports.users_client import CreateUserRequest
 from app.auth.infra.clients.internal_users_client import InternalUsersClient
-from app.users.application.services import UserService
+from app.users.application.services.user import UserService
 from tests.fakes import FakeUserRepository, FakeUserUnitOfWork
 
 

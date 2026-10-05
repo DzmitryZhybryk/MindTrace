@@ -5,7 +5,7 @@ from uuid import uuid4
 from structlog.testing import capture_logs
 
 from app.geo.application.schemas.commands import GetMissingPlaceIdsCommand, ResolvePlacesCommand, SearchPlacesCommand
-from app.geo.application.services import PlaceService
+from app.geo.application.services.place import PlaceService
 from app.geo.domain.enums import Language
 from tests.builders import make_place
 from tests.fakes import FakePlaceRepository

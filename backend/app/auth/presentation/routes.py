@@ -3,10 +3,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response, status
 
-from app.auth.application.auth_service import AuthService
-from app.auth.application.email_verification_service import EmailVerificationService
 from app.auth.application.schemas.commands import LoginCommand, RegistrationCommand, VerifyEmailCommand
 from app.auth.application.schemas.metadata import ClientMetadata
+from app.auth.application.services.auth import AuthService
+from app.auth.application.services.email_verification import EmailVerificationService
 from app.auth.presentation.cookies import clear_refresh_token_cookie, set_refresh_token_cookie
 from app.auth.presentation.dependencies import (
     auth_service_dependency,

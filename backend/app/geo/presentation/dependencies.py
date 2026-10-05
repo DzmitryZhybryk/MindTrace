@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.geo.application.services import PlaceService
+from app.geo.application.services.place import PlaceService
 from app.geo.infra.repositories import PlaceRepository
 from app.shared.infra.postgres.dependency import db_session_dependency
 

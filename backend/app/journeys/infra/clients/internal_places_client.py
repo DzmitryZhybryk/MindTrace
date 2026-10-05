@@ -2,7 +2,7 @@ from collections.abc import Collection
 from uuid import UUID
 
 from app.geo.application.schemas.commands import GetMissingPlaceIdsCommand
-from app.geo.application.services import PlaceService
+from app.geo.application.services.place import PlaceService
 from app.journeys.application.ports.places_client import PlacesClientPort
 
 

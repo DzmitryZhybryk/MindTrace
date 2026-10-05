@@ -1,9 +1,9 @@
 from uuid import UUID
 
+from app.auth.application.config import EmailVerificationConfig
+from app.auth.application.ports.tasks import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.application.ports.unit_of_work import AuthUnitOfWorkPort
 from app.auth.application.schemas.commands import VerifyEmailCommand
-from app.auth.application.settings import EmailVerificationConfig
-from app.auth.application.task_names import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.domain.entities import ChallengeEntity
 from app.auth.domain.enums import ChallengeType
 from app.auth.exceptions import (
@@ -22,12 +22,12 @@ class EmailVerificationService:
         uow: AuthUnitOfWorkPort,
         salted_hasher: SaltedHasherPort,
         task_bus: TaskBusPort,
-        email_verification_settings: EmailVerificationConfig,
+        config: EmailVerificationConfig,
     ) -> None:
         self._uow = uow
         self._salted_hasher = salted_hasher
         self._task_bus = task_bus
-        self._email_verification_settings = email_verification_settings
+        self._config = config
 
     async def request_email_verification(self, user_id: UUID) -> None:
         """
@@ -66,7 +66,7 @@ class EmailVerificationService:
             )
             if existing_challenge_entity is not None:
                 existing_challenge_entity.ensure_resend_cooldown_passed(
-                    cooldown_seconds=self._email_verification_settings.email_verification_resend_cooldown_seconds,
+                    cooldown_seconds=self._config.resend_cooldown_seconds,
                 )
                 existing_challenge_entity.mark_used()
                 await self._uow.challenge_repository.update_challenge_by_id(challenge_entity=existing_challenge_entity)
@@ -76,7 +76,7 @@ class EmailVerificationService:
                 user_id=user_id,
                 challenge_type=ChallengeType.EMAIL_VERIFICATION,
                 code_hash=self._salted_hasher.hash(secret=code),
-                ttl_minutes=self._email_verification_settings.email_verification_ttl_minutes,
+                ttl_minutes=self._config.ttl_minutes,
             )
             await self._uow.challenge_repository.insert_challenge(challenge_entity=new_challenge_entity)
 
@@ -126,9 +126,7 @@ class EmailVerificationService:
             if challenge_entity is None:
                 raise ChallengeNotFoundError()
 
-            challenge_entity.ensure_can_attempt(
-                max_attempts=self._email_verification_settings.email_verification_max_attempts
-            )
+            challenge_entity.ensure_can_attempt(max_attempts=self._config.max_attempts)
 
             if not self._salted_hasher.verify(secret=command.code, hashed=challenge_entity.code_hash):
                 challenge_entity.register_failed_attempt()

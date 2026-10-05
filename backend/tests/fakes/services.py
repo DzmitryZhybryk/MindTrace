@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from app.auth.application.email_verification_service import EmailVerificationService
+from app.auth.application.services.email_verification import EmailVerificationService
 
 
 class FakeEmailVerificationService(EmailVerificationService):

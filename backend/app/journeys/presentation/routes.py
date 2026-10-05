@@ -12,7 +12,7 @@ from app.journeys.application.schemas.commands import (
     MoveJourneyCommand,
     UpdateJourneyCommand,
 )
-from app.journeys.application.services import JourneyService
+from app.journeys.application.services.journey import JourneyService
 from app.journeys.domain.value_objects import GeoPoint
 from app.journeys.presentation.dependencies import journey_service_dependency
 from app.journeys.presentation.responses import (

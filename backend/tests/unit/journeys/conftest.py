@@ -8,7 +8,7 @@
 
 import pytest
 
-from app.journeys.application.services import JourneyService
+from app.journeys.application.services.journey import JourneyService
 from tests.fakes import FakeJourneyUnitOfWork, FakePlacesClient
 
 

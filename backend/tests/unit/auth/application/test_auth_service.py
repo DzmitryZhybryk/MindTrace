@@ -4,10 +4,10 @@ from uuid import uuid4
 import pytest
 from pydantic import SecretStr
 
-from app.auth.application.auth_service import AuthService
 from app.auth.application.schemas.commands import LoginCommand, RegistrationCommand
 from app.auth.application.schemas.metadata import ClientMetadata
-from app.auth.application.token_issuer import TokenIssuer
+from app.auth.application.services.auth import AuthService
+from app.auth.application.services.token_issuer import TokenIssuer
 from app.auth.exceptions import (
     EmailAlreadyExistError,
     InvalidCredentialsError,
