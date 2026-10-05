@@ -11,7 +11,6 @@ import { TransportChips } from "./TransportChips";
 import { fitYearRange, type YearRange } from "./yearRange";
 import "./all-journeys.css";
 
-const ALL_TRANSPORT_TYPES: TransportType[] = [...zTransportType.options];
 const NO_JOURNEYS: readonly JourneyFeedEntry[] = [];
 
 // The map is decor behind the feed: its chunk (world map with country borders) must not hold up the feed's first paint.
@@ -31,7 +30,7 @@ export function AllJourneysView() {
   const { t } = useTranslation("journeys");
   const years = useQuery({ ...getJourneyYearsOptions(), staleTime: Infinity });
   const [yearRange, setYearRange] = useState<YearRange | null>(null);
-  const [transportTypes, setTransportTypes] = useState<TransportType[]>(ALL_TRANSPORT_TYPES);
+  const [transportTypes, setTransportTypes] = useState<readonly TransportType[]>(zTransportType.options);
   const yearList = years.data?.years ?? [];
   const firstYear = yearList.at(0);
   const lastYear = yearList.at(-1);

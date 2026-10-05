@@ -31,9 +31,9 @@ export interface GlobePov {
  */
 interface GlobeCanvasProps {
   /** Route arcs (`arcsData`); none by default. */
-  arcs?: RouteArc[];
+  arcs?: readonly RouteArc[];
   /** End cities for labels (dot + name with occlusion); none by default. */
-  labelCities?: GlobeCity[];
+  labelCities?: readonly GlobeCity[];
   /** Auto-rotation (disabled under prefers-reduced-motion). */
   autoRotate?: boolean;
   /** Camera point of view. The first set is instant, later changes fly smoothly. */
@@ -64,8 +64,8 @@ const AUTO_ROTATE_DEG_PER_SEC = -6 * AUTO_ROTATE_SPEED;
 const POV_FLIGHT_MS = 1400;
 const ARC_COLOR: [string, string] = ["rgba(246, 177, 122, 0.95)", "rgba(111, 143, 214, 0.55)"];
 // Stable empty references so defaults do not recreate arrays every render.
-const EMPTY_ARCS: RouteArc[] = [];
-const EMPTY_CITIES: GlobeCity[] = [];
+const EMPTY_ARCS: readonly RouteArc[] = [];
+const EMPTY_CITIES: readonly GlobeCity[] = [];
 
 /*
  * Accessors are module constants, NOT arrows in JSX. globe.gl compares accessors by identity: a
@@ -100,7 +100,9 @@ const htmlVisibilityModifier = (el: HTMLElement, isVisible: boolean): void => {
 
   applyLabelVisibility(el, isVisible);
 };
-const pathPointsAccessor = (d: object): TrailPoint[] => (d as RouteTrail).coords;
+// react-globe.gl types its data props and `pathPoints` as mutable arrays but only reads them,
+// so readonly arrays are passed through with a cast.
+const pathPointsAccessor = (d: object): TrailPoint[] => (d as RouteTrail).coords as TrailPoint[];
 const pathPointLatAccessor = (p: unknown): number => (p as TrailPoint).lat;
 const pathPointLngAccessor = (p: unknown): number => (p as TrailPoint).lng;
 const pathPointAltAccessor = (p: unknown): number => (p as TrailPoint).alt;
@@ -133,7 +135,7 @@ export function GlobeCanvas({
   const [reducedMotion] = useState(prefersReducedMotion);
   const routeScene = useRouteScene({ route, globeRef, containerRef, reducedMotion, fading: routeFading });
   // Without a route, pass the same `labelCities` reference: a new array per render would rebuild the layer.
-  const htmlData: object[] =
+  const htmlData: readonly object[] =
     routeScene.htmlData.length === 0 ? labelCities : [...labelCities, ...routeScene.htmlData];
 
   useEffect(() => {
@@ -427,7 +429,7 @@ export function GlobeCanvas({
           showAtmosphere
           atmosphereColor={GLOBE_ATMOSPHERE_COLOR}
           atmosphereAltitude={0.24}
-          arcsData={arcs}
+          arcsData={arcs as RouteArc[]}
           arcColor={arcColorAccessor}
           arcAltitudeAutoScale={0.42}
           arcStroke={0.6}
@@ -436,7 +438,7 @@ export function GlobeCanvas({
           arcDashInitialGap={arcDashInitialGapAccessor}
           arcDashAnimateTime={reducedMotion ? 0 : 3800}
           arcsTransitionDuration={reducedMotion ? 0 : 1200}
-          pathsData={routeScene.trails}
+          pathsData={routeScene.trails as RouteTrail[]}
           pathPoints={pathPointsAccessor}
           pathPointLat={pathPointLatAccessor}
           pathPointLng={pathPointLngAccessor}
@@ -446,7 +448,7 @@ export function GlobeCanvas({
           pathDashGap={0.02}
           pathDashAnimateTime={reducedMotion ? 0 : 1600}
           pathTransitionDuration={0}
-          htmlElementsData={htmlData}
+          htmlElementsData={htmlData as object[]}
           htmlLat={htmlLatAccessor}
           htmlLng={htmlLngAccessor}
           htmlAltitude={htmlAltitudeAccessor}

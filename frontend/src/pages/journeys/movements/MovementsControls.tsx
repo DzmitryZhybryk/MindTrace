@@ -19,7 +19,7 @@ interface MovementsControlsProps {
   /** A window bound moved to another year; the map changes live while dragging. */
   onWindowChange: (window: YearWindow) => void;
   transportTypes: readonly TransportType[];
-  onTransportTypesChange: (transportTypes: TransportType[]) => void;
+  onTransportTypesChange: (transportTypes: readonly TransportType[]) => void;
   /** Navigation panel: the card does not overlap it and aligns to its edges. */
   panelRef: RefObject<HTMLElement | null>;
 }

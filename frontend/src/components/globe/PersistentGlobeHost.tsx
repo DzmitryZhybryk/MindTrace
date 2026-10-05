@@ -32,8 +32,8 @@ type Screen = "landing" | "signup" | "login" | "home" | "journeyAdd";
 
 // Stable "no points" reference: `react-globe.gl` compares layer data by identity, and a new `[]`
 // each render would make it rebuild the label layer for nothing.
-const NO_CITIES: GlobeCity[] = [];
-const NO_USER_CITIES: UserCityPoint[] = [];
+const NO_CITIES: readonly GlobeCity[] = [];
+const NO_USER_CITIES: readonly UserCityPoint[] = [];
 
 // Camera point of view per face: different sides of the planet so a transition reads as a
 // fly-over. `home` is the dashboard face, separate from login, so login -> home is a visible
@@ -185,7 +185,7 @@ export function PersistentGlobeHost() {
   const unknownLabel = t("map.unknownPlace");
   const nameOf = usePlaceNames(userCityPoints.map((city) => city.id));
   const userCities = useMemo(() => {
-    const cities: GlobeCity[] = userCityPoints.map((city) => ({
+    const cities: readonly GlobeCity[] = userCityPoints.map((city) => ({
       name: placeLabel(nameOf(city.id), unknownLabel),
       lat: city.lat,
       lng: city.lng,
@@ -195,7 +195,7 @@ export function PersistentGlobeHost() {
   }, [userCityPoints, nameOf, unknownLabel]);
 
   // Curated guest cities are labelled in the UI language; `t` changes with the language.
-  const routeCities = useMemo<GlobeCity[]>(
+  const routeCities = useMemo<readonly GlobeCity[]>(
     () => ROUTE_CITIES.map((city) => ({ name: t(`globe.cities.${city.id}`), lat: city.lat, lng: city.lng })),
     [t],
   );

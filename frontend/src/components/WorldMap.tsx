@@ -40,7 +40,7 @@ type CountryFeature = Feature<CountryGeometry, CountryProperties> & { id: string
 
 type WorldTopology = Topology<{ countries: GeometryCollection<CountryProperties> }>;
 
-function ringToPath(ring: Position[]): string {
+function ringToPath(ring: readonly Position[]): string {
   const segments: string[] = [];
   let prevLng: number | null = null;
   for (const [lng, lat] of ring) {
@@ -71,7 +71,7 @@ interface CountryShape {
 // scripts/build-world-topology.ts builds the topology from country polygons that each have a
 // string id and a name, so the features unpacked back are CountryFeature.
 const WORLD = worldTopology as unknown as WorldTopology;
-const COUNTRY_FEATURES = feature(WORLD, WORLD.objects.countries).features as CountryFeature[];
+const COUNTRY_FEATURES = feature(WORLD, WORLD.objects.countries).features as readonly CountryFeature[];
 
 const COUNTRY_SHAPES: readonly CountryShape[] = COUNTRY_FEATURES.map((country) => ({
   id: country.id,

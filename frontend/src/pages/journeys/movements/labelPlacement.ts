@@ -103,7 +103,7 @@ export function placeLabels(
   places: readonly LabelledPlace[],
   arcs: readonly ArcPieces[],
   metrics: LabelMetrics,
-): PlacedLabel[] {
+): readonly PlacedLabel[] {
   const segments: [Point, Point][] = [];
   for (const pieces of arcs) {
     for (const piece of pieces) {

@@ -120,7 +120,7 @@ export function buildTrail(
   endLng: number,
   apex: number,
   progress: number,
-): TrailPoint[] {
+): readonly TrailPoint[] {
   const points: TrailPoint[] = [];
   for (let i = 0; i <= TRAIL_SAMPLES; i += 1) {
     const tau = i / TRAIL_SAMPLES;

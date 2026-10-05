@@ -12,7 +12,7 @@ import "./place-autocomplete.css";
 const PIN_ICON_SIZE = 20;
 // Stable reference for empty results: the "highlight the first option" effect depends on
 // `options` identity and would rerun every render with a fresh `[]`.
-const NO_OPTIONS: PlaceSearchItem[] = [];
+const NO_OPTIONS: readonly PlaceSearchItem[] = [];
 
 // The backend accepts queries from 2 characters.
 const MIN_LENGTH = 2;

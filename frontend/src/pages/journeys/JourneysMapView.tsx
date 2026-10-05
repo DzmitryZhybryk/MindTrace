@@ -12,7 +12,7 @@ import { JourneysLegendCard } from "./JourneysLegendCard";
 import { MAP_TONE } from "./journeys-data";
 
 // Stable "no countries" reference: `WorldMap` recomputes colouring by prop identity.
-const NO_COUNTRIES: MapCountry[] = [];
+const NO_COUNTRIES: readonly MapCountry[] = [];
 
 /**
  * Converts the map aggregate into the `WorldMap` model.
@@ -22,7 +22,7 @@ const NO_COUNTRIES: MapCountry[] = [];
  *
  * Module-level (not an inline arrow): Query memoizes the `select` result by function reference.
  */
-function toMapCountries(response: JourneysMapResponse): MapCountry[] {
+function toMapCountries(response: JourneysMapResponse): readonly MapCountry[] {
   return response.countries.map((country) => ({
     id: country.countryCode,
     status: "visited",

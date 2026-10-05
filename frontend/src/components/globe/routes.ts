@@ -217,7 +217,7 @@ const ROUTES: readonly Route[] = routesOf(pickRouteSet());
 const DASH_PHASES: readonly number[] = synchronizedPhases(ROUTES);
 
 /** Arcs for globe.gl `arcsData`. */
-export const ROUTE_ARCS: RouteArc[] = ROUTES.map((route, index) => ({
+export const ROUTE_ARCS: readonly RouteArc[] = ROUTES.map((route, index) => ({
   startLat: route.from.lat,
   startLng: route.from.lng,
   endLat: route.to.lat,
@@ -226,7 +226,7 @@ export const ROUTE_ARCS: RouteArc[] = ROUTES.map((route, index) => ({
 }));
 
 /** Unique route end cities; these are labelled on the globe. */
-export const ROUTE_CITIES: City[] = Array.from(
+export const ROUTE_CITIES: readonly City[] = Array.from(
   new Map(
     ROUTES.flatMap((route) => [
       [route.from.id, route.from],

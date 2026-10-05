@@ -11,7 +11,7 @@ import { connectionBounds } from "../movements/connectionBounds";
 import { placeLabels } from "../movements/labelPlacement";
 import { piecePath, projectArc } from "../movements/movementGeometry";
 
-const NO_COUNTRIES: MapCountry[] = [];
+const NO_COUNTRIES: readonly MapCountry[] = [];
 // Sizes in canvas units at the whole-world view.
 const DOT_RADIUS = 2.6;
 const LINE_WIDTH = 1.8;

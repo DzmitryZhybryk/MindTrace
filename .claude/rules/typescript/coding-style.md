@@ -14,6 +14,10 @@ Extends `common/coding-style.md`. User-facing error display — `error-display.m
 - `interface` for object shapes that may be extended or implemented; `type` for unions, intersections,
   tuples, mapped and utility types.
 - String-literal unions over `enum`, unless interop demands one.
+- Collections in signatures, props, fields and module constants are `readonly T[]` /
+  `ReadonlySet<T>` / `ReadonlyMap<K, V>`. A mutable type is for a local accumulator, for state
+  that really is mutated in place (a listener `Set`, a `useRef` map), and for values handed to a
+  library typed as mutable (TanStack `InfiniteData.pages`; react-globe.gl data props get a cast).
 - `any` is forbidden in application code. External or untrusted input is `unknown` plus safe
   narrowing; a dependence on the caller's type is a generic.
 
