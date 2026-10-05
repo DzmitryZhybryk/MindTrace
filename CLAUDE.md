@@ -89,8 +89,8 @@ skill `dev-database`. Контракт API (`openapi.json` → сгенерир�
 |---|---|---|
 | `python/code-style.md` | `backend/**/*.py` | ruff/ty, докстринги, named arguments, `Self`, повседневные соглашения |
 | `python/security.md` | `backend/**/*.py` | pydantic-settings, `SecretStr`, bandit через ruff |
-| `python/ddd.md` | `backend/app/**` | слои, порты (DIP), UoW, soft-delete, нейминг репозиториев и entity |
-| `python/dto.md` | `backend/app/**` | `*Command`/`*Result`/`*Request`/`*Response`, pydantic vs dataclass, типы коллекций, где валидация |
+| `python/ddd.md` | `backend/app/**` | слои, раскладка `schemas/` и `ports/`, порты (DIP), UoW, soft-delete, нейминг репозиториев и entity |
+| `python/dto.md` | `backend/app/**` | `*Command`/`*Result`/`*Request`/`*Response`, роли параметров use case (actor/target/payload/metadata), объекты портов (`*Scope`/`*Filters`), pydantic vs dataclass, типы коллекций, где валидация |
 | `python/shared-infrastructure.md` | `backend/app/**` | вертикали `shared/` и их импорты, иерархия исключений, composition root, `TaskBusPort` |
 | `python/component-lifecycle.md` | `backend/app/shared/**`, `main.py` | component+registry против `@cache`-фабрики |
 | `python/testing.md` | `backend/tests/**` | философия, fakes, детерминизм, reuse-before-create |

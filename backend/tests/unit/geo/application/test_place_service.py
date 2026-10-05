@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from structlog.testing import capture_logs
 
-from app.geo.application.schemas import ResolvePlacesCommand, SearchPlacesCommand
+from app.geo.application.schemas.commands import GetMissingPlaceIdsCommand, ResolvePlacesCommand, SearchPlacesCommand
 from app.geo.application.services import PlaceService
 from app.geo.domain.enums import Language
 from tests.builders import make_place
@@ -143,9 +143,11 @@ async def test_get_missing_place_ids_returns_only_unknown_ids(
     fake_place_repository.places.append(moscow)
     unknown_id = uuid4()
 
-    missing_place_ids = await place_service.get_missing_place_ids(place_ids=(moscow.place_id, unknown_id))
+    result = await place_service.get_missing_place_ids(
+        command=GetMissingPlaceIdsCommand(place_ids=frozenset({moscow.place_id, unknown_id})),
+    )
 
-    assert missing_place_ids == frozenset({unknown_id})
+    assert result.place_ids == frozenset({unknown_id})
 
 
 async def test_get_missing_place_ids_all_known_returns_empty(
@@ -156,4 +158,8 @@ async def test_get_missing_place_ids_all_known_returns_empty(
     moscow = make_place()
     fake_place_repository.places.append(moscow)
 
-    assert await place_service.get_missing_place_ids(place_ids=(moscow.place_id,)) == frozenset()
+    result = await place_service.get_missing_place_ids(
+        command=GetMissingPlaceIdsCommand(place_ids=frozenset({moscow.place_id})),
+    )
+
+    assert result.place_ids == frozenset()

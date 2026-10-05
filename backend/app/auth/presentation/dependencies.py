@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.application.auth_service import AuthService
 from app.auth.application.email_verification_service import EmailVerificationService
-from app.auth.application.schemas import ClientMetadata
+from app.auth.application.schemas.metadata import ClientMetadata
 from app.auth.application.settings import EmailVerificationConfig, get_email_verification_settings
 from app.auth.application.token_issuer import TokenIssuer
 from app.auth.exceptions import InvalidRefreshTokenError

@@ -76,7 +76,7 @@ def find_disputes(
     *,
     rows: Iterable[Mapping[str, str]],
     labels: Mapping[str, frozenset[str]],
-) -> list[RuNameDispute]:
+) -> tuple[RuNameDispute, ...]:
     """
     Находит места, где русское имя GeoNames и метка Wikidata расходятся по существу.
 
@@ -110,7 +110,7 @@ def find_disputes(
             ),
         )
 
-    return disputes
+    return tuple(disputes)
 
 
 def apply_decisions(
@@ -118,7 +118,7 @@ def apply_decisions(
     rows: Iterable[Mapping[str, str]],
     disputes: Iterable[RuNameDispute],
     decisions: Mapping[str, RuNameDecision],
-) -> tuple[list[dict[str, str]], list[RuNameDispute], DisputesReport]:
+) -> tuple[tuple[dict[str, str], ...], tuple[RuNameDispute, ...], DisputesReport]:
     """
     Подставляет имена по решениям арбитра; спор без актуального решения сохраняет имя GeoNames.
 
@@ -177,7 +177,7 @@ def apply_decisions(
         corrected=len(names_by_id) - resolved,
         stale=len(unresolved) - unresolved_disputes,
     )
-    return result, unresolved, report
+    return tuple(result), tuple(unresolved), report
 
 
 def merge_decisions(
@@ -224,7 +224,7 @@ def record_verdicts(
     verdicts: Iterable[ArbiterVerdict],
     rows: Iterable[Mapping[str, str]],
     disputes: Iterable[RuNameDispute],
-) -> list[RuNameDecision]:
+) -> tuple[RuNameDecision, ...]:
     """
     Превращает вердикты арбитра в решения, фиксируя имена, о которых шла речь.
 
@@ -274,7 +274,7 @@ def record_verdicts(
             ),
         )
 
-    return decisions
+    return tuple(decisions)
 
 
 def read_decisions(*, path: Path = DECISIONS_PATH) -> dict[str, RuNameDecision]:

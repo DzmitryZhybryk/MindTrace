@@ -35,7 +35,7 @@ test of a session. Do **not** restate or fork them here — this skill is only t
    - Reuse / add an in-memory fake in `backend/tests/fakes/` (repositories, clients, `TaskBusPort`,
      hashers). Back repositories with a `dict`; `FakeSaltedHasher` avoids real argon2.
    - When writing the **first** fake for a repository, add a thin `typing.Protocol` in the
-     **application layer** (`app/<domain>/application/ports.py`, only the methods used) and type both
+     **application layer** (`app/<domain>/application/ports/<port>.py`, only the methods used) and type both
      the real repo and the fake. By DIP the contract belongs to application; `infra` imports the port
      and implements it (never the reverse). The port module depends only on `domain`.
    - Fake UoW = simple object with the fake repos + `commit = AsyncMock()`.

@@ -1,6 +1,6 @@
 from fastapi import Request, Response
 
-from app.auth.application.schemas import TokenPairResult
+from app.auth.application.schemas.results import TokenPairResult
 
 _REFRESH_COOKIE_NAME = "refresh_token"
 _COOKIE_PATH = "/"

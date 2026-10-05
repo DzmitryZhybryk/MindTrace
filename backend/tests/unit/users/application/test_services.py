@@ -3,7 +3,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.users.application.schemas import CreateUserCommand, CurrentUserResult
+from app.users.application.schemas.commands import CreateUserCommand
+from app.users.application.schemas.results import CurrentUserResult
 from app.users.application.services import UserService
 from app.users.exceptions import UserDeletedError, UserNotFoundError
 from tests.builders import make_user_entity
@@ -23,7 +24,7 @@ async def test_create_user_inserts_mapped_entity(
         terms_accepted_at=dt.datetime(2026, 1, 1, tzinfo=dt.UTC),
     )
 
-    await user_service.create_user(user=command)
+    await user_service.create_user(command=command)
 
     stored = fake_user_repository.by_user_id[command.user_id]
     assert stored.username == command.username
@@ -45,7 +46,7 @@ async def test_create_user_does_not_commit(
         terms_accepted_at=dt.datetime(2026, 1, 1, tzinfo=dt.UTC),
     )
 
-    await user_service.create_user(user=command)
+    await user_service.create_user(command=command)
 
     fake_user_uow.commit_mock.assert_not_awaited()
 

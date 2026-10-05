@@ -5,8 +5,13 @@ from sqlalchemy import ColumnElement, Subquery, func, or_, select, union_all, up
 from sqlalchemy.dialects.postgresql import aggregate_order_by, distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.journeys.application.ports import JourneyRepositoryPort
-from app.journeys.application.schemas import JourneyFilters, JourneyOrderScope, MovementConnection, VisitedPlace
+from app.journeys.application.ports.journey_repository import (
+    JourneyFilters,
+    JourneyOrderScope,
+    JourneyRepositoryPort,
+    MovementConnection,
+    VisitedPlace,
+)
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
 from app.journeys.domain.value_objects import GeoPoint

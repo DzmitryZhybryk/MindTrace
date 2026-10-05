@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from app.geo.domain.enums import Language
 from app.shared.schemas import CamelModel
@@ -9,6 +9,8 @@ from app.shared.schemas import CamelModel
 
 class PlaceSearchItem(CamelModel):
     """Один вариант в подсказках поиска; по ``placeId`` на место потом можно ссылаться."""
+
+    model_config = ConfigDict(frozen=True)
 
     place_id: UUID
     name: Annotated[str, Field(description="Имя места, резолвнутое под язык запроса (параметр language).")]
@@ -21,7 +23,9 @@ class PlaceSearchItem(CamelModel):
 class PlaceSearchResponse(CamelModel):
     """Ответ автокомплита — упорядоченная выдача кандидатов (по убыванию населения)."""
 
-    items: list[PlaceSearchItem]
+    model_config = ConfigDict(frozen=True)
+
+    items: tuple[PlaceSearchItem, ...]
 
 
 class ResolvePlacesRequest(CamelModel):
@@ -34,6 +38,8 @@ class ResolvePlacesRequest(CamelModel):
 class PlaceName(CamelModel):
     """Название места на языке запроса."""
 
+    model_config = ConfigDict(frozen=True)
+
     place_id: UUID
     name: str
 
@@ -41,4 +47,6 @@ class PlaceName(CamelModel):
 class ResolvePlacesResponse(CamelModel):
     """Названия найденных мест; id, которых нет в газеттире, в ответ не попадают."""
 
-    items: list[PlaceName]
+    model_config = ConfigDict(frozen=True)
+
+    items: tuple[PlaceName, ...]

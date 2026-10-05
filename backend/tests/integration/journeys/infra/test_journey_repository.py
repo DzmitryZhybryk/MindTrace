@@ -19,7 +19,7 @@ import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.journeys.application.schemas import JourneyFilters, JourneyOrderScope
+from app.journeys.application.ports.journey_repository import JourneyFilters, JourneyOrderScope
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
 from app.journeys.infra.models import Journey

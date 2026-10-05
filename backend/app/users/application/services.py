@@ -1,7 +1,8 @@
 from uuid import UUID
 
-from app.users.application.ports import UserUnitOfWorkPort
-from app.users.application.schemas import CreateUserCommand, CurrentUserResult
+from app.users.application.ports.unit_of_work import UserUnitOfWorkPort
+from app.users.application.schemas.commands import CreateUserCommand
+from app.users.application.schemas.results import CurrentUserResult
 from app.users.domain.entities import UserEntity
 from app.users.exceptions import UserNotFoundError
 
@@ -12,7 +13,7 @@ class UserService:
     def __init__(self, uow: UserUnitOfWorkPort) -> None:
         self._uow = uow
 
-    async def create_user(self, user: CreateUserCommand) -> None:
+    async def create_user(self, command: CreateUserCommand) -> None:
         """
         Создаёт нового пользователя в рамках транзакции вызывающего.
 
@@ -24,14 +25,14 @@ class UserService:
         (Option A транзакционной модели, см. ``BaseUnitOfWork``).
 
         Args:
-            user: Данные для создания пользователя.
+            command: Данные для создания пользователя.
         """
         user_entity = UserEntity.create(
-            user_id=user.user_id,
-            username=user.username,
-            email=user.email,
-            marketing_emails_consent=user.marketing_emails_consent,
-            terms_accepted_at=user.terms_accepted_at,
+            user_id=command.user_id,
+            username=command.username,
+            email=command.email,
+            marketing_emails_consent=command.marketing_emails_consent,
+            terms_accepted_at=command.terms_accepted_at,
         )
         await self._uow.user_repository.insert_user(user_entity=user_entity)
 

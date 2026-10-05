@@ -1,6 +1,7 @@
 from uuid import UUID
 
-from app.auth.application.ports import AuthUnitOfWorkPort
+from app.auth.application.ports.unit_of_work import AuthUnitOfWorkPort
+from app.auth.application.schemas.commands import VerifyEmailCommand
 from app.auth.application.settings import EmailVerificationConfig
 from app.auth.application.task_names import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.domain.entities import ChallengeEntity
@@ -88,7 +89,7 @@ class EmailVerificationService:
             )
             await self._uow.commit()
 
-    async def verify_email(self, *, user_id: UUID, code: str) -> None:
+    async def verify_email(self, *, user_id: UUID, command: VerifyEmailCommand) -> None:
         """
         Проверяет одноразовый код и помечает email пользователя подтверждённым.
 
@@ -99,7 +100,7 @@ class EmailVerificationService:
 
         Args:
             user_id: ID пользователя
-            code: Plaintext-код, который пользователь ввёл
+            command: Команда с кодом, который ввёл пользователь
 
         Raises:
             UserCredentialsNotFoundError: Если учётной записи с таким ``user_id`` не существует
@@ -129,7 +130,7 @@ class EmailVerificationService:
                 max_attempts=self._email_verification_settings.email_verification_max_attempts
             )
 
-            if not self._salted_hasher.verify(secret=code, hashed=challenge_entity.code_hash):
+            if not self._salted_hasher.verify(secret=command.code, hashed=challenge_entity.code_hash):
                 challenge_entity.register_failed_attempt()
                 await self._uow.challenge_repository.update_challenge_by_id(challenge_entity=challenge_entity)
                 await self._uow.commit()

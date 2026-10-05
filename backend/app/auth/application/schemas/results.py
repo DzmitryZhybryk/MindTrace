@@ -1,37 +1,11 @@
 import datetime as dt
-from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, SecretStr
 
 __all__ = [
-    "ClientMetadata",
     "IssuedRefreshToken",
-    "LoginCommand",
-    "RegistrationCommand",
     "TokenPairResult",
 ]
-
-
-@dataclass(frozen=True, slots=True)
-class ClientMetadata:
-    ip_address: str | None = None
-    user_agent: str | None = None
-
-
-class RegistrationCommand(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    username: str
-    email: str
-    password: SecretStr
-    marketing_emails_consent: bool
-
-
-class LoginCommand(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    login: str
-    password: SecretStr
 
 
 class IssuedRefreshToken(BaseModel):

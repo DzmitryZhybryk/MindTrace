@@ -1,6 +1,6 @@
 """Переиспользуемые in-memory фейки: репозитории, UoW, клиенты, hasher'ы, task bus, сервисы."""
 
-from tests.fakes.clients import CreatedUserCall, FakePlacesClient, FakeUsersClient
+from tests.fakes.clients import FakePlacesClient, FakeUsersClient
 from tests.fakes.email import FakeEmailTransport
 from tests.fakes.geo import FakePlaceRepository
 from tests.fakes.hashers import FakeSaltedHasher
@@ -16,7 +16,6 @@ from tests.fakes.uow import FakeAuthUnitOfWork
 from tests.fakes.users import FakeUserRepository, FakeUserUnitOfWork
 
 __all__ = [
-    "CreatedUserCall",
     "DeferredTask",
     "FakeAuthUnitOfWork",
     "FakeChallengeRepository",

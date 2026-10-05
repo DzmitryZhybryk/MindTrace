@@ -1,14 +1,11 @@
-from collections.abc import Collection
-from uuid import UUID
-
-from app.geo.application.ports import PlaceRepositoryPort
-from app.geo.application.schemas import (
+from app.geo.application.ports.place_repository import PlaceRepositoryPort
+from app.geo.application.schemas.commands import GetMissingPlaceIdsCommand, ResolvePlacesCommand, SearchPlacesCommand
+from app.geo.application.schemas.results import (
+    MissingPlaceIdsResult,
     PlaceSearchItem,
     PlaceSearchResult,
     ResolvedPlace,
-    ResolvePlacesCommand,
     ResolvePlacesResult,
-    SearchPlacesCommand,
 )
 from app.geo.domain.entities import PlaceEntity
 from app.geo.domain.enums import Language
@@ -80,7 +77,7 @@ class PlaceService:
         )
         return ResolvePlacesResult(items=items)
 
-    async def get_missing_place_ids(self, *, place_ids: Collection[UUID]) -> frozenset[UUID]:
+    async def get_missing_place_ids(self, command: GetMissingPlaceIdsCommand) -> MissingPlaceIdsResult:
         """
         Возвращает те id из переданных, которых нет в газеттире.
 
@@ -88,13 +85,15 @@ class PlaceService:
         есть — иначе потом их названия не найдутся.
 
         Args:
-            place_ids: Id мест для проверки
+            command: Id мест для проверки
 
         Returns:
             Id ненайденных мест; пусто, если все на месте
         """
-        places = await self._repository.find_places_by_ids(place_ids=place_ids)
-        return frozenset(place_ids) - {place_entity.place_id for place_entity in places}
+        places = await self._repository.find_places_by_ids(place_ids=command.place_ids)
+        return MissingPlaceIdsResult(
+            place_ids=command.place_ids - {place_entity.place_id for place_entity in places},
+        )
 
     def _build_item(self, *, place_entity: PlaceEntity, language: Language) -> PlaceSearchItem:
         """

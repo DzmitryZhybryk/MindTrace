@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Response, status
 
 from app.auth.application.auth_service import AuthService
 from app.auth.application.email_verification_service import EmailVerificationService
-from app.auth.application.schemas import ClientMetadata, LoginCommand, RegistrationCommand
+from app.auth.application.schemas.commands import LoginCommand, RegistrationCommand, VerifyEmailCommand
+from app.auth.application.schemas.metadata import ClientMetadata
 from app.auth.presentation.cookies import clear_refresh_token_cookie, set_refresh_token_cookie
 from app.auth.presentation.dependencies import (
     auth_service_dependency,
@@ -41,8 +42,8 @@ async def register(
     client_metadata: Annotated[ClientMetadata, Depends(client_metadata_dependency)],
     auth_service: Annotated[AuthService, Depends(auth_service_dependency)],
 ) -> TokenResponse:
-    registration = RegistrationCommand.model_validate(body, from_attributes=True)
-    token_pair = await auth_service.register(registration=registration, client_metadata=client_metadata)
+    command = RegistrationCommand.model_validate(body, from_attributes=True)
+    token_pair = await auth_service.register(command=command, client_metadata=client_metadata)
     set_refresh_token_cookie(response=response, token_pair=token_pair)
     return TokenResponse(access_token=token_pair.access_token.get_secret_value())
 
@@ -127,4 +128,4 @@ async def verify_email(
     user_id: Annotated[UUID, Depends(current_user_id_dependency)],
     email_verification_service: Annotated[EmailVerificationService, Depends(email_verification_service_dependency)],
 ) -> None:
-    await email_verification_service.verify_email(user_id=user_id, code=body.code)
+    await email_verification_service.verify_email(user_id=user_id, command=VerifyEmailCommand(code=body.code))

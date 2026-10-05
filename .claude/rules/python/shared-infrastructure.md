@@ -28,7 +28,7 @@ import paths.
 | `settings.py` | pydantic-settings from `.env`, frozen model, cached `settings` singleton | |
 
 A vertical owns its protocols: `crypto`, `jwt`, `procrastinate` do **not** declare their port in a
-domain's `application/ports.py` (an exception to `ddd.md`). The `Port` suffix rule still applies.
+domain's `application/ports/` (an exception to `ddd.md`). The `Port` suffix rule still applies.
 
 ## Exceptions
 

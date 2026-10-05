@@ -13,24 +13,23 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.journeys.application.schemas import (
+from app.journeys.application.ports.journey_repository import JourneyFilters, MovementConnection, VisitedPlace
+from app.journeys.application.schemas.commands import (
     CreateJourneyCommand,
-    DeleteJourneyCommand,
     EstimateJourneyDistanceCommand,
     GetMovementsMapCommand,
+    ListJourneysCommand,
+    MoveJourneyCommand,
+    UpdateJourneyCommand,
+)
+from app.journeys.application.schemas.results import (
     JourneyFeedItem,
-    JourneyFilters,
     JourneysMapResult,
     JourneyYearsResult,
-    ListJourneysCommand,
     MapCityVisit,
     MapCountryVisits,
-    MoveJourneyCommand,
     MoveJourneyResult,
-    MovementConnection,
     MovementsMapResult,
-    UpdateJourneyCommand,
-    VisitedPlace,
 )
 from app.journeys.application.services import JourneyService
 from app.journeys.domain.enums import TransportType
@@ -54,14 +53,13 @@ async def test_create_journey_snapshots_places_and_commits(
     """create_journey: снапшотит места из команды, вставляет поездку с её годом и коммитит один раз."""
     user_id = uuid4()
     command = CreateJourneyCommand(
-        user_id=user_id,
         origin=_MOSCOW,
         destination=_LONDON,
         transport_type=TransportType.AIR,
         traveled_year=2020,
     )
 
-    await journey_service.create_journey(command=command)
+    await journey_service.create_journey(user_id=user_id, command=command)
 
     assert len(fake_journey_repository.journeys) == 1
     journey = fake_journey_repository.journeys[0]
@@ -89,7 +87,6 @@ async def test_create_journey_unknown_places_rejected_before_transaction(
     """Неизвестные origin, destination или оба дают точные id ошибки без транзакции и вставки."""
     fake_places_client.existing_place_ids.difference_update(missing_ids)
     command = CreateJourneyCommand(
-        user_id=uuid4(),
         origin=_MOSCOW,
         destination=_LONDON,
         transport_type=TransportType.AIR,
@@ -97,7 +94,7 @@ async def test_create_journey_unknown_places_rejected_before_transaction(
     )
 
     with pytest.raises(UnknownPlaceError) as exc_info:
-        await journey_service.create_journey(command=command)
+        await journey_service.create_journey(user_id=uuid4(), command=command)
 
     assert exc_info.value.details == {"place_ids": frozenset(missing_ids)}
     assert fake_journey_repository.journeys == []
@@ -197,9 +194,9 @@ async def test_get_movements_map_returns_connections_and_year_bounds(
         make_journey(user_id=user_id, traveled_year=2017),
     ]
     fake_journey_repository.movement_connections_by_user_id[user_id] = [connection]
-    command = GetMovementsMapCommand(user_id=user_id, transport_types=frozenset({TransportType.AIR}))
+    command = GetMovementsMapCommand(transport_types=frozenset({TransportType.AIR}))
 
-    result = await journey_service.get_movements_map(command=command)
+    result = await journey_service.get_movements_map(user_id=user_id, command=command)
 
     assert result == MovementsMapResult(first_year=2017, last_year=2022, connections=(connection,))
     assert fake_journey_repository.movement_connection_queries == [
@@ -213,9 +210,9 @@ async def test_get_movements_map_without_journeys_skips_connections_query(
 ) -> None:
     """get_movements_map: поездок нет → пустой ответ без годов, маршруты не запрашиваются."""
     user_id = uuid4()
-    command = GetMovementsMapCommand(user_id=user_id, transport_types=None)
+    command = GetMovementsMapCommand(transport_types=None)
 
-    result = await journey_service.get_movements_map(command=command)
+    result = await journey_service.get_movements_map(user_id=user_id, command=command)
 
     assert result == MovementsMapResult(first_year=None, last_year=None, connections=())
     assert fake_journey_repository.movement_connection_queries == []
@@ -233,14 +230,13 @@ async def test_create_journey_goes_to_end_of_its_year(
         make_journey(user_id=user_id, traveled_year=2021, sort_key="y"),
     ]
     command = CreateJourneyCommand(
-        user_id=user_id,
         origin=_MOSCOW,
         destination=_LONDON,
         transport_type=TransportType.AIR,
         traveled_year=2020,
     )
 
-    await journey_service.create_journey(command=command)
+    await journey_service.create_journey(user_id=user_id, command=command)
 
     created = fake_journey_repository.journeys[-1]
     assert "m" < created.sort_key < "z"
@@ -265,14 +261,14 @@ async def test_update_journey_same_year_replaces_fields_and_keeps_place(
     fake_journey_repository.journeys = [journey_entity]
 
     await journey_service.update_journey(
+        user_id=user_id,
+        journey_id=journey_entity.journey_id,
         command=UpdateJourneyCommand(
-            user_id=user_id,
-            journey_id=journey_entity.journey_id,
             origin=_MOSCOW,
             destination=_LONDON,
             transport_type=TransportType.AIR,
             traveled_year=2020,
-        )
+        ),
     )
 
     updated = fake_journey_repository.journeys[0]
@@ -298,14 +294,14 @@ async def test_update_journey_new_year_goes_to_end_of_that_year(
     ]
 
     await journey_service.update_journey(
+        user_id=user_id,
+        journey_id=journey_entity.journey_id,
         command=UpdateJourneyCommand(
-            user_id=user_id,
-            journey_id=journey_entity.journey_id,
             origin=_MOSCOW,
             destination=_LONDON,
             transport_type=TransportType.AIR,
             traveled_year=2018,
-        )
+        ),
     )
 
     updated = fake_journey_repository.journeys[0]
@@ -331,14 +327,14 @@ async def test_update_journey_unavailable_journey_raises_not_found(
 
     with pytest.raises(JourneyNotFoundError):
         await journey_service.update_journey(
+            user_id=user_id,
+            journey_id=journey_entity.journey_id,
             command=UpdateJourneyCommand(
-                user_id=user_id,
-                journey_id=journey_entity.journey_id,
                 origin=_MOSCOW,
                 destination=_LONDON,
                 transport_type=TransportType.AIR,
                 traveled_year=2020,
-            )
+            ),
         )
 
     fake_journey_uow.commit_mock.assert_not_awaited()
@@ -358,14 +354,14 @@ async def test_update_journey_unknown_places_rejected_before_transaction(
 
     with pytest.raises(UnknownPlaceError) as exc_info:
         await journey_service.update_journey(
+            user_id=user_id,
+            journey_id=journey_entity.journey_id,
             command=UpdateJourneyCommand(
-                user_id=user_id,
-                journey_id=journey_entity.journey_id,
                 origin=_MOSCOW,
                 destination=_LONDON,
                 transport_type=TransportType.AIR,
                 traveled_year=2020,
-            )
+            ),
         )
 
     assert exc_info.value.details == {"place_ids": frozenset({LONDON_PLACE_ID})}
@@ -382,9 +378,7 @@ async def test_delete_journey_soft_deletes_and_commits(
     journey_entity = make_journey(user_id=user_id)
     fake_journey_repository.journeys = [journey_entity]
 
-    await journey_service.delete_journey(
-        command=DeleteJourneyCommand(journey_id=journey_entity.journey_id, user_id=user_id)
-    )
+    await journey_service.delete_journey(user_id=user_id, journey_id=journey_entity.journey_id)
 
     assert fake_journey_repository.journeys[0].is_deleted
     fake_journey_uow.commit_mock.assert_awaited_once()
@@ -407,9 +401,7 @@ async def test_delete_journey_unavailable_journey_raises_not_found(
         fake_journey_repository.journeys = [journey_entity]
 
     with pytest.raises(JourneyNotFoundError):
-        await journey_service.delete_journey(
-            command=DeleteJourneyCommand(journey_id=journey_entity.journey_id, user_id=user_id)
-        )
+        await journey_service.delete_journey(user_id=user_id, journey_id=journey_entity.journey_id)
 
     fake_journey_uow.commit_mock.assert_not_awaited()
 
@@ -439,12 +431,9 @@ async def test_move_journey_places_key_between_neighbor_and_next_in_year(
     fake_journey_repository.journeys = [*year_entities.values(), moved_entity]
 
     result = await journey_service.move_journey(
-        command=MoveJourneyCommand(
-            journey_id=moved_entity.journey_id,
-            user_id=user_id,
-            neighbor_journey_id=year_entities[neighbor_key].journey_id,
-            placement=placement,
-        )
+        user_id=user_id,
+        journey_id=moved_entity.journey_id,
+        command=MoveJourneyCommand(neighbor_journey_id=year_entities[neighbor_key].journey_id, placement=placement),
     )
 
     assert result == MoveJourneyResult(traveled_year=2020)
@@ -464,12 +453,9 @@ async def test_move_journey_into_another_year_takes_neighbor_year(
     fake_journey_repository.journeys = [neighbor_entity, moved_entity]
 
     result = await journey_service.move_journey(
-        command=MoveJourneyCommand(
-            journey_id=moved_entity.journey_id,
-            user_id=user_id,
-            neighbor_journey_id=neighbor_entity.journey_id,
-            placement=MovePlacement.AFTER,
-        )
+        user_id=user_id,
+        journey_id=moved_entity.journey_id,
+        command=MoveJourneyCommand(neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacement.AFTER),
     )
 
     assert result == MoveJourneyResult(traveled_year=2018)
@@ -496,12 +482,9 @@ async def test_move_journey_invalid_neighbor_raises_invalid_move_target(
 
     with pytest.raises(InvalidMoveTargetError):
         await journey_service.move_journey(
-            command=MoveJourneyCommand(
-                journey_id=moved_entity.journey_id,
-                user_id=user_id,
-                neighbor_journey_id=neighbor_journey_id,
-                placement=MovePlacement.AFTER,
-            )
+            user_id=user_id,
+            journey_id=moved_entity.journey_id,
+            command=MoveJourneyCommand(neighbor_journey_id=neighbor_journey_id, placement=MovePlacement.AFTER),
         )
 
     assert moved_entity.sort_key == "m"
@@ -525,12 +508,9 @@ async def test_move_journey_neighbor_repositioned_while_waiting_for_lock_uses_it
     ]
 
     await journey_service.move_journey(
-        command=MoveJourneyCommand(
-            journey_id=moved_entity.journey_id,
-            user_id=user_id,
-            neighbor_journey_id=neighbor_entity.journey_id,
-            placement=MovePlacement.AFTER,
-        )
+        user_id=user_id,
+        journey_id=moved_entity.journey_id,
+        command=MoveJourneyCommand(neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacement.AFTER),
     )
 
     assert moved_entity.traveled_year == 2020
@@ -562,12 +542,9 @@ async def test_move_journey_neighbor_gone_while_waiting_for_lock_raises_invalid_
 
     with pytest.raises(InvalidMoveTargetError):
         await journey_service.move_journey(
-            command=MoveJourneyCommand(
-                journey_id=moved_entity.journey_id,
-                user_id=user_id,
-                neighbor_journey_id=neighbor_entity.journey_id,
-                placement=MovePlacement.AFTER,
-            )
+            user_id=user_id,
+            journey_id=moved_entity.journey_id,
+            command=MoveJourneyCommand(neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacement.AFTER),
         )
 
     assert (moved_entity.traveled_year, moved_entity.sort_key) == (2019, "m")
@@ -589,12 +566,9 @@ async def test_move_journey_unavailable_journey_raises_not_found(
 
     with pytest.raises(JourneyNotFoundError):
         await journey_service.move_journey(
-            command=MoveJourneyCommand(
-                journey_id=moved_entity.journey_id,
-                user_id=user_id,
-                neighbor_journey_id=neighbor_entity.journey_id,
-                placement=MovePlacement.BEFORE,
-            )
+            user_id=user_id,
+            journey_id=moved_entity.journey_id,
+            command=MoveJourneyCommand(neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacement.BEFORE),
         )
 
     fake_journey_uow.commit_mock.assert_not_awaited()
@@ -611,11 +585,11 @@ async def test_list_journeys_maps_page_items_and_cursor(
     fake_journey_repository.journeys = [older, newer, make_journey(user_id=user_id, traveled_year=2018)]
 
     result = await journey_service.list_journeys(
+        user_id=user_id,
         command=ListJourneysCommand(
-            user_id=user_id,
             page=PageQuery(cursor=None, limit=2),
             filters=JourneyFilters(year_from=None, year_to=None, transport_types=None),
-        )
+        ),
     )
 
     assert result.items == (

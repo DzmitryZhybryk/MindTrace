@@ -4,7 +4,8 @@ from uuid import UUID
 
 from pydantic import SecretStr
 
-from app.auth.application.schemas import ClientMetadata, IssuedRefreshToken, TokenPairResult
+from app.auth.application.schemas.metadata import ClientMetadata
+from app.auth.application.schemas.results import IssuedRefreshToken, TokenPairResult
 from app.auth.domain.entities import RefreshTokenEntity, UserCredentialsEntity
 from app.shared.infra.crypto import DeterministicHasherPort
 from app.shared.infra.jwt import JWTService

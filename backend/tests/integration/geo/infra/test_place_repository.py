@@ -117,7 +117,7 @@ async def test_search_prefix_does_not_match_substring(db_session: AsyncSession) 
 
     places = await PlaceRepository(session=db_session).search_places_by_name(search_text="York", limit=10)
 
-    assert places == []
+    assert places == ()
 
 
 async def test_search_escapes_like_metacharacters(db_session: AsyncSession) -> None:
@@ -247,7 +247,7 @@ async def test_find_places_by_ids_returns_only_existing(db_session: AsyncSession
     )
     await db_session.commit()
 
-    places = await PlaceRepository(session=db_session).find_places_by_ids(place_ids=(moscow_id, uuid4()))
+    places = await PlaceRepository(session=db_session).find_places_by_ids(place_ids=frozenset({moscow_id, uuid4()}))
 
     [moscow] = places
     assert moscow.place_id == moscow_id
