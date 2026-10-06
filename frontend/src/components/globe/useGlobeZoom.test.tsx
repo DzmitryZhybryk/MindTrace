@@ -2,18 +2,20 @@ import { renderHook } from "@testing-library/react";
 import type { GlobeMethods } from "react-globe.gl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CAMERA_MAX_ALTITUDE } from "./route";
-import { hitsSphere, useGlobeZoom, ZOOM_MIN_ALTITUDE } from "./useGlobeZoom";
+import { CAMERA_MAX_ALTITUDE, CAMERA_MIN_ALTITUDE } from "./route";
+import { hitsSphere, useGlobeZoom } from "./useGlobeZoom";
 
 const LAYOUT = { width: 800, height: 600 };
 const START_ALTITUDE = 1.6;
+// The pinch limit agreed with the owner; a literal, so a changed constant fails the test.
+const PINCH_MIN_ALTITUDE = 0.48;
 // The sphere occupies the left half of the canvas: points there hit it, points to the right miss.
 const ON_SPHERE = { clientX: 200, clientY: 300 };
 const OFF_SPHERE = { clientX: 700, clientY: 300 };
 
 /** The WebGL boundary: a camera that keeps its altitude and a raycast against the left half. */
-function createGlobe() {
-  let altitude = START_ALTITUDE;
+function createGlobe(startAltitude = START_ALTITUDE) {
+  let altitude = startAltitude;
   const pointOfView = (pov?: { altitude?: number }) => {
     if (pov === undefined) {
       return { lat: 0, lng: 0, altitude };
@@ -100,10 +102,21 @@ describe("useGlobeZoom", () => {
     renderZoom();
 
     dispatch(wheel(ON_SPHERE, -1000, true));
-    expect(camera.altitude()).toBe(ZOOM_MIN_ALTITUDE);
+    expect(camera.altitude()).toBe(PINCH_MIN_ALTITUDE);
 
     dispatch(wheel(ON_SPHERE, 1000, true));
     expect(camera.altitude()).toBe(CAMERA_MAX_ALTITUDE);
+  });
+
+  it("ниже предела щипка (кадр короткого маршрута) приближение камеру держит, отдаление плавное", () => {
+    camera = createGlobe(CAMERA_MIN_ALTITUDE);
+    renderZoom();
+
+    dispatch(wheel(ON_SPHERE, -1, true));
+    expect(camera.altitude()).toBe(CAMERA_MIN_ALTITUDE);
+
+    dispatch(wheel(ON_SPHERE, 10, true));
+    expect(camera.altitude()).toBeCloseTo(CAMERA_MIN_ALTITUDE * Math.exp(0.1));
   });
 
   it("обычная прокрутка над сферой камеру не трогает и остаётся странице", () => {
@@ -158,7 +171,25 @@ describe("useGlobeZoom", () => {
     expect(camera.altitude()).toBeCloseTo(START_ALTITUDE / 2);
   });
 
-  it("на iOS жест Safari во время щипка пальцами не зумит второй раз", () => {
+  // iOS order per Apple's docs: first finger touchstart → gesturestart → second finger touchstart.
+  // The order of the following gesturechange / touchmove is not fixed, so both are covered.
+  it.each([
+    ["gesturechange первым", ["gesturechange", "touchmove"]],
+    ["touchmove первым", ["touchmove", "gesturechange"]],
+  ] as const)("на iOS один щипок зумит один раз (%s)", (_, order) => {
+    renderZoom();
+
+    dispatch(touch("touchstart", fingers(ON_SPHERE, 100).slice(0, 1)));
+    dispatch(gesture("gesturestart", 1, ON_SPHERE));
+    dispatch(touch("touchstart", fingers(ON_SPHERE, 100)));
+    for (const type of order) {
+      dispatch(type === "touchmove" ? touch(type, fingers(ON_SPHERE, 200)) : gesture(type, 2, ON_SPHERE));
+    }
+
+    expect(camera.altitude()).toBeCloseTo(START_ALTITUDE / 2);
+  });
+
+  it("жест Safari, начатый вторым пальцем после щипка пальцами, не зумит второй раз", () => {
     renderZoom();
 
     dispatch(touch("touchstart", fingers(ON_SPHERE, 100)));

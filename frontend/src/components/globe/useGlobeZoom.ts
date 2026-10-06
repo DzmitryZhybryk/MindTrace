@@ -5,8 +5,11 @@ import { CAMERA_MAX_ALTITUDE, clamp } from "./route";
 
 // Zoom change per pixel of wheel scroll or trackpad pinch, the same as on the 2D map.
 const WHEEL_ZOOM_SPEED = 0.01;
-/** Closest a pinch brings the camera: the planet looks about three times larger than on the home face. */
-export const ZOOM_MIN_ALTITUDE = 0.48;
+/**
+ * Closest a pinch brings the camera: the planet looks about three times larger than on the home face.
+ * The route framing on the journey form may go lower (`CAMERA_MIN_ALTITUDE`).
+ */
+const ZOOM_MIN_ALTITUDE = 0.48;
 
 export interface LayoutSize {
   width: number;
@@ -73,11 +76,14 @@ export function useGlobeZoom({ containerRef, globeRef, enabled, size, onZoom }: 
     if (!enabled || !el || !globe || width === 0 || height === 0) return;
 
     const isOverSphere = (clientX: number, clientY: number) => hitsSphere(el, globe, { width, height }, clientX, clientY);
+    const currentAltitude = () => globe.pointOfView().altitude;
     const zoomTo = (altitude: number) => {
       onZoomRef.current();
-      globe.pointOfView({ altitude: clamp(altitude, ZOOM_MIN_ALTITUDE, CAMERA_MAX_ALTITUDE) }, 0);
+      // Below the pinch limit (a close route framing) a zoom-in holds the camera instead of jumping
+      // out to the limit; a zoom-out works as usual.
+      const floor = Math.min(ZOOM_MIN_ALTITUDE, currentAltitude());
+      globe.pointOfView({ altitude: clamp(altitude, floor, CAMERA_MAX_ALTITUDE) }, 0);
     };
-    const currentAltitude = () => globe.pointOfView().altitude;
 
     const handleWheel = (event: WheelEvent) => {
       if (!event.ctrlKey || !isOverSphere(event.clientX, event.clientY)) return;
@@ -86,14 +92,20 @@ export function useGlobeZoom({ containerRef, globeRef, enabled, size, onZoom }: 
       zoomTo(currentAltitude() * Math.exp(event.deltaY * WHEEL_ZOOM_SPEED));
     };
 
-    // A touch pinch in progress: the distance between the fingers at the previous step.
+    // One pinch has one zoom source. iOS fires gesture events alongside the touch pinch, and its
+    // `gesturestart` arrives BEFORE the second finger's `touchstart`; the touch pinch then takes over.
     let pinchDistance: number | null = null;
+    let gestureStartAltitude: number | null = null;
+
     const handleTouchStart = (event: TouchEvent) => {
       if (event.touches.length !== 2) return;
 
       const [first, second] = [event.touches[0], event.touches[1]];
       const isOnSphere = isOverSphere((first.clientX + second.clientX) / 2, (first.clientY + second.clientY) / 2);
       pinchDistance = isOnSphere ? touchDistance(event.touches) : null;
+      if (isOnSphere) {
+        gestureStartAltitude = null;
+      }
     };
     const handleTouchMove = (event: TouchEvent) => {
       if (pinchDistance === null || event.touches.length !== 2) return;
@@ -111,8 +123,6 @@ export function useGlobeZoom({ containerRef, globeRef, enabled, size, onZoom }: 
       }
     };
 
-    // iOS fires gesture events alongside the touch pinch above; that one already zooms.
-    let gestureStartAltitude: number | null = null;
     const handleGestureStart = (event: Event) => {
       const gesture = event as SafariGestureEvent;
       if (pinchDistance !== null || !isOverSphere(gesture.clientX, gesture.clientY)) return;
