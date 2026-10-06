@@ -6,12 +6,14 @@ import "@mantine/core/styles.css";
 import App from "./App.tsx";
 import { createQueryClient } from "./api/queryClient";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { installPinchZoomGuard } from "./components/pinchZoomGuard";
 import { RootErrorFallback } from "./components/RootErrorFallback";
 import { theme } from "./theme";
 import "./i18n";
 import "./index.css";
 
 const queryClient = createQueryClient();
+installPinchZoomGuard();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

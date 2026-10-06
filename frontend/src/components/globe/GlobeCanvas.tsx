@@ -16,6 +16,7 @@ import {
   type RouteTrail,
 } from "./routeScene";
 import type { GlobeCity, RouteArc } from "./routes";
+import { hitsSphere, useGlobeZoom } from "./useGlobeZoom";
 import "./globe-label.css";
 import "./globe-canvas.css";
 
@@ -40,7 +41,10 @@ interface GlobeCanvasProps {
   pov?: GlobePov;
   /** Hidden by the route (e.g. `/journeys`): rendering is paused so WebGL does not spin idle. */
   paused?: boolean;
-  /** Drag rotation on both axes. The gesture is hit-tested pixel-wise on the sphere itself; off the sphere it goes to the page. */
+  /**
+   * Drag rotation on both axes and pinch zoom. Gestures are hit-tested pixel-wise on the sphere
+   * itself; off the sphere they go to the page.
+   */
   interactive?: boolean;
   /** Journey form route: end pins, trail and moving vehicle; none by default. */
   route?: GlobeRoute | null;
@@ -110,8 +114,8 @@ const pathColorAccessor = (d: object): string => (d as RouteTrail).color;
 
 /**
  * Shared base of the decorative 3D globe (the product's signature). Encapsulates container
- * measuring, warm tint, atmosphere, scroll-zoom blocking, reduced motion, auto-rotation, camera
- * flights (pov) and optional drag rotation on the sphere. Optionally draws route arcs, end-city
+ * measuring, warm tint, atmosphere, reduced motion, auto-rotation, camera flights (pov) and
+ * optional drag rotation and pinch zoom on the sphere. Optionally draws route arcs, end-city
  * labels (HTML labels with far-side occlusion) and the journey form route (pins, trail, moving
  * vehicle, see routeScene.ts). Consumer: the app-global globe background (`PersistentGlobeHost`).
  */
@@ -131,6 +135,8 @@ export function GlobeCanvas({
   const hasSetPovRef = useRef(false);
   // `paused` of the previous commit: the camera effect reads it BEFORE the effect that updates it.
   const wasPausedRef = useRef(paused);
+  // Stops a running reveal fly-in: its per-frame camera writes would undo a pinch zoom.
+  const stopRevealRef = useRef<() => void>(() => {});
   const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [reducedMotion] = useState(prefersReducedMotion);
   const routeScene = useRouteScene({ route, globeRef, containerRef, reducedMotion, fading: routeFading });
@@ -192,12 +198,14 @@ export function GlobeCanvas({
       // back from under the hand. Controls fire `start` only once rotation really began.
       const stopReveal = () => cancelAnimationFrame(rafId);
       controls.addEventListener("start", stopReveal);
+      stopRevealRef.current = stopReveal;
 
       globe.pointOfView(revealPov(target, 0, spin, POV_FLIGHT_MS), 0);
       rafId = requestAnimationFrame(step);
       return () => {
         cancelAnimationFrame(rafId);
         controls.removeEventListener("start", stopReveal);
+        stopRevealRef.current = () => {};
       };
     }
 
@@ -242,25 +250,15 @@ export function GlobeCanvas({
     canvasEl.style.touchAction = "auto";
 
     let isDraggingSphere = false;
-
-    const hitsSphere = (event: PointerEvent): boolean => {
-      // Raycast normalizes the point by the canvas LAYOUT size, but the canvas lives inside a
-      // transformed stage (scale from face framing), so convert screen coordinates to layout ones
-      // via the actual rect, otherwise the hit test drifts toward the sphere edges.
-      const rect = el.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return false;
-
-      const x = ((event.clientX - rect.left) * size.width) / rect.width;
-      const y = ((event.clientY - rect.top) * size.height) / rect.height;
-      return globe.toGlobeCoords(x, y) !== null;
-    };
+    const layoutSize = { width: size.width, height: size.height };
+    const isOverSphere = (event: PointerEvent) => hitsSphere(el, globe, layoutSize, event.clientX, event.clientY);
 
     const handlePointerDown = (event: PointerEvent) => {
       // Multi-touch: while a drag is active ignore new pointers, otherwise a second touch off the
       // sphere aborts the gesture, endDrag hits its early return and autoRotate stays off.
       if (isDraggingSphere) return;
 
-      isDraggingSphere = hitsSphere(event);
+      isDraggingSphere = isOverSphere(event);
       controls.enableRotate = isDraggingSphere;
 
       if (isDraggingSphere) {
@@ -273,7 +271,7 @@ export function GlobeCanvas({
     const handlePointerMove = (event: PointerEvent) => {
       if (isDraggingSphere) return;
 
-      el.style.cursor = hitsSphere(event) ? "grab" : "";
+      el.style.cursor = isOverSphere(event) ? "grab" : "";
     };
 
     const handleTouchMove = (event: TouchEvent) => {
@@ -382,11 +380,14 @@ export function GlobeCanvas({
     };
   }, [labelCities, paused, size.width, size.height]);
 
-  /*
-   * No wheel listener on purpose: zoom is already off via `controls.enableZoom = false` (see the
-   * effect above), and a `preventDefault` on the interactive globe would swallow PAGE scroll
-   * whenever the cursor is over the planet.
-   */
+  // A zoom only changes altitude: the next face change or resize flies the camera back to `pov`.
+  useGlobeZoom({
+    containerRef,
+    globeRef,
+    enabled: interactive,
+    size,
+    onZoom: () => stopRevealRef.current(),
+  });
 
   /*
    * WebGL must not spin idle in two cases: the tab is hidden OR the globe is hidden by the route
