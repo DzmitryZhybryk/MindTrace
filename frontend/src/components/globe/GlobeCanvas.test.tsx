@@ -726,6 +726,25 @@ describe("GlobeCanvas — подлёт камеры при появлении (r
     expect(cancelFrame).not.toHaveBeenCalled();
   });
 
+  it("щипок над сферой прерывает подлёт — кадры не перетирают выбранную высоту", () => {
+    pointOfView.mockImplementation((pov?: Pov) => (pov ? undefined : TARGET));
+    toGlobeCoords.mockReturnValue({ lat: 10, lng: 20 });
+    const { container } = renderWithProviders(<GlobeCanvas pov={TARGET} reveal interactive />);
+    act(() => fireResize?.(800, 600));
+    const el = container.querySelector<HTMLElement>(".globe-canvas");
+    if (!el) throw new Error("контейнер глобуса не отрендерился");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+    act(() => vi.advanceTimersByTime(300));
+
+    act(() => {
+      el.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, ctrlKey: true, deltaY: -20 }));
+    });
+    const [zoomed] = calls().at(-1) ?? [];
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(calls().at(-1)?.[0]).toBe(zoomed);
+  });
+
   it("смена pov у уже видимого глобуса — обычный перелёт, без повторного подлёта", () => {
     const { rerender } = renderWithProviders(<GlobeCanvas pov={TARGET} reveal />);
     act(() => fireResize?.(800, 600));

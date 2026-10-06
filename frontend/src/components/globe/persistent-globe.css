@@ -1,7 +1,7 @@
 /*
  * Persistent globe of the public zone: a fixed full-viewport background under all content.
  * `pointer-events: none`: the globe is decorative, scroll and clicks pass through it to the
- * content (which also avoids a conflict with the zoom blocking in GlobeCanvas).
+ * content. Interactive faces turn events back on below.
  */
 .persistent-globe {
   position: fixed;
