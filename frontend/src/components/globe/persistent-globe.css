@@ -71,7 +71,7 @@ body:has(.persistent-globe[data-interactive="true"])
   clip-path: inset(0);
   opacity: 1;
   transition:
-    clip-path 1.3s cubic-bezier(0.4, 0, 0.2, 1),
+    clip-path var(--dur-glide) var(--ease-glide),
     opacity 0.7s ease;
 }
 
@@ -96,7 +96,7 @@ body:has(.persistent-globe[data-interactive="true"])
   position: absolute;
   inset: 0;
   transform-origin: center;
-  transition: transform 1.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--dur-glide) var(--ease-glide);
 }
 
 .persistent-globe[data-screen="landing"] .persistent-globe__stage {

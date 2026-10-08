@@ -2,6 +2,17 @@
   position: relative;
   width: 100%;
   height: 100%;
+  /*
+   * Scene change choreography, timed against the 600 ms frame flight (useViewTransition): the old
+   * layer leaves as the camera starts, fills cross-fade mid-flight while the eye follows the
+   * motion, the new layer arrives as the frame settles.
+   */
+  --map-leave: 240ms;
+  --map-fill-fade: 450ms;
+  --map-fill-delay: 75ms;
+  --map-arrive: 240ms;
+  --map-arrive-delay: 360ms;
+  --map-mask-glide: 400ms;
 }
 
 /* Fill the area's height and crop the width: the map is always height-constrained, so top/bottom
@@ -19,46 +30,42 @@
   user-select: none;
 }
 
-/* A zoomed map is panned by dragging; the area edges dissolve instead of ending in a hard line
-   (in the whole-world view the edges are ocean and no border shows). */
-.world-map-wrap--zoomed .world-map-canvas {
-  --world-map-edge-fade: 48px;
-  touch-action: none;
-  cursor: grab;
-  mask-image:
-    linear-gradient(
-      to right,
-      transparent,
-      #000 var(--world-map-edge-fade),
-      #000 calc(100% - var(--world-map-edge-fade)),
-      transparent
-    ),
-    linear-gradient(
-      to bottom,
-      transparent,
-      #000 var(--world-map-edge-fade),
-      #000 calc(100% - var(--world-map-edge-fade)),
-      transparent
-    );
-  mask-composite: intersect;
+/* Muted land: the map is a background, what is drawn over it is the point. */
+.world-map-wrap--muted .world-map__country {
+  opacity: 0.45;
 }
 
 /*
- * A panel over the left part of the map: the map dissolves toward its edge instead of ending
- * under it, so route lines fade in where the visible map begins rather than popping out from
- * under the panel. WorldMap puts the covered strip width into --map-occluded-left.
+ * Edge masks, always present with zero widths when off: registered lengths animate, so a mask
+ * appearing or leaving (zoom, a panel over the map, a tab with or without a panel) glides instead of
+ * popping at the end of a frame flight.
  */
-.world-map-wrap--occluded .world-map-canvas {
-  --world-map-panel-fade: 48px;
-  mask-image: linear-gradient(
-    to right,
-    transparent var(--map-occluded-left),
-    #000 calc(var(--map-occluded-left) + var(--world-map-panel-fade))
-  );
+@property --world-map-edge-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
 }
 
-/* Zoomed and covered by a panel: both masks at once, the area edges and the panel edge. */
-.world-map-wrap--zoomed.world-map-wrap--occluded .world-map-canvas {
+@property --world-map-panel-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --map-occluded-left {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+/*
+ * Two masks intersect: the area edges dissolve when zoomed instead of ending in a hard line (in the
+ * whole-world view the edges are ocean and no border shows), and with a panel over the left part
+ * the map dissolves toward the panel edge, so route lines fade in where the visible map begins
+ * rather than popping out from under it. WorldMap puts the covered strip width into
+ * --map-occluded-left.
+ */
+.world-map-canvas {
   mask-image:
     linear-gradient(
       to right,
@@ -80,6 +87,21 @@
       #000 calc(var(--map-occluded-left) + var(--world-map-panel-fade))
     );
   mask-composite: intersect;
+  transition:
+    --world-map-edge-fade var(--map-mask-glide) ease-in-out,
+    --world-map-panel-fade var(--map-mask-glide) ease-in-out,
+    --map-occluded-left var(--map-mask-glide) ease-in-out;
+}
+
+/* A zoomed map is panned by dragging. */
+.world-map-wrap--zoomed .world-map-canvas {
+  --world-map-edge-fade: 48px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.world-map-wrap--occluded .world-map-canvas {
+  --world-map-panel-fade: 48px;
 }
 
 .world-map-wrap--zoomed .world-map-canvas:active {
@@ -98,9 +120,48 @@
   flex: none;
 }
 
+/* Fill and muting change with the scene (or as data arrives) by cross-fading, never by a jump. */
 .world-map__country {
   cursor: pointer;
-  transition: filter var(--dur-fast) ease;
+  transition:
+    filter var(--dur-fast) ease,
+    fill var(--map-fill-fade) ease-in-out var(--map-fill-delay),
+    opacity var(--map-fill-fade) ease-in-out var(--map-fill-delay);
+}
+
+/* The previous scene's dots and overlay, kept only while they fade out. */
+.world-map__leaving {
+  pointer-events: none;
+  animation: world-map-leave var(--map-leave) ease-out both;
+}
+
+/* The new scene's dots and overlay appear as the flight lands. */
+.world-map__arriving {
+  animation: world-map-arrive var(--map-arrive) ease-out var(--map-arrive-delay) both;
+}
+
+@keyframes world-map-leave {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes world-map-arrive {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-map-canvas,
+  .world-map__country {
+    transition: none;
+  }
+
+  .world-map__leaving,
+  .world-map__arriving {
+    animation: none;
+  }
 }
 
 /*

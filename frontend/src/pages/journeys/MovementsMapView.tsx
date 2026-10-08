@@ -7,11 +7,14 @@ import { Button, Loader, Text } from "@mantine/core";
 import { placeLabel, usePlaceNames } from "../../api/placeNames";
 import { zTransportType, type MovementsMapResponse, type TransportType } from "../../api/sdk";
 import type { MapCountry } from "../../components/WorldMap";
-import { WorldMap } from "../../components/WorldMap";
 import { WORLD_VIEW_BOX, type ViewBox } from "../../components/worldProjection";
 import { GeoNamesAttribution } from "./GeoNamesAttribution";
 import { MAP_TONE } from "./journeys-data";
 import type { JourneysOutletContext } from "./JourneysLayout";
+import type { JourneysMapScene } from "./map/journeysMapScene";
+// The shell loads the shared map lazily; importing it here ships it with this tab.
+import "./map/JourneysSharedMap";
+import { usePublishMapScene } from "./map/usePublishMapScene";
 import { connectionBounds } from "./movements/connectionBounds";
 import { MovementConnections, type ProjectedConnection } from "./movements/MovementConnections";
 import { MovementsControls, type YearWindow } from "./movements/MovementsControls";
@@ -113,6 +116,19 @@ export function MovementsMapView() {
     ),
     [connections, labelOf],
   );
+  const scene = useMemo<JourneysMapScene>(
+    () => ({
+      tabId: "movements",
+      countries: NO_COUNTRIES,
+      tone: MAP_TONE,
+      fitBounds,
+      occluderRef: panelRef,
+      isInteractive: false,
+      overlay,
+    }),
+    [fitBounds, panelRef, overlay],
+  );
+  usePublishMapScene(scene);
 
   const isError = all.isError || (hasTransport && shown.isError);
   const retry = () => {
@@ -124,15 +140,6 @@ export function MovementsMapView() {
 
   return (
     <>
-      <WorldMap
-        className="journeys-map"
-        countries={NO_COUNTRIES}
-        tone={MAP_TONE}
-        fitBounds={fitBounds}
-        occluderRef={panelRef}
-        isInteractive={false}
-        overlay={overlay}
-      />
       {all.isPending && (
         <output className="journeys-map-status">
           <Loader size="sm" color="gray" />

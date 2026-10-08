@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 
-import { isWorldView, panView, zoomView, type ViewBox } from "./worldProjection";
+import { isSameView, isWorldView, panView, zoomView, type ViewBox } from "./worldProjection";
 
 // Zoom change per pixel of wheel scroll or trackpad pinch.
 const WHEEL_ZOOM_SPEED = 0.01;
@@ -21,10 +21,6 @@ function distance(from: ScreenPosition, to: ScreenPosition): number {
   return Math.hypot(to.x - from.x, to.y - from.y);
 }
 
-function isSameView(left: ViewBox, right: ViewBox): boolean {
-  return left.x === right.x && left.y === right.y && left.width === right.width && left.height === right.height;
-}
-
 /**
  * Zoom and pan of the map by gestures, only over the map itself; the rest of the page stays put.
  *
@@ -33,17 +29,24 @@ function isSameView(left: ViewBox, right: ViewBox): boolean {
  * whole map is visible, scroll and vertical swipe go to the page.
  *
  * Gestures are listened for on `canvasRef`; the on-screen size of `svgRef` converts pixels to
- * canvas units. A new `initialView` replaces the view only while the user has not changed it.
+ * canvas units. A new `initialView` replaces the view only while the user has not changed it; a
+ * new `resetKey` drops the user's zoom and follows `initialView` again.
  * Returns the current visible area.
  */
 export function useMapZoom(
   canvasRef: RefObject<HTMLElement | null>,
   svgRef: RefObject<SVGSVGElement | null>,
   initialView: ViewBox,
+  resetKey?: unknown,
 ): ViewBox {
   const [trackedInitialView, setTrackedInitialView] = useState(initialView);
   const [view, setView] = useState(initialView);
-  if (trackedInitialView !== initialView) {
+  const [trackedResetKey, setTrackedResetKey] = useState(resetKey);
+  if (trackedResetKey !== resetKey) {
+    setTrackedResetKey(resetKey);
+    setTrackedInitialView(initialView);
+    setView(initialView);
+  } else if (trackedInitialView !== initialView) {
     setTrackedInitialView(initialView);
     // A view the user already changed is not overwritten by a new initial one (e.g. after a resize).
     if (isSameView(view, trackedInitialView)) {

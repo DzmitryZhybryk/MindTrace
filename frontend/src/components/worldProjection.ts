@@ -62,6 +62,11 @@ export function isWorldView(view: ViewBox): boolean {
   return view.width >= VIEW_WIDTH;
 }
 
+/** Whether two areas are the same by value. */
+export function isSameView(left: ViewBox, right: ViewBox): boolean {
+  return left.x === right.x && left.y === right.y && left.width === right.width && left.height === right.height;
+}
+
 /** Clamps the area to a valid one: world aspect, zoom from the whole world to 8x, inside the world. */
 export function clampView(view: ViewBox): ViewBox {
   // The world height is rounded, so width / WORLD_ASPECT would give 487.00000000000006; return

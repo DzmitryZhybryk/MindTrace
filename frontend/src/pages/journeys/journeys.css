@@ -12,7 +12,8 @@
  * Desktop: the Journeys section is a fixed-height screen with no scrolling (background map +
  * floating panel/legend). height:100vh + overflow:hidden remove any residual scroll (otherwise
  * the transparent sticky header shows a banner sliding under it while scrolling), and the stage
- * (flex:1) shrinks to the available height so the map fits whole.
+ * (flex:1) shrinks to the available height so the map fits whole. When the email banner closes the
+ * stage grows at once and useBannerCloseGlide plays that jump as a glide.
  * On mobile (<md) the rule does not apply: the shell stacks and scrolls normally.
  */
 @media (min-width: 62em) {
@@ -40,6 +41,10 @@
 .journeys-stage {
   /* Left column width: the navigation panel and the movements filter card share one width. */
   --journeys-column-width: 260px;
+  /* How the shared map and a tab's content fade in and out: the pace of the map's frame flight
+     (600 ms ease-in-out cubic in useViewTransition), so content and map arrive together. */
+  --journeys-fade: 0.6s;
+  --journeys-fade-ease: cubic-bezier(0.65, 0, 0.35, 1);
   position: relative;
   flex: 1;
   display: flex;
@@ -62,6 +67,28 @@
   /* A slight shift right so Alaska does not slip under the panel: the map size is unchanged, it
      just moves, and the empty ocean on the right goes past the stage edge. */
   transform: translateX(72px);
+  transition:
+    opacity var(--journeys-fade) var(--journeys-fade-ease),
+    visibility 0s;
+}
+
+/* Background behind a tab's content (the feed): gestures go to the content, the map is not zoomed. */
+.journeys-map--background {
+  pointer-events: none;
+}
+
+/*
+ * A screen without a map (wishlist, add): the shared map fades out but stays mounted, so coming
+ * back shows the same instance. Clicks stop at once; `visibility` flips after the fade, which also
+ * takes the map out of hit testing for the globe under the shell on /journeys/add.
+ */
+.journeys-map--hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--journeys-fade) var(--journeys-fade-ease),
+    visibility 0s var(--journeys-fade);
 }
 
 /* ---- Movements map: route arcs and place dots over countries ---------- */
@@ -683,6 +710,11 @@
     overflow: hidden;
   }
 
+  /* Here the map is in flow: a hidden one would leave an empty 58vh block above the content. */
+  .journeys-map--hidden {
+    display: none;
+  }
+
   /* Attribution goes in a line under the map. */
   .journeys-map-attribution {
     position: static;
@@ -746,5 +778,12 @@
 
   .add-journey__globe-col {
     display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journeys-map,
+  .journeys-map--hidden {
+    transition: none;
   }
 }

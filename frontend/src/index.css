@@ -103,9 +103,12 @@
   --header-height: 90px;
 
   /* Micro-animations (hover/focus/active on links, buttons, cards): one token, since 10-30 ms
-     differences are invisible to the eye. Long transitions (camera flight 1.3s, screen
-     cross-fade 1.1s) are a different role and are NOT covered. */
+     differences are invisible to the eye. Long transitions are a different role. */
   --dur-fast: 0.15s;
+  /* The long glide shared by the globe camera framing, the home greeting and the Journeys stage
+     when the email banner closes, so they move as one. Mirrored in useBannerCloseGlide.ts. */
+  --dur-glide: 1.3s;
+  --ease-glide: cubic-bezier(0.4, 0, 0.2, 1);
   /* Action button radius. Matches `radius.md` in theme.ts used by all Mantine buttons, so the same
      "primary action" has one shape on both sides of login. Header switcher pills are a DIFFERENT
      role (navigation, not action) and keep their own shape. */

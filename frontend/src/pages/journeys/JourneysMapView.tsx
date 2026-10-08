@@ -6,10 +6,14 @@ import { Button, Loader, Text } from "@mantine/core";
 import { placeLabel, usePlaceNames } from "../../api/placeNames";
 import { getJourneysMapOptions, type JourneysMapResponse } from "../../api/sdk";
 import type { MapCountry } from "../../components/WorldMap";
-import { WorldMap } from "../../components/WorldMap";
 import { GeoNamesAttribution } from "./GeoNamesAttribution";
 import { JourneysLegendCard } from "./JourneysLegendCard";
 import { MAP_TONE } from "./journeys-data";
+import type { JourneysMapScene } from "./map/journeysMapScene";
+// The shell loads the shared map lazily; importing it here ships it with this tab, without a
+// second round trip after the tab renders.
+import "./map/JourneysSharedMap";
+import { usePublishMapScene } from "./map/usePublishMapScene";
 
 // Stable "no countries" reference: `WorldMap` recomputes colouring by prop identity.
 const NO_COUNTRIES: readonly MapCountry[] = [];
@@ -37,8 +41,8 @@ function toMapCountries(response: JourneysMapResponse): readonly MapCountry[] {
 
 /**
  * "Journey map" sub-tab, the index route /journeys. Fetches the user's journey aggregate from
- * the backend and colours the world map; an empty set means a grey map (no journeys).
- * Loading/error show as an overlay over the map; the map itself renders immediately.
+ * the backend and colours the shared world map; an empty set means a grey map (no journeys).
+ * Loading/error show as an overlay over the map; the map itself shows immediately.
  */
 export function JourneysMapView() {
   const { t } = useTranslation("journeys");
@@ -62,10 +66,14 @@ export function JourneysMapView() {
       })),
     [countries, nameOf, unknownLabel],
   );
+  const scene = useMemo<JourneysMapScene>(
+    () => ({ tabId: "journeys", countries: namedCountries, tone: MAP_TONE }),
+    [namedCountries],
+  );
+  usePublishMapScene(scene);
 
   return (
     <>
-      <WorldMap className="journeys-map" countries={namedCountries} tone={MAP_TONE} />
       {isPending && (
         <output className="journeys-map-status">
           <Loader size="sm" color="gray" />

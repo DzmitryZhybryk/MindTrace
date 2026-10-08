@@ -4,9 +4,10 @@ import { useTranslation } from "react-i18next";
 import { placeLabel, usePlaceNames } from "../../../api/placeNames";
 import type { JourneyFeedEntry } from "../../../api/sdk";
 import type { MapCountry } from "../../../components/WorldMap";
-import { WorldMap } from "../../../components/WorldMap";
 import { projectToScreen, WORLD_VIEW_BOX, type ViewBox } from "../../../components/worldProjection";
 import { MAP_TONE } from "../journeys-data";
+import type { JourneysMapScene } from "../map/journeysMapScene";
+import { usePublishMapScene } from "../map/usePublishMapScene";
 import { connectionBounds } from "../movements/connectionBounds";
 import { placeLabels } from "../movements/labelPlacement";
 import { piecePath, projectArc } from "../movements/movementGeometry";
@@ -21,25 +22,27 @@ const LABEL_GAP = 2;
 const LABEL_CLEARANCE = 1.2;
 const LABEL_HALO_WIDTH = 2.4;
 
-interface FeedBackdropMapProps {
+interface FeedMapSceneOptions {
   /** Loaded feed journeys: before the first hover the frame covers all of them. */
   journeys: readonly JourneyFeedEntry[];
   /** Journey whose arc to show; `null` means a map without an arc. */
   activeJourney: JourneyFeedEntry | null;
   /** Feed column over the map: the frame fits into the part it does not cover. */
   occluderRef: RefObject<HTMLElement | null>;
+  /** `false` (narrow screen, the column is full width): the feed has no map. */
+  isEnabled: boolean;
 }
 
 /**
- * Muted world map behind the feed, visible through the column: the arc of the journey the user is
- * on (hovered, focused, edited or dragged) with place names at the ends. The map is background and
- * not clickable.
+ * Publishes the feed's scene on the shared map: muted land behind the column, visible through it,
+ * and the arc of the journey the user is on (hovered, focused, edited or dragged) with place names
+ * at the ends. The map is background and not clickable.
  *
  * The frame glides to the hovered journey and stays on it after the cursor leaves the feed, so the
  * map does not jump back and forth. Before the first hover the frame covers all loaded journeys.
  * The arc is redrawn for each new journey, keyed by its id.
  */
-export function FeedBackdropMap({ journeys, activeJourney, occluderRef }: FeedBackdropMapProps) {
+export function useFeedMapScene({ journeys, activeJourney, occluderRef, isEnabled }: FeedMapSceneOptions): void {
   const { t } = useTranslation("common");
   const [framedJourney, setFramedJourney] = useState<JourneyFeedEntry | null>(null);
   if (activeJourney !== null && activeJourney !== framedJourney) {
@@ -120,17 +123,24 @@ export function FeedBackdropMap({ journeys, activeJourney, occluderRef }: FeedBa
     [activeJourney, arc, nameOf, unknownLabel],
   );
 
-  return (
-    <WorldMap
-      className="journeys-map feed-map"
-      countries={NO_COUNTRIES}
-      tone={MAP_TONE}
-      fitBounds={fitBounds}
-      occluderRef={occluderRef}
-      shouldFadeUnderOccluder={false}
-      isFitAnimated
-      isInteractive={false}
-      overlay={overlay}
-    />
+  const scene = useMemo<JourneysMapScene | null>(
+    () =>
+      isEnabled
+        ? {
+            tabId: "feed",
+            countries: NO_COUNTRIES,
+            tone: MAP_TONE,
+            fitBounds,
+            occluderRef,
+            shouldFadeUnderOccluder: false,
+            isFitAnimated: true,
+            isInteractive: false,
+            isLandMuted: true,
+            isDecorative: true,
+            overlay,
+          }
+        : null,
+    [isEnabled, fitBounds, occluderRef, overlay],
   );
+  usePublishMapScene(scene);
 }

@@ -4,14 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { pickPlace } from "../../../test/addJourney";
 import { FEED_JOURNEYS, server } from "../../../test/handlers";
 import { preferReducedMotion } from "../../../test/motion";
-import { act, renderWithProviders, screen, waitFor, within } from "../../../test/render";
-import { AllJourneysView } from "./AllJourneysView";
+import { renderAllJourneys } from "../../../test/journeysMap";
+import { act, screen, waitFor, within } from "../../../test/render";
 
 const [MOSCOW_TO_LONDON, , PARIS_TO_MOSCOW] = FEED_JOURNEYS;
 
 /** Opens the feed and editing of the Moscow -> London row by clicking its departure place. */
 async function openMoscowToLondonEditor() {
-  const rendered = renderWithProviders(<AllJourneysView />);
+  const rendered = renderAllJourneys();
   const year2021 = await screen.findByRole("region", { name: "2021" });
   await rendered.user.click(await within(year2021).findByRole("button", { name: "Moscow" }));
   await screen.findByRole("button", { name: "Save" });
@@ -218,7 +218,7 @@ describe("AllJourneysView — правка и удаление", () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    const { user } = renderWithProviders(<AllJourneysView />);
+    const { user } = renderAllJourneys();
     await screen.findByRole("region", { name: "2021" });
     screen.getByRole("slider", { name: "To year" }).focus();
     await user.keyboard("{ArrowLeft}{ArrowLeft}");

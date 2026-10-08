@@ -4,6 +4,7 @@ import type { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import { GEO_PLACES } from "../../test/handlers";
 import { act, renderWithProviders } from "../../test/render";
+import { stubResizeObserver } from "../../test/resizeObserver";
 import { GlobeCanvas } from "./GlobeCanvas";
 import { createGlobeLabel } from "./globeLabel";
 import type { GlobeRoute } from "./route";
@@ -13,29 +14,9 @@ import type { GlobeCity } from "./routes";
 /*
  * The branches of this component open only once the container gets a SIZE: before that `<Globe>`
  * is not mounted, the ref is empty and the camera setup effect exits on its first line. The global
- * ResizeObserver stub from `src/test/setup.ts` never fires its callback, so this file has its own,
- * manually controlled one.
+ * ResizeObserver stub from `src/test/setup.ts` never fires its callback, so the test fires it.
  */
 let fireResize: ((width: number, height: number) => void) | null = null;
-
-class ControllableResizeObserver {
-  // The field is declared separately, not as a parameter property: the project enables
-  // `erasableSyntaxOnly` and `constructor(private readonly ...)` fails tsc.
-  callback: ResizeObserverCallback;
-
-  constructor(callback: ResizeObserverCallback) {
-    this.callback = callback;
-    fireResize = (width, height) => {
-      this.callback(
-        [{ contentRect: { width, height } } as unknown as ResizeObserverEntry],
-        this as unknown as ResizeObserver,
-      );
-    };
-  }
-  observe(): void {}
-  unobserve(): void {}
-  disconnect(): void {}
-}
 
 /** The globe.gl instance that the mock returns instead of real three/WebGL. */
 let controls: Pick<OrbitControls,
@@ -84,7 +65,6 @@ function setReducedMotion(reduced: boolean) {
 }
 
 beforeEach(() => {
-  fireResize = null;
   globeProps = {};
   controls = Object.assign(new EventDispatcher(), {
     autoRotate: false, autoRotateSpeed: 0, enableZoom: true, enablePan: true, enableRotate: true,
@@ -92,7 +72,7 @@ beforeEach(() => {
   // By default "off the sphere": each test sets a hit explicitly.
   toGlobeCoords.mockReturnValue(null);
   cameraStub.matrixWorld.elements = [0];
-  vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
+  fireResize = stubResizeObserver();
   setReducedMotion(false);
 });
 

@@ -48,7 +48,7 @@
    * shifted down under it; when the class is removed the transform returns to 0.
    */
   .home-greeting {
-    transition: transform 1.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--dur-glide) var(--ease-glide);
   }
 
   /* Shift is about the email banner height (~50px): holds the greeting under it while it shows.
