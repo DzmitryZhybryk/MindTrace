@@ -220,15 +220,17 @@ export function WorldMap({
   const [initialView, setInitialView] = useState<ViewBox>(WORLD_VIEW_BOX);
   const [occludedLeft, setOccludedLeft] = useState(0);
   useLayoutEffect(() => {
-    const canvas = canvasRef.current;
-    if ((!fitBounds && !occluderRef) || !canvas) {
+    // Measured on the wrap, the canvas's same-size parent: the banner-close glide scales the canvas,
+    // and its transformed rect would shift the panel edge for good (a transform fires no resize).
+    const wrap = wrapRef.current;
+    if ((!fitBounds && !occluderRef) || !wrap) {
       setInitialView(WORLD_VIEW_BOX);
       setOccludedLeft(0);
       return;
     }
 
     const measure = () => {
-      const canvasRect = canvas.getBoundingClientRect();
+      const canvasRect = wrap.getBoundingClientRect();
       const occluderRect = occluderRef?.current?.getBoundingClientRect();
       // The panel covers the map only if it lies over it; on mobile width it sits above the map.
       const isOverlapping =
@@ -247,7 +249,7 @@ export function WorldMap({
 
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(canvas);
+    observer.observe(wrap);
     return () => observer.disconnect();
   }, [fitBounds, occluderRef]);
 

@@ -52,6 +52,13 @@
   }
 }
 
+/* The leaving layer remounts the overlay under a new key; replaying the entry would redraw the arc as it fades. */
+.world-map__leaving .feed-arc__line,
+.world-map__leaving .feed-arc__dot,
+.world-map__leaving .feed-arc__label {
+  animation: none;
+}
+
 /* The column is offset from the floating panel (left:32 + width:260), like the add form. */
 .all-journeys__column {
   position: relative;

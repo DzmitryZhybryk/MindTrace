@@ -8,8 +8,10 @@ const GLIDE_EASING = "cubic-bezier(0.4, 0, 0.2, 1)";
 // Below it the section stacks and scrolls; the jump is the page's ordinary reflow there.
 const DESKTOP_QUERY = "(min-width: 62em)";
 // Layers anchored to the stage top. Bottom-anchored ones (legend, credit, the movements card in its
-// default corner) do not move when the stage grows upward.
-const TOP_LAYERS = ".journeys-panel, .all-journeys__column, .add-journey";
+// default corner) do not move when the stage grows upward; a dragged card is placed by inline `top`.
+const TOP_LAYERS = ".journeys-panel, .all-journeys__column, .add-journey, .movements-controls[style*='top']";
+// Layers centred in the stage (the map's loading and error status) move by half the growth.
+const CENTRED_LAYERS = ".journeys-map-status";
 const MAP_CANVAS = ".journeys-map .world-map-canvas";
 
 /**
@@ -38,9 +40,13 @@ export function useBannerCloseGlide(stageRef: RefObject<HTMLElement | null>): vo
       }
 
       const timing: KeyframeAnimationOptions = { duration: GLIDE_MS, easing: GLIDE_EASING };
-      for (const layer of stage.querySelectorAll<HTMLElement>(TOP_LAYERS)) {
-        layer.animate?.([{ transform: `translateY(${shift}px)` }, { transform: "none" }], timing);
-      }
+      const glideDown = (selector: string, distance: number) => {
+        for (const layer of stage.querySelectorAll<HTMLElement>(selector)) {
+          layer.animate?.([{ transform: `translateY(${distance}px)` }, { transform: "none" }], timing);
+        }
+      };
+      glideDown(TOP_LAYERS, shift);
+      glideDown(CENTRED_LAYERS, shift / 2);
 
       const canvas = stage.querySelector<HTMLElement>(MAP_CANVAS);
       const height = canvas?.getBoundingClientRect().height ?? 0;

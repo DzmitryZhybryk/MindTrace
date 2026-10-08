@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { stubScreenLayout, type ScreenRect } from "../../test/layout";
@@ -12,7 +12,7 @@ const BANNER_HEIGHT = 52;
 const CANVAS_HEIGHT = 600;
 
 /** The stage with what the hook moves (panel, map canvas) and what it must leave (legend). */
-function Stage() {
+function Stage({ children }: { children?: ReactNode }) {
   const stageRef = useRef<HTMLElement>(null);
   useBannerCloseGlide(stageRef);
   return (
@@ -22,6 +22,7 @@ function Stage() {
         <div className="world-map-canvas" />
       </div>
       <div className="journeys-legend-card" />
+      {children}
     </main>
   );
 }
@@ -84,6 +85,24 @@ describe("useBannerCloseGlide", () => {
         ],
       },
     ]);
+  });
+
+  it("перетащенная карточка едет с панелью, карточка в углу стоит, статус карты — на половину сдвига", () => {
+    matchMediaQueries(DESKTOP_QUERY);
+    renderWithProviders(
+      <Stage>
+        <section className="movements-controls dragged" style={{ left: 300, top: 40, bottom: "auto" }} />
+        <section className="movements-controls cornered" />
+        <output className="journeys-map-status" />
+      </Stage>,
+    );
+
+    moveStageUp(BANNER_HEIGHT);
+
+    const moved = (className: string) => glides.find((glide) => glide.className === className)?.keyframes[0];
+    expect(moved("movements-controls dragged")).toEqual({ transform: `translateY(${BANNER_HEIGHT}px)` });
+    expect(moved("movements-controls cornered")).toBeUndefined();
+    expect(moved("journeys-map-status")).toEqual({ transform: `translateY(${BANNER_HEIGHT / 2}px)` });
   });
 
   it("появление плашки и ресайз без сдвига не анимируются", () => {

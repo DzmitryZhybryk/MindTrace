@@ -191,6 +191,7 @@ describe("WorldMap", () => {
 const SCREEN_RECTS: Record<string, ScreenRect> = {
   "world-map": { left: 0, top: 0, width: 1000, height: 487 },
   "world-map-canvas": { left: 0, top: 0, width: 1000, height: 487 },
+  "world-map-wrap": { left: 0, top: 0, width: 1000, height: 487 },
   "occluder-over-map": { left: 0, top: 0, width: 400, height: 487 },
   "occluder-above-map": { left: 0, top: -300, width: 400, height: 200 },
 };
@@ -438,6 +439,22 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
     const above = renderWithProviders(<OccludedMap fitBounds={bounds} occluderClass="occluder-above-map" />);
     expect(above.container.querySelector(".world-map-wrap--occluded")).toBeNull();
     expect(canvasOf(above.container).style.getPropertyValue("--map-occluded-left")).toBe("0px");
+  });
+
+  it("масштаб канваса при закрытии плашки не сдвигает кромку панели и кадр", () => {
+    const bounds: ViewBox = { x: 400, y: 180, width: 200, height: 20 };
+    const steady = renderWithProviders(<OccludedMap fitBounds={bounds} occluderClass="occluder-over-map" />);
+    const steadyView = viewBoxOf(steady.container);
+    steady.unmount();
+
+    // The banner glide scales the canvas from its bottom centre; the wrap around it keeps the real box.
+    stubScreenLayout({ ...SCREEN_RECTS, "world-map-canvas": { left: 45, top: 45, width: 910, height: 442 } });
+    const { container } = renderWithProviders(<OccludedMap fitBounds={bounds} occluderClass="occluder-over-map" />);
+
+    expect(canvasOf(container).style.getPropertyValue("--map-occluded-left")).toBe(
+      `${SCREEN_RECTS["occluder-over-map"].width}px`,
+    );
+    expect(viewBoxOf(container)).toEqual(steadyView);
   });
 
   it("сквозь прозрачную панель карта видна целиком, а кадр всё равно правее панели", () => {

@@ -71,6 +71,7 @@ describe("AllJourneysView", () => {
     stubScreenLayout({
       "world-map": { left: 0, top: 0, width: 1000, height: 487 },
       "world-map-canvas": { left: 0, top: 0, width: 1000, height: 487 },
+      "world-map-wrap": { left: 0, top: 0, width: 1000, height: 487 },
       "all-journeys__column": { left: 0, top: 0, width: 400, height: 487 },
     });
     const { container } = renderAllJourneys();

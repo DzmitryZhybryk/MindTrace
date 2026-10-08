@@ -152,6 +152,28 @@ describe("JourneysMapHost", () => {
     expect(map).toHaveClass("journeys-map--hidden");
   });
 
+  it("возврат с ленты на узком экране — как с экрана без карты: без перелёта и со сброшенным зумом", async () => {
+    stubScreenLayout({
+      "world-map": { left: 0, top: 0, width: 1000, height: 487 },
+      "world-map-canvas": { left: 0, top: 0, width: 1000, height: 487 },
+    });
+    const { container, user } = renderJourneysTabs(TABS, "/journeys/movements");
+    const map = await findMap(container);
+    const canvas = map.querySelector<HTMLElement>(".world-map-canvas");
+    if (!canvas) throw new Error("Область карты не найдена");
+    const viewBoxWidth = () => Number(map.querySelector(".world-map")?.getAttribute("viewBox")?.split(" ")[2]);
+    fireEvent.wheel(canvas, { ctrlKey: true, deltaY: -100 * Math.LN2, clientX: 250, clientY: 100 });
+    expect(viewBoxWidth()).toBe(WORLD_VIEW_BOX.width / 2);
+
+    await user.click(screen.getByRole("link", { name: "/journeys/all" }));
+    await user.click(screen.getByRole("link", { name: "/journeys" }));
+
+    expect(map.querySelector(".journeys-mark")).not.toBeNull();
+    expect(map.querySelector(".world-map__leaving")).toBeNull();
+    expect(map.querySelector(".world-map__arriving")).toBeNull();
+    await waitFor(() => expect(viewBoxWidth()).toBe(WORLD_VIEW_BOX.width));
+  });
+
   it("открытие сразу экрана без карты карту не грузит вовсе", async () => {
     const { container } = renderJourneysTabs(TABS, "/journeys/add");
     await act(async () => {

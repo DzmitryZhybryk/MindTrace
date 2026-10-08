@@ -36,15 +36,16 @@ export function JourneysMapHost() {
   const isOnMapRoute = isMapRoute(pathname);
   const [reducedMotion] = useState(prefersReducedMotion);
 
-  // Decided on navigation, not on the scene: the new tab's scene arrives a render after its route.
+  // Decided on navigation, not on the scene: the new tab's scene arrives a render after its route,
+  // so `scene` here is still the previous screen's one (`null` for the feed on a narrow screen).
   const [trackedPathname, setTrackedPathname] = useState(pathname);
   const [isFlightAllowed, setIsFlightAllowed] = useState(false);
   const [visit, setVisit] = useState(0);
   if (pathname !== trackedPathname) {
-    const wasOnMapRoute = isMapRoute(trackedPathname);
+    const wasMapShown = isMapRoute(trackedPathname) && scene !== null;
     setTrackedPathname(pathname);
-    setIsFlightAllowed(wasOnMapRoute && isOnMapRoute);
-    if (!wasOnMapRoute && isOnMapRoute) {
+    setIsFlightAllowed(wasMapShown && isOnMapRoute);
+    if (!wasMapShown && isOnMapRoute) {
       setVisit((current) => current + 1);
     }
   }
