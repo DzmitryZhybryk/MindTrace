@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { stubScreenLayout, type ScreenRect } from "../test/layout";
 import { preferReducedMotion } from "../test/motion";
 import { renderWithProviders, screen, waitFor } from "../test/render";
+import { countriesWithFill } from "../test/worldMap";
 import type { MapCountry, WorldMapTone } from "./WorldMap";
 import { WorldMap } from "./WorldMap";
 import { WORLD_VIEW_BOX, type ViewBox } from "./worldProjection";
@@ -29,7 +30,7 @@ const COUNTRIES: MapCountry[] = [
 ];
 
 function pathByFill(container: HTMLElement, fill: string): SVGPathElement {
-  const path = container.querySelector<SVGPathElement>(`.world-map__country[fill="${fill}"]`);
+  const [path] = countriesWithFill(container, fill);
   if (!path) {
     throw new Error(`Страна с заливкой ${fill} не найдена`);
   }
@@ -44,9 +45,9 @@ describe("WorldMap", () => {
     );
 
     // Visited and wishlist countries get their fills, the rest get land.
-    expect(container.querySelector(`.world-map__country[fill="${TONE.visited}"]`)).not.toBeNull();
-    expect(container.querySelector(`.world-map__country[fill="${TONE.wishlist}"]`)).not.toBeNull();
-    expect(container.querySelectorAll(`.world-map__country[fill="${TONE.land}"]`).length).toBeGreaterThan(0);
+    expect(countriesWithFill(container, TONE.visited)).toHaveLength(1);
+    expect(countriesWithFill(container, TONE.wishlist)).toHaveLength(1);
+    expect(countriesWithFill(container, TONE.land).length).toBeGreaterThan(0);
     // A visited country's city is one dot.
     expect(container.querySelectorAll(".world-map__city-dot")).toHaveLength(1);
     // The map's accessible name and the external modifier class.
@@ -141,11 +142,7 @@ describe("WorldMap", () => {
     );
 
     // Any country outside the countries prop gets status land, a muted "not visited yet".
-    const landPath = container.querySelector<SVGPathElement>(`.world-map__country[fill="${TONE.land}"]`);
-    if (!landPath) {
-      throw new Error("Непосещённая страна не найдена");
-    }
-    await user.hover(landPath);
+    await user.hover(pathByFill(container, TONE.land));
 
     expect(await screen.findByText("Not visited yet")).toBeInTheDocument();
   });
@@ -436,10 +433,11 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
     );
     over.unmount();
 
-    // A panel above the map (mobile layout) covers nothing, so there is nothing to fade.
+    // A panel above the map (mobile layout) covers nothing, so there is nothing to fade. "No strip"
+    // is a zero width rather than an unset variable, so the panel mask can glide in and out.
     const above = renderWithProviders(<OccludedMap fitBounds={bounds} occluderClass="occluder-above-map" />);
     expect(above.container.querySelector(".world-map-wrap--occluded")).toBeNull();
-    expect(canvasOf(above.container).style.getPropertyValue("--map-occluded-left")).toBe("");
+    expect(canvasOf(above.container).style.getPropertyValue("--map-occluded-left")).toBe("0px");
   });
 
   it("сквозь прозрачную панель карта видна целиком, а кадр всё равно правее панели", () => {
@@ -453,7 +451,7 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
     );
 
     expect(container.querySelector(".world-map-wrap--occluded")).toBeNull();
-    expect(canvasOf(container).style.getPropertyValue("--map-occluded-left")).toBe("");
+    expect(canvasOf(container).style.getPropertyValue("--map-occluded-left")).toBe("0px");
     expect(viewBoxOf(container)).toEqual(fadedView);
   });
 
@@ -494,5 +492,133 @@ describe("WorldMap: масштаб и слой поверх карты", () => {
     rerender(<OccludedMap fitBounds={second} occluderClass="occluder-above-map" isFitAnimated />);
 
     expect(viewBoxOf(container)).toEqual(secondView);
+  });
+});
+
+describe("WorldMap: смена сцены", () => {
+  const SCENE_BOUNDS: ViewBox = { x: 100, y: 100, width: 300, height: 30 };
+
+  beforeEach(() => {
+    stubScreenLayout(SCREEN_RECTS);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** The view a map fitted to `SCENE_BOUNDS` opens on: the end of every scene change below. */
+  function sceneView(): ViewBox {
+    const { container, unmount } = renderWithProviders(
+      <WorldMap countries={COUNTRIES} tone={TONE} fitBounds={SCENE_BOUNDS} />,
+    );
+    const view = viewBoxOf(container);
+    unmount();
+    return view;
+  }
+
+  /** A map on the whole world, zoomed in 2x by the user; returns its view after the zoom. */
+  function renderZoomedScene() {
+    const rendered = renderWithProviders(<WorldMap countries={COUNTRIES} tone={TONE} sceneKey="first" />);
+    fireEvent.wheel(canvasOf(rendered.container), {
+      ctrlKey: true,
+      deltaY: ZOOM_IN_TWICE_DELTA,
+      clientX: 250,
+      clientY: 100,
+    });
+    return { ...rendered, zoomedView: viewBoxOf(rendered.container) };
+  }
+
+  it("новая сцена сбрасывает ручной зум и перелетает к своему кадру от того, что на экране", async () => {
+    const targetView = sceneView();
+    const { container, rerender, zoomedView } = renderZoomedScene();
+    expect(zoomedView.width).toBe(WORLD_VIEW_BOX.width / 2);
+
+    rerender(<WorldMap countries={COUNTRIES} tone={TONE} sceneKey="second" fitBounds={SCENE_BOUNDS} />);
+
+    // The flight starts at the zoomed view on screen, passes an intermediate frame, lands on the scene's frame.
+    expect(viewBoxOf(container)).toEqual(zoomedView);
+    await waitFor(() => {
+      const view = viewBoxOf(container);
+      expect(view.x).not.toBe(zoomedView.x);
+      expect(view.x).not.toBe(targetView.x);
+    });
+    await waitFor(() => expect(viewBoxOf(container)).toEqual(targetView));
+    // The new scene's layer arrives staged, as the flight lands.
+    expect(container.querySelector(".world-map__arriving")).not.toBeNull();
+  });
+
+  it.each([
+    ["без анимации смены", false, () => {}],
+    ["при «меньше движения»", true, preferReducedMotion],
+  ] as const)("%s новая сцена встаёт в свой кадр сразу и тоже сбрасывает зум", async (_, isAnimated, setUp) => {
+    setUp();
+    const targetView = sceneView();
+    const { container, rerender } = renderZoomedScene();
+
+    rerender(
+      <WorldMap
+        countries={COUNTRIES}
+        tone={TONE}
+        sceneKey="second"
+        fitBounds={SCENE_BOUNDS}
+        isSceneChangeAnimated={isAnimated}
+      />,
+    );
+
+    await waitFor(() => expect(viewBoxOf(container)).toEqual(targetView));
+    expect(container.querySelector(".world-map__arriving")).toBeNull();
+  });
+
+  it("первая сцена появляется как есть, без постановки", () => {
+    const { container } = renderWithProviders(<WorldMap countries={COUNTRIES} tone={TONE} sceneKey="first" />);
+
+    expect(container.querySelector(".world-map__arriving")).toBeNull();
+    expect(container.querySelectorAll(".world-map__city-dot")).toHaveLength(1);
+  });
+
+  it("слой прошлой сцены — её точки и наложение — рисуется поверх стран, пока гаснет", () => {
+    const { container } = renderWithProviders(
+      <WorldMap
+        countries={[]}
+        tone={TONE}
+        leaving={{ key: "previous", countries: COUNTRIES, overlay: () => <circle className="previous-overlay" /> }}
+      />,
+    );
+
+    const leaving = container.querySelector(".world-map__leaving");
+    expect(leaving?.querySelectorAll(".world-map__city-dot")).toHaveLength(1);
+    expect(leaving?.querySelector(".previous-overlay")).not.toBeNull();
+    // The current scene has no cities: the only dot belongs to the leaving layer.
+    expect(container.querySelectorAll(".world-map__city-dot")).toHaveLength(1);
+  });
+});
+
+describe("WorldMap: фон", () => {
+  it("приглушённая суша и декоративная карта: класс приглушения, карта скрыта от скринридера", () => {
+    const { container } = renderWithProviders(
+      <WorldMap countries={COUNTRIES} tone={TONE} isLandMuted isDecorative />,
+    );
+
+    const wrap = container.querySelector(".world-map-wrap");
+    expect(wrap).toHaveClass("world-map-wrap--muted");
+    expect(wrap).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("обычная карта не приглушена и видна скринридеру", () => {
+    const { container } = renderWithProviders(<WorldMap countries={COUNTRIES} tone={TONE} />);
+
+    const wrap = container.querySelector(".world-map-wrap");
+    expect(wrap).not.toHaveClass("world-map-wrap--muted");
+    expect(wrap).not.toHaveAttribute("aria-hidden");
+  });
+
+  it("карта, ставшая неинтерактивной, убирает показанный тултип", async () => {
+    const { container, user, rerender } = renderWithProviders(<WorldMap countries={COUNTRIES} tone={TONE} />);
+    await user.hover(pathByFill(container, TONE.visited));
+    expect(await screen.findByText("Russia")).toBeInTheDocument();
+
+    rerender(<WorldMap countries={COUNTRIES} tone={TONE} isInteractive={false} />);
+
+    expect(screen.queryByText("Russia")).not.toBeInTheDocument();
   });
 });

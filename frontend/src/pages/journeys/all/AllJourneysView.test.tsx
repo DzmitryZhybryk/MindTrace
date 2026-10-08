@@ -6,8 +6,8 @@ import { FEED_JOURNEYS, server } from "../../../test/handlers";
 import { intersectAllObserved, reportIntersection } from "../../../test/intersection";
 import { stubScreenLayout } from "../../../test/layout";
 import { matchMediaQueries } from "../../../test/motion";
-import { act, renderWithProviders, screen, waitFor, within } from "../../../test/render";
-import { AllJourneysView } from "./AllJourneysView";
+import { renderAllJourneys } from "../../../test/journeysMap";
+import { act, screen, waitFor, within } from "../../../test/render";
 
 const DESKTOP_QUERY = "(min-width: 62em)";
 
@@ -29,7 +29,7 @@ function recordFeedRequests(
 
 describe("AllJourneysView", () => {
   it("показывает поездки по годам — свежий год сверху — с названиями мест и расстоянием", async () => {
-    renderWithProviders(<AllJourneysView />);
+    renderAllJourneys();
 
     const year2021 = await screen.findByRole("region", { name: "2021" });
     const year2019 = screen.getByRole("region", { name: "2019" });
@@ -42,7 +42,7 @@ describe("AllJourneysView", () => {
 
   it("наведённая поездка — дуга на карте с названиями её мест; другая строка меняет подписи", async () => {
     matchMediaQueries(DESKTOP_QUERY);
-    const { container } = renderWithProviders(<AllJourneysView />);
+    const { container } = renderAllJourneys();
     const year2021 = await screen.findByRole("region", { name: "2021" });
     await within(year2021).findByRole("button", { name: "Moscow" });
     const [moscowToLondon, londonToParis] = within(year2021).getAllByRole("listitem");
@@ -55,11 +55,15 @@ describe("AllJourneysView", () => {
     await waitFor(() => expect(mapLabels()).toEqual(["London", "Paris"]));
   });
 
-  it("на узком экране карты за лентой нет — её даже не загружаем", async () => {
-    const { container } = renderWithProviders(<AllJourneysView />);
+  it("на узком экране карты за лентой нет", async () => {
+    const { container } = renderAllJourneys();
     await screen.findByRole("region", { name: "2021" });
+    // The shared map is a lazy chunk: let it resolve, so its absence is not just a pending load.
+    await act(async () => {
+      await import("../map/JourneysSharedMap");
+    });
 
-    expect(container.querySelector(".all-journeys__map")).toBeNull();
+    expect(container.querySelector(".world-map")).toBeNull();
   });
 
   it("кадр карты переезжает к наведённой поездке и остаётся на ней, когда курсор ушёл с ленты", async () => {
@@ -69,7 +73,7 @@ describe("AllJourneysView", () => {
       "world-map-canvas": { left: 0, top: 0, width: 1000, height: 487 },
       "all-journeys__column": { left: 0, top: 0, width: 400, height: 487 },
     });
-    const { container } = renderWithProviders(<AllJourneysView />);
+    const { container } = renderAllJourneys();
     const year2021 = await screen.findByRole("region", { name: "2021" });
     const [moscowToLondon, londonToParis] = within(year2021).getAllByRole("listitem");
     const viewBox = () => container.querySelector(".world-map")?.getAttribute("viewBox");
@@ -96,7 +100,7 @@ describe("AllJourneysView", () => {
       http.get("/v1/journeys/", () => HttpResponse.json({ items: [], nextCursor: null })),
       http.get("/v1/journeys/years", () => HttpResponse.json({ years: [] })),
     );
-    renderWithProviders(<AllJourneysView />);
+    renderAllJourneys();
 
     expect(await screen.findByText("No journeys yet")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Add your first journey" })).toHaveAttribute("href", "/journeys/add");
@@ -104,7 +108,7 @@ describe("AllJourneysView", () => {
 
   it("ползунок лет сужает ленту, запрос уходит, когда ручка остановилась; ручки по краям — все годы", async () => {
     const requests = recordFeedRequests();
-    const { user } = renderWithProviders(<AllJourneysView />);
+    const { user } = renderAllJourneys();
     await screen.findByRole("region", { name: "2021" });
 
     screen.getByRole("slider", { name: "To year" }).focus();
@@ -132,7 +136,7 @@ describe("AllJourneysView", () => {
         ? filteredGate.then(() => HttpResponse.json({ items: [FEED_JOURNEYS[2]], nextCursor: null }))
         : HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null }),
     );
-    const { user, container } = renderWithProviders(<AllJourneysView />);
+    const { user, container } = renderAllJourneys();
     await screen.findByRole("region", { name: "2021" });
 
     screen.getByRole("slider", { name: "To year" }).focus();
@@ -154,7 +158,7 @@ describe("AllJourneysView", () => {
         ? filteredGate.then(() => HttpResponse.json({ items: [FEED_JOURNEYS[2]], nextCursor: null }))
         : HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: "page-2" }),
     );
-    const { user, container } = renderWithProviders(<AllJourneysView />);
+    const { user, container } = renderAllJourneys();
     await screen.findByRole("region", { name: "2021" });
 
     screen.getByRole("slider", { name: "To year" }).focus();
@@ -168,7 +172,7 @@ describe("AllJourneysView", () => {
   });
 
   it("заголовок года получает фон, только пока прилип к верху ленты", async () => {
-    renderWithProviders(<AllJourneysView />);
+    renderAllJourneys();
     const header = await screen.findByRole("heading", { name: "2021" });
     const rootBounds = DOMRect.fromRect({ x: 0, y: 100, width: 600, height: 400 });
     expect(header).not.toHaveAttribute("data-stuck");
@@ -206,7 +210,7 @@ describe("AllJourneysView", () => {
 
   it("поездки только за один год — шкалы лет нет, выбирать не из чего", async () => {
     server.use(http.get("/v1/journeys/years", () => HttpResponse.json({ years: [2021] })));
-    renderWithProviders(<AllJourneysView />);
+    renderAllJourneys();
 
     await screen.findByRole("region", { name: "2021" });
 
@@ -216,7 +220,7 @@ describe("AllJourneysView", () => {
 
   it("снятый вид транспорта уходит фильтром из оставшихся; без транспорта лента не запрашивается", async () => {
     const requests = recordFeedRequests();
-    const { user } = renderWithProviders(<AllJourneysView />);
+    const { user } = renderAllJourneys();
     await screen.findByRole("region", { name: "2021" });
 
     await user.click(screen.getByRole("checkbox", { name: "Air" }));
@@ -234,7 +238,7 @@ describe("AllJourneysView", () => {
     recordFeedRequests((params) =>
       HttpResponse.json({ items: params.has("yearFrom") ? [] : FEED_JOURNEYS, nextCursor: null }),
     );
-    const { user } = renderWithProviders(<AllJourneysView />);
+    const { user } = renderAllJourneys();
 
     (await screen.findByRole("slider", { name: "To year" })).focus();
     await user.keyboard("{ArrowLeft}");
@@ -256,7 +260,7 @@ describe("AllJourneysView", () => {
         ? HttpResponse.json({ items: [FEED_JOURNEYS[2], londonToMoscow], nextCursor: null })
         : HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: "page-2" }),
     );
-    renderWithProviders(<AllJourneysView />);
+    renderAllJourneys();
     await screen.findByRole("region", { name: "2019" });
 
     act(() => intersectAllObserved());
@@ -278,7 +282,7 @@ describe("AllJourneysView", () => {
         ? HttpResponse.json({ code: "internal_error", message: "boom" }, { status: 500 })
         : HttpResponse.json({ items: FEED_JOURNEYS.slice(2), nextCursor: null });
     });
-    const { user } = renderWithProviders(<AllJourneysView />);
+    const { user } = renderAllJourneys();
     await screen.findByRole("region", { name: "2021" });
 
     act(() => intersectAllObserved());
@@ -299,7 +303,7 @@ describe("AllJourneysView", () => {
         ? HttpResponse.json({ code: "internal_error", message: "boom" }, { status: 500 })
         : HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null }),
     );
-    const { user } = renderWithProviders(<AllJourneysView />);
+    const { user } = renderAllJourneys();
 
     expect(await screen.findByText("Couldn't load your journeys")).toBeInTheDocument();
     isFailing = false;

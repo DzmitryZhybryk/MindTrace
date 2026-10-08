@@ -16,9 +16,17 @@ import type { GeometryCollection, Topology } from "topojson-specification";
 
 import worldTopology from "../data/world-countries.topo.json";
 import { fitView } from "./fitView";
+import { prefersReducedMotion } from "./reducedMotion";
 import { useMapZoom } from "./useMapZoom";
-import { useViewTransition } from "./useViewTransition";
-import { ANTIMERIDIAN_JUMP, WORLD_VIEW_BOX, isWorldView, projectToScreen, type ViewBox } from "./worldProjection";
+import { useViewTransition, type ViewFlight } from "./useViewTransition";
+import {
+  ANTIMERIDIAN_JUMP,
+  WORLD_VIEW_BOX,
+  isSameView,
+  isWorldView,
+  projectToScreen,
+  type ViewBox,
+} from "./worldProjection";
 import "./world-map.css";
 
 /*
@@ -140,6 +148,41 @@ interface WorldMapProps {
   isFitAnimated?: boolean;
   /** `false`: no hover highlight and no tooltip; zoom still works. */
   isInteractive?: boolean;
+  /** Land is dimmed: the map is a background for what is drawn over it. */
+  isLandMuted?: boolean;
+  /** Background only: hidden from assistive technology. */
+  isDecorative?: boolean;
+  /**
+   * What the map currently shows (a tab, a screen). A new key drops the user's zoom and moves from
+   * the view on screen to the new initial view.
+   */
+  sceneKey?: string;
+  /** `false`: a new `sceneKey` lands on the new view at once instead of flying there. */
+  isSceneChangeAnimated?: boolean;
+  /** The previous scene's dots and overlay, drawn fading out while the frame flies away. */
+  leaving?: WorldMapLayer | null;
+}
+
+/** A scene's own layer over the countries: city dots and the overlay. */
+export interface WorldMapLayer {
+  key: string;
+  countries: readonly MapCountry[];
+  overlay?: (view: ViewBox) => ReactNode;
+}
+
+interface CityDot {
+  key: string;
+  cx: number;
+  cy: number;
+}
+
+function projectCityDots(countries: readonly MapCountry[]): readonly CityDot[] {
+  return countries.flatMap((country) =>
+    country.cities.map((city) => {
+      const [cx, cy] = projectToScreen(city.lng, city.lat);
+      return { key: city.id, cx, cy };
+    }),
+  );
 }
 
 // City dot radius in canvas units at the whole-world view; proportionally smaller when zoomed.
@@ -160,6 +203,11 @@ export function WorldMap({
   shouldFadeUnderOccluder = true,
   isFitAnimated = false,
   isInteractive = true,
+  isLandMuted = false,
+  isDecorative = false,
+  sceneKey,
+  isSceneChangeAnimated = true,
+  leaving = null,
 }: WorldMapProps) {
   const { t, i18n } = useTranslation("common");
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -191,7 +239,10 @@ export function WorldMap({
         occluderRect.bottom > canvasRect.top;
       const occluded = isOverlapping ? occluderRect.right - canvasRect.left : 0;
       setOccludedLeft(occluded);
-      setInitialView(fitBounds ? fitView(fitBounds, canvasRect, occluded) : WORLD_VIEW_BOX);
+      const next = fitBounds ? fitView(fitBounds, canvasRect, occluded) : WORLD_VIEW_BOX;
+      // Resize ticks recompute an equal view as a new object; keeping the old one does not restart
+      // a running transition.
+      setInitialView((current) => (isSameView(current, next) ? current : next));
     };
 
     measure();
@@ -200,14 +251,26 @@ export function WorldMap({
     return () => observer.disconnect();
   }, [fitBounds, occluderRef]);
 
-  const fittedView = useViewTransition(initialView, isFitAnimated);
-  const view = useMapZoom(canvasRef, svgRef, fittedView);
+  // A scene change starts from the view on screen, the user's zoom included, so it is captured
+  // after `useMapZoom` below; the flight then drives the fitted view and resets the zoom.
+  const [sceneFlight, setSceneFlight] = useState<ViewFlight | null>(null);
+  const fittedView = useViewTransition(initialView, isFitAnimated, sceneFlight);
+  const view = useMapZoom(canvasRef, svgRef, fittedView, sceneFlight);
+  const [trackedSceneKey, setTrackedSceneKey] = useState(sceneKey);
+  if (sceneKey !== trackedSceneKey) {
+    setTrackedSceneKey(sceneKey);
+    setSceneFlight({ from: view, isAnimated: isSceneChangeAnimated });
+  }
   const isFadedUnderOccluder = shouldFadeUnderOccluder && occludedLeft > 0;
   const isZoomed = !isWorldView(view);
   // Cache the container geometry on cursor enter instead of calling getBoundingClientRect
   // (forces reflow) on every mouse move.
   const rectRef = useRef<DOMRect | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  // Leave handlers are off while not interactive, so a tooltip shown before must be dropped here.
+  if (!isInteractive && hoveredId !== null) {
+    setHoveredId(null);
+  }
   const [pointer, setPointer] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [flip, setFlip] = useState<{ x: boolean; y: boolean }>({ x: false, y: false });
 
@@ -282,7 +345,8 @@ export function WorldMap({
               key={country.id}
               className="world-map__country"
               d={country.path}
-              fill={fill}
+              // A style, not the attribute: CSS transitions run on computed style changes.
+              style={{ fill }}
               stroke={tone.border}
               strokeWidth={0.6}
               vectorEffect="non-scaling-stroke"
@@ -296,17 +360,29 @@ export function WorldMap({
     [byId, tone, isInteractive],
   );
 
-  const cityDots = useMemo(
-    () =>
-      countries.flatMap((country) =>
-        country.cities.map((city) => {
-          const [cx, cy] = projectToScreen(city.lng, city.lat);
-          return { key: city.id, cx, cy };
-        }),
-      ),
-    [countries],
-  );
+  const cityDots = useMemo(() => projectCityDots(countries), [countries]);
+  const leavingCountries = leaving?.countries;
+  const leavingDots = useMemo(() => (leavingCountries ? projectCityDots(leavingCountries) : []), [leavingCountries]);
   const cityDotRadius = CITY_DOT_RADIUS * (view.width / WORLD_VIEW_BOX.width);
+  const renderCityDots = (dots: readonly CityDot[]) => (
+    <g className="world-map__cities">
+      {dots.map((dot) => (
+        <circle
+          key={dot.key}
+          className="world-map__city-dot"
+          cx={dot.cx}
+          cy={dot.cy}
+          r={cityDotRadius}
+          fill={tone.cityDot}
+          stroke="#ffffff"
+          strokeWidth={0.5}
+          vectorEffect="non-scaling-stroke"
+        />
+      ))}
+    </g>
+  );
+  // Only a flown scene change is staged; the first scene and a jump appear as they are.
+  const isSceneArriving = sceneFlight !== null && sceneFlight.isAnimated && !prefersReducedMotion();
 
   const hovered = hoveredId ? byId.get(hoveredId) : undefined;
   const hoveredName = hoveredId ? resolveCountryName(hoveredId) : "";
@@ -328,6 +404,7 @@ export function WorldMap({
     isInteractive ? null : "world-map-wrap--static",
     isZoomed ? "world-map-wrap--zoomed" : null,
     isFadedUnderOccluder ? "world-map-wrap--occluded" : null,
+    isLandMuted ? "world-map-wrap--muted" : null,
     className,
   ]
     .filter(Boolean)
@@ -337,6 +414,7 @@ export function WorldMap({
     <div
       ref={wrapRef}
       className={wrapClassName}
+      aria-hidden={isDecorative || undefined}
       onMouseEnter={isInteractive ? cacheRect : undefined}
       onMouseMove={isInteractive ? handleMouseMove : undefined}
       onMouseLeave={isInteractive ? () => setHoveredId(null) : undefined}
@@ -347,7 +425,7 @@ export function WorldMap({
       <div
         ref={canvasRef}
         className="world-map-canvas"
-        style={isFadedUnderOccluder ? ({ "--map-occluded-left": `${occludedLeft}px` } as CSSProperties) : undefined}
+        style={{ "--map-occluded-left": `${isFadedUnderOccluder ? occludedLeft : 0}px` } as CSSProperties}
       >
         {/* Accessible name via aria-label, NOT <title>: browsers draw <title> as a native tooltip
             that overlaps our custom one (role="img" trips jsx-a11y/prefer-tag-over-role, so
@@ -360,22 +438,17 @@ export function WorldMap({
           preserveAspectRatio="xMidYMid meet"
         >
           {countryShapes}
-          <g className="world-map__cities">
-            {cityDots.map((dot) => (
-              <circle
-                key={dot.key}
-                className="world-map__city-dot"
-                cx={dot.cx}
-                cy={dot.cy}
-                r={cityDotRadius}
-                fill={tone.cityDot}
-                stroke="#ffffff"
-                strokeWidth={0.5}
-                vectorEffect="non-scaling-stroke"
-              />
-            ))}
+          {leaving && (
+            <g key={`leaving:${leaving.key}`} className="world-map__leaving">
+              {renderCityDots(leavingDots)}
+              {leaving.overlay && <g className="world-map__overlay">{leaving.overlay(view)}</g>}
+            </g>
+          )}
+          {/* Keyed by the scene: each arrival plays its own fade-in. */}
+          <g key={sceneKey} className={isSceneArriving ? "world-map__arriving" : undefined}>
+            {renderCityDots(cityDots)}
+            {overlay && <g className="world-map__overlay">{overlay(view)}</g>}
           </g>
-          {overlay && <g className="world-map__overlay">{overlay(view)}</g>}
         </svg>
       </div>
 

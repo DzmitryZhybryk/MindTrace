@@ -1,14 +1,12 @@
 import { fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { useMemo, useRef } from "react";
-import { Outlet, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { WORLD_VIEW_BOX } from "../../components/worldProjection";
 import { GEO_PLACES, MOVEMENTS_RESPONSE, server } from "../../test/handlers";
 import { stubScreenLayout } from "../../test/layout";
-import { act, renderWithProviders, screen, waitFor } from "../../test/render";
-import type { JourneysOutletContext } from "./JourneysLayout";
+import { renderJourneysTabs } from "../../test/journeysMap";
+import { act, screen, waitFor } from "../../test/render";
 import { MovementsMapView } from "./MovementsMapView";
 
 // Arcs, dots and labels are SVG without accessible roles, so map data is observed by class.
@@ -17,21 +15,9 @@ const DOT = ".movement-dot";
 
 const UNKNOWN_PLACE_ID = "99999999-9999-4999-8999-999999999999";
 
-/** A tab under the section shell: the shell hands it the panel ref via `<Outlet context>`. */
-function MovementsTab() {
-  const panelRef = useRef<HTMLElement>(null);
-  const context = useMemo<JourneysOutletContext>(() => ({ panelRef }), []);
-  return (
-    <Routes>
-      <Route element={<Outlet context={context} />}>
-        <Route path="/journeys/movements" element={<MovementsMapView />} />
-      </Route>
-    </Routes>
-  );
-}
-
+/** A tab under the section's shared map, which also hands it the panel ref. */
 function renderMovements() {
-  return renderWithProviders(<MovementsTab />, { route: "/journeys/movements" });
+  return renderJourneysTabs([{ path: "/journeys/movements", element: <MovementsMapView /> }]);
 }
 
 function viewBoxWidth(container: HTMLElement): number {

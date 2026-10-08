@@ -2,8 +2,8 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
 import { FEED_JOURNEYS, server } from "../../../test/handlers";
-import { renderWithProviders, screen, waitFor, within } from "../../../test/render";
-import { AllJourneysView } from "./AllJourneysView";
+import { renderAllJourneys } from "../../../test/journeysMap";
+import { screen, waitFor, within } from "../../../test/render";
 
 const [FIRST_2021, LONDON_TO_PARIS, PARIS_TO_MOSCOW] = FEED_JOURNEYS;
 const ROW_HEIGHT = 44;
@@ -26,7 +26,7 @@ function stackRowsVertically() {
 }
 
 /** Drags the London -> Paris (2021) row one row down with the keyboard: space, arrow, space. */
-async function dragLondonToParisDown(user: ReturnType<typeof renderWithProviders>["user"]) {
+async function dragLondonToParisDown(user: ReturnType<typeof renderAllJourneys>["user"]) {
   const year2021 = await screen.findByRole("region", { name: "2021" });
   const handles = within(year2021).getAllByRole("button", { name: "Drag to reorder" });
   handles[1].focus();
@@ -51,7 +51,7 @@ describe("AllJourneysView — перенос", () => {
         return HttpResponse.json({ traveledYear: 2019 });
       }),
     );
-    const { user } = renderWithProviders(<AllJourneysView />);
+    const { user } = renderAllJourneys();
 
     await dragLondonToParisDown(user);
 
@@ -89,7 +89,7 @@ describe("AllJourneysView — перенос", () => {
       http.post("/v1/journeys/:journeyId/move", () => HttpResponse.json({ traveledYear: 2019 })),
     );
     try {
-      const { user } = renderWithProviders(<AllJourneysView />);
+      const { user } = renderAllJourneys();
 
       await dragLondonToParisDown(user);
 
@@ -127,7 +127,7 @@ describe("AllJourneysView — перенос", () => {
         HttpResponse.json({ code: "journeys.invalid_move_target", message: "нет" }, { status: 400 }),
       ),
     );
-    const { user } = renderWithProviders(<AllJourneysView />);
+    const { user } = renderAllJourneys();
 
     await dragLondonToParisDown(user);
 
@@ -143,7 +143,7 @@ describe("AllJourneysView — перенос", () => {
 
   it("пока строку несут в другой год, вместо расстояния у неё подсказка «→ год»", async () => {
     stackRowsVertically();
-    const { user } = renderWithProviders(<AllJourneysView />);
+    const { user } = renderAllJourneys();
     const year2021 = await screen.findByRole("region", { name: "2021" });
     within(year2021).getAllByRole("button", { name: "Drag to reorder" })[1].focus();
 
@@ -159,7 +159,7 @@ describe("AllJourneysView — перенос", () => {
 
   it("пока строку несут в другой год, заголовок этого года уступает ей место, а после отмены возвращается", async () => {
     stackRowsVertically();
-    const { user } = renderWithProviders(<AllJourneysView />);
+    const { user } = renderAllJourneys();
     const year2021 = await screen.findByRole("region", { name: "2021" });
     within(year2021).getAllByRole("button", { name: "Drag to reorder" })[1].focus();
     const header2019 = screen.getByRole("heading", { name: "2019" });
@@ -186,7 +186,7 @@ describe("AllJourneysView — перенос", () => {
         return HttpResponse.json({ traveledYear: 2019 });
       }),
     );
-    const { user } = renderWithProviders(<AllJourneysView />);
+    const { user } = renderAllJourneys();
     const year2021 = await screen.findByRole("region", { name: "2021" });
     within(year2021).getAllByRole("button", { name: "Drag to reorder" })[1].focus();
 

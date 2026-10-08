@@ -49,20 +49,34 @@ const PAGES: readonly Page[] = [
   { name: "/login", budget: "app", modules: ["src/pages/PublicLayout.tsx", "src/pages/LoginPage.tsx"] },
   { name: "/signup", budget: "app", modules: ["src/pages/PublicLayout.tsx", "src/pages/SignUpPage.tsx"] },
   { name: "/home", budget: "app", modules: ["src/pages/HomePage.tsx"] },
+  // The shared map (country borders) loads lazily from the layout on every tab that shows it, so it
+  // is counted there explicitly; /journeys/add never loads it.
   {
     name: "/journeys",
     budget: "app",
-    modules: ["src/pages/journeys/JourneysLayout.tsx", "src/pages/journeys/JourneysMapView.tsx"],
+    modules: [
+      "src/pages/journeys/JourneysLayout.tsx",
+      "src/pages/journeys/JourneysMapView.tsx",
+      "src/pages/journeys/map/JourneysSharedMap.tsx",
+    ],
   },
   {
     name: "/journeys/movements",
     budget: "app",
-    modules: ["src/pages/journeys/JourneysLayout.tsx", "src/pages/journeys/MovementsMapView.tsx"],
+    modules: [
+      "src/pages/journeys/JourneysLayout.tsx",
+      "src/pages/journeys/MovementsMapView.tsx",
+      "src/pages/journeys/map/JourneysSharedMap.tsx",
+    ],
   },
   {
     name: "/journeys/all",
     budget: "app",
-    modules: ["src/pages/journeys/JourneysLayout.tsx", "src/pages/journeys/all/AllJourneysView.tsx"],
+    modules: [
+      "src/pages/journeys/JourneysLayout.tsx",
+      "src/pages/journeys/all/AllJourneysView.tsx",
+      "src/pages/journeys/map/JourneysSharedMap.tsx",
+    ],
   },
   {
     name: "/journeys/add",
