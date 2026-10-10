@@ -16,6 +16,7 @@ CHANGELOG остаётся один. Новые записи группирую�
 ### Backend 4.0.0
 
 - **Страну и координаты места поездки journeys берёт из geo, а не от клиента.** `POST /v1/journeys/` и `PUT /v1/journeys/{journeyId}` принимают `originPlaceId` / `destinationPlaceId` вместо объектов `origin` / `destination` со страной и координатами (**ломающее изменение**: тело старого формата → 422). journeys одним вызовом получает у geo страну и координаты мест (раньше только проверял, что они существуют), хранит их у поездки и по ним считает `distanceKm` — клиент больше не может прислать для места чужие координаты. Места сопоставляются по `placeId`, не по порядку ответа geo
+- Уже сохранённые поездки не пересчитываются: страну, координаты и `distanceKm` из geo поездка получает при следующей правке
 - Новый код ошибки `journeys.place_without_country` (400, id мест — в `details.place_ids`): у места в газеттире нет страны (моря, океаны)
 - `GET /v1/journeys/distance` принимает `originPlaceId` + `destinationPlaceId` вместо четырёх координат (**ломающее изменение**) и отвечает 400 с `journeys.same_origin_destination`, `journeys.unknown_place` или `journeys.place_without_country`
 - Базовые схемы, которые роуты не используют напрямую, названы без суффикса `Request` / `Response`: `CursorPaginationFields`, `CursorPageFields`, `JourneyFields`, `OriginAndDestination`; в OpenAPI они не видны

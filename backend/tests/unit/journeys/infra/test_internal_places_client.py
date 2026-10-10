@@ -9,7 +9,7 @@ journeys подменяют клиента целиком, поэтому сты
 from uuid import uuid4
 
 from app.geo.application.services.place import PlaceService
-from app.journeys.application.ports.places_client import PlaceLocation
+from app.journeys.application.ports.places_client import PlaceLocationResponse
 from app.journeys.infra.clients.internal_places_client import InternalPlacesClient
 from tests.builders import make_place
 from tests.fakes import FakePlaceRepository
@@ -26,6 +26,6 @@ async def test_find_place_locations_maps_known_places_from_geo() -> None:
     locations = await client.find_place_locations(place_ids=(moscow.place_id, sea.place_id, uuid4()))
 
     assert sorted(locations, key=lambda location: location.latitude) == [
-        PlaceLocation(place_id=moscow.place_id, country_code="RU", latitude=55.75, longitude=37.62),
-        PlaceLocation(place_id=sea.place_id, country_code=None, latitude=75.0, longitude=40.0),
+        PlaceLocationResponse(place_id=moscow.place_id, country_code="RU", latitude=55.75, longitude=37.62),
+        PlaceLocationResponse(place_id=sea.place_id, country_code=None, latitude=75.0, longitude=40.0),
     ]

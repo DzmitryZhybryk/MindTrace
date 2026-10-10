@@ -3,7 +3,7 @@ from uuid import UUID
 
 from app.geo.application.schemas.commands import GetPlacesByIdsCommand
 from app.geo.application.services.place import PlaceService
-from app.journeys.application.ports.places_client import PlaceLocation, PlacesClientPort
+from app.journeys.application.ports.places_client import PlaceLocationResponse, PlacesClientPort
 
 
 class InternalPlacesClient(PlacesClientPort):
@@ -12,12 +12,12 @@ class InternalPlacesClient(PlacesClientPort):
     def __init__(self, place_service: PlaceService) -> None:
         self._place_service = place_service
 
-    async def find_place_locations(self, *, place_ids: Collection[UUID]) -> tuple[PlaceLocation, ...]:
+    async def find_place_locations(self, *, place_ids: Collection[UUID]) -> tuple[PlaceLocationResponse, ...]:
         result = await self._place_service.get_places_by_ids(
             command=GetPlacesByIdsCommand(place_ids=frozenset(place_ids)),
         )
         return tuple(
-            PlaceLocation(
+            PlaceLocationResponse(
                 place_id=item.place_id,
                 country_code=item.country_code,
                 latitude=item.latitude,

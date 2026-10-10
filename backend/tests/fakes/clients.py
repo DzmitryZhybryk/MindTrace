@@ -4,7 +4,7 @@ from collections.abc import Collection
 from uuid import UUID
 
 from app.auth.application.ports.users_client import CreateUserRequest, UsersClientPort
-from app.journeys.application.ports.places_client import PlaceLocation, PlacesClientPort
+from app.journeys.application.ports.places_client import PlaceLocationResponse, PlacesClientPort
 
 
 class FakeUsersClient(UsersClientPort):
@@ -34,10 +34,10 @@ class FakePlacesClient(PlacesClientPort):
     произвольный; тест может переставить ``locations``, чтобы проверить сопоставление по id.
     """
 
-    def __init__(self, *, locations: Collection[PlaceLocation] = ()) -> None:
+    def __init__(self, *, locations: Collection[PlaceLocationResponse] = ()) -> None:
         self.locations = {location.place_id: location for location in locations}
         self.calls: list[tuple[UUID, ...]] = []
 
-    async def find_place_locations(self, *, place_ids: Collection[UUID]) -> tuple[PlaceLocation, ...]:
+    async def find_place_locations(self, *, place_ids: Collection[UUID]) -> tuple[PlaceLocationResponse, ...]:
         self.calls.append(tuple(place_ids))
         return tuple(location for place_id, location in self.locations.items() if place_id in place_ids)

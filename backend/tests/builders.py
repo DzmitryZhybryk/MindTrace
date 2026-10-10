@@ -16,7 +16,7 @@ from app.auth.domain.value_objects import Password
 from app.geo.domain.entities import PlaceEntity
 from app.geo.domain.value_objects import PlaceNames
 from app.geo.infra.datasets.manifest import DatasetSpec
-from app.journeys.application.ports.places_client import PlaceLocation
+from app.journeys.application.ports.places_client import PlaceLocationResponse
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
 from app.journeys.domain.value_objects import GeoPoint
@@ -141,14 +141,14 @@ def make_geo_point(
     return GeoPoint(place_id=place_id, country_code=country_code, latitude=latitude, longitude=longitude)
 
 
-def make_place_location(
+def make_place_location_response(
     *,
     place_id: UUID = MOSCOW_PLACE_ID,
     country_code: str | None = "RU",
     latitude: float = _MOSCOW_LAT,
     longitude: float = _MOSCOW_LNG,
-) -> PlaceLocation:
-    return PlaceLocation(place_id=place_id, country_code=country_code, latitude=latitude, longitude=longitude)
+) -> PlaceLocationResponse:
+    return PlaceLocationResponse(place_id=place_id, country_code=country_code, latitude=latitude, longitude=longitude)
 
 
 def make_journey(

@@ -407,7 +407,7 @@
   font-size: var(--fs-15);
   font-weight: 600;
   color: var(--text);
-  transition: opacity 150ms ease;
+  transition: opacity var(--dur-fast) ease;
 }
 
 .journey-editor__distance-value--recalculating {

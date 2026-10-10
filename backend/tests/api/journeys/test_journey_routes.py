@@ -28,7 +28,7 @@ from tests.builders import (
     make_geo_point,
     make_journey,
     make_place,
-    make_place_location,
+    make_place_location_response,
 )
 from tests.fakes import (
     FakeJourneyRepository,
@@ -220,7 +220,9 @@ async def test_create_journey_place_without_country_returns_400_with_its_id(
     mint_access_token: Callable[..., str],
 ) -> None:
     """400: у места в geo нет страны → journeys.place_without_country с его id, поездка не создана."""
-    fake_places_client.locations[LONDON_PLACE_ID] = make_place_location(place_id=LONDON_PLACE_ID, country_code=None)
+    fake_places_client.locations[LONDON_PLACE_ID] = make_place_location_response(
+        place_id=LONDON_PLACE_ID, country_code=None
+    )
 
     response = await client.post(
         _CREATE_PATH,
@@ -583,7 +585,9 @@ async def test_estimate_journey_distance_rejected_returns_400(
     if place_override == "unknown":
         del fake_places_client.locations[LONDON_PLACE_ID]
     elif place_override == "countryless":
-        fake_places_client.locations[LONDON_PLACE_ID] = make_place_location(place_id=LONDON_PLACE_ID, country_code=None)
+        fake_places_client.locations[LONDON_PLACE_ID] = make_place_location_response(
+            place_id=LONDON_PLACE_ID, country_code=None
+        )
 
     response = await client.get(
         _DISTANCE_PATH,
@@ -601,9 +605,15 @@ async def test_update_journey_returns_204_and_replaces_fields(
     fake_journey_repository: FakeJourneyRepository,
     mint_access_token: Callable[..., str],
 ) -> None:
-    """204: правка заменяет поля поездки владельца, тело ответа пустое, commit один раз."""
+    """204: правка заменяет поля поездки владельца, страна и координаты мест — из geo; тело пустое, commit один раз."""
     user_id = uuid4()
-    journey_entity = make_journey(user_id=user_id, transport_type=TransportType.WATER, traveled_year=2018)
+    journey_entity = make_journey(
+        user_id=user_id,
+        origin=make_geo_point(place_id=uuid4(), country_code="FR", latitude=48.85, longitude=2.35),
+        destination=make_geo_point(place_id=uuid4(), country_code="DE", latitude=52.52, longitude=13.4),
+        transport_type=TransportType.WATER,
+        traveled_year=2018,
+    )
     fake_journey_repository.journeys = [journey_entity]
 
     response = await client.put(
@@ -615,6 +625,11 @@ async def test_update_journey_returns_204_and_replaces_fields(
     assert response.status_code == 204
     assert response.content == b""
     updated = fake_journey_repository.journeys[0]
+    assert updated.origin.place_id == MOSCOW_PLACE_ID
+    assert updated.origin.country_code == "RU"
+    assert updated.destination.place_id == LONDON_PLACE_ID
+    assert updated.destination.country_code == "GB"
+    assert updated.destination.latitude == pytest.approx(51.5)
     assert updated.transport_type is TransportType.AIR
     assert updated.traveled_year == 2020
     fake_journey_uow.commit_mock.assert_awaited_once()

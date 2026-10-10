@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
-__all__ = ["PlaceLocation", "PlacesClientPort"]
+__all__ = ["PlaceLocationResponse", "PlacesClientPort"]
 
 
 @dataclass(frozen=True, slots=True)
-class PlaceLocation:
+class PlaceLocationResponse:
     """
     Что journeys получает от geo о месте: страну и координаты.
 
@@ -24,7 +24,7 @@ class PlaceLocation:
 class PlacesClientPort(Protocol):
     """Исходящий вызов в geo, справочник мест."""
 
-    async def find_place_locations(self, *, place_ids: Collection[UUID]) -> tuple[PlaceLocation, ...]:
+    async def find_place_locations(self, *, place_ids: Collection[UUID]) -> tuple[PlaceLocationResponse, ...]:
         """
         Находит страну и координаты мест по id.
 
