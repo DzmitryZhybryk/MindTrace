@@ -5,6 +5,7 @@ from app.journeys.exceptions import (
     InvalidYearRangeError,
     JourneyDateInFutureError,
     JourneyNotFoundError,
+    PlaceWithoutCountryError,
     SameOriginAndDestinationError,
     UnknownPlaceError,
 )
@@ -32,6 +33,10 @@ CREATE_JOURNEY_RESPONSES: Final[dict[int | str, DictStrAny]] = {
                     "journeys.unknown_place": {
                         "summary": "Места нет в справочнике",
                         "value": error_response_example(UnknownPlaceError),
+                    },
+                    "journeys.place_without_country": {
+                        "summary": "У места в справочнике нет страны",
+                        "value": error_response_example(PlaceWithoutCountryError),
                     },
                 },
             }
@@ -235,4 +240,28 @@ MOVE_JOURNEY_RESPONSES: Final[dict[int | str, DictStrAny]] = {
     404: _JOURNEY_NOT_FOUND,
 }
 
-JOURNEY_DISTANCE_RESPONSES: Final[dict[int | str, DictStrAny]] = _AUTHENTICATED_RESPONSES
+JOURNEY_DISTANCE_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+    **_AUTHENTICATED_RESPONSES,
+    400: {
+        "description": "Ошибка в местах маршрута",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "examples": {
+                    "journeys.same_origin_destination": {
+                        "summary": "Город отправления и назначения совпадают",
+                        "value": error_response_example(SameOriginAndDestinationError),
+                    },
+                    "journeys.unknown_place": {
+                        "summary": "Места нет в справочнике",
+                        "value": error_response_example(UnknownPlaceError),
+                    },
+                    "journeys.place_without_country": {
+                        "summary": "У места в справочнике нет страны",
+                        "value": error_response_example(PlaceWithoutCountryError),
+                    },
+                },
+            }
+        },
+    },
+}

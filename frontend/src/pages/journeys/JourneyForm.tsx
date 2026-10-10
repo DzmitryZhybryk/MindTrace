@@ -10,7 +10,7 @@ import { createJourneyMutation, zTransportType, type TransportType } from "../..
 import { PlaceAutocomplete } from "../../components/PlaceAutocomplete";
 import { TRANSPORT_ICONS } from "../../components/transportIcons";
 import { invalidateJourneyAggregates, invalidateJourneyFeed } from "./journeyCache";
-import { applyUnknownPlaceError, hasCountry, toPlaceRef, type JourneyFormValues } from "./journeyFormRules";
+import { applyPlaceError, hasCountry, type JourneyFormValues } from "./journeyFormRules";
 import { JourneyYearField } from "./JourneyYearField";
 
 const TRANSPORT_ICON_SIZE = 22;
@@ -82,15 +82,15 @@ export function JourneyForm({ form }: JourneyFormProps) {
     try {
       await submitJourney({
         body: {
-          origin: toPlaceRef(origin),
-          destination: toPlaceRef(destination),
+          originPlaceId: origin.placeId,
+          destinationPlaceId: destination.placeId,
           transportType: values.transport,
           traveledYear: Number(values.year),
         },
       });
       navigate("/journeys");
     } catch (err) {
-      if (applyUnknownPlaceError(err, values, form)) {
+      if (applyPlaceError(err, values, form)) {
         return;
       }
 

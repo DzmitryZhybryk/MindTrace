@@ -14,6 +14,11 @@ class UnknownPlaceError(InvalidInputError):
     message = "Место не найдено"
 
 
+class PlaceWithoutCountryError(InvalidInputError):
+    code = "journeys.place_without_country"
+    message = "У места не указана страна"
+
+
 class JourneyDateInFutureError(InvalidInputError):
     code = "journeys.date_in_future"
     message = "Год поездки не может быть в будущем"

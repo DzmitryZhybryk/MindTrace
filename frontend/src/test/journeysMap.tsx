@@ -5,7 +5,7 @@ import { AllJourneysView } from "../pages/journeys/all/AllJourneysView";
 import type { JourneysOutletContext } from "../pages/journeys/JourneysLayout";
 import { JourneysMapHost } from "../pages/journeys/map/JourneysMapHost";
 import { JourneysMapSceneProvider } from "../pages/journeys/map/JourneysMapSceneProvider";
-import { renderWithProviders } from "./render";
+import { renderWithProviders, screen, within } from "./render";
 
 export interface JourneysTab {
   path: string;
@@ -39,6 +39,15 @@ function JourneysMapShell({ paths }: { paths: readonly string[] }) {
 /** The feed tab alone, as its scenario-split test files render it. */
 export function renderAllJourneys() {
   return renderJourneysTabs([{ path: "/journeys/all", element: <AllJourneysView /> }]);
+}
+
+/** Opens the feed and editing of the Moscow -> London row (`FEED_JOURNEYS[0]`) by clicking its departure place. */
+export async function openMoscowToLondonEditor() {
+  const rendered = renderAllJourneys();
+  const year2021 = await screen.findByRole("region", { name: "2021" });
+  await rendered.user.click(await within(year2021).findByRole("button", { name: "Moscow" }));
+  await screen.findByRole("button", { name: "Save" });
+  return rendered;
 }
 
 /** Renders Journeys tabs under the shared map, starting at `route` (the first tab by default). */

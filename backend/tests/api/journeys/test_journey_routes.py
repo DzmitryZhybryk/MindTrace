@@ -28,6 +28,7 @@ from tests.builders import (
     make_geo_point,
     make_journey,
     make_place,
+    make_place_location,
 )
 from tests.fakes import (
     FakeJourneyRepository,
@@ -44,11 +45,9 @@ _MOVEMENTS_PATH = "/v1/journeys/movements"
 _FEED_PATH = "/v1/journeys/"
 _YEARS_PATH = "/v1/journeys/years"
 _DISTANCE_PATH = "/v1/journeys/distance"
-_MOSCOW = {"placeId": str(MOSCOW_PLACE_ID), "countryCode": "RU", "latitude": 55.75, "longitude": 37.62}
-_LONDON = {"placeId": str(LONDON_PLACE_ID), "countryCode": "GB", "latitude": 51.5, "longitude": -0.12}
+_ROUTE = {"originPlaceId": str(MOSCOW_PLACE_ID), "destinationPlaceId": str(LONDON_PLACE_ID)}
 _VALID_BODY: dict[str, Any] = {
-    "origin": _MOSCOW,
-    "destination": _LONDON,
+    **_ROUTE,
     "transportType": "air",
     "traveledYear": 2020,
 }
@@ -61,7 +60,7 @@ async def test_create_journey_returns_201_and_persists(
     fake_journey_repository: FakeJourneyRepository,
     mint_access_token: Callable[..., str],
 ) -> None:
-    """201: валидный payload-on-create создаёт поездку под user_id из токена, тело ответа пустое, commit один раз."""
+    """201: поездка под user_id из токена, страна и координаты мест — из geo; тело пустое, commit один раз."""
     user_id = uuid4()
 
     response = await client.post(
@@ -77,6 +76,8 @@ async def test_create_journey_returns_201_and_persists(
     assert journey_entity.user_id == user_id
     assert journey_entity.origin.place_id == MOSCOW_PLACE_ID
     assert journey_entity.destination.place_id == LONDON_PLACE_ID
+    assert journey_entity.destination.country_code == "GB"
+    assert journey_entity.destination.latitude == pytest.approx(51.5)
     assert journey_entity.transport_type is TransportType.AIR
     assert journey_entity.traveled_year == 2020
     fake_journey_uow.commit_mock.assert_awaited_once()
@@ -114,24 +115,6 @@ async def test_create_journey_ignores_legacy_month_and_day(
     assert fake_journey_repository.journeys[0].traveled_year == 2020
 
 
-async def test_create_journey_distinct_place_ids_with_same_coordinates_returns_201(
-    client: AsyncClient,
-    fake_journey_repository: FakeJourneyRepository,
-    mint_access_token: Callable[..., str],
-) -> None:
-    """201: разные placeId с одинаковыми координатами — разные места, поездка создаётся."""
-    destination = {**_LONDON, "latitude": _MOSCOW["latitude"], "longitude": _MOSCOW["longitude"]}
-
-    response = await client.post(
-        _CREATE_PATH,
-        json={**_VALID_BODY, "destination": destination},
-        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
-    )
-
-    assert response.status_code == 201
-    assert len(fake_journey_repository.journeys) == 1
-
-
 async def test_create_journey_without_token_returns_401(client: AsyncClient) -> None:
     """401: запрос без Bearer-токена отклоняется с доменным кодом auth.invalid_access_token."""
     response = await client.post(_CREATE_PATH, json=_VALID_BODY)
@@ -143,12 +126,7 @@ async def test_create_journey_without_token_returns_401(client: AsyncClient) -> 
 @pytest.mark.parametrize(
     ("overrides", "expected_code", "expected_field"),
     [
-        ({"destination": _MOSCOW}, "journeys.same_origin_destination", None),
-        (
-            {"destination": {**_MOSCOW, "latitude": 51.5, "longitude": -0.12}},
-            "journeys.same_origin_destination",
-            None,
-        ),
+        ({"destinationPlaceId": str(MOSCOW_PLACE_ID)}, "journeys.same_origin_destination", None),
         ({"traveledYear": _CURRENT_YEAR + 1}, "journeys.date_in_future", "year"),
     ],
 )
@@ -196,7 +174,7 @@ async def test_create_journey_unknown_place_returns_400_with_missing_ids(
     mint_access_token: Callable[..., str],
 ) -> None:
     """400: места нет в geo → journeys.unknown_place, ненайденные id в details.place_ids, поездка не создана."""
-    fake_places_client.existing_place_ids.discard(LONDON_PLACE_ID)
+    del fake_places_client.locations[LONDON_PLACE_ID]
 
     response = await client.post(
         _CREATE_PATH,
@@ -235,19 +213,44 @@ async def test_create_journey_checks_places_through_real_geo_wiring(
     assert fake_journey_repository.journeys == []
 
 
-async def test_create_journey_out_of_range_coordinate_returns_422(
+async def test_create_journey_place_without_country_returns_400_with_its_id(
     client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    fake_places_client: FakePlacesClient,
     mint_access_token: Callable[..., str],
 ) -> None:
-    """422: форму (диапазоны координат) валидирует presentation → validation_error, а не доменный 400."""
+    """400: у места в geo нет страны → journeys.place_without_country с его id, поездка не создана."""
+    fake_places_client.locations[LONDON_PLACE_ID] = make_place_location(place_id=LONDON_PLACE_ID, country_code=None)
+
     response = await client.post(
         _CREATE_PATH,
-        json={**_VALID_BODY, "origin": {**_MOSCOW, "latitude": 200.0}},
+        json=_VALID_BODY,
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "journeys.place_without_country"
+    assert response.json()["details"] == {"place_ids": [str(LONDON_PLACE_ID)]}
+    assert fake_journey_repository.journeys == []
+
+
+async def test_create_journey_legacy_body_with_place_objects_returns_422(
+    client: AsyncClient,
+    fake_journey_repository: FakeJourneyRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """422: тело старого формата (места объектами со страной и координатами) без placeId-полей отклоняется."""
+    legacy_place = {"placeId": str(MOSCOW_PLACE_ID), "countryCode": "RU", "latitude": 55.75, "longitude": 37.62}
+
+    response = await client.post(
+        _CREATE_PATH,
+        json={"origin": legacy_place, "destination": legacy_place, "transportType": "air", "traveledYear": 2020},
         headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
     )
 
     assert response.status_code == 422
     assert response.json()["code"] == "validation_error"
+    assert fake_journey_repository.journeys == []
 
 
 async def test_get_journeys_map_returns_aggregated_countries(
@@ -549,20 +552,47 @@ async def test_estimate_journey_distance_returns_great_circle_km(
     client: AsyncClient,
     mint_access_token: Callable[..., str],
 ) -> None:
-    """200: расстояние Москва → Лондон по координатам из query (~2500 км)."""
+    """200: расстояние Москва → Лондон по id мест, координаты — из geo (~2500 км)."""
     response = await client.get(
         _DISTANCE_PATH,
-        params={
-            "originLatitude": 55.75,
-            "originLongitude": 37.62,
-            "destinationLatitude": 51.5,
-            "destinationLongitude": -0.12,
-        },
+        params=_ROUTE,
         headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
     )
 
     assert response.status_code == 200
     assert response.json()["distanceKm"] == pytest.approx(2500, abs=60)
+
+
+@pytest.mark.parametrize(
+    ("place_override", "params", "expected_code"),
+    [
+        (None, {**_ROUTE, "destinationPlaceId": str(MOSCOW_PLACE_ID)}, "journeys.same_origin_destination"),
+        ("unknown", _ROUTE, "journeys.unknown_place"),
+        ("countryless", _ROUTE, "journeys.place_without_country"),
+    ],
+)
+async def test_estimate_journey_distance_rejected_returns_400(
+    client: AsyncClient,
+    fake_places_client: FakePlacesClient,
+    mint_access_token: Callable[..., str],
+    place_override: str | None,
+    params: dict[str, str],
+    expected_code: str,
+) -> None:
+    """400: то же место, места нет в geo или у него нет страны — коды как при сохранении поездки."""
+    if place_override == "unknown":
+        del fake_places_client.locations[LONDON_PLACE_ID]
+    elif place_override == "countryless":
+        fake_places_client.locations[LONDON_PLACE_ID] = make_place_location(place_id=LONDON_PLACE_ID, country_code=None)
+
+    response = await client.get(
+        _DISTANCE_PATH,
+        params=params,
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == expected_code
 
 
 async def test_update_journey_returns_204_and_replaces_fields(
@@ -593,7 +623,7 @@ async def test_update_journey_returns_204_and_replaces_fields(
 @pytest.mark.parametrize(
     ("overrides", "expected_code"),
     [
-        ({"destination": _MOSCOW}, "journeys.same_origin_destination"),
+        ({"destinationPlaceId": str(MOSCOW_PLACE_ID)}, "journeys.same_origin_destination"),
         ({"traveledYear": _CURRENT_YEAR + 1}, "journeys.date_in_future"),
     ],
 )

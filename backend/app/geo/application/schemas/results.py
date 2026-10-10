@@ -2,9 +2,10 @@ from dataclasses import dataclass
 from uuid import UUID
 
 __all__ = [
-    "MissingPlaceIdsResult",
+    "PlaceLocation",
     "PlaceSearchItem",
     "PlaceSearchResult",
+    "PlacesByIdsResult",
     "ResolvePlacesResult",
     "ResolvedPlace",
 ]
@@ -45,7 +46,17 @@ class ResolvePlacesResult:
 
 
 @dataclass(frozen=True, slots=True)
-class MissingPlaceIdsResult:
-    """Id мест, которых нет в газеттире; пусто, если все на месте."""
+class PlaceLocation:
+    """Где находится место: страна (у части мест её нет) и координаты."""
 
-    place_ids: frozenset[UUID]
+    place_id: UUID
+    country_code: str | None
+    latitude: float
+    longitude: float
+
+
+@dataclass(frozen=True, slots=True)
+class PlacesByIdsResult:
+    """Найденные места в произвольном порядке; несуществующих id здесь нет."""
+
+    items: tuple[PlaceLocation, ...]

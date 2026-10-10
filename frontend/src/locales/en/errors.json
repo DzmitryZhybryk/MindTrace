@@ -18,6 +18,7 @@
     "same_origin_destination": "Departure and destination must be different",
     "date_in_future": "The travel year can't be in the future",
     "unknown_place": "This place wasn't found. Pick it from the suggestions again",
+    "place_without_country": "This place has no country — choose a city",
     "journey_not_found": "This journey no longer exists",
     "invalid_move_target": "Couldn't move the journey there. The list has been refreshed",
     "invalid_year_range": "The first year can't be later than the last one"

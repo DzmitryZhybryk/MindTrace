@@ -153,6 +153,9 @@ export const FEED_JOURNEYS: readonly JourneyFeedEntry[] = [
 
 export const FEED_YEARS: readonly number[] = [2019, 2021];
 
+/** What the distance preview handler answers for any pair. */
+export const ESTIMATED_DISTANCE_KM = 1234;
+
 export const handlers = [
   http.post("/v1/auth/register/", () => HttpResponse.json(successTokenBody, { status: 201 })),
   http.post("/v1/auth/login/", () => HttpResponse.json(successTokenBody, { status: 200 })),
@@ -219,6 +222,7 @@ export const handlers = [
   http.get("/v1/journeys/", () => HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null })),
   http.get("/v1/journeys/years", () => HttpResponse.json({ years: FEED_YEARS })),
   // Edit and delete: 204 with no body; move returns the neighbour's year (a test sets its own via server.use).
+  http.get("/v1/journeys/distance", () => HttpResponse.json({ distanceKm: ESTIMATED_DISTANCE_KM })),
   http.put("/v1/journeys/:journeyId", () => new HttpResponse(null, { status: 204 })),
   http.delete("/v1/journeys/:journeyId", () => new HttpResponse(null, { status: 204 })),
   http.post("/v1/journeys/:journeyId/move", () => HttpResponse.json({ traveledYear: 2021 })),

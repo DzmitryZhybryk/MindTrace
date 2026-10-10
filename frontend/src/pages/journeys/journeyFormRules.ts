@@ -1,7 +1,7 @@
 import type { FormValidateInput, UseFormReturnType } from "@mantine/form";
 
 import { ApiError, errorCodeToken } from "../../api/errors";
-import type { PlaceRef, PlaceSearchItem, TransportType } from "../../api/sdk";
+import type { PlaceSearchItem, TransportType } from "../../api/sdk";
 
 /** Journey fields, shared by add and edit. */
 export type JourneyFormValues = {
@@ -11,7 +11,7 @@ export type JourneyFormValues = {
   year: string | null;
 };
 
-const UNKNOWN_PLACE_CODE = "journeys.unknown_place";
+const PLACE_ERROR_CODES: ReadonlySet<string> = new Set(["journeys.unknown_place", "journeys.place_without_country"]);
 
 type PlaceWithCountry = PlaceSearchItem & { countryCode: string };
 
@@ -51,35 +51,31 @@ export function hasCountry(place: PlaceSearchItem): place is PlaceWithCountry {
   return Boolean(place.countryCode);
 }
 
-/** Suggested place -> request body: the backend verifies the place by `placeId`. */
-export function toPlaceRef(place: PlaceWithCountry): PlaceRef {
-  return { placeId: place.placeId, countryCode: place.countryCode, latitude: place.latitude, longitude: place.longitude };
-}
-
 /**
- * Highlights fields whose places the backend did not find (`journeys.unknown_place`).
+ * Highlights fields whose places the backend rejected (`journeys.unknown_place`,
+ * `journeys.place_without_country`).
  *
- * The backend returns only the ids of unknown places; the form decides which field to highlight
+ * The backend returns only the ids of the rejected places; the form decides which field to highlight
  * by comparing them with the picked places.
  *
  * Returns `true` if the error was handled and shown at the fields.
  */
-export function applyUnknownPlaceError(
+export function applyPlaceError(
   err: unknown,
   values: JourneyFormValues,
   form: UseFormReturnType<JourneyFormValues>,
 ): boolean {
-  if (!(err instanceof ApiError) || err.code !== UNKNOWN_PLACE_CODE) {
+  if (!(err instanceof ApiError) || !PLACE_ERROR_CODES.has(err.code)) {
     return false;
   }
 
   const rawIds = err.details?.place_ids;
-  const missing = new Set(Array.isArray(rawIds) ? rawIds.filter((id): id is string => typeof id === "string") : []);
+  const rejected = new Set(Array.isArray(rawIds) ? rawIds.filter((id): id is string => typeof id === "string") : []);
   let isApplied = false;
   for (const field of ["origin", "destination"] as const) {
     const place = values[field];
-    if (place && missing.has(place.placeId)) {
-      form.setFieldError(field, errorCodeToken(UNKNOWN_PLACE_CODE));
+    if (place && rejected.has(place.placeId)) {
+      form.setFieldError(field, errorCodeToken(err.code));
       isApplied = true;
     }
   }

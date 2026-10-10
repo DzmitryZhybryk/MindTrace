@@ -391,6 +391,29 @@
   gap: 12px;
 }
 
+/* Right-aligned under the route, where a row shows its distance; line-height 1 keeps the height
+   constant across value, dash and recalculating (the feed's FLIP measures rows). */
+.journey-editor__distance {
+  margin: 0;
+  text-align: right;
+  font: 400 var(--fs-13)/1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* The value reads on par with the form's own data: field-label size and weight, primary text color. */
+.journey-editor__distance-value {
+  font-size: var(--fs-15);
+  font-weight: 600;
+  color: var(--text);
+  transition: opacity 150ms ease;
+}
+
+.journey-editor__distance-value--recalculating {
+  opacity: 0.45;
+}
+
 /* Delete goes on the right, separate from Save / Cancel. */
 .journey-editor__delete {
   margin-left: auto;
@@ -463,7 +486,8 @@
 
   .journey-feed,
   .year-header,
-  .journey-feed--sorting .year-header {
+  .journey-feed--sorting .year-header,
+  .journey-editor__distance-value {
     transition: none;
   }
 }

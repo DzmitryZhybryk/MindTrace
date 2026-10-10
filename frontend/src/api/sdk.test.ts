@@ -8,8 +8,8 @@ import { createJourney, getCurrentUser } from "./sdk";
 const REFRESH_PATH = "/v1/auth/refresh/";
 
 const JOURNEY_BODY = {
-  origin: { placeId: "11111111-1111-4111-8111-111111111111", countryCode: "RU", latitude: 55.75, longitude: 37.62 },
-  destination: { placeId: "22222222-2222-4222-8222-222222222222", countryCode: "GB", latitude: 51.5, longitude: -0.12 },
+  originPlaceId: "11111111-1111-4111-8111-111111111111",
+  destinationPlaceId: "22222222-2222-4222-8222-222222222222",
   transportType: "air",
   traveledYear: 2020,
 } as const;

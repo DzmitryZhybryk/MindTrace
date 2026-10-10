@@ -1,11 +1,11 @@
 from app.shared.pagination.cursor import CursorParser, decode_cursor, encode_cursor, split_page
 from app.shared.pagination.exceptions import InvalidCursorError
-from app.shared.pagination.schemas import CursorPage, CursorPageRequest, CursorPageResponse, PageQuery
+from app.shared.pagination.schemas import CursorPage, CursorPageFields, CursorPaginationFields, PageQuery
 
 __all__ = [
     "CursorPage",
-    "CursorPageRequest",
-    "CursorPageResponse",
+    "CursorPageFields",
+    "CursorPaginationFields",
     "CursorParser",
     "InvalidCursorError",
     "PageQuery",

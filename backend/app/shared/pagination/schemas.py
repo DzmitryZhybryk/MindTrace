@@ -6,7 +6,7 @@ from pydantic import ConfigDict, Field
 from app.shared.schemas import CamelModel
 
 
-class CursorPageRequest(CamelModel):
+class CursorPaginationFields(CamelModel):
     """
     Поля запроса страницы списка (query-параметры).
 
@@ -19,7 +19,7 @@ class CursorPageRequest(CamelModel):
     limit: Annotated[int, Field(ge=1, le=100)] = 50
 
 
-class CursorPageResponse[ItemT](CamelModel):
+class CursorPageFields[ItemT](CamelModel):
     """
     Страница списка в ответе.
 

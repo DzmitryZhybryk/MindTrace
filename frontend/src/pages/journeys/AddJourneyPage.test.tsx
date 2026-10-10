@@ -27,8 +27,8 @@ describe("AddJourneyPage — отправка", () => {
 
     expect(await screen.findByText("journeys-landing")).toBeInTheDocument();
     expect(body).toEqual({
-      origin: { placeId: MOSCOW.placeId, countryCode: "RU", latitude: 55.75, longitude: 37.62 },
-      destination: { placeId: LONDON.placeId, countryCode: "GB", latitude: 51.5, longitude: -0.12 },
+      originPlaceId: MOSCOW.placeId,
+      destinationPlaceId: LONDON.placeId,
       transportType: "air",
       traveledYear: 2020,
     });
@@ -92,9 +92,6 @@ describe("AddJourneyPage — отправка", () => {
     await user.click(screen.getByRole("button", { name: "Add journey" }));
 
     expect(await screen.findByText("journeys-landing")).toBeInTheDocument();
-    expect(body).toMatchObject({
-      origin: { placeId: LONDON.placeId, countryCode: "GB" },
-      destination: { placeId: MOSCOW.placeId, countryCode: "RU" },
-    });
+    expect(body).toMatchObject({ originPlaceId: LONDON.placeId, destinationPlaceId: MOSCOW.placeId });
   });
 });
