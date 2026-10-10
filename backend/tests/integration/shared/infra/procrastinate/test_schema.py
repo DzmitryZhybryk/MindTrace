@@ -19,7 +19,7 @@ from app.shared.settings import PostgresSettings
 async def _procrastinate_jobs_oid(procrastinate_app: ProcrastinateApp) -> object:
     """Возвращает OID таблицы ``procrastinate_jobs`` или ``None``, если её нет."""
     result = await procrastinate_app.connector.execute_query_one_async(
-        "SELECT to_regclass('public.procrastinate_jobs') AS table_oid",
+        "SELECT to_regclass('procrastinate_jobs') AS table_oid",
     )
     return result["table_oid"]
 

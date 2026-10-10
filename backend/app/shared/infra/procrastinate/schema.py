@@ -22,7 +22,7 @@ async def ensure_procrastinate_schema(*, procrastinate_app: ProcrastinateApp) ->
         procrastinate_app: Открытый ``ProcrastinateApp`` (после ``open_async``)
     """
     result = await procrastinate_app.connector.execute_query_one_async(
-        "SELECT to_regclass('public.procrastinate_jobs') AS table_oid",
+        "SELECT to_regclass('procrastinate_jobs') AS table_oid",
     )
     if result["table_oid"] is None:
         await procrastinate_app.schema_manager.apply_schema_async()

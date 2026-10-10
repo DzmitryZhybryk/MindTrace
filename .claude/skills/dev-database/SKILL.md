@@ -63,4 +63,4 @@ Then from `backend/`: `make migrate-upgrade && make geo-load`.
 
 Until `make migrate-upgrade` has run, the worker has no procrastinate schema and keeps restarting
 (`restart: unless-stopped`). It recovers on its own within a minute;
-`docker compose restart mindtrace_worker` brings it up immediately.
+`docker restart mindtrace_worker` brings it up immediately.

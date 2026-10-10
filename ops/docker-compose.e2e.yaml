@@ -33,8 +33,8 @@ services:
       retries: 15
       start_period: 5s
 
-  # One-shot: накатывает app-схему существующей командой alembic и выходит. Не новый код — дев
-  # делает то же (`docker exec mindtrace_app uv run alembic upgrade head`). app ждёт его завершения.
+  # One-shot: накатывает app-схему (alembic) и схему procrastinate, затем выходит. Те же команды, что
+  # у прод-migrate и дев-`make migrate-upgrade`. app и worker ждут его завершения.
   migrate:
     build:
       context: ./backend

@@ -34,10 +34,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
 
-      - name: Install Python (из backend/.python-version)
-        run: uv python install
-
-      - name: Sync deps (frozen)
+      - name: Sync deps (frozen; Python по requires-python из pyproject.toml)
         run: uv sync --frozen
 
       - name: Quality gate (format-check, lint, typecheck, arch, dead-code, audit, unit+api)
