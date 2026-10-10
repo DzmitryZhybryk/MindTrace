@@ -1,6 +1,6 @@
 [project]
 name = "MindTrace"
-version = "3.1.4"
+version = "3.1.5"
 description = "Service for managing mindtrace"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
@@ -55,7 +55,12 @@ markers = [
 ]
 
 [tool.coverage.run]
-omit = ["app/__main__.py", "app/geo/infra/datasets/__main__.py", "app/geo/infra/datasets/wikidata/__main__.py"]
+omit = [
+    "app/__main__.py",
+    "app/geo/infra/datasets/__main__.py",
+    "app/geo/infra/datasets/wikidata/__main__.py",
+    "app/shared/infra/procrastinate/__main__.py",
+]
 
 [tool.ruff]
 line-length = 120

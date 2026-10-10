@@ -25,7 +25,7 @@ Never print or paste credentials; read variable names from `.env` (see global CL
 
 ```bash
 make migrate-create "description"    # autogenerate
-make migrate-upgrade                 # apply
+make migrate-upgrade                 # apply, then the procrastinate schema (see below)
 make migrate-downgrade               # roll back one
 make migrate-history
 make migrate-current
@@ -33,6 +33,17 @@ uv run alembic upgrade <base>:<head> --sql    # SQL only, without applying - to 
 ```
 
 The init migration is edited in place while there is no production.
+
+## Procrastinate schema
+
+The `procrastinate_*` tables are not in alembic: `python -m app.shared.infra.procrastinate` applies
+them, and `make migrate-upgrade` runs it right after `alembic upgrade head` (the prod and e2e
+`migrate` services do the same). Autogenerate ignores these tables (`include_name` in
+`migrations/env.py`), so a new revision never proposes dropping them.
+
+The command only checks that `procrastinate_jobs` exists, not which version of the schema is
+there. After bumping procrastinate, look in the installed package's `procrastinate/sql/migrations/`
+for files newer than the previous version: apply them by hand, or recreate the dev DB.
 
 ## Places dataset
 
@@ -49,3 +60,7 @@ make stop && docker volume rm mindtrace_pg_data && make run
 ```
 
 Then from `backend/`: `make migrate-upgrade && make geo-load`.
+
+Until `make migrate-upgrade` has run, the worker has no procrastinate schema and keeps restarting
+(`restart: unless-stopped`). It recovers on its own within a minute;
+`docker compose restart mindtrace_worker` brings it up immediately.
