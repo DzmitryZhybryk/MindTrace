@@ -52,16 +52,12 @@ export const zJourneyYearsResponse = z.object({
  */
 export const zLanguage = z.enum(['en', 'ru']);
 
-export const zLatitude = z.number().check(z.gte(-90), z.lte(90));
-
 /**
  * LoginRequest
  */
 export const zLoginRequest = z.object({
   login: z.string().check(z.minLength(1), z.maxLength(254))
 });
-
-export const zLongitude = z.number().check(z.gte(-180), z.lte(180));
 
 /**
  * MapCity
@@ -199,18 +195,6 @@ export const zPlaceName = z.object({
 });
 
 /**
- * PlaceRef
- *
- * Место из выдачи поиска geo: его ``placeId``, страна и координаты.
- */
-export const zPlaceRef = z.object({
-  placeId: z.uuid(),
-  countryCode: z.string().check(z.length(2)),
-  latitude: zLatitude,
-  longitude: zLongitude
-});
-
-/**
  * PlaceSearchItem
  *
  * Один вариант в подсказках поиска; по ``placeId`` на место потом можно ссылаться.
@@ -290,8 +274,8 @@ export const zTransportType = z.enum([
  * Тело запроса создания поездки.
  */
 export const zCreateJourneyRequest = z.object({
-  origin: zPlaceRef,
-  destination: zPlaceRef,
+  originPlaceId: z.uuid(),
+  destinationPlaceId: z.uuid(),
   transportType: zTransportType,
   traveledYear: z.int().check(z.gte(1))
 });
@@ -326,8 +310,8 @@ export const zJourneysFeedResponse = z.object({
  * Тело запроса правки поездки: новые значения всех полей.
  */
 export const zUpdateJourneyRequest = z.object({
-  origin: zPlaceRef,
-  destination: zPlaceRef,
+  originPlaceId: z.uuid(),
+  destinationPlaceId: z.uuid(),
   transportType: zTransportType,
   traveledYear: z.int().check(z.gte(1))
 });
@@ -454,10 +438,8 @@ export const zMoveJourneyPath = z.object({
 export const zMoveJourneyResponse2 = zMoveJourneyResponse;
 
 export const zEstimateJourneyDistanceQuery = z.object({
-  originLatitude: zLatitude,
-  originLongitude: zLongitude,
-  destinationLatitude: zLatitude,
-  destinationLongitude: zLongitude
+  originPlaceId: z.uuid(),
+  destinationPlaceId: z.uuid()
 });
 
 /**

@@ -9,6 +9,7 @@ Unit-тесты ``JourneyService`` на фейк-UoW.
 """
 
 import datetime as dt
+from dataclasses import replace
 from uuid import UUID, uuid4
 
 import pytest
@@ -33,7 +34,12 @@ from app.journeys.application.schemas.results import (
 )
 from app.journeys.application.services.journey import JourneyService
 from app.journeys.domain.enums import TransportType
-from app.journeys.exceptions import InvalidMoveTargetError, JourneyNotFoundError, UnknownPlaceError
+from app.journeys.exceptions import (
+    InvalidMoveTargetError,
+    JourneyNotFoundError,
+    PlaceWithoutCountryError,
+    UnknownPlaceError,
+)
 from app.shared.fractional_index import MovePlacement
 from app.shared.pagination import PageQuery
 from tests.builders import LONDON_PLACE_ID, MOSCOW_PLACE_ID, make_geo_point, make_journey
@@ -50,11 +56,11 @@ async def test_create_journey_snapshots_places_and_commits(
     fake_journey_repository: FakeJourneyRepository,
     fake_places_client: FakePlacesClient,
 ) -> None:
-    """create_journey: снапшотит места из команды, вставляет поездку с её годом и коммитит один раз."""
+    """create_journey: страну и координаты мест берёт у geo, вставляет поездку с её годом и коммитит один раз."""
     user_id = uuid4()
     command = CreateJourneyCommand(
-        origin=_MOSCOW,
-        destination=_LONDON,
+        origin_place_id=MOSCOW_PLACE_ID,
+        destination_place_id=LONDON_PLACE_ID,
         transport_type=TransportType.AIR,
         traveled_year=2020,
     )
@@ -85,10 +91,11 @@ async def test_create_journey_unknown_places_rejected_before_transaction(
     missing_ids: tuple[UUID, ...],
 ) -> None:
     """Неизвестные origin, destination или оба дают точные id ошибки без транзакции и вставки."""
-    fake_places_client.existing_place_ids.difference_update(missing_ids)
+    for place_id in missing_ids:
+        del fake_places_client.locations[place_id]
     command = CreateJourneyCommand(
-        origin=_MOSCOW,
-        destination=_LONDON,
+        origin_place_id=MOSCOW_PLACE_ID,
+        destination_place_id=LONDON_PLACE_ID,
         transport_type=TransportType.AIR,
         traveled_year=2020,
     )
@@ -101,6 +108,57 @@ async def test_create_journey_unknown_places_rejected_before_transaction(
     assert fake_journey_uow.transactions_started == 0
     fake_journey_uow.commit_mock.assert_not_awaited()
     assert fake_places_client.calls == [(MOSCOW_PLACE_ID, LONDON_PLACE_ID)]
+
+
+@pytest.mark.parametrize(
+    "countryless_ids", [(MOSCOW_PLACE_ID,), (LONDON_PLACE_ID,), (MOSCOW_PLACE_ID, LONDON_PLACE_ID)]
+)
+async def test_create_journey_place_without_country_rejected_before_transaction(
+    journey_service: JourneyService,
+    fake_journey_uow: FakeJourneyUnitOfWork,
+    fake_journey_repository: FakeJourneyRepository,
+    fake_places_client: FakePlacesClient,
+    countryless_ids: tuple[UUID, ...],
+) -> None:
+    """Место без страны в справочнике (origin, destination или оба) — ошибка с его id, без транзакции и вставки."""
+    for place_id in countryless_ids:
+        fake_places_client.locations[place_id] = replace(fake_places_client.locations[place_id], country_code=None)
+    command = CreateJourneyCommand(
+        origin_place_id=MOSCOW_PLACE_ID,
+        destination_place_id=LONDON_PLACE_ID,
+        transport_type=TransportType.AIR,
+        traveled_year=2020,
+    )
+
+    with pytest.raises(PlaceWithoutCountryError) as exc_info:
+        await journey_service.create_journey(user_id=uuid4(), command=command)
+
+    assert exc_info.value.details == {"place_ids": frozenset(countryless_ids)}
+    assert fake_journey_repository.journeys == []
+    assert fake_journey_uow.transactions_started == 0
+
+
+async def test_create_journey_matches_geo_places_by_id_not_by_order(
+    journey_service: JourneyService,
+    fake_journey_repository: FakeJourneyRepository,
+    fake_places_client: FakePlacesClient,
+) -> None:
+    """geo отдаёт места в обратном порядке — отправление всё равно Москва, назначение Лондон."""
+    fake_places_client.locations = dict(reversed(fake_places_client.locations.items()))
+    command = CreateJourneyCommand(
+        origin_place_id=MOSCOW_PLACE_ID,
+        destination_place_id=LONDON_PLACE_ID,
+        transport_type=TransportType.AIR,
+        traveled_year=2020,
+    )
+
+    await journey_service.create_journey(user_id=uuid4(), command=command)
+
+    journey = fake_journey_repository.journeys[0]
+    assert (journey.origin.place_id, journey.origin.country_code) == (MOSCOW_PLACE_ID, "RU")
+    assert journey.origin.latitude == pytest.approx(55.75)
+    assert (journey.destination.place_id, journey.destination.country_code) == (LONDON_PLACE_ID, "GB")
+    assert journey.destination.latitude == pytest.approx(51.5)
 
 
 async def test_get_journeys_map_no_journeys_returns_empty(journey_service: JourneyService) -> None:
@@ -230,8 +288,8 @@ async def test_create_journey_goes_to_end_of_its_year(
         make_journey(user_id=user_id, traveled_year=2021, sort_key="y"),
     ]
     command = CreateJourneyCommand(
-        origin=_MOSCOW,
-        destination=_LONDON,
+        origin_place_id=MOSCOW_PLACE_ID,
+        destination_place_id=LONDON_PLACE_ID,
         transport_type=TransportType.AIR,
         traveled_year=2020,
     )
@@ -264,8 +322,8 @@ async def test_update_journey_same_year_replaces_fields_and_keeps_place(
         user_id=user_id,
         journey_id=journey_entity.journey_id,
         command=UpdateJourneyCommand(
-            origin=_MOSCOW,
-            destination=_LONDON,
+            origin_place_id=MOSCOW_PLACE_ID,
+            destination_place_id=LONDON_PLACE_ID,
             transport_type=TransportType.AIR,
             traveled_year=2020,
         ),
@@ -297,8 +355,8 @@ async def test_update_journey_new_year_goes_to_end_of_that_year(
         user_id=user_id,
         journey_id=journey_entity.journey_id,
         command=UpdateJourneyCommand(
-            origin=_MOSCOW,
-            destination=_LONDON,
+            origin_place_id=MOSCOW_PLACE_ID,
+            destination_place_id=LONDON_PLACE_ID,
             transport_type=TransportType.AIR,
             traveled_year=2018,
         ),
@@ -330,8 +388,8 @@ async def test_update_journey_unavailable_journey_raises_not_found(
             user_id=user_id,
             journey_id=journey_entity.journey_id,
             command=UpdateJourneyCommand(
-                origin=_MOSCOW,
-                destination=_LONDON,
+                origin_place_id=MOSCOW_PLACE_ID,
+                destination_place_id=LONDON_PLACE_ID,
                 transport_type=TransportType.AIR,
                 traveled_year=2020,
             ),
@@ -350,15 +408,15 @@ async def test_update_journey_unknown_places_rejected_before_transaction(
     user_id = uuid4()
     journey_entity = make_journey(user_id=user_id)
     fake_journey_repository.journeys = [journey_entity]
-    fake_places_client.existing_place_ids.discard(LONDON_PLACE_ID)
+    del fake_places_client.locations[LONDON_PLACE_ID]
 
     with pytest.raises(UnknownPlaceError) as exc_info:
         await journey_service.update_journey(
             user_id=user_id,
             journey_id=journey_entity.journey_id,
             command=UpdateJourneyCommand(
-                origin=_MOSCOW,
-                destination=_LONDON,
+                origin_place_id=MOSCOW_PLACE_ID,
+                destination_place_id=LONDON_PLACE_ID,
                 transport_type=TransportType.AIR,
                 traveled_year=2020,
             ),
@@ -630,15 +688,46 @@ async def test_get_journey_years_returns_repository_years(
     assert result == JourneyYearsResult(years=(2019, 2021))
 
 
-def test_estimate_journey_distance_matches_great_circle() -> None:
-    """estimate_journey_distance: расстояние Москва → Лондон тем же способом, что сохранит поездка (~2500 км)."""
-    result = JourneyService.estimate_journey_distance(
-        command=EstimateJourneyDistanceCommand(
-            origin_latitude=55.75,
-            origin_longitude=37.62,
-            destination_latitude=51.5,
-            destination_longitude=-0.12,
-        )
+async def test_estimate_journey_distance_uses_geo_coordinates(journey_service: JourneyService) -> None:
+    """estimate_journey_distance: расстояние Москва → Лондон по координатам из geo, как сохранит поездка (~2500 км)."""
+    result = await journey_service.estimate_journey_distance(
+        command=EstimateJourneyDistanceCommand(origin_place_id=MOSCOW_PLACE_ID, destination_place_id=LONDON_PLACE_ID),
     )
 
     assert result.distance_km == pytest.approx(2500, abs=60)
+
+
+async def test_estimate_journey_distance_unknown_place_raises(
+    journey_service: JourneyService,
+    fake_places_client: FakePlacesClient,
+) -> None:
+    """estimate_journey_distance: места нет в geo → UnknownPlaceError с его id."""
+    del fake_places_client.locations[LONDON_PLACE_ID]
+
+    with pytest.raises(UnknownPlaceError) as exc_info:
+        await journey_service.estimate_journey_distance(
+            command=EstimateJourneyDistanceCommand(
+                origin_place_id=MOSCOW_PLACE_ID, destination_place_id=LONDON_PLACE_ID
+            ),
+        )
+
+    assert exc_info.value.details == {"place_ids": frozenset({LONDON_PLACE_ID})}
+
+
+async def test_estimate_journey_distance_place_without_country_raises(
+    journey_service: JourneyService,
+    fake_places_client: FakePlacesClient,
+) -> None:
+    """estimate_journey_distance: у места нет страны → PlaceWithoutCountryError, как при сохранении поездки."""
+    fake_places_client.locations[MOSCOW_PLACE_ID] = replace(
+        fake_places_client.locations[MOSCOW_PLACE_ID], country_code=None
+    )
+
+    with pytest.raises(PlaceWithoutCountryError) as exc_info:
+        await journey_service.estimate_journey_distance(
+            command=EstimateJourneyDistanceCommand(
+                origin_place_id=MOSCOW_PLACE_ID, destination_place_id=LONDON_PLACE_ID
+            ),
+        )
+
+    assert exc_info.value.details == {"place_ids": frozenset({MOSCOW_PLACE_ID})}

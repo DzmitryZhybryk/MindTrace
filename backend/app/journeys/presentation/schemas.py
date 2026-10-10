@@ -7,32 +7,37 @@ from pydantic import ConfigDict, Field, field_validator, model_validator
 from app.journeys.domain.enums import TransportType
 from app.journeys.exceptions import InvalidYearRangeError, JourneyDateInFutureError, SameOriginAndDestinationError
 from app.shared.fractional_index import MovePlacement
-from app.shared.pagination import CursorPageRequest, CursorPageResponse
+from app.shared.pagination import CursorPageFields, CursorPaginationFields
 from app.shared.schemas import CamelModel
 
-type Latitude = Annotated[float, Field(ge=-90, le=90)]
-type Longitude = Annotated[float, Field(ge=-180, le=180)]
+
+class OriginAndDestination(CamelModel):
+    """
+    Места отправления и назначения — ``placeId`` из выдачи поиска geo.
+
+    Отправление не может совпадать с назначением: ошибка с кодом ``journeys.same_origin_destination``,
+    а не 422.
+    """
+
+    origin_place_id: UUID
+    destination_place_id: UUID
+
+    @model_validator(mode="after")
+    def validate_distinct_endpoints(self) -> Self:
+        """Отклоняет маршрут в то же место."""
+        if self.origin_place_id == self.destination_place_id:
+            raise SameOriginAndDestinationError()
+
+        return self
 
 
-class PlaceRef(CamelModel):
-    """Место из выдачи поиска geo: его ``placeId``, страна и координаты."""
-
-    place_id: UUID
-    country_code: Annotated[str, Field(min_length=2, max_length=2)]
-    latitude: Latitude
-    longitude: Longitude
-
-
-class BaseJourneyRequest(CamelModel):
+class JourneyFields(OriginAndDestination):
     """
     Поля поездки и их правила — общие для создания и правки.
 
-    Год не может быть в будущем (по UTC), отправление не может совпадать с назначением. Нарушения —
-    ошибки с кодами ``journeys.*``, а не 422.
+    Год не может быть в будущем (по UTC) — ошибка с кодом ``journeys.date_in_future``, а не 422.
     """
 
-    origin: PlaceRef
-    destination: PlaceRef
     transport_type: TransportType
     traveled_year: Annotated[int, Field(ge=1)]
 
@@ -51,20 +56,12 @@ class BaseJourneyRequest(CamelModel):
 
         return traveled_year
 
-    @model_validator(mode="after")
-    def validate_distinct_endpoints(self) -> Self:
-        """Отклоняет поездку в то же место; места сравниваются по ``placeId``, не по координатам."""
-        if self.origin.place_id == self.destination.place_id:
-            raise SameOriginAndDestinationError()
 
-        return self
-
-
-class CreateJourneyRequest(BaseJourneyRequest):
+class CreateJourneyRequest(JourneyFields):
     """Тело запроса создания поездки."""
 
 
-class UpdateJourneyRequest(BaseJourneyRequest):
+class UpdateJourneyRequest(JourneyFields):
     """Тело запроса правки поездки: новые значения всех полей."""
 
 
@@ -83,13 +80,8 @@ class MoveJourneyResponse(CamelModel):
     traveled_year: int
 
 
-class JourneyDistanceRequest(CamelModel):
-    """Координаты концов маршрута (query-параметры)."""
-
-    origin_latitude: Latitude
-    origin_longitude: Longitude
-    destination_latitude: Latitude
-    destination_longitude: Longitude
+class JourneyDistanceRequest(OriginAndDestination):
+    """Места концов маршрута (query-параметры)."""
 
 
 class JourneyDistanceResponse(CamelModel):
@@ -100,7 +92,7 @@ class JourneyDistanceResponse(CamelModel):
     distance_km: int
 
 
-class JourneysFeedRequest(CursorPageRequest):
+class JourneysFeedRequest(CursorPaginationFields):
     """
     Страница ленты поездок и её фильтр (query-параметры).
 
@@ -145,7 +137,7 @@ class JourneyFeedEntry(CamelModel):
     distance_km: int
 
 
-class JourneysFeedResponse(CursorPageResponse[JourneyFeedEntry]):
+class JourneysFeedResponse(CursorPageFields[JourneyFeedEntry]):
     """Страница ленты поездок: свежий год сверху, внутри года — порядок пользователя."""
 
 

@@ -3,7 +3,7 @@
   "info": {
     "title": "MindTrace",
     "description": "Service for managing mindtrace",
-    "version": "3.1.5"
+    "version": "4.0.0"
   },
   "paths": {
     "/healthz": {
@@ -787,6 +787,14 @@
                       "message": "Место не найдено",
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
+                  },
+                  "journeys.place_without_country": {
+                    "summary": "У места в справочнике нет страны",
+                    "value": {
+                      "code": "journeys.place_without_country",
+                      "message": "У места не указана страна",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
                   }
                 },
                 "schema": {
@@ -1084,6 +1092,14 @@
                       "message": "Место не найдено",
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
+                  },
+                  "journeys.place_without_country": {
+                    "summary": "У места в справочнике нет страны",
+                    "value": {
+                      "code": "journeys.place_without_country",
+                      "message": "У места не указана страна",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
                   }
                 },
                 "schema": {
@@ -1366,35 +1382,23 @@
         ],
         "parameters": [
           {
-            "name": "originLatitude",
+            "name": "originPlaceId",
             "in": "query",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/Latitude"
+              "type": "string",
+              "format": "uuid",
+              "title": "Originplaceid"
             }
           },
           {
-            "name": "originLongitude",
+            "name": "destinationPlaceId",
             "in": "query",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/Longitude"
-            }
-          },
-          {
-            "name": "destinationLatitude",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "$ref": "#/components/schemas/Latitude"
-            }
-          },
-          {
-            "name": "destinationLongitude",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "$ref": "#/components/schemas/Longitude"
+              "type": "string",
+              "format": "uuid",
+              "title": "Destinationplaceid"
             }
           }
         ],
@@ -1432,6 +1436,42 @@
                   "code": "internal",
                   "message": "Внутренняя ошибка сервера",
                   "timestamp": "2024-01-01T12:00:00Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка в местах маршрута",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "journeys.same_origin_destination": {
+                    "summary": "Город отправления и назначения совпадают",
+                    "value": {
+                      "code": "journeys.same_origin_destination",
+                      "message": "Город отправления и назначения не могут совпадать",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "journeys.unknown_place": {
+                    "summary": "Места нет в справочнике",
+                    "value": {
+                      "code": "journeys.unknown_place",
+                      "message": "Место не найдено",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "journeys.place_without_country": {
+                    "summary": "У места в справочнике нет страны",
+                    "value": {
+                      "code": "journeys.place_without_country",
+                      "message": "У места не указана страна",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  }
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
@@ -1799,11 +1839,15 @@
     "schemas": {
       "CreateJourneyRequest": {
         "properties": {
-          "origin": {
-            "$ref": "#/components/schemas/PlaceRef"
+          "originPlaceId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Originplaceid"
           },
-          "destination": {
-            "$ref": "#/components/schemas/PlaceRef"
+          "destinationPlaceId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Destinationplaceid"
           },
           "transportType": {
             "$ref": "#/components/schemas/TransportType"
@@ -1816,8 +1860,8 @@
         },
         "type": "object",
         "required": [
-          "origin",
-          "destination",
+          "originPlaceId",
+          "destinationPlaceId",
           "transportType",
           "traveledYear"
         ],
@@ -2076,11 +2120,6 @@
         "title": "Language",
         "description": "Язык отображаемого имени места в автокомплите.\n\nЗакрытое множество поддерживаемых языков газеттира: имена импортируются только\nдля ``en``/``ru``. Используется как тип query-параметра ``language`` на границе HTTP\nи как ключ резолва имени в ``PlaceEntity.display_name``."
       },
-      "Latitude": {
-        "type": "number",
-        "maximum": 90.0,
-        "minimum": -90.0
-      },
       "LoginRequest": {
         "properties": {
           "login": {
@@ -2104,11 +2143,6 @@
           "password"
         ],
         "title": "LoginRequest"
-      },
-      "Longitude": {
-        "type": "number",
-        "maximum": 180.0,
-        "minimum": -180.0
       },
       "MapCity": {
         "properties": {
@@ -2329,36 +2363,6 @@
         "title": "PlaceName",
         "description": "Название места на языке запроса."
       },
-      "PlaceRef": {
-        "properties": {
-          "placeId": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Placeid"
-          },
-          "countryCode": {
-            "type": "string",
-            "maxLength": 2,
-            "minLength": 2,
-            "title": "Countrycode"
-          },
-          "latitude": {
-            "$ref": "#/components/schemas/Latitude"
-          },
-          "longitude": {
-            "$ref": "#/components/schemas/Longitude"
-          }
-        },
-        "type": "object",
-        "required": [
-          "placeId",
-          "countryCode",
-          "latitude",
-          "longitude"
-        ],
-        "title": "PlaceRef",
-        "description": "Место из выдачи поиска geo: его ``placeId``, страна и координаты."
-      },
       "PlaceSearchItem": {
         "properties": {
           "placeId": {
@@ -2543,11 +2547,15 @@
       },
       "UpdateJourneyRequest": {
         "properties": {
-          "origin": {
-            "$ref": "#/components/schemas/PlaceRef"
+          "originPlaceId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Originplaceid"
           },
-          "destination": {
-            "$ref": "#/components/schemas/PlaceRef"
+          "destinationPlaceId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Destinationplaceid"
           },
           "transportType": {
             "$ref": "#/components/schemas/TransportType"
@@ -2560,8 +2568,8 @@
         },
         "type": "object",
         "required": [
-          "origin",
-          "destination",
+          "originPlaceId",
+          "destinationPlaceId",
           "transportType",
           "traveledYear"
         ],

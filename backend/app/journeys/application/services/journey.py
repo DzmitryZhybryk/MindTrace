@@ -25,7 +25,13 @@ from app.journeys.application.schemas.results import (
     MovementsMapResult,
 )
 from app.journeys.domain.entities import JourneyEntity
-from app.journeys.exceptions import InvalidMoveTargetError, JourneyNotFoundError, UnknownPlaceError
+from app.journeys.domain.value_objects import GeoPoint
+from app.journeys.exceptions import (
+    InvalidMoveTargetError,
+    JourneyNotFoundError,
+    PlaceWithoutCountryError,
+    UnknownPlaceError,
+)
 from app.shared.fractional_index import MovePlacement, generate_key_between
 from app.shared.utils.great_circle import great_circle_km
 
@@ -41,7 +47,7 @@ class JourneyService:
         """
         Создаёт поездку в конце её года.
 
-        Перед сохранением спрашивает у geo, существуют ли места отправления и назначения.
+        Страну и координаты мест отправления и назначения берёт у geo.
 
         Args:
             user_id: Владелец поездки
@@ -50,18 +56,17 @@ class JourneyService:
         Raises:
             UnknownPlaceError: какого-то из мест нет в справочнике geo; ненайденные id — в
                 ``details.place_ids``
+            PlaceWithoutCountryError: у какого-то из мест в справочнике нет страны
         """
-        missing_place_ids = await self._places_client.get_missing_place_ids(
-            place_ids=(command.origin.place_id, command.destination.place_id),
+        origin, destination = await self._find_route_points(
+            origin_place_id=command.origin_place_id,
+            destination_place_id=command.destination_place_id,
         )
-        if missing_place_ids:
-            raise UnknownPlaceError(details={"place_ids": missing_place_ids})
-
         distance_km = great_circle_km(
-            origin_latitude=command.origin.latitude,
-            origin_longitude=command.origin.longitude,
-            destination_latitude=command.destination.latitude,
-            destination_longitude=command.destination.longitude,
+            origin_latitude=origin.latitude,
+            origin_longitude=origin.longitude,
+            destination_latitude=destination.latitude,
+            destination_longitude=destination.longitude,
         )
         async with self._uow.transaction():
             order_scope = JourneyOrderScope(user_id=user_id, traveled_year=command.traveled_year)
@@ -69,8 +74,8 @@ class JourneyService:
             last_sort_key = await self._uow.journey_repository.find_last_sort_key(scope=order_scope)
             journey_entity = JourneyEntity.create(
                 user_id=user_id,
-                origin=command.origin,
-                destination=command.destination,
+                origin=origin,
+                destination=destination,
                 transport_type=command.transport_type,
                 distance_km=distance_km,
                 traveled_year=command.traveled_year,
@@ -90,19 +95,18 @@ class JourneyService:
 
         Raises:
             UnknownPlaceError: какого-то из мест нет в справочнике geo
+            PlaceWithoutCountryError: у какого-то из мест в справочнике нет страны
             JourneyNotFoundError: у пользователя нет такой поездки или она удалена
         """
-        missing_place_ids = await self._places_client.get_missing_place_ids(
-            place_ids=(command.origin.place_id, command.destination.place_id),
+        origin, destination = await self._find_route_points(
+            origin_place_id=command.origin_place_id,
+            destination_place_id=command.destination_place_id,
         )
-        if missing_place_ids:
-            raise UnknownPlaceError(details={"place_ids": missing_place_ids})
-
         distance_km = great_circle_km(
-            origin_latitude=command.origin.latitude,
-            origin_longitude=command.origin.longitude,
-            destination_latitude=command.destination.latitude,
-            destination_longitude=command.destination.longitude,
+            origin_latitude=origin.latitude,
+            origin_longitude=origin.longitude,
+            destination_latitude=destination.latitude,
+            destination_longitude=destination.longitude,
         )
         async with self._uow.transaction():
             target_scope = JourneyOrderScope(user_id=user_id, traveled_year=command.traveled_year)
@@ -116,8 +120,8 @@ class JourneyService:
 
             journey_entity.ensure_not_deleted()
             journey_entity.revise(
-                origin=command.origin,
-                destination=command.destination,
+                origin=origin,
+                destination=destination,
                 transport_type=command.transport_type,
                 distance_km=distance_km,
             )
@@ -225,24 +229,83 @@ class JourneyService:
 
         return MoveJourneyResult(traveled_year=journey_entity.traveled_year)
 
-    @staticmethod
-    def estimate_journey_distance(command: EstimateJourneyDistanceCommand) -> JourneyDistanceResult:
+    async def estimate_journey_distance(self, command: EstimateJourneyDistanceCommand) -> JourneyDistanceResult:
         """
         Считает расстояние маршрута тем же способом, каким его сохранит поездка.
 
         Args:
-            command: Координаты концов маршрута
+            command: Места концов маршрута
 
         Returns:
             Расстояние по большой окружности, км
+
+        Raises:
+            UnknownPlaceError: какого-то из мест нет в справочнике geo
+            PlaceWithoutCountryError: у какого-то из мест в справочнике нет страны
         """
+        origin, destination = await self._find_route_points(
+            origin_place_id=command.origin_place_id,
+            destination_place_id=command.destination_place_id,
+        )
         distance_km = great_circle_km(
-            origin_latitude=command.origin_latitude,
-            origin_longitude=command.origin_longitude,
-            destination_latitude=command.destination_latitude,
-            destination_longitude=command.destination_longitude,
+            origin_latitude=origin.latitude,
+            origin_longitude=origin.longitude,
+            destination_latitude=destination.latitude,
+            destination_longitude=destination.longitude,
         )
         return JourneyDistanceResult(distance_km=distance_km)
+
+    async def _find_route_points(
+        self, *, origin_place_id: UUID, destination_place_id: UUID
+    ) -> tuple[GeoPoint, GeoPoint]:
+        """
+        Берёт у geo страну и координаты мест отправления и назначения.
+
+        Args:
+            origin_place_id: Место отправления
+            destination_place_id: Место назначения
+
+        Returns:
+            Точки отправления и назначения
+
+        Raises:
+            UnknownPlaceError: какого-то из мест нет в справочнике geo; ненайденные id — в
+                ``details.place_ids``
+            PlaceWithoutCountryError: у какого-то из мест в справочнике нет страны; такие id — в
+                ``details.place_ids``
+        """
+        place_ids = (origin_place_id, destination_place_id)
+        # geo отдаёт места в произвольном порядке, поэтому сопоставляем по id, а не по позиции.
+        locations = {
+            location.place_id: location
+            for location in await self._places_client.find_place_locations(place_ids=place_ids)
+        }
+        missing_place_ids = frozenset(place_ids) - locations.keys()
+        if missing_place_ids:
+            raise UnknownPlaceError(details={"place_ids": missing_place_ids})
+
+        route_points: list[GeoPoint] = []
+        countryless_place_ids: set[UUID] = set()
+        for place_id in place_ids:
+            location = locations[place_id]
+            if location.country_code is None:
+                countryless_place_ids.add(place_id)
+                continue
+
+            route_points.append(
+                GeoPoint(
+                    place_id=place_id,
+                    country_code=location.country_code,
+                    latitude=location.latitude,
+                    longitude=location.longitude,
+                )
+            )
+
+        if countryless_place_ids:
+            raise PlaceWithoutCountryError(details={"place_ids": frozenset(countryless_place_ids)})
+
+        origin, destination = route_points
+        return origin, destination
 
     async def list_journeys(self, *, user_id: UUID, command: ListJourneysCommand) -> ListJourneysResult:
         """

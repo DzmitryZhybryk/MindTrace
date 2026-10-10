@@ -8,15 +8,13 @@ import { screen, waitFor } from "../../test/render";
 const [MOSCOW, LONDON] = GEO_PLACES;
 
 const UNKNOWN_PLACE_TEXT = "This place wasn't found. Pick it from the suggestions again";
+const PLACE_WITHOUT_COUNTRY_TEXT = "This place has no country — choose a city";
 
-/** The backend did not find places with these ids and answers `journeys.unknown_place`. */
-function respondUnknownPlaces(placeIds: string[]): void {
+/** The backend rejects places with these ids under `code`; `journeys.unknown_place` by default. */
+function respondRejectedPlaces(placeIds: string[], code = "journeys.unknown_place"): void {
   server.use(
     http.post("/v1/journeys/", () =>
-      HttpResponse.json(
-        { code: "journeys.unknown_place", message: "ru", details: { place_ids: placeIds } },
-        { status: 400 },
-      ),
+      HttpResponse.json({ code, message: "ru", details: { place_ids: placeIds } }, { status: 400 }),
     ),
   );
 }
@@ -53,7 +51,7 @@ describe("AddJourneyPage — ошибки бэка", () => {
   });
 
   it("место, которого бэк не нашёл, подсвечивается под своим полем", async () => {
-    respondUnknownPlaces([LONDON.placeId]);
+    respondRejectedPlaces([LONDON.placeId]);
     const { user } = renderAddJourney();
 
     await submitMoscowToLondon(user);
@@ -65,8 +63,20 @@ describe("AddJourneyPage — ошибки бэка", () => {
     expect(screen.queryByText("journeys-landing")).not.toBeInTheDocument();
   });
 
+  it("место без страны в справочнике подсвечивается под своим полем своим текстом", async () => {
+    respondRejectedPlaces([MOSCOW.placeId], "journeys.place_without_country");
+    const { user } = renderAddJourney();
+
+    await submitMoscowToLondon(user);
+
+    const originError = await screen.findByText(PLACE_WITHOUT_COUNTRY_TEXT);
+    expect(screen.getByLabelText("From")).toHaveAccessibleDescription(originError.textContent ?? "");
+    expect(screen.getByLabelText("To")).not.toHaveAccessibleDescription();
+    expect(screen.queryByText("journeys-landing")).not.toBeInTheDocument();
+  });
+
   it("если бэк не нашёл оба места, подсвечиваются оба поля", async () => {
-    respondUnknownPlaces([MOSCOW.placeId, LONDON.placeId]);
+    respondRejectedPlaces([MOSCOW.placeId, LONDON.placeId]);
     const { user } = renderAddJourney();
 
     await submitMoscowToLondon(user);
@@ -75,7 +85,7 @@ describe("AddJourneyPage — ошибки бэка", () => {
   });
 
   it("ненайденный id не из формы — ошибка уровня формы, а не тишина", async () => {
-    respondUnknownPlaces(["99999999-9999-4999-8999-999999999999"]);
+    respondRejectedPlaces(["99999999-9999-4999-8999-999999999999"]);
     const { user } = renderAddJourney();
 
     await submitMoscowToLondon(user);

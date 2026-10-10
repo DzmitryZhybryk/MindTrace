@@ -12,7 +12,7 @@ api-уровне через ``app.dependency_overrides``.
 Python продублировал бы их.
 """
 
-from collections.abc import AsyncIterator, Collection
+from collections.abc import AsyncGenerator, Collection
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import cast
@@ -187,7 +187,7 @@ class FakeJourneyUnitOfWork(JourneyUnitOfWorkPort):
         self.transactions_started = 0
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[None]:
+    async def transaction(self) -> AsyncGenerator[None]:
         self.transactions_started += 1
         yield
 

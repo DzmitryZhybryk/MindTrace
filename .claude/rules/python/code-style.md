@@ -91,7 +91,9 @@ return default_handler
 ## Recurring conventions
 
 - Do **not** carve pieces of a use case into private `_helper` methods of the service: the code stays
-  in the use case; shared pure logic goes to `shared/utils`.
+  in the use case; shared pure logic goes to `shared/utils`. The one agreed exception: the same
+  check-and-raise block repeated across several use cases of one service may become a private
+  method (`JourneyService._find_route_points`). Hiding the steps of a single use case is still out.
 - Do **not** alias a repository (`repository = self._uow.x_repository`); always call
   `self._uow.x_repository.method(...)` directly.
 - A single-row `find` in a repository ends with a ternary `self._to_entity(...) if model else None`,

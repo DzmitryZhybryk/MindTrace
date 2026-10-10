@@ -13,12 +13,29 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 ## 2026-10-10
 
+### Backend 4.0.0
+
+- **Страну и координаты места поездки journeys берёт из geo, а не от клиента.** `POST /v1/journeys/` и `PUT /v1/journeys/{journeyId}` принимают `originPlaceId` / `destinationPlaceId` вместо объектов `origin` / `destination` со страной и координатами (**ломающее изменение**: тело старого формата → 422). journeys одним вызовом получает у geo страну и координаты мест (раньше только проверял, что они существуют), хранит их у поездки и по ним считает `distanceKm` — клиент больше не может прислать для места чужие координаты. Места сопоставляются по `placeId`, не по порядку ответа geo
+- Уже сохранённые поездки не пересчитываются: страну, координаты и `distanceKm` из geo поездка получает при следующей правке
+- Новый код ошибки `journeys.place_without_country` (400, id мест — в `details.place_ids`): у места в газеттире нет страны (моря, океаны)
+- `GET /v1/journeys/distance` принимает `originPlaceId` + `destinationPlaceId` вместо четырёх координат (**ломающее изменение**) и отвечает 400 с `journeys.same_origin_destination`, `journeys.unknown_place` или `journeys.place_without_country`
+- Базовые схемы, которые роуты не используют напрямую, названы без суффикса `Request` / `Response`: `CursorPaginationFields`, `CursorPageFields`, `JourneyFields`, `OriginAndDestination`; в OpenAPI они не видны
+
+### Frontend 2.13.0
+
+- **Правка поездки в ленте показывает расстояние до сохранения:** под полями «Откуда / Куда» — «Расстояние ≈ N км», число набрано так же заметно, как остальные данные формы. Для сохранённой пары — расстояние поездки без запроса; для новой — расчёт на бэке, пока он идёт, на месте числа приглушённый прочерк; недозаполненная пара, тот же город или ошибка — прочерк. Высота строки не меняется
+- Формы поездки отправляют только id мест (контракт Backend 4.0.0). `journeys.place_without_country` с бэка подсвечивается под полем места, как и `journeys.unknown_place`
+
 ### Backend 3.1.5
 
 - **Схему procrastinate применяет шаг миграции, а не worker.** Новая команда `python -m app.shared.infra.procrastinate` создаёт таблицы очереди задач, если их ещё нет; она выполняется сразу после `alembic upgrade head` в `mindtrace_migrate` (прод), `migrate` (e2e) и `make migrate-upgrade` (дев). Раньше схему создавал worker на старте, и регистрация на свежей базе могла упасть с 500, если app поднялся раньше worker'а. Теперь app и worker ждут только migrate; в e2e-стеке app больше не ждёт worker
 - `alembic revision --autogenerate` больше не предлагает удалить таблицы `procrastinate_*`
 - Проверка смотрит только на наличие схемы, не на её версию: что делать при обновлении procrastinate — в `docs/deployment.md` → «Миграции»
 - `requires-python = ">=3.14,<3.15"`: CI ставил вышедший Python 3.15, под которым не собирается транзитивная `rignore` (pyo3 0.26), и backend-гейт падал до проверок. Отдельный шаг установки Python в CI убран — `uv sync` берёт версию из `requires-python`
+
+### Project
+
+- Skill `git-workflow` описывает мёрж фича-PR в `dev`: merge-коммитом с удалением ветки (`gh pr merge <n> --merge --delete-branch`); релизный PR `dev → main` ветку `dev` сохраняет
 
 ## 2026-10-08
 

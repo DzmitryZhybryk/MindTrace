@@ -333,6 +333,7 @@ export function JourneyFeed({
                         key={journey.journeyId}
                         journey={journey}
                         nameOf={nameOf}
+                        distanceFormat={distanceFormat}
                         focusField={editing.field}
                         onClose={() => setEditing(null)}
                         onSaved={() => setSavedId(journey.journeyId)}

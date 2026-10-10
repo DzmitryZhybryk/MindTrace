@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures";
-import { findPlace } from "../helpers/journeys";
+import { createJourney, findPlaceId } from "../helpers/journeys";
 import { getStoredAccessToken } from "../helpers/session";
 
 /**
@@ -21,16 +21,12 @@ test.describe("Journeys map", () => {
     expect(token, "после логина ожидается access-токен в sessionStorage").not.toBeNull();
     const bearer = token ?? "";
 
-    const created = await request.post("/v1/journeys/", {
-      headers: { Authorization: `Bearer ${bearer}` },
-      data: {
-        origin: await findPlace(request, bearer, "Moscow"),
-        destination: await findPlace(request, bearer, "London"),
-        transportType: "air",
-        traveledYear: 2020,
-      },
+    await createJourney(request, bearer, {
+      originPlaceId: await findPlaceId(request, bearer, "Moscow"),
+      destinationPlaceId: await findPlaceId(request, bearer, "London"),
+      transportType: "air",
+      traveledYear: 2020,
     });
-    expect(created.ok(), `create journey failed: ${created.status()} ${await created.text()}`).toBeTruthy();
 
     await authedPage.goto("/journeys");
 

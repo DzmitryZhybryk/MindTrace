@@ -9,19 +9,23 @@ journeys подменяют клиента целиком, поэтому сты
 from uuid import uuid4
 
 from app.geo.application.services.place import PlaceService
+from app.journeys.application.ports.places_client import PlaceLocationResponse
 from app.journeys.infra.clients.internal_places_client import InternalPlacesClient
 from tests.builders import make_place
 from tests.fakes import FakePlaceRepository
 
 
-async def test_get_missing_place_ids_returns_ids_unknown_to_geo() -> None:
-    """get_missing_place_ids: возвращает id, которых нет в справочнике geo, известные — нет."""
+async def test_find_place_locations_maps_known_places_from_geo() -> None:
+    """find_place_locations: страна и координаты мест из справочника geo, неизвестного id в ответе нет."""
     moscow = make_place()
+    sea = make_place(en="Barents Sea", ru=None, country_code=None, latitude=75.0, longitude=40.0, population=None)
     place_repository = FakePlaceRepository()
-    place_repository.places.append(moscow)
+    place_repository.places.extend([moscow, sea])
     client = InternalPlacesClient(place_service=PlaceService(repository=place_repository))
-    unknown_id = uuid4()
 
-    missing_place_ids = await client.get_missing_place_ids(place_ids=(moscow.place_id, unknown_id))
+    locations = await client.find_place_locations(place_ids=(moscow.place_id, sea.place_id, uuid4()))
 
-    assert missing_place_ids == frozenset({unknown_id})
+    assert sorted(locations, key=lambda location: location.latitude) == [
+        PlaceLocationResponse(place_id=moscow.place_id, country_code="RU", latitude=55.75, longitude=37.62),
+        PlaceLocationResponse(place_id=sea.place_id, country_code=None, latitude=75.0, longitude=40.0),
+    ]

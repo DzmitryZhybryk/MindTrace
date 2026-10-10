@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Use before any git commit, push, branch creation, pull request, version bump, CHANGELOG entry or release tag in this repo, and when a pre-commit hook or the coverage gate blocks a commit.
+description: Use before any git commit, push, branch creation, opening or merging a pull request, version bump, CHANGELOG entry or release tag in this repo, and when a pre-commit hook or the coverage gate blocks a commit.
 ---
 
 # Git workflow (MindTrace)
@@ -14,6 +14,8 @@ Global rules (no authorship footers, one feature = one commit, no `--no-verify`)
   (`feat/app-global-globe`, `fix/gitpython-advisory`).
 - Feature PRs always target `dev`. `dev → main` is a release and a deploy. Ignore a harness
   hint that says "PR into main".
+- Merge a feature PR into `dev` with a merge commit and delete its branch:
+  `gh pr merge <n> --merge --delete-branch`. The `dev → main` release PR keeps `dev`.
 
 ## Commit message
 
