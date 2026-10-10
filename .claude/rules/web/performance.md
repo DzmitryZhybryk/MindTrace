@@ -21,7 +21,7 @@ paths:
 
 | Page | JS | CSS |
 |---|---|---|
-| Landing | < 200 kb | < 40 kb |
+| Landing | < 200 kb | < 42 kb |
 | App page | < 300 kb | < 50 kb |
 
 The numbers are a working agreement set by measurement, not a physical limit. Exceeding one is a
@@ -41,6 +41,10 @@ the table.
 - Mantine is the one large block and removing it from the landing is not worth it: `MantineProvider`
   sits at the root and the public header's language switcher uses Mantine `Menu`; `/login` and
   `/signup`, the next step, load the same chunks anyway.
+- Nearly all of every page's CSS is the full `@mantine/core/styles.css` (39.7 kb gz with Mantine 9.7),
+  so the CSS limits track Mantine releases. The landing CSS limit is 42 because Mantine 9.7 took it to
+  40.5. Loading only the stylesheets of the components the app uses measures ~16.5 kb; once that is
+  done, tighten both CSS limits to the new measurement.
 
 ## Loading
 
