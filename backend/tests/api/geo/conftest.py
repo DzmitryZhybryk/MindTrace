@@ -15,8 +15,8 @@ from typing import Any
 import pytest
 from fastapi import APIRouter
 
-from app.geo import geo_router
 from app.geo.presentation.dependencies import place_repository_dependency
+from app.geo.presentation.routes import geo_router
 from tests.fakes import FakePlaceRepository
 
 _GEO_ROUTER_PREFIX = "/v1/geo"

@@ -1,21 +1,10 @@
-"""Фейк ``UsersClientPort``: записывает вызовы ``create_user`` для state-ассертов."""
+"""Фейки клиентов к другим доменам: записывают вызовы для state-ассертов."""
 
-import datetime as dt
-from dataclasses import dataclass
+from collections.abc import Collection
 from uuid import UUID
 
-from app.auth.application.ports import UsersClientPort
-
-
-@dataclass(frozen=True, slots=True)
-class CreatedUserCall:
-    """Запись одного вызова ``create_user``."""
-
-    user_id: UUID
-    username: str
-    email: str
-    marketing_emails_consent: bool
-    terms_accepted_at: dt.datetime
+from app.auth.application.ports.users_client import CreateUserRequest, UsersClientPort
+from app.journeys.application.ports.places_client import PlaceLocationResponse, PlacesClientPort
 
 
 class FakeUsersClient(UsersClientPort):
@@ -27,27 +16,28 @@ class FakeUsersClient(UsersClientPort):
     """
 
     def __init__(self) -> None:
-        self.created: list[CreatedUserCall] = []
+        self.created: list[CreateUserRequest] = []
         self.error: Exception | None = None
 
-    async def create_user(
-        self,
-        *,
-        user_id: UUID,
-        username: str,
-        email: str,
-        marketing_emails_consent: bool,
-        terms_accepted_at: dt.datetime,
-    ) -> None:
+    async def create_user(self, request: CreateUserRequest) -> None:
         if self.error is not None:
             raise self.error
 
-        self.created.append(
-            CreatedUserCall(
-                user_id=user_id,
-                username=username,
-                email=email,
-                marketing_emails_consent=marketing_emails_consent,
-                terms_accepted_at=terms_accepted_at,
-            ),
-        )
+        self.created.append(request)
+
+
+class FakePlacesClient(PlacesClientPort):
+    """
+    Фейк клиента journeys → geo: хранит места справочника и записывает вызовы.
+
+    Найденные места отдаёт в порядке хранения, а не запроса — как geo, у которого порядок
+    произвольный; тест может переставить ``locations``, чтобы проверить сопоставление по id.
+    """
+
+    def __init__(self, *, locations: Collection[PlaceLocationResponse] = ()) -> None:
+        self.locations = {location.place_id: location for location in locations}
+        self.calls: list[tuple[UUID, ...]] = []
+
+    async def find_place_locations(self, *, place_ids: Collection[UUID]) -> tuple[PlaceLocationResponse, ...]:
+        self.calls.append(tuple(place_ids))
+        return tuple(location for place_id, location in self.locations.items() if place_id in place_ids)

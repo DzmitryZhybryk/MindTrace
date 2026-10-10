@@ -4,7 +4,7 @@ from uuid import UUID
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.application.ports import RefreshTokenRepositoryPort
+from app.auth.application.ports.refresh_token_repository import RefreshTokenRepositoryPort
 from app.auth.domain.entities import RefreshTokenEntity
 from app.auth.infra.models import RefreshToken
 from app.shared.repositories.base_repository import BaseDBRepository

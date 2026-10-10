@@ -37,6 +37,7 @@ class ChallengeEntity(TimestampedEntityMixin):
 
     def __init__(
         self,
+        *,
         challenge_id: UUID,
         user_id: UUID,
         challenge_type: ChallengeType,
@@ -68,6 +69,7 @@ class ChallengeEntity(TimestampedEntityMixin):
     @classmethod
     def create(
         cls,
+        *,
         user_id: UUID,
         challenge_type: ChallengeType,
         code_hash: str,

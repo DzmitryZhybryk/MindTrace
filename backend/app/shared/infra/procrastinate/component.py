@@ -42,7 +42,7 @@ class ProcrastinateComponent(BaseComponent):
         """
         self._app = ProcrastinateApp(
             connector=PsycopgConnector(
-                conninfo=settings.procrastinate_dsn,
+                conninfo=settings.postgres_libpq_dsn,
                 min_size=settings.PROCRASTINATE_POOL_MIN_SIZE,
                 max_size=settings.PROCRASTINATE_POOL_MAX_SIZE,
             ),
@@ -53,7 +53,7 @@ class ProcrastinateComponent(BaseComponent):
 
     async def startup(self, registry: ComponentRegistry) -> None:
         await self._app.open_async()
-        registry.set(ProcrastinateApp, self._app)
+        registry.set(key=ProcrastinateApp, value=self._app)
 
     async def shutdown(self) -> None:
         await self._app.close_async()

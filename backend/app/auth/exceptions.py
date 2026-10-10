@@ -17,11 +17,6 @@ class TermsNotAcceptedError(InvalidInputError):
     default_details: ClassVar[OptionalDict] = {"field": "terms_accepted"}
 
 
-class InvalidAccessTokenError(UnauthenticatedError):
-    code = "auth.invalid_access_token"
-    message = "Невалидный или истёкший access-токен"
-
-
 class InvalidCredentialsError(UnauthenticatedError):
     code = "auth.invalid_credentials"
     message = "Неверный логин или пароль"

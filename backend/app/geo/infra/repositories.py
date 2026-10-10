@@ -1,7 +1,10 @@
+from collections.abc import Collection
+from uuid import UUID
+
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.geo.application.ports import PlaceRepositoryPort
+from app.geo.application.ports.place_repository import PlaceRepositoryPort
 from app.geo.domain.entities import PlaceEntity
 from app.geo.domain.value_objects import PlaceNames
 from app.geo.infra.models import GeoPlace
@@ -13,19 +16,24 @@ _LIKE_ESCAPE = "\\"
 
 
 class PlaceRepository(BaseDBRepository[GeoPlace], PlaceRepositoryPort):
-    """Read-only поиск мест по газеттиру: префиксный матч ``lower(name) LIKE 'q%'``."""
+    """Чтение мест из газеттира: поиск по началу имени и выборка по id."""
 
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session=session, model=GeoPlace)
 
-    async def search_places_by_name(self, *, search_text: str, limit: int) -> list[PlaceEntity]:
+    async def search_places_by_name(self, *, search_text: str, limit: int) -> tuple[PlaceEntity, ...]:
         query = self._prefix_query(search_text=search_text)
-        # Места ранжируем по убыванию населения, затем стабильный tie-break по external_id.
-        query = query.order_by(GeoPlace.population.desc(), GeoPlace.external_id).limit(limit)
+        # По убыванию населения (без населения — в конце), tie-break по external_id.
+        query = query.order_by(GeoPlace.population.desc().nulls_last(), GeoPlace.external_id).limit(limit)
         result = await self._session.execute(query)
-        return [self._to_entity(place_model=place_model) for place_model in result.scalars()]
+        return tuple(self._to_entity(place_model=place_model) for place_model in result.scalars())
 
-    def _prefix_query(self, *, search_text: str) -> Select[tuple[GeoPlace]]:
+    async def find_places_by_ids(self, *, place_ids: Collection[UUID]) -> tuple[PlaceEntity, ...]:
+        query = select(GeoPlace).where(GeoPlace.id.in_(place_ids))
+        result = await self._session.execute(query)
+        return tuple(self._to_entity(place_model=place_model) for place_model in result.scalars())
+
+    def _prefix_query(self, *, search_text: str) -> Select[GeoPlace]:
         """
         Префиксный матч ``lower(name) LIKE 'q%'`` по ``name_en``/``name_ru``.
 

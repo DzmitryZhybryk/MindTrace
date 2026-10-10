@@ -1,6 +1,6 @@
 ---
 name: backend-tests
-description: Write or extend backend unit tests for the MindTrace FastAPI service (DDD, pytest, async). Use when the user asks to write/add/cover backend tests, test a domain/service/entity, or scaffold the test suite. Follows the conventions in .claude/rules/python/testing.md (structure, hand-written fakes, thin repository Protocols, determinism). Backend integration/api tests are separate later phases.
+description: Write or extend backend unit tests for the MindTrace FastAPI service (DDD, pytest, async). Use when the user asks to write/add/cover backend tests, test a domain/service/entity, or scaffold the test suite. Conventions are in .claude/rules/python/testing.md and testing-layout.md. Unit tests by default; integration and api only on explicit request.
 ---
 
 # Backend tests
@@ -10,10 +10,10 @@ from `backend/` (self-contained uv project).
 
 ## Source of truth
 
-**Conventions live in `.claude/rules/python/testing.md`** — it is `@`-included in `CLAUDE.md`, so
-it's always in context. Do **not** restate or fork those rules here; this skill is only the
-*procedure*. Re-read that file before writing if anything is unclear (pyramid, layout, fakes,
-Protocols, determinism, coverage, anti-patterns).
+Conventions live in `.claude/rules/python/testing.md` (style, fakes, determinism) and
+`.claude/rules/python/testing-layout.md` (levels, layout, markers, fixture placement, targets).
+They load when Claude reads anything under `backend/tests/`; read both explicitly before the first
+test of a session. Do **not** restate or fork them here — this skill is only the *procedure*.
 
 ## Scope
 
@@ -35,7 +35,7 @@ Protocols, determinism, coverage, anti-patterns).
    - Reuse / add an in-memory fake in `backend/tests/fakes/` (repositories, clients, `TaskBusPort`,
      hashers). Back repositories with a `dict`; `FakeSaltedHasher` avoids real argon2.
    - When writing the **first** fake for a repository, add a thin `typing.Protocol` in the
-     **application layer** (`app/<domain>/application/ports.py`, only the methods used) and type both
+     **application layer** (`app/<domain>/application/ports/<port>.py`, only the methods used) and type both
      the real repo and the fake. By DIP the contract belongs to application; `infra` imports the port
      and implements it (never the reverse). The port module depends only on `domain`.
    - Fake UoW = simple object with the fake repos + `commit = AsyncMock()`.
@@ -53,8 +53,8 @@ Protocols, determinism, coverage, anti-patterns).
    make typecheck                   # ty — catches fake/Protocol drift
    ```
 7. **Coverage.** `make coverage`. The 90% threshold is already enforced (`--cov-fail-under=90`
-   in the Makefile, forced by the pre-push hook) — below it the code does not merge, so check
-   before pushing rather than after.
+   in the Makefile, forced by the pre-commit hook) — below it the code does not merge, so check
+   before committing rather than after.
 8. **Review (optional).** For non-trivial additions, ask the user to run `/code-review` — it
    reviews the diff in a fresh subagent. It is user-invoked; you cannot launch it yourself.
 

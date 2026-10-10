@@ -4,9 +4,10 @@ from uuid import uuid4
 import pytest
 from pydantic import SecretStr
 
-from app.auth.application.auth_service import AuthService
-from app.auth.application.schemas import ClientMetadata, LoginCommand, RegistrationCommand
-from app.auth.application.token_issuer import TokenIssuer
+from app.auth.application.schemas.commands import LoginCommand, RegistrationCommand
+from app.auth.application.schemas.metadata import ClientMetadata
+from app.auth.application.services.auth import AuthService
+from app.auth.application.services.token_issuer import TokenIssuer
 from app.auth.exceptions import (
     EmailAlreadyExistError,
     InvalidCredentialsError,
@@ -48,7 +49,7 @@ async def test_register_persists_credentials_calls_users_and_requests_verificati
         marketing_emails_consent=True,
     )
 
-    pair = await auth_service.register(registration=command, client_metadata=_CLIENT_METADATA)
+    pair = await auth_service.register(command=command, client_metadata=_CLIENT_METADATA)
 
     assert len(fake_user_credentials_repository.by_user_id) == 1
     stored = next(iter(fake_user_credentials_repository.by_user_id.values()))
@@ -89,7 +90,7 @@ async def test_register_raises_when_email_already_exists(
     )
 
     with pytest.raises(EmailAlreadyExistError):
-        await auth_service.register(registration=command, client_metadata=_CLIENT_METADATA)
+        await auth_service.register(command=command, client_metadata=_CLIENT_METADATA)
 
     assert len(fake_user_credentials_repository.by_user_id) == 1
     assert fake_users_client.created == []
@@ -112,7 +113,7 @@ async def test_register_does_not_commit_when_users_creation_fails(
     )
 
     with pytest.raises(RuntimeError, match="users service down"):
-        await auth_service.register(registration=command, client_metadata=_CLIENT_METADATA)
+        await auth_service.register(command=command, client_metadata=_CLIENT_METADATA)
 
     fake_uow.commit_mock.assert_not_awaited()
     assert fake_email_verification_service.requested_user_ids == []
@@ -135,7 +136,7 @@ async def test_register_raises_when_username_already_taken(
     )
 
     with pytest.raises(UsernameAlreadyExistError):
-        await auth_service.register(registration=command, client_metadata=_CLIENT_METADATA)
+        await auth_service.register(command=command, client_metadata=_CLIENT_METADATA)
 
     fake_uow.commit_mock.assert_not_awaited()
 

@@ -1,9 +1,12 @@
-"""Unit-тесты ``PlaceService.search_places`` на фейк-репозитории: пустой запрос, маппинг, фоллбэк, сигнал."""
+"""Unit-тесты ``PlaceService`` на фейк-репозитории: поиск, названия мест по id, страна и координаты мест по id."""
+
+from uuid import uuid4
 
 from structlog.testing import capture_logs
 
-from app.geo.application.schemas import SearchPlacesCommand
-from app.geo.application.services import PlaceService
+from app.geo.application.schemas.commands import GetPlacesByIdsCommand, ResolvePlacesCommand, SearchPlacesCommand
+from app.geo.application.schemas.results import PlaceLocation
+from app.geo.application.services.place import PlaceService
 from app.geo.domain.enums import Language
 from tests.builders import make_place
 from tests.fakes import FakePlaceRepository
@@ -67,3 +70,93 @@ async def test_search_places_resolves_names_under_language_and_flags_missing(
     assert len(missing) == 1
     assert missing[0]["language"] is Language.RU
     assert missing[0]["place_id"] == mostar.place_id
+
+
+async def test_resolve_places_returns_names_in_requested_language_with_en_fallback(
+    place_service: PlaceService,
+    fake_place_repository: FakePlaceRepository,
+) -> None:
+    """resolve_places: названия на языке запроса, у места без перевода — английское."""
+    moscow = make_place(en="Moscow", ru="Москва")
+    mostar = make_place(en="Mostar", ru=None, country_code="BA")
+    fake_place_repository.places.extend([moscow, mostar])
+
+    result = await place_service.resolve_places(
+        ResolvePlacesCommand(place_ids=(moscow.place_id, mostar.place_id), language=Language.RU),
+    )
+
+    assert {item.place_id: item.name for item in result.items} == {moscow.place_id: "Москва", mostar.place_id: "Mostar"}
+
+
+async def test_resolve_places_omits_unknown_ids_and_warns(
+    place_service: PlaceService,
+    fake_place_repository: FakePlaceRepository,
+) -> None:
+    """resolve_places: неизвестный id в ответ не попадает и пишется в лог предупреждением."""
+    moscow = make_place()
+    fake_place_repository.places.append(moscow)
+    unknown_id = uuid4()
+
+    with capture_logs() as logs:
+        result = await place_service.resolve_places(
+            ResolvePlacesCommand(place_ids=(moscow.place_id, unknown_id), language=Language.EN),
+        )
+
+    assert [item.place_id for item in result.items] == [moscow.place_id]
+    [warning] = [log for log in logs if log["event"] == "geo.place_ids_unknown"]
+    assert warning["log_level"] == "warning"
+    assert warning["count"] == 1
+    assert warning["place_ids"] == [unknown_id]
+
+
+async def test_resolve_places_many_unknown_logs_count_and_sample(place_service: PlaceService) -> None:
+    """resolve_places: при множестве неизвестных id в лог идут их число и первые 10, а не весь список."""
+    unknown_ids = [uuid4() for _ in range(25)]
+
+    with capture_logs() as logs:
+        await place_service.resolve_places(ResolvePlacesCommand(place_ids=tuple(unknown_ids), language=Language.EN))
+
+    [warning] = [log for log in logs if log["event"] == "geo.place_ids_unknown"]
+    assert warning["count"] == 25
+    assert warning["place_ids"] == sorted(unknown_ids)[:10]
+
+
+async def test_resolve_places_all_known_does_not_warn(
+    place_service: PlaceService,
+    fake_place_repository: FakePlaceRepository,
+) -> None:
+    """resolve_places: когда все места найдены, предупреждения нет."""
+    moscow = make_place()
+    fake_place_repository.places.append(moscow)
+
+    with capture_logs() as logs:
+        await place_service.resolve_places(ResolvePlacesCommand(place_ids=(moscow.place_id,), language=Language.EN))
+
+    assert [log for log in logs if log["event"] == "geo.place_ids_unknown"] == []
+
+
+async def test_get_places_by_ids_returns_location_of_known_places_only(
+    place_service: PlaceService,
+    fake_place_repository: FakePlaceRepository,
+) -> None:
+    """get_places_by_ids: страна и координаты найденных мест; неизвестного id в ответе нет."""
+    moscow = make_place()
+    sea = make_place(en="Barents Sea", ru=None, country_code=None, latitude=75.0, longitude=40.0, population=None)
+    fake_place_repository.places.extend([moscow, sea])
+    unknown_id = uuid4()
+
+    result = await place_service.get_places_by_ids(
+        command=GetPlacesByIdsCommand(place_ids=frozenset({moscow.place_id, sea.place_id, unknown_id})),
+    )
+
+    assert sorted(result.items, key=lambda item: item.latitude) == [
+        PlaceLocation(place_id=moscow.place_id, country_code="RU", latitude=55.75, longitude=37.62),
+        PlaceLocation(place_id=sea.place_id, country_code=None, latitude=75.0, longitude=40.0),
+    ]
+
+
+async def test_get_places_by_ids_nothing_known_returns_empty(place_service: PlaceService) -> None:
+    """get_places_by_ids: ни одного известного id → пустой ответ, не ошибка."""
+    result = await place_service.get_places_by_ids(command=GetPlacesByIdsCommand(place_ids=frozenset({uuid4()})))
+
+    assert result.items == ()

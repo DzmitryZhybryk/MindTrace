@@ -5,7 +5,7 @@ import { makeAccessToken, server, TEST_ACCESS_TOKEN } from "../test/handlers";
 import { makeAuthValue, renderRoutes, screen } from "../test/render";
 import { LoginPage } from "./LoginPage";
 
-/** Монтирует LoginPage на /login c landing-маркером "/" для наблюдения навигации. */
+/** Mounts LoginPage at /login with a "/" landing marker to observe navigation. */
 function renderLogin() {
   const authValue = makeAuthValue({ setAccessToken: vi.fn() });
   const view = renderRoutes({
@@ -35,7 +35,7 @@ describe("LoginPage", () => {
 
     expect(screen.getByRole("button", { name: "Log in" })).toBeDisabled();
 
-    // Пробелы — не заполненность: `canSubmit` сравнивает login по trim'у.
+    // Spaces do not count as filled: `canSubmit` compares login trimmed.
     await user.type(screen.getByLabelText("Username or email"), "   ");
     expect(screen.getByRole("button", { name: "Log in" })).toBeDisabled();
 

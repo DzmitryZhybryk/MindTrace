@@ -25,7 +25,7 @@ class SaltedHasherPort(Protocol):
         """
         ...
 
-    def verify(self, secret: str, hashed: str) -> bool:
+    def verify(self, *, secret: str, hashed: str) -> bool:
         """
         Проверяет соответствие сырого секрета переданному хешу.
 

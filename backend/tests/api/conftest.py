@@ -39,10 +39,11 @@ import pytest
 from fastapi import APIRouter
 from httpx import ASGITransport, AsyncClient, Response
 
-from app.main import create_default_app
+from app.main import create_app, create_default_app
 from app.shared.exceptions import register_exception_handlers
 from app.shared.infra.jwt import get_jwt_service
 from app.shared.schemas.base import BFastAPI
+from app.shared.types import DictStrAny
 
 _BASE_URL = "http://testserver"
 
@@ -52,6 +53,12 @@ def api_app() -> BFastAPI:
     app = create_default_app()
     register_exception_handlers(app)
     return app
+
+
+@pytest.fixture
+def openapi_schema() -> DictStrAny:
+    """Схема боевого приложения — со всеми роутерами, тегами и версией (в отличие от ``api_app``)."""
+    return create_app().openapi()
 
 
 @pytest.fixture
@@ -99,8 +106,8 @@ async def client(app: BFastAPI, make_async_client: Callable[[BFastAPI], AsyncCli
 
 
 @pytest.fixture
-def find_set_cookie() -> Callable[[Response, str], str | None]:
-    def _find(response: Response, name: str) -> str | None:
+def find_set_cookie() -> Callable[..., str | None]:
+    def _find(*, response: Response, name: str) -> str | None:
         for header in response.headers.get_list("set-cookie"):
             if header.startswith(f"{name}="):
                 return header
@@ -126,7 +133,7 @@ def mint_access_token() -> Callable[..., str]:
     """
     jwt_service = get_jwt_service()
 
-    def _mint(user_id: UUID, *, role: str = "free", email_verified: bool = False) -> str:
+    def _mint(*, user_id: UUID, role: str = "free", email_verified: bool = False) -> str:
         return jwt_service.create_access_token(user_id=user_id, role=role, email_verified=email_verified)
 
     return _mint

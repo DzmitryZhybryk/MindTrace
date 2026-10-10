@@ -17,7 +17,8 @@
 - **Наружу открыт только Caddy** (80/443). Postgres/Grafana/Loki/app/frontend — без проброса портов,
   доступны лишь внутри docker-сети `mindtrace-network`.
 - Образы `mindtrace-backend`/`mindtrace-frontend` собирает CI и пушит в **GHCR**; сервер их только `pull`-ит.
-- Миграции БД прогоняет one-shot `mindtrace_migrate` (`alembic upgrade head`) до старта app/worker.
+- Миграции БД прогоняет one-shot `mindtrace_migrate` (`alembic upgrade head` + схема procrastinate) до старта app/worker.
+- Справочник мест загружает one-shot `mindtrace_geo_load` (`python -m app.geo.infra.datasets`) после миграций и до старта app: скачивает датасеты из `manifest.toml` (GitHub Release), проверяет sha256 и пропускает уже загруженные версии.
 
 ## Предпосылки
 
@@ -202,11 +203,20 @@ make prod-up`) выкатывают прод. Красные тесты → де
 
 ## 6. Миграции
 
-- Прогоняются автоматически one-shot сервисом `mindtrace_migrate` (`alembic upgrade head`) — `app`/`worker`
-  стартуют только после его успешного завершения (`service_completed_successfully`).
+- Прогоняются автоматически one-shot сервисом `mindtrace_migrate` — `app`/`worker`
+  стартуют только после его успешного завершения (`service_completed_successfully`). Он делает два шага:
+  `alembic upgrade head` (таблицы приложения) и `python -m app.shared.infra.procrastinate` (таблицы очереди
+  задач). Без второй схемы не работает ни worker, ни регистрация в app: она кладёт письмо в очередь.
+- Схема procrastinate применяется, только если её ещё нет в базе: версию команда не сверяет. При обновлении
+  procrastinate проверь `procrastinate/sql/migrations/` в установленном пакете — файлы новее прежней версии
+  нужно применить к базе вручную до деплоя новой версии.
 - Если миграция упала — app не поднимется (это защита: не запускаем код на несовместимой схеме).
   Смотри логи: `docker compose ... logs mindtrace_migrate`.
 - **Перед деплоем с рискованной миграцией сделай бэкап** (см. ниже).
+- После миграций one-shot `mindtrace_geo_load` загружает справочник мест; app тоже ждёт его успешного
+  завершения. Повторный деплой без смены `manifest.toml` ничего не скачивает. Новая версия датасета =
+  новый ассет в GitHub Release + новые version/url/sha256 в `backend/app/geo/infra/datasets/manifest.toml`.
+  Упал — смотри `docker compose ... logs mindtrace_geo_load` (нет сети до GitHub, не сошёлся sha256, битый файл).
 
 ---
 

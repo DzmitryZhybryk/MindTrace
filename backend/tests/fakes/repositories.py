@@ -1,7 +1,7 @@
 """
 In-memory фейки auth-репозиториев.
 
-Каждый фейк реализует соответствующий порт из ``app.auth.application.ports`` —
+Каждый фейк реализует соответствующий порт из ``app.auth.application.ports.*`` —
 тот же контракт, что и реальный SQLAlchemy-репозиторий. ``ty`` сверяет обе
 реализации с портом, поэтому фейк не может молча разойтись с боевой сигнатурой.
 
@@ -12,11 +12,9 @@ In-memory фейки auth-репозиториев.
 
 from uuid import UUID
 
-from app.auth.application.ports import (
-    ChallengeRepositoryPort,
-    RefreshTokenRepositoryPort,
-    UserCredentialsRepositoryPort,
-)
+from app.auth.application.ports.challenge_repository import ChallengeRepositoryPort
+from app.auth.application.ports.refresh_token_repository import RefreshTokenRepositoryPort
+from app.auth.application.ports.user_credentials_repository import UserCredentialsRepositoryPort
 from app.auth.domain.entities import ChallengeEntity, RefreshTokenEntity, UserCredentialsEntity
 from app.auth.domain.enums import ChallengeType
 
@@ -38,10 +36,11 @@ class FakeUserCredentialsRepository(UserCredentialsRepositoryPort):
 
     async def find_user_credentials_by_email_or_username(
         self,
+        *,
         email: str,
         username: str,
-    ) -> list[UserCredentialsEntity]:
-        return [c for c in self.by_user_id.values() if c.email == email or c.username == username]
+    ) -> tuple[UserCredentialsEntity, ...]:
+        return tuple(c for c in self.by_user_id.values() if c.email == email or c.username == username)
 
 
 class FakeRefreshTokenRepository(RefreshTokenRepositoryPort):
@@ -77,6 +76,7 @@ class FakeChallengeRepository(ChallengeRepositoryPort):
 
     async def find_active_challenge_for_update(
         self,
+        *,
         user_id: UUID,
         challenge_type: ChallengeType,
     ) -> ChallengeEntity | None:

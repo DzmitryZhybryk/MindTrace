@@ -2,7 +2,7 @@
 Юнит-тест адаптера ``InternalUsersClient`` (auth → users).
 
 Реальный ``UserService`` на фейковых UoW/репозитории; фейкаем только I/O-границу users.
-Тест пиннит маппинг ``create_user(...)`` → ``CreateUserCommand`` (``from_attributes=True``):
+Тест пиннит маппинг ``CreateUserRequest`` → ``CreateUserCommand`` (``from_attributes=True``):
 рассинхрон имён полей между ``CreateUserRequest`` (auth) и ``CreateUserCommand`` (users) тут
 бы и всплыл — ни один другой тест этого не ловит.
 """
@@ -10,8 +10,9 @@
 import datetime as dt
 from uuid import uuid4
 
+from app.auth.application.ports.users_client import CreateUserRequest
 from app.auth.infra.clients.internal_users_client import InternalUsersClient
-from app.users.application.services import UserService
+from app.users.application.services.user import UserService
 from tests.fakes import FakeUserRepository, FakeUserUnitOfWork
 
 
@@ -25,11 +26,13 @@ async def test_create_user_maps_fields_and_persists_via_user_service() -> None:
     terms_accepted_at = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 
     await client.create_user(
-        user_id=user_id,
-        username="newuser",
-        email="new@example.com",
-        marketing_emails_consent=True,
-        terms_accepted_at=terms_accepted_at,
+        request=CreateUserRequest(
+            user_id=user_id,
+            username="newuser",
+            email="new@example.com",
+            marketing_emails_consent=True,
+            terms_accepted_at=terms_accepted_at,
+        ),
     )
 
     stored = user_repository.by_user_id[user_id]

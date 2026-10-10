@@ -11,6 +11,7 @@ from app.shared.domain.domain_mixins import TimestampedEntityMixin
 class UserCredentialsEntity(TimestampedEntityMixin):
     def __init__(
         self,
+        *,
         user_id: UUID,
         email: str,
         username: str,
@@ -30,6 +31,7 @@ class UserCredentialsEntity(TimestampedEntityMixin):
     @classmethod
     def create(
         cls,
+        *,
         email: str,
         username: str,
         password: Password,

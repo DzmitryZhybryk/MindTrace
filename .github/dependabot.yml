@@ -50,6 +50,12 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Намеренно запинен на пре-релизе — стабильная линия падает на TypeScript 7
+      # (ts.SyntaxKind отсутствует в нативном компиляторе), см. CLAUDE.md → Codegen
+      # drift gate. Снять игнор вместе со снятием пина, когда TS 7 поедет в стабильном
+      # релизе openapi-ts (проверено эмпирически на 0.97.3/0.99.0 — падают).
+      - dependency-name: "@hey-api/openapi-ts"
 
   # Базовые Docker-образы запинены по digest (supply-chain) — Dependabot поднимает PR при
   # выходе нового digest тега, иначе пины заморозили бы и security-патчи самих образов.

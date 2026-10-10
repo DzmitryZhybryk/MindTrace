@@ -7,7 +7,7 @@ name: mindtrace
 #     наружу торчит только Caddy (80/443). ВАЖНО: docker `ports:` обходит ufw, поэтому
 #     единственная публичная точка входа — Caddy;
 #   • app/worker/frontend на prod-таргете `final` (без volume-mount и --reload);
-#   • one-shot `mindtrace_migrate` (alembic upgrade head) — gate для app/worker.
+#   • one-shot `mindtrace_migrate` (alembic upgrade head + схема procrastinate) — gate для app/worker.
 #
 # Пути внутри резолвятся от КОРНЯ репо (запуск через `make prod-*` с --project-directory .),
 # поэтому build-context ./backend и конфиги ./ops/... указаны относительно корня, не ops/.
@@ -57,16 +57,33 @@ services:
       - default
     logging: *default-logging
 
-  # Одноразовый прогон миграций перед стартом app/worker. Гейт service_completed_successfully
-  # гарантирует, что схема БД накатана до того, как приложение начнёт её использовать.
+  # Одноразовый прогон миграций перед стартом app/worker: таблицы приложения (alembic) и схема
+  # procrastinate (её ждёт и worker, и app — register кладёт письмо в procrastinate_jobs). Гейт
+  # service_completed_successfully гарантирует, что обе схемы накатаны до старта приложения.
   mindtrace_migrate:
     <<: *backend-image
     container_name: mindtrace_migrate
-    command: alembic upgrade head
+    command: sh -c "alembic upgrade head && python -m app.shared.infra.procrastinate"
     env_file: .env
     depends_on:
       mindtrace_pg:
         condition: service_healthy
+    restart: "no"
+    networks:
+      - default
+    logging: *default-logging
+
+  # One-shot: грузит газеттир после миграций. Кеш во /tmp (образ работает под nonroot).
+  mindtrace_geo_load:
+    <<: *backend-image
+    container_name: mindtrace_geo_load
+    command: python -m app.geo.infra.datasets
+    env_file: .env
+    environment:
+      GEO_DATASETS_CACHE_DIR: /tmp/geo-datasets
+    depends_on:
+      mindtrace_migrate:
+        condition: service_completed_successfully
     restart: "no"
     networks:
       - default
@@ -85,6 +102,8 @@ services:
       mindtrace_pg:
         condition: service_healthy
       mindtrace_migrate:
+        condition: service_completed_successfully
+      mindtrace_geo_load:
         condition: service_completed_successfully
     healthcheck:
       # slim-образ без curl — пробуем /healthz через python; не-200 бросает исключение -> unhealthy.
