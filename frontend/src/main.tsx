@@ -2,7 +2,7 @@ import { StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { MantineProvider } from "@mantine/core";
 import { QueryClientProvider } from "@tanstack/react-query";
-import "@mantine/core/styles.css";
+import "./mantineStyles";
 import App from "./App.tsx";
 import { createQueryClient } from "./api/queryClient";
 import { ErrorBoundary } from "./components/ErrorBoundary";

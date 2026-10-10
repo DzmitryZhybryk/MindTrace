@@ -4,6 +4,7 @@ paths:
   - "frontend/index.html"
   - "frontend/vite.config.ts"
   - "frontend/scripts/check-bundle-budget.ts"
+  - "frontend/scripts/check-mantine-styles.ts"
 ---
 
 # Web performance (`frontend/`: React + Vite + Mantine)
@@ -21,8 +22,8 @@ paths:
 
 | Page | JS | CSS |
 |---|---|---|
-| Landing | < 200 kb | < 42 kb |
-| App page | < 300 kb | < 50 kb |
+| Landing | < 200 kb | < 25 kb |
+| App page | < 300 kb | < 30 kb |
 
 The numbers are a working agreement set by measurement, not a physical limit. Exceeding one is a
 reason to look at what grew, not an alarm: if nothing removable is found, raise the limit **and
@@ -41,10 +42,13 @@ the table.
 - Mantine is the one large block and removing it from the landing is not worth it: `MantineProvider`
   sits at the root and the public header's language switcher uses Mantine `Menu`; `/login` and
   `/signup`, the next step, load the same chunks anyway.
-- Nearly all of every page's CSS is the full `@mantine/core/styles.css` (39.7 kb gz with Mantine 9.7),
-  so the CSS limits track Mantine releases. The landing CSS limit is 42 because Mantine 9.7 took it to
-  40.5. Loading only the stylesheets of the components the app uses measures ~16.5 kb; once that is
-  done, tighten both CSS limits to the new measurement.
+- Mantine CSS is loaded per component, never as the whole `@mantine/core/styles.css`:
+  `frontend/src/mantineStyles.ts` imports only the stylesheets the used components need, in the order
+  of `styles.css`. Importing a new Mantine component fails `make fe-mantine-styles` (part of `check`)
+  until its stylesheets are added; the check prints the expected list. Never split these imports
+  across pages: chunk load order is not cascade order.
+- After a Mantine upgrade, look through the screens: a stylesheet moved or renamed upstream leaves a
+  component unstyled with every check green.
 
 ## Loading
 
