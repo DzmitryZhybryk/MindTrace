@@ -1,4 +1,4 @@
-.PHONY: help typecheck lint lint-fix audit test test-unit test-component coverage check test-e2e generate-api generate-world budget
+.PHONY: help typecheck lint lint-fix audit test test-unit test-component coverage check test-e2e generate-api generate-world budget mantine-styles
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -58,11 +58,15 @@ budget: ## Production build + bundle budget check per page (limits — .claude/r
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}vite build${AZURE}' + bundle budget${RESET}"
 	@npm run budget
 
+mantine-styles: ## Check src/mantineStyles.ts lists exactly the Mantine stylesheets the used components need
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}check-mantine-styles${AZURE}'${RESET}"
+	@npm run mantine-styles
+
 audit: ## Scan npm dependencies for known vulnerabilities (high+)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}npm audit${AZURE}' security scan${RESET}"
 	@npm audit --audit-level=high
 
-check: lint typecheck audit test ## Run lint + typecheck + audit + unit/component (fast; the coverage gate is separate: make coverage; e2e: make test-e2e)
+check: lint typecheck mantine-styles audit test ## Run lint + typecheck + Mantine stylesheets + audit + unit/component (fast; the coverage gate is separate: make coverage; e2e: make test-e2e)
 
 # Arguments passed through to playwright: narrow the browser or the test set.
 # E.g. E2E_ARGS="--project=chromium -g login": three browsers are overkill for the dev loop.

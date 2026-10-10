@@ -33,8 +33,8 @@ interface Budget {
 // Limits in kB gzip (1 kB = 1000 bytes, as in the Vite report). The numbers and their rationale
 // live in performance.md; change them there and here together.
 const BUDGETS = {
-  landing: { js: 200, css: 42 },
-  app: { js: 300, css: 50 },
+  landing: { js: 200, css: 25 },
+  app: { js: 300, css: 30 },
 } satisfies Record<string, Budget>;
 
 interface Page {
