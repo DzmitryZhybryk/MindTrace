@@ -24,6 +24,7 @@ const GLOBAL_STYLESHEETS = ["baseline.css", "default-css-variables.css", "global
 const CSS_MODULE_SUFFIX = ".module.mjs";
 
 const MANTINE_NAMED_IMPORT = /import\s+(type\s+)?\{([^}]*)\}\s*from\s*["']@mantine\/core["']/gu;
+const MANTINE_REFERENCE = /(?:from\s*|import\s*\(\s*)["']@mantine\/core["']/gu;
 const RELATIVE_SPECIFIER = /(?:import|export)\s[^"';]*?["'](\.{1,2}\/[^"']+)["']/gu;
 const INDEX_IMPORT = /import\s*\{([^}]*)\}\s*from\s*["'](\.\/[^"']+)["']/gu;
 const INDEX_EXPORT = /export\s*\{([^}]*)\}/gu;
@@ -47,10 +48,20 @@ function runtimeNames(specifiers: string): string[] {
     .map((specifier) => specifier.split(/\s+as\s+/u)[0]);
 }
 
+/**
+ * Names the app imports from @mantine/core at runtime. Only `import { X } from "@mantine/core"` is
+ * understood; a namespace, dynamic or re-export reference would hide components, so it fails.
+ */
 function findUsedMantineNames(): Set<string> {
   const names = new Set<string>();
   for (const file of listSourceFiles(SRC)) {
-    for (const match of readFileSync(file, "utf8").matchAll(MANTINE_NAMED_IMPORT)) {
+    const source = readFileSync(file, "utf8");
+    const namedImports = [...source.matchAll(MANTINE_NAMED_IMPORT)];
+    if ([...source.matchAll(MANTINE_REFERENCE)].length !== namedImports.length) {
+      throw new Error(`${relative(ROOT, file)}: only \`import { X } from "@mantine/core"\` is supported`);
+    }
+
+    for (const match of namedImports) {
       if (match[1]) continue;
       for (const name of runtimeNames(match[2])) names.add(name);
     }
@@ -101,7 +112,27 @@ function collectCssModules(entries: Iterable<string>): Set<string> {
   );
 }
 
+/** Every stylesheet without a component module must be a known global one, or it would be dropped. */
+function assertGlobalStylesheets(): void {
+  const moduleNames = new Set(
+    readdirSync(join(MANTINE, "esm"), { recursive: true, encoding: "utf8" })
+      .filter((path) => path.endsWith(CSS_MODULE_SUFFIX))
+      .map((path) => basename(path, CSS_MODULE_SUFFIX)),
+  );
+  const unmatched = readdirSync(STYLES_DIR)
+    .filter((sheet) => sheet.endsWith(".css") && !sheet.endsWith(".layer.css"))
+    .filter((sheet) => !moduleNames.has(basename(sheet, ".css")))
+    .sort();
+  if (unmatched.join() !== [...GLOBAL_STYLESHEETS].sort().join()) {
+    throw new Error(
+      `Stylesheets without a component module: ${unmatched.join(", ")}; ` +
+        `GLOBAL_STYLESHEETS lists ${GLOBAL_STYLESHEETS.join(", ")}. Update it to match Mantine.`,
+    );
+  }
+}
+
 function expectedStylesheets(): string[] {
+  assertGlobalStylesheets();
   const moduleByName = readIndexModules();
   const entries = [...findUsedMantineNames()].map((name) => {
     const path = moduleByName.get(name);

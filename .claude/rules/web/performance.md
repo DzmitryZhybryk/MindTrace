@@ -4,6 +4,7 @@ paths:
   - "frontend/index.html"
   - "frontend/vite.config.ts"
   - "frontend/scripts/check-bundle-budget.ts"
+  - "frontend/scripts/check-mantine-styles.ts"
 ---
 
 # Web performance (`frontend/`: React + Vite + Mantine)

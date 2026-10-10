@@ -54,7 +54,7 @@ uv run pytest tests/path/test_file.py          # один файл
 uv run pytest -k "test_name"                   # один тест по имени
 ```
 
-Frontend — из `frontend/`: `npm install`, `npm run dev`, `make lint | typecheck | test | coverage | check | budget`.
+Frontend — из `frontend/`: `npm install`, `npm run dev`, `make lint | typecheck | test | coverage | check | budget | mantine-styles`.
 Полный список таргетов — `make help` в соответствующем каталоге. Миграции, дев-база, `geo-load` —
 skill `dev-database`. Контракт API (`openapi.json` → сгенерированный SDK) — правило
 `.claude/rules/common/codegen-contract.md`.
