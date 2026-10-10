@@ -1,6 +1,6 @@
 """Фейк ``AuthUnitOfWorkPort``: держит фейк-репозитории, мокнутый commit и sentinel-сессию."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import cast
 from unittest.mock import AsyncMock
@@ -45,7 +45,7 @@ class FakeAuthUnitOfWork(AuthUnitOfWorkPort):
         return self._session
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[None]:
+    async def transaction(self) -> AsyncGenerator[None]:
         yield
 
     async def flush(self) -> None:

@@ -7,7 +7,7 @@ SQLAlchemy-репозиторий/UoW. ``ty`` сверяет обе реализ
 сущность кладётся по ссылке (моделирует identity map SA-сессии).
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
 from uuid import UUID
@@ -44,7 +44,7 @@ class FakeUserUnitOfWork(UserUnitOfWorkPort):
         self.commit_mock = AsyncMock()
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[None]:
+    async def transaction(self) -> AsyncGenerator[None]:
         yield
 
     async def commit(self) -> None:

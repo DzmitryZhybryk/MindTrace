@@ -29,10 +29,10 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
-    "ruff>=0.16.9",
-    "tach>=0.35.1",
+    "ruff>=0.16.10",
+    "tach>=0.35.3",
     "testcontainers[postgres]>=4.15.0",
-    "ty>=0.0.84",
+    "ty>=0.0.85",
     "vulture>=2.16",
 ]
 
