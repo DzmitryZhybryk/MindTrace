@@ -4,19 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { pickPlace } from "../../../test/addJourney";
 import { FEED_JOURNEYS, server } from "../../../test/handlers";
 import { preferReducedMotion } from "../../../test/motion";
-import { renderAllJourneys } from "../../../test/journeysMap";
+import { openMoscowToLondonEditor, renderAllJourneys } from "../../../test/journeysMap";
 import { act, screen, waitFor, within } from "../../../test/render";
 
 const [MOSCOW_TO_LONDON, , PARIS_TO_MOSCOW] = FEED_JOURNEYS;
-
-/** Opens the feed and editing of the Moscow -> London row by clicking its departure place. */
-async function openMoscowToLondonEditor() {
-  const rendered = renderAllJourneys();
-  const year2021 = await screen.findByRole("region", { name: "2021" });
-  await rendered.user.click(await within(year2021).findByRole("button", { name: "Moscow" }));
-  await screen.findByRole("button", { name: "Save" });
-  return rendered;
-}
 
 describe("AllJourneysView — правка и удаление", () => {
   it("клик по месту открывает правку всей строки с полями поездки, фокус — в нажатом поле", async () => {
@@ -45,18 +36,8 @@ describe("AllJourneysView — правка и удаление", () => {
     expect(request).toEqual({
       url: `/v1/journeys/${MOSCOW_TO_LONDON.journeyId}`,
       body: {
-        origin: {
-          placeId: MOSCOW_TO_LONDON.origin.placeId,
-          countryCode: "RU",
-          latitude: MOSCOW_TO_LONDON.origin.latitude,
-          longitude: MOSCOW_TO_LONDON.origin.longitude,
-        },
-        destination: {
-          placeId: MOSCOW_TO_LONDON.destination.placeId,
-          countryCode: "GB",
-          latitude: MOSCOW_TO_LONDON.destination.latitude,
-          longitude: MOSCOW_TO_LONDON.destination.longitude,
-        },
+        originPlaceId: MOSCOW_TO_LONDON.origin.placeId,
+        destinationPlaceId: MOSCOW_TO_LONDON.destination.placeId,
         transportType: "water",
         traveledYear: 2021,
       },

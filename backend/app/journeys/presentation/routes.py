@@ -13,7 +13,6 @@ from app.journeys.application.schemas.commands import (
     UpdateJourneyCommand,
 )
 from app.journeys.application.services.journey import JourneyService
-from app.journeys.domain.value_objects import GeoPoint
 from app.journeys.presentation.dependencies import journey_service_dependency
 from app.journeys.presentation.responses import (
     CREATE_JOURNEY_RESPONSES,
@@ -60,18 +59,8 @@ async def create_journey(
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> Response:
     command = CreateJourneyCommand(
-        origin=GeoPoint(
-            place_id=body.origin.place_id,
-            country_code=body.origin.country_code,
-            latitude=body.origin.latitude,
-            longitude=body.origin.longitude,
-        ),
-        destination=GeoPoint(
-            place_id=body.destination.place_id,
-            country_code=body.destination.country_code,
-            latitude=body.destination.latitude,
-            longitude=body.destination.longitude,
-        ),
+        origin_place_id=body.origin_place_id,
+        destination_place_id=body.destination_place_id,
         transport_type=body.transport_type,
         traveled_year=body.traveled_year,
     )
@@ -92,18 +81,8 @@ async def update_journey(
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> Response:
     command = UpdateJourneyCommand(
-        origin=GeoPoint(
-            place_id=body.origin.place_id,
-            country_code=body.origin.country_code,
-            latitude=body.origin.latitude,
-            longitude=body.origin.longitude,
-        ),
-        destination=GeoPoint(
-            place_id=body.destination.place_id,
-            country_code=body.destination.country_code,
-            latitude=body.destination.latitude,
-            longitude=body.destination.longitude,
-        ),
+        origin_place_id=body.origin_place_id,
+        destination_place_id=body.destination_place_id,
         transport_type=body.transport_type,
         traveled_year=body.traveled_year,
     )
@@ -155,12 +134,10 @@ async def estimate_journey_distance(
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> JourneyDistanceResponse:
     command = EstimateJourneyDistanceCommand(
-        origin_latitude=query.origin_latitude,
-        origin_longitude=query.origin_longitude,
-        destination_latitude=query.destination_latitude,
-        destination_longitude=query.destination_longitude,
+        origin_place_id=query.origin_place_id,
+        destination_place_id=query.destination_place_id,
     )
-    result = journey_service.estimate_journey_distance(command=command)
+    result = await journey_service.estimate_journey_distance(command=command)
     return JourneyDistanceResponse.model_validate(result, from_attributes=True)
 
 

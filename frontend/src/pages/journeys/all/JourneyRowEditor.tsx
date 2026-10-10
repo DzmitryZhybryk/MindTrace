@@ -17,14 +17,14 @@ import { PlaceAutocomplete } from "../../../components/PlaceAutocomplete";
 import { invalidateJourneyAggregates, invalidateJourneyFeed, removeJourneyFromFeed } from "../journeyCache";
 import {
   JOURNEY_FORM_VALIDATE,
-  applyUnknownPlaceError,
+  applyPlaceError,
   hasCountry,
-  toPlaceRef,
   type JourneyFormValues,
 } from "../journeyFormRules";
 import { JourneyYearField } from "../JourneyYearField";
 import { TransportPicker } from "../TransportPicker";
 import { prefersReducedMotion } from "../../../components/reducedMotion";
+import { RouteDistancePreview } from "./RouteDistancePreview";
 
 const JOURNEY_NOT_FOUND_CODE = "journeys.journey_not_found";
 
@@ -34,6 +34,7 @@ export type JourneyEditField = "origin" | "destination" | "transport" | "year";
 interface JourneyRowEditorProps {
   journey: JourneyFeedEntry;
   nameOf: PlaceNameLookup;
+  distanceFormat: Intl.NumberFormat;
   focusField: JourneyEditField;
   onClose: () => void;
   /** The journey was saved: after editing closes the row flashes a highlight. */
@@ -67,7 +68,14 @@ function isListShown(target: EventTarget | null): boolean {
  * catches that. A journey deleted elsewhere: on save, an error and a refreshed feed; on delete,
  * just remove the row since the goal is already met.
  */
-export function JourneyRowEditor({ journey, nameOf, focusField, onClose, onSaved }: JourneyRowEditorProps) {
+export function JourneyRowEditor({
+  journey,
+  nameOf,
+  distanceFormat,
+  focusField,
+  onClose,
+  onSaved,
+}: JourneyRowEditorProps) {
   const { t } = useTranslation("journeys");
   const { t: tCommon } = useTranslation("common");
   const queryClient = useQueryClient();
@@ -137,8 +145,8 @@ export function JourneyRowEditor({ journey, nameOf, focusField, onClose, onSaved
       await saveJourney({
         path: { journey_id: journey.journeyId },
         body: {
-          origin: toPlaceRef(origin),
-          destination: toPlaceRef(destination),
+          originPlaceId: origin.placeId,
+          destinationPlaceId: destination.placeId,
           transportType: values.transport,
           traveledYear: Number(values.year),
         },
@@ -152,7 +160,7 @@ export function JourneyRowEditor({ journey, nameOf, focusField, onClose, onSaved
         return;
       }
 
-      if (applyUnknownPlaceError(err, values, form)) {
+      if (applyPlaceError(err, values, form)) {
         return;
       }
 
@@ -221,6 +229,13 @@ export function JourneyRowEditor({ journey, nameOf, focusField, onClose, onSaved
               />
             </div>
           </div>
+
+          <RouteDistancePreview
+            journey={journey}
+            origin={values.origin}
+            destination={values.destination}
+            distanceFormat={distanceFormat}
+          />
 
           <div data-edit-field="transport">
             <TransportPicker

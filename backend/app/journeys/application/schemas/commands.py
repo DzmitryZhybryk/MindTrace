@@ -3,7 +3,6 @@ from uuid import UUID
 
 from app.journeys.application.ports.journey_repository import JourneyFilters
 from app.journeys.domain.enums import TransportType
-from app.journeys.domain.value_objects import GeoPoint
 from app.shared.fractional_index import MovePlacement
 from app.shared.pagination import PageQuery
 
@@ -21,8 +20,8 @@ __all__ = [
 class CreateJourneyCommand:
     """Данные для создания поездки."""
 
-    origin: GeoPoint
-    destination: GeoPoint
+    origin_place_id: UUID
+    destination_place_id: UUID
     transport_type: TransportType
     traveled_year: int
 
@@ -31,8 +30,8 @@ class CreateJourneyCommand:
 class UpdateJourneyCommand:
     """Новые значения всех полей поездки: правка заменяет поездку целиком."""
 
-    origin: GeoPoint
-    destination: GeoPoint
+    origin_place_id: UUID
+    destination_place_id: UUID
     transport_type: TransportType
     traveled_year: int
 
@@ -47,12 +46,10 @@ class MoveJourneyCommand:
 
 @dataclass(frozen=True, slots=True)
 class EstimateJourneyDistanceCommand:
-    """Координаты концов маршрута, расстояние между которыми нужно посчитать."""
+    """Места концов маршрута, расстояние между которыми нужно посчитать."""
 
-    origin_latitude: float
-    origin_longitude: float
-    destination_latitude: float
-    destination_longitude: float
+    origin_place_id: UUID
+    destination_place_id: UUID
 
 
 @dataclass(frozen=True, slots=True)

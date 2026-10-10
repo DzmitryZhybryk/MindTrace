@@ -4,7 +4,7 @@ from uuid import UUID
 from app.geo.domain.enums import Language
 
 __all__ = [
-    "GetMissingPlaceIdsCommand",
+    "GetPlacesByIdsCommand",
     "ResolvePlacesCommand",
     "SearchPlacesCommand",
 ]
@@ -33,7 +33,7 @@ class ResolvePlacesCommand:
 
 
 @dataclass(frozen=True, slots=True)
-class GetMissingPlaceIdsCommand:
-    """Id мест, наличие которых в газеттире нужно проверить."""
+class GetPlacesByIdsCommand:
+    """Id мест, страну и координаты которых нужно отдать."""
 
     place_ids: frozenset[UUID]

@@ -10,8 +10,14 @@ export type ClientOptions = {
  * Тело запроса создания поездки.
  */
 export type CreateJourneyRequest = {
-  origin: PlaceRef;
-  destination: PlaceRef;
+  /**
+   * Originplaceid
+   */
+  originPlaceId: string;
+  /**
+   * Destinationplaceid
+   */
+  destinationPlaceId: string;
   transportType: TransportType;
   /**
    * Traveledyear
@@ -195,8 +201,6 @@ export type JourneysMapResponse = {
  */
 export type Language = 'en' | 'ru';
 
-export type Latitude = number;
-
 /**
  * LoginRequest
  */
@@ -206,8 +210,6 @@ export type LoginRequest = {
    */
   login: string;
 };
-
-export type Longitude = number;
 
 /**
  * MapCity
@@ -364,24 +366,6 @@ export type PlaceName = {
 };
 
 /**
- * PlaceRef
- *
- * Место из выдачи поиска geo: его ``placeId``, страна и координаты.
- */
-export type PlaceRef = {
-  /**
-   * Placeid
-   */
-  placeId: string;
-  /**
-   * Countrycode
-   */
-  countryCode: string;
-  latitude: Latitude;
-  longitude: Longitude;
-};
-
-/**
  * PlaceSearchItem
  *
  * Один вариант в подсказках поиска; по ``placeId`` на место потом можно ссылаться.
@@ -504,8 +488,14 @@ export type TransportType = 'land' | 'air' | 'water';
  * Тело запроса правки поездки: новые значения всех полей.
  */
 export type UpdateJourneyRequest = {
-  origin: PlaceRef;
-  destination: PlaceRef;
+  /**
+   * Originplaceid
+   */
+  originPlaceId: string;
+  /**
+   * Destinationplaceid
+   */
+  destinationPlaceId: string;
   transportType: TransportType;
   /**
    * Traveledyear
@@ -1107,15 +1097,23 @@ export type EstimateJourneyDistanceData = {
   body?: never;
   path?: never;
   query: {
-    originLatitude: Latitude;
-    originLongitude: Longitude;
-    destinationLatitude: Latitude;
-    destinationLongitude: Longitude;
+    /**
+     * Originplaceid
+     */
+    originPlaceId: string;
+    /**
+     * Destinationplaceid
+     */
+    destinationPlaceId: string;
   };
   url: '/v1/journeys/distance';
 };
 
 export type EstimateJourneyDistanceErrors = {
+  /**
+   * Ошибка в местах маршрута
+   */
+  400: ErrorResponse;
   /**
    * Невалидный или истёкший access-токен
    */

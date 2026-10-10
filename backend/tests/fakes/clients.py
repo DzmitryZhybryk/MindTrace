@@ -4,7 +4,7 @@ from collections.abc import Collection
 from uuid import UUID
 
 from app.auth.application.ports.users_client import CreateUserRequest, UsersClientPort
-from app.journeys.application.ports.places_client import PlacesClientPort
+from app.journeys.application.ports.places_client import PlaceLocationResponse, PlacesClientPort
 
 
 class FakeUsersClient(UsersClientPort):
@@ -27,12 +27,17 @@ class FakeUsersClient(UsersClientPort):
 
 
 class FakePlacesClient(PlacesClientPort):
-    """Фейк клиента journeys → geo: знает набор существующих мест и записывает вызовы."""
+    """
+    Фейк клиента journeys → geo: хранит места справочника и записывает вызовы.
 
-    def __init__(self, *, existing_place_ids: Collection[UUID] = ()) -> None:
-        self.existing_place_ids = set(existing_place_ids)
+    Найденные места отдаёт в порядке хранения, а не запроса — как geo, у которого порядок
+    произвольный; тест может переставить ``locations``, чтобы проверить сопоставление по id.
+    """
+
+    def __init__(self, *, locations: Collection[PlaceLocationResponse] = ()) -> None:
+        self.locations = {location.place_id: location for location in locations}
         self.calls: list[tuple[UUID, ...]] = []
 
-    async def get_missing_place_ids(self, *, place_ids: Collection[UUID]) -> frozenset[UUID]:
+    async def find_place_locations(self, *, place_ids: Collection[UUID]) -> tuple[PlaceLocationResponse, ...]:
         self.calls.append(tuple(place_ids))
-        return frozenset(place_ids) - self.existing_place_ids
+        return tuple(location for place_id, location in self.locations.items() if place_id in place_ids)

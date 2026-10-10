@@ -50,6 +50,7 @@
     "deleteConfirm": "Delete?",
     "deleteYes": "Yes",
     "deleteNo": "No",
+    "distance": "Distance ≈",
     "dragHandle": "Drag to reorder",
     "dnd": {
       "instructions": "To reorder a journey, press Space, move it with the arrow keys, then press Space again to drop it or Escape to cancel.",

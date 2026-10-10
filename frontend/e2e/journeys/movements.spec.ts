@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures";
-import { createJourney, findPlace } from "../helpers/journeys";
+import { createJourney, findPlaceId } from "../helpers/journeys";
 import { getStoredAccessToken } from "../helpers/session";
 
 /**
@@ -19,18 +19,18 @@ test.describe("Journeys movements map", () => {
     const token = (await getStoredAccessToken(authedPage)) ?? "";
     expect(token, "после логина ожидается access-токен в sessionStorage").not.toBe("");
 
-    const moscow = await findPlace(request, token, "Moscow");
-    const london = await findPlace(request, token, "London");
-    const paris = await findPlace(request, token, "Paris");
+    const moscowId = await findPlaceId(request, token, "Moscow");
+    const londonId = await findPlaceId(request, token, "London");
+    const parisId = await findPlaceId(request, token, "Paris");
     await createJourney(request, token, {
-      origin: moscow,
-      destination: london,
+      originPlaceId: moscowId,
+      destinationPlaceId: londonId,
       transportType: "air",
       traveledYear: 2019,
     });
     await createJourney(request, token, {
-      origin: london,
-      destination: paris,
+      originPlaceId: londonId,
+      destinationPlaceId: parisId,
       transportType: "land",
       traveledYear: 2022,
     });

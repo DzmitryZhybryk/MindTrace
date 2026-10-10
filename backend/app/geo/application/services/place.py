@@ -1,7 +1,8 @@
 from app.geo.application.ports.place_repository import PlaceRepositoryPort
-from app.geo.application.schemas.commands import GetMissingPlaceIdsCommand, ResolvePlacesCommand, SearchPlacesCommand
+from app.geo.application.schemas.commands import GetPlacesByIdsCommand, ResolvePlacesCommand, SearchPlacesCommand
 from app.geo.application.schemas.results import (
-    MissingPlaceIdsResult,
+    PlaceLocation,
+    PlacesByIdsResult,
     PlaceSearchItem,
     PlaceSearchResult,
     ResolvedPlace,
@@ -101,20 +102,28 @@ class PlaceService:
         )
         return ResolvePlacesResult(items=items)
 
-    async def get_missing_place_ids(self, command: GetMissingPlaceIdsCommand) -> MissingPlaceIdsResult:
+    async def get_places_by_ids(self, command: GetPlacesByIdsCommand) -> PlacesByIdsResult:
         """
-        Возвращает те id из переданных, которых нет в газеттире.
+        Отдаёт страну и координаты мест по их id.
 
-        Нужен тем, кто принимает id мест извне и перед сохранением проверяет, что такие места
-        есть — иначе потом их названия не найдутся.
+        Нужен тем, кто принимает id мест извне и хранит у себя страну и координаты места: они
+        берутся из газеттира, а не со слов клиента. Id, которых нет в газеттире, в ответ не
+        попадают — их отсутствие и есть ответ «такого места нет».
 
         Args:
-            command: Id мест для проверки
+            command: Id мест
 
         Returns:
-            Id ненайденных мест; пусто, если все на месте
+            Найденные места в произвольном порядке
         """
         places = await self._repository.find_places_by_ids(place_ids=command.place_ids)
-        return MissingPlaceIdsResult(
-            place_ids=command.place_ids - {place_entity.place_id for place_entity in places},
+        items = tuple(
+            PlaceLocation(
+                place_id=place_entity.place_id,
+                country_code=place_entity.country_code,
+                latitude=place_entity.latitude,
+                longitude=place_entity.longitude,
+            )
+            for place_entity in places
         )
+        return PlacesByIdsResult(items=items)
