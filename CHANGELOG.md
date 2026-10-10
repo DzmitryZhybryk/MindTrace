@@ -11,6 +11,15 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-10-10
+
+### Backend 3.1.5
+
+- **Схему procrastinate применяет шаг миграции, а не worker.** Новая команда `python -m app.shared.infra.procrastinate` создаёт таблицы очереди задач, если их ещё нет; она выполняется сразу после `alembic upgrade head` в `mindtrace_migrate` (прод), `migrate` (e2e) и `make migrate-upgrade` (дев). Раньше схему создавал worker на старте, и регистрация на свежей базе могла упасть с 500, если app поднялся раньше worker'а. Теперь app и worker ждут только migrate; в e2e-стеке app больше не ждёт worker
+- `alembic revision --autogenerate` больше не предлагает удалить таблицы `procrastinate_*`
+- Проверка смотрит только на наличие схемы, не на её версию: что делать при обновлении procrastinate — в `docs/deployment.md` → «Миграции»
+- `requires-python = ">=3.14,<3.15"`: CI ставил вышедший Python 3.15, под которым не собирается транзитивная `rignore` (pyo3 0.26), и backend-гейт падал до проверок. Отдельный шаг установки Python в CI убран — `uv sync` берёт версию из `requires-python`
+
 ## 2026-10-08
 
 ### Frontend 2.12.0

@@ -125,9 +125,11 @@ migrate-create: ## Create a new migration (usage: make migrate-create "descripti
 	echo "${GREEN}INFO :  ${AZURE}Creating migration: ${PURPLE}$$ARGS${RESET}"; \
 	docker exec -it mindtrace_app uv run alembic revision --autogenerate -m "$$ARGS"
 
-migrate-upgrade: ## Apply all pending migrations
+migrate-upgrade: ## Apply all pending migrations and the procrastinate schema
 	@echo "${GREEN}INFO :  ${AZURE}Applying migrations${RESET}"
 	@docker exec -it mindtrace_app uv run alembic upgrade head
+	@echo "${GREEN}INFO :  ${AZURE}Applying procrastinate schema${RESET}"
+	@docker exec -it mindtrace_app uv run python -m app.shared.infra.procrastinate
 
 migrate-downgrade: ## Downgrade one migration (usage: make migrate-downgrade)
 	@REVISION="$(filter-out $@,$(MAKECMDGOALS))"; \

@@ -107,12 +107,12 @@ test-integration: ## Backend integration (testcontainers → Docker-демон)
 # Поднимает одноразовый e2e-стек (tmpfs-Postgres, дев-база не трогается), гоняет Playwright и сносит
 # всё начисто. Защитный `down` ПЕРЕД `up` подчищает хвосты прерванного прошлого прогона (Ctrl-C до
 # teardown'а). Финальный `down` выполняется всегда (даже при падении тестов), exit-код — от тестов.
-# `--wait frontend` (а не голый `--wait`) ждёт healthcheck фронта по цепочке и не спотыкается о
-# штатный выход one-shot'а migrate.
+# `--wait frontend worker` (а не голый `--wait`) ждёт healthcheck фронта по цепочке и не спотыкается
+# о штатный выход one-shot'а migrate. worker назван явно: от него никто не зависит, по цепочке он не поднимется.
 test-e2e: ## Frontend e2e (Playwright; сам поднимает одноразовый стек и полностью сносит его после — docker compose up НЕ нужен)
 	@echo "${GREEN}INFO :  ${AZURE}Up ephemeral e2e stack (${PURPLE}ops/docker-compose.e2e.yaml${AZURE})${RESET}"
 	@$(COMPOSE_E2E) down -v --remove-orphans 2>/dev/null || true
-	@{ $(COMPOSE_E2E) up -d --wait frontend && \
+	@{ $(COMPOSE_E2E) up -d --wait frontend worker && \
 	   E2E_BASE_URL=http://localhost:5273 $(MAKE) -C frontend test-e2e; }; \
 	status=$$?; \
 	if [ $$status -ne 0 ]; then \
