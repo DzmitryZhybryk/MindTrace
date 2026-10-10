@@ -33,6 +33,10 @@ CHANGELOG остаётся один. Новые записи группирую�
 - Проверка смотрит только на наличие схемы, не на её версию: что делать при обновлении procrastinate — в `docs/deployment.md` → «Миграции»
 - `requires-python = ">=3.14,<3.15"`: CI ставил вышедший Python 3.15, под которым не собирается транзитивная `rignore` (pyo3 0.26), и backend-гейт падал до проверок. Отдельный шаг установки Python в CI убран — `uv sync` берёт версию из `requires-python`
 
+### Project
+
+- Skill `git-workflow` описывает мёрж фича-PR в `dev`: merge-коммитом с удалением ветки (`gh pr merge <n> --merge --delete-branch`); релизный PR `dev → main` ветку `dev` сохраняет
+
 ## 2026-10-08
 
 ### Frontend 2.12.0
