@@ -8,6 +8,7 @@ argon2) — фейки; DI-граф, выпуск/декод JWT, куки и ex
 
 import datetime as dt
 from collections.abc import Callable
+from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
@@ -341,3 +342,44 @@ async def test_refresh_expired_token_returns_401(
 
     assert response.status_code == 401
     assert response.json()["code"] == "auth.invalid_refresh_token"
+
+
+# --- me ----------------------------------------------------------------------
+
+
+async def test_get_current_account_returns_camelcase_account(
+    client: AsyncClient,
+    fake_user_credentials_repository: FakeUserCredentialsRepository,
+    mint_access_token: Callable[..., str],
+    past: dt.datetime,
+) -> None:
+    """me с валидным токеном → 200 {email, username, emailVerified} учётной записи."""
+    user_credentials_entity = make_user_credentials(email="neo@example.com", username="neo", email_verified_at=past)
+    fake_user_credentials_repository.by_user_id[user_credentials_entity.user_id] = user_credentials_entity
+    token = mint_access_token(user_id=user_credentials_entity.user_id)
+
+    response = await client.get("/v1/auth/me/", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    assert response.json() == {"email": "neo@example.com", "username": "neo", "emailVerified": True}
+
+
+async def test_get_current_account_without_bearer_returns_401(client: AsyncClient) -> None:
+    """me без Authorization → 401 auth.invalid_access_token."""
+    response = await client.get("/v1/auth/me/")
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "auth.invalid_access_token"
+
+
+async def test_get_current_account_unknown_user_returns_401(
+    client: AsyncClient,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """me с токеном без учётки в БД → 401 auth.account_not_found."""
+    token = mint_access_token(user_id=uuid4())
+
+    response = await client.get("/v1/auth/me/", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "auth.account_not_found"

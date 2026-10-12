@@ -20,8 +20,8 @@ class RegisterRequest(CamelModel):
 
         Запускается на границе HTTP-слоя сразу после парсинга тела запроса.
         Если флаг не выставлен, регистрация останавливается ещё до выхода в
-        application-слой — фактический момент принятия условий фиксируется
-        в роуте через ``terms_accepted_at`` и пробрасывается дальше для аудита.
+        application-слой. Момент принятия условий — время создания учётной
+        записи, его берёт сервис регистрации.
 
         Pydantic v2 оборачивает в ``ValidationError`` только ``ValueError``/
         ``AssertionError``/``PydanticCustomError``; ``TermsNotAcceptedError``
@@ -54,6 +54,14 @@ class TokenResponse(CamelModel):
 
     access_token: str
     token_type: str = "bearer"  # noqa: S105
+
+
+class CurrentAccountResponse(CamelModel):
+    model_config = ConfigDict(frozen=True)
+
+    email: str
+    username: str
+    email_verified: bool
 
 
 class VerifyEmailRequest(CamelModel):

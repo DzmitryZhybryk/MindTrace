@@ -16,8 +16,7 @@ class CreateUserRequest:
     """
 
     user_id: UUID
-    username: str
-    email: str
+    display_name: str
     marketing_emails_consent: bool
     terms_accepted_at: dt.datetime
 

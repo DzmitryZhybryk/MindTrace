@@ -11,6 +11,18 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-10-12
+
+### Backend 5.0.0
+
+- **Email и username хранит только auth, users — только профиль.** `GET /v1/users/me` отдаёт `{displayName}` без `username` и `email` (**ломающее изменение**); `displayName` теперь всегда строка: при регистрации он равен username
+- Новый `GET /v1/auth/me/` → `{email, username, emailVerified}` — данные учётной записи текущего пользователя
+- Валидный access-токен, для которого нет учётной записи, — теперь 401 `auth.account_not_found` (было 404 `auth.user_credentials_not_found`) в `/v1/auth/me/`, `POST /v1/auth/email/send-verification/` и `POST /v1/auth/email/verify/` (**ломающее изменение**; код `auth.user_credentials_not_found` удалён). Клиент получает 401, refresh не проходит, сессия завершается
+
+### Frontend 2.13.2
+
+- Имя в шапке и приветствии берётся из `displayName` без запасного варианта `username` (контракт Backend 5.0.0)
+
 ## 2026-10-10
 
 ### Frontend 2.13.1

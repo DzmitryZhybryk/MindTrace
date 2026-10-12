@@ -26,23 +26,31 @@ export type CreateJourneyRequest = {
 };
 
 /**
- * CurrentUserResponse
+ * CurrentAccountResponse
  */
-export type CurrentUserResponse = {
-  /**
-   * Username
-   */
-  username: string;
+export type CurrentAccountResponse = {
   /**
    * Email
    */
   email: string;
   /**
-   * Displayname
-   *
-   * Отображаемое имя; null, если пользователь его не задал.
+   * Username
    */
-  displayName: string | null;
+  username: string;
+  /**
+   * Emailverified
+   */
+  emailVerified: boolean;
+};
+
+/**
+ * CurrentUserResponse
+ */
+export type CurrentUserResponse = {
+  /**
+   * Displayname
+   */
+  displayName: string;
 };
 
 /**
@@ -691,6 +699,35 @@ export type RefreshResponses = {
 
 export type RefreshResponse = RefreshResponses[keyof RefreshResponses];
 
+export type GetCurrentAccountData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/v1/auth/me/';
+};
+
+export type GetCurrentAccountErrors = {
+  /**
+   * Невалидный или истёкший access-токен, либо учётной записи по токену нет
+   */
+  401: ErrorResponse;
+  /**
+   * Внутренняя ошибка сервера
+   */
+  500: ErrorResponse;
+};
+
+export type GetCurrentAccountError = GetCurrentAccountErrors[keyof GetCurrentAccountErrors];
+
+export type GetCurrentAccountResponses = {
+  /**
+   * Successful Response
+   */
+  200: CurrentAccountResponse;
+};
+
+export type GetCurrentAccountResponse = GetCurrentAccountResponses[keyof GetCurrentAccountResponses];
+
 export type SendEmailVerificationData = {
   body?: never;
   path?: never;
@@ -700,13 +737,9 @@ export type SendEmailVerificationData = {
 
 export type SendEmailVerificationErrors = {
   /**
-   * Невалидный или истёкший access-токен
+   * Невалидный или истёкший access-токен, либо учётной записи по токену нет
    */
   401: ErrorResponse;
-  /**
-   * Учётная запись не найдена
-   */
-  404: ErrorResponse;
   /**
    * Email уже подтверждён
    */
@@ -743,11 +776,11 @@ export type VerifyEmailErrors = {
    */
   400: ErrorResponse;
   /**
-   * Невалидный или истёкший access-токен
+   * Невалидный или истёкший access-токен, либо учётной записи по токену нет
    */
   401: ErrorResponse;
   /**
-   * Учётная запись или активный challenge не найдены
+   * Активный challenge отсутствует
    */
   404: ErrorResponse;
   /**

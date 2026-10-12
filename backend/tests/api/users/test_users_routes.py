@@ -24,7 +24,7 @@ async def test_get_current_user_returns_camelcase_profile(
     mint_access_token: Callable[..., str],
 ) -> None:
     """200: профиль текущего пользователя, ключ displayName в camelCase."""
-    user_entity = make_user_entity(username="alice", email="alice@example.com", display_name="Alice D.")
+    user_entity = make_user_entity(display_name="Alice D.")
     fake_user_repository.by_user_id[user_entity.user_id] = user_entity
 
     response = await client.get(
@@ -33,25 +33,7 @@ async def test_get_current_user_returns_camelcase_profile(
     )
 
     assert response.status_code == 200
-    assert response.json() == {"username": "alice", "email": "alice@example.com", "displayName": "Alice D."}
-
-
-async def test_get_current_user_without_display_name_returns_null(
-    client: AsyncClient,
-    fake_user_repository: FakeUserRepository,
-    mint_access_token: Callable[..., str],
-) -> None:
-    """200: displayName = null, когда отображаемое имя не задано (фоллбэк — забота фронта)."""
-    user_entity = make_user_entity()
-    fake_user_repository.by_user_id[user_entity.user_id] = user_entity
-
-    response = await client.get(
-        _ME_PATH,
-        headers={"Authorization": f"Bearer {mint_access_token(user_id=user_entity.user_id)}"},
-    )
-
-    assert response.status_code == 200
-    assert response.json()["displayName"] is None
+    assert response.json() == {"displayName": "Alice D."}
 
 
 async def test_get_current_user_without_token_returns_401(client: AsyncClient) -> None:

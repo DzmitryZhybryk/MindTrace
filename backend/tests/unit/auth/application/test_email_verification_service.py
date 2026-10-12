@@ -8,12 +8,12 @@ from app.auth.application.schemas.commands import VerifyEmailCommand
 from app.auth.application.services.email_verification import EmailVerificationService
 from app.auth.domain.enums import ChallengeType
 from app.auth.exceptions import (
+    AccountNotFoundError,
     ChallengeAttemptsExceededError,
     ChallengeExpiredError,
     ChallengeNotFoundError,
     ChallengeResendCooldownError,
     EmailAlreadyVerifiedError,
-    UserCredentialsNotFoundError,
     VerificationCodeInvalidError,
 )
 from tests.builders import make_challenge, make_user_credentials
@@ -72,8 +72,8 @@ async def test_request_raises_when_user_not_found(
     fake_challenge_repository: FakeChallengeRepository,
     fake_task_bus: FakeTaskBus,
 ) -> None:
-    """request: нет учётной записи → UserCredentialsNotFoundError, без challenge, defer'а и коммита."""
-    with pytest.raises(UserCredentialsNotFoundError):
+    """request: нет учётной записи → AccountNotFoundError, без challenge, defer'а и коммита."""
+    with pytest.raises(AccountNotFoundError):
         await email_verification_service.request_email_verification(user_id=uuid4())
 
     assert fake_challenge_repository.challenges == []
@@ -210,8 +210,8 @@ async def test_verify_raises_when_user_not_found(
     email_verification_service: EmailVerificationService,
     fake_uow: FakeAuthUnitOfWork,
 ) -> None:
-    """verify: нет учётной записи → UserCredentialsNotFoundError, без коммита."""
-    with pytest.raises(UserCredentialsNotFoundError):
+    """verify: нет учётной записи → AccountNotFoundError, без коммита."""
+    with pytest.raises(AccountNotFoundError):
         await email_verification_service.verify_email(user_id=uuid4(), command=VerifyEmailCommand(code="123456"))
 
     fake_uow.commit_mock.assert_not_awaited()

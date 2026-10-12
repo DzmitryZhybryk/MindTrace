@@ -62,17 +62,17 @@ async def test_send_verification_malformed_bearer_returns_401(client: AsyncClien
     assert response.json()["code"] == "auth.invalid_access_token"
 
 
-async def test_send_verification_unknown_user_returns_404(
+async def test_send_verification_unknown_user_returns_401(
     client: AsyncClient,
     mint_access_token: Callable[..., str],
 ) -> None:
-    """send-verification с токеном без учётки в БД → 404 auth.user_credentials_not_found."""
+    """send-verification с токеном без учётки в БД → 401 auth.account_not_found."""
     token = mint_access_token(user_id=uuid4())
 
     response = await client.post(_SEND_VERIFICATION_URL, headers={"Authorization": f"Bearer {token}"})
 
-    assert response.status_code == 404
-    assert response.json()["code"] == "auth.user_credentials_not_found"
+    assert response.status_code == 401
+    assert response.json()["code"] == "auth.account_not_found"
 
 
 async def test_send_verification_already_verified_returns_409(
@@ -166,11 +166,11 @@ async def test_verify_wrong_code_returns_400_and_increments_attempts(
     assert challenge.attempts == 1
 
 
-async def test_verify_unknown_user_returns_404(
+async def test_verify_unknown_user_returns_401(
     client: AsyncClient,
     mint_access_token: Callable[..., str],
 ) -> None:
-    """verify с токеном без учётки в БД → 404 auth.user_credentials_not_found."""
+    """verify с токеном без учётки в БД → 401 auth.account_not_found."""
     token = mint_access_token(user_id=uuid4())
 
     response = await client.post(
@@ -179,8 +179,8 @@ async def test_verify_unknown_user_returns_404(
         json={"code": "123456"},
     )
 
-    assert response.status_code == 404
-    assert response.json()["code"] == "auth.user_credentials_not_found"
+    assert response.status_code == 401
+    assert response.json()["code"] == "auth.account_not_found"
 
 
 async def test_verify_no_active_challenge_returns_404(

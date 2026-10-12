@@ -1,7 +1,6 @@
 {
   "auth": {
     "invalid_credentials": "Неверный логин/email или пароль",
-    "user_credentials_not_found": "Неверный логин/email или пароль",
     "email_already_registered": "Этот email уже зарегистрирован",
     "username_already_taken": "Это имя пользователя уже занято",
     "terms_not_accepted": "Чтобы продолжить, примите условия",
@@ -12,7 +11,8 @@
     "challenge_attempts_exceeded": "Слишком много попыток. Запросите новый код",
     "challenge_resend_cooldown": "Подождите, прежде чем запрашивать новый код",
     "invalid_access_token": "Сессия истекла. Войдите снова",
-    "invalid_refresh_token": "Сессия истекла. Войдите снова"
+    "invalid_refresh_token": "Сессия истекла. Войдите снова",
+    "account_not_found": "Сессия истекла. Войдите снова"
   },
   "journeys": {
     "same_origin_destination": "Города отправления и назначения должны отличаться",

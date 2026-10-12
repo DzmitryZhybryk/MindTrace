@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.application.config import EmailVerificationConfig
 from app.auth.application.schemas.metadata import ClientMetadata
+from app.auth.application.services.account import AccountService
 from app.auth.application.services.auth import AuthService
 from app.auth.application.services.email_verification import EmailVerificationService
 from app.auth.application.services.token_issuer import TokenIssuer
@@ -118,6 +119,12 @@ def email_verification_service_dependency(
         task_bus=task_bus,
         config=config,
     )
+
+
+def account_service_dependency(
+    uow: Annotated[AuthUnitOfWork, Depends(auth_uow_dependency)],
+) -> AccountService:
+    return AccountService(uow=uow)
 
 
 def token_issuer_dependency(

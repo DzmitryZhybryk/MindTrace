@@ -36,10 +36,7 @@ export function AppHeader() {
   const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false);
 
   // Until the profile loads, name is undefined and Mantine Avatar shows a generic icon.
-  const profileName =
-    currentUser.status === "ready"
-      ? (currentUser.user.displayName ?? currentUser.user.username)
-      : undefined;
+  const profileName = currentUser.status === "ready" ? currentUser.user.displayName : undefined;
 
   const handleLogout = async () => {
     try {

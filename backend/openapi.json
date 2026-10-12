@@ -3,7 +3,7 @@
   "info": {
     "title": "MindTrace",
     "description": "Service for managing mindtrace",
-    "version": "4.0.0"
+    "version": "5.0.0"
   },
   "paths": {
     "/healthz": {
@@ -285,6 +285,75 @@
         }
       }
     },
+    "/v1/auth/me/": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Current Account",
+        "operationId": "get_current_account",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentAccountResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Невалидный или истёкший access-токен, либо учётной записи по токену нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "auth.invalid_access_token": {
+                    "summary": "Невалидный или истёкший access-токен",
+                    "value": {
+                      "code": "auth.invalid_access_token",
+                      "message": "Невалидный или истёкший access-токен",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "auth.account_not_found": {
+                    "summary": "Учётная запись не найдена",
+                    "value": {
+                      "code": "auth.account_not_found",
+                      "message": "Учётная запись не найдена",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "internal",
+                  "message": "Внутренняя ошибка сервера",
+                  "timestamp": "2024-01-01T12:00:00Z"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/auth/email/send-verification/": {
       "post": {
         "tags": [
@@ -302,31 +371,29 @@
             }
           },
           "401": {
-            "description": "Невалидный или истёкший access-токен",
+            "description": "Невалидный или истёкший access-токен, либо учётной записи по токену нет",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
-                "example": {
-                  "code": "auth.invalid_access_token",
-                  "message": "Невалидный или истёкший access-токен",
-                  "timestamp": "2024-01-01T12:00:00Z"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Учётная запись не найдена",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "auth.user_credentials_not_found",
-                  "message": "Учётная запись не найдена",
-                  "timestamp": "2024-01-01T12:00:00Z"
+                "examples": {
+                  "auth.invalid_access_token": {
+                    "summary": "Невалидный или истёкший access-токен",
+                    "value": {
+                      "code": "auth.invalid_access_token",
+                      "message": "Невалидный или истёкший access-токен",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  },
+                  "auth.account_not_found": {
+                    "summary": "Учётная запись не найдена",
+                    "value": {
+                      "code": "auth.account_not_found",
+                      "message": "Учётная запись не найдена",
+                      "timestamp": "2024-01-01T12:00:00Z"
+                    }
+                  }
                 }
               }
             }
@@ -424,44 +491,44 @@
             }
           },
           "401": {
-            "description": "Невалидный или истёкший access-токен",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "auth.invalid_access_token",
-                  "message": "Невалидный или истёкший access-токен",
-                  "timestamp": "2024-01-01T12:00:00Z"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Учётная запись или активный challenge не найдены",
+            "description": "Невалидный или истёкший access-токен, либо учётной записи по токену нет",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "examples": {
-                  "auth.user_credentials_not_found": {
-                    "summary": "Учётная запись не найдена",
+                  "auth.invalid_access_token": {
+                    "summary": "Невалидный или истёкший access-токен",
                     "value": {
-                      "code": "auth.user_credentials_not_found",
-                      "message": "Учётная запись не найдена",
+                      "code": "auth.invalid_access_token",
+                      "message": "Невалидный или истёкший access-токен",
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
                   },
-                  "auth.challenge_not_found": {
-                    "summary": "Активный challenge отсутствует",
+                  "auth.account_not_found": {
+                    "summary": "Учётная запись не найдена",
                     "value": {
-                      "code": "auth.challenge_not_found",
-                      "message": "Код подтверждения не запрошен или больше недоступен",
+                      "code": "auth.account_not_found",
+                      "message": "Учётная запись не найдена",
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
                   }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Активный challenge отсутствует",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "auth.challenge_not_found",
+                  "message": "Код подтверждения не запрошен или больше недоступен",
+                  "timestamp": "2024-01-01T12:00:00Z"
                 }
               }
             }
@@ -1868,33 +1935,38 @@
         "title": "CreateJourneyRequest",
         "description": "Тело запроса создания поездки."
       },
-      "CurrentUserResponse": {
+      "CurrentAccountResponse": {
         "properties": {
-          "username": {
-            "type": "string",
-            "title": "Username"
-          },
           "email": {
             "type": "string",
             "title": "Email"
           },
-          "displayName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Displayname",
-            "description": "Отображаемое имя; null, если пользователь его не задал."
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "emailVerified": {
+            "type": "boolean",
+            "title": "Emailverified"
           }
         },
         "type": "object",
         "required": [
-          "username",
           "email",
+          "username",
+          "emailVerified"
+        ],
+        "title": "CurrentAccountResponse"
+      },
+      "CurrentUserResponse": {
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "title": "Displayname"
+          }
+        },
+        "type": "object",
+        "required": [
           "displayName"
         ],
         "title": "CurrentUserResponse"

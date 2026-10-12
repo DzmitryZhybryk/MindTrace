@@ -27,13 +27,10 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("username", sa.String(length=50), nullable=False),
-        sa.Column("email", sa.String(length=254), nullable=False),
-        sa.Column("display_name", sa.String(length=50), nullable=True),
+        sa.Column("display_name", sa.String(length=50), nullable=False),
         sa.Column("terms_accepted_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("marketing_emails_consent", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("email"),
     )
     op.create_table(
         "user_credentials",

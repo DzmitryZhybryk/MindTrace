@@ -60,8 +60,7 @@ async def test_register_persists_credentials_calls_users_and_requests_verificati
     assert len(fake_users_client.created) == 1
     created = fake_users_client.created[0]
     assert created.user_id == stored.user_id
-    assert created.email == "neo@example.com"
-    assert created.username == "neo"
+    assert created.display_name == "neo"
     assert created.marketing_emails_consent is True
     assert created.terms_accepted_at == stored.created_at
 

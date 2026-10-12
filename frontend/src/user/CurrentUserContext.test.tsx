@@ -13,7 +13,7 @@ import { useCurrentUser } from "./useCurrentUser";
 /** Probe: prints the state machine status (and the name for ready), without Mantine/Router. */
 function Probe() {
   const state = useCurrentUser();
-  return <span>{state.status === "ready" ? `ready:${state.user.displayName ?? state.user.username}` : state.status}</span>;
+  return <span>{state.status === "ready" ? `ready:${state.user.displayName}` : state.status}</span>;
 }
 
 function tree(authValue: AuthContextValue, queryClient = createTestQueryClient()) {
@@ -44,7 +44,6 @@ describe("CurrentUserProvider", () => {
   it("после логина грузит /me и отдаёт ready с профилем", async () => {
     render(tree(makeAuthValue({ isAuthenticated: true })));
 
-    // The default MSW fixture: displayName=null, so the probe shows username.
     expect(await screen.findByText("ready:traveler")).toBeInTheDocument();
   });
 

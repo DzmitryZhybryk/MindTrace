@@ -75,8 +75,7 @@ class AuthService:
             await self._users_client.create_user(
                 request=CreateUserRequest(
                     user_id=user_credentials_entity.user_id,
-                    username=command.username,
-                    email=command.email,
+                    display_name=command.username,
                     marketing_emails_consent=command.marketing_emails_consent,
                     terms_accepted_at=user_credentials_entity.created_at,
                 ),

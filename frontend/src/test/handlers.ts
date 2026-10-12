@@ -82,13 +82,11 @@ export function makeAccessToken(claims: TokenClaims = {}): string {
 export const TEST_ACCESS_TOKEN = makeAccessToken();
 
 /**
- * Current user profile (`/v1/users/me`). `displayName: null` by default covers the fallback to
- * `username`; a test with a set name or an error overrides the response via `server.use(...)`.
+ * Current user profile (`/v1/users/me`). A test with another name or an error overrides the
+ * response via `server.use(...)`.
  */
 export const TEST_CURRENT_USER: CurrentUserResponse = {
-  username: "traveler",
-  email: "traveler@example.com",
-  displayName: null,
+  displayName: "traveler",
 };
 
 const successTokenBody = { accessToken: TEST_ACCESS_TOKEN, tokenType: "bearer" };

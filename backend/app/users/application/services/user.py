@@ -29,8 +29,7 @@ class UserService:
         """
         user_entity = UserEntity.create(
             user_id=command.user_id,
-            username=command.username,
-            email=command.email,
+            display_name=command.display_name,
             marketing_emails_consent=command.marketing_emails_consent,
             terms_accepted_at=command.terms_accepted_at,
         )
@@ -60,8 +59,4 @@ class UserService:
 
             user_entity.ensure_not_deleted()
 
-        return CurrentUserResult(
-            username=user_entity.username,
-            email=user_entity.email,
-            display_name=user_entity.display_name,
-        )
+        return CurrentUserResult(display_name=user_entity.display_name)

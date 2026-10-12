@@ -1,7 +1,6 @@
 {
   "auth": {
     "invalid_credentials": "Incorrect username/email or password",
-    "user_credentials_not_found": "Incorrect username/email or password",
     "email_already_registered": "This email is already registered",
     "username_already_taken": "This username is already taken",
     "terms_not_accepted": "You must accept the terms to continue",
@@ -12,7 +11,8 @@
     "challenge_attempts_exceeded": "Too many attempts. Request a new code",
     "challenge_resend_cooldown": "Please wait before requesting a new code",
     "invalid_access_token": "Your session has expired. Please sign in again",
-    "invalid_refresh_token": "Your session has expired. Please sign in again"
+    "invalid_refresh_token": "Your session has expired. Please sign in again",
+    "account_not_found": "Your session has expired. Please sign in again"
   },
   "journeys": {
     "same_origin_destination": "Departure and destination must be different",

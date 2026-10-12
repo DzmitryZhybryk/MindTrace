@@ -3,12 +3,19 @@
 import * as z from 'zod/mini';
 
 /**
+ * CurrentAccountResponse
+ */
+export const zCurrentAccountResponse = z.object({
+  email: z.string(),
+  username: z.string(),
+  emailVerified: z.boolean()
+});
+
+/**
  * CurrentUserResponse
  */
 export const zCurrentUserResponse = z.object({
-  username: z.string(),
-  email: z.string(),
-  displayName: z.nullable(z.string())
+  displayName: z.string()
 });
 
 /**
@@ -365,6 +372,11 @@ export const zLogoutResponse = z.void();
  * Successful Response
  */
 export const zRefreshResponse = zTokenResponse;
+
+/**
+ * Successful Response
+ */
+export const zGetCurrentAccountResponse = zCurrentAccountResponse;
 
 export const zVerifyEmailBody = zVerifyEmailRequest;
 

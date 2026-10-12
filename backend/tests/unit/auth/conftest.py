@@ -10,6 +10,7 @@
 import pytest
 
 from app.auth.application.config import EmailVerificationConfig
+from app.auth.application.services.account import AccountService
 from app.auth.application.services.auth import AuthService
 from app.auth.application.services.email_verification import EmailVerificationService
 from app.auth.application.services.token_issuer import TokenIssuer
@@ -55,6 +56,11 @@ def auth_service(
         token_issuer=token_issuer,
         email_verification_service=fake_email_verification_service,
     )
+
+
+@pytest.fixture
+def account_service(fake_uow: FakeAuthUnitOfWork) -> AccountService:
+    return AccountService(uow=fake_uow)
 
 
 @pytest.fixture
