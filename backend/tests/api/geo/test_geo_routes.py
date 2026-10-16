@@ -1,6 +1,6 @@
 """
 api-тесты роутов geo на ASGI-приложении: ``GET /v1/geo/places/search/`` и
-``POST /v1/geo/places/resolve``.
+``POST /v1/geo/places/resolve/``.
 
 Реальная проводка ``place_service`` поверх фейк-репозитория, реальный декод Bearer-токена
 (подписан settings-секретом через ``mint_access_token``). Пиннят camelCase-контракт ответа,
@@ -17,7 +17,7 @@ from tests.builders import make_place
 from tests.fakes import FakePlaceRepository
 
 _SEARCH_PATH = "/v1/geo/places/search/"
-_RESOLVE_PATH = "/v1/geo/places/resolve"
+_RESOLVE_PATH = "/v1/geo/places/resolve/"
 
 
 async def test_search_places_returns_camelcase_candidates(

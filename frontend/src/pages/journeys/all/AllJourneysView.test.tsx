@@ -99,7 +99,7 @@ describe("AllJourneysView", () => {
   it("без поездок предлагает добавить первую", async () => {
     server.use(
       http.get("/v1/journeys/", () => HttpResponse.json({ items: [], nextCursor: null })),
-      http.get("/v1/journeys/years", () => HttpResponse.json({ years: [] })),
+      http.get("/v1/journeys/years/", () => HttpResponse.json({ years: [] })),
     );
     renderAllJourneys();
 
@@ -210,7 +210,7 @@ describe("AllJourneysView", () => {
   });
 
   it("поездки только за один год — шкалы лет нет, выбирать не из чего", async () => {
-    server.use(http.get("/v1/journeys/years", () => HttpResponse.json({ years: [2021] })));
+    server.use(http.get("/v1/journeys/years/", () => HttpResponse.json({ years: [2021] })));
     renderAllJourneys();
 
     await screen.findByRole("region", { name: "2021" });

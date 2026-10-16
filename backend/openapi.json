@@ -6,7 +6,7 @@
     "version": "5.0.0"
   },
   "paths": {
-    "/healthz": {
+    "/healthz/": {
       "get": {
         "tags": [
           "health"
@@ -716,7 +716,7 @@
         }
       }
     },
-    "/v1/geo/places/resolve": {
+    "/v1/geo/places/resolve/": {
       "post": {
         "tags": [
           "geo"
@@ -1090,7 +1090,7 @@
         }
       }
     },
-    "/v1/journeys/{journey_id}": {
+    "/v1/journeys/{journey_id}/": {
       "put": {
         "tags": [
           "journeys"
@@ -1317,7 +1317,7 @@
         }
       }
     },
-    "/v1/journeys/{journey_id}/move": {
+    "/v1/journeys/{journey_id}/move/": {
       "post": {
         "tags": [
           "journeys"
@@ -1435,7 +1435,7 @@
         }
       }
     },
-    "/v1/journeys/distance": {
+    "/v1/journeys/distance/": {
       "get": {
         "tags": [
           "journeys"
@@ -1559,7 +1559,7 @@
         }
       }
     },
-    "/v1/journeys/years": {
+    "/v1/journeys/years/": {
       "get": {
         "tags": [
           "journeys"
@@ -1615,7 +1615,7 @@
         ]
       }
     },
-    "/v1/journeys/map": {
+    "/v1/journeys/map/": {
       "get": {
         "tags": [
           "journeys"
@@ -1671,7 +1671,7 @@
         ]
       }
     },
-    "/v1/journeys/globe": {
+    "/v1/journeys/globe/": {
       "get": {
         "tags": [
           "journeys"
@@ -1727,7 +1727,7 @@
         ]
       }
     },
-    "/v1/journeys/movements": {
+    "/v1/journeys/movements/": {
       "get": {
         "tags": [
           "journeys"
@@ -1815,7 +1815,7 @@
         }
       }
     },
-    "/v1/users/me": {
+    "/v1/users/me/": {
       "get": {
         "tags": [
           "users"

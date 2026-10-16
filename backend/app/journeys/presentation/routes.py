@@ -69,7 +69,7 @@ async def create_journey(
 
 
 @journey_router.put(
-    "/{journey_id}",
+    "/{journey_id}/",
     status_code=status.HTTP_204_NO_CONTENT,
     responses=UPDATE_JOURNEY_RESPONSES,
 )
@@ -91,7 +91,7 @@ async def update_journey(
 
 
 @journey_router.delete(
-    "/{journey_id}",
+    "/{journey_id}/",
     status_code=status.HTTP_204_NO_CONTENT,
     responses=DELETE_JOURNEY_RESPONSES,
 )
@@ -106,7 +106,7 @@ async def delete_journey(
 
 
 @journey_router.post(
-    "/{journey_id}/move",
+    "/{journey_id}/move/",
     response_model=MoveJourneyResponse,
     responses=MOVE_JOURNEY_RESPONSES,
 )
@@ -123,7 +123,7 @@ async def move_journey(
 
 
 @journey_router.get(
-    "/distance",
+    "/distance/",
     response_model=JourneyDistanceResponse,
     responses=JOURNEY_DISTANCE_RESPONSES,
     dependencies=[Depends(current_user_id_dependency)],
@@ -165,7 +165,7 @@ async def list_journeys(
 
 
 @journey_router.get(
-    "/years",
+    "/years/",
     response_model=JourneyYearsResponse,
     responses=JOURNEY_YEARS_RESPONSES,
 )
@@ -179,7 +179,7 @@ async def get_journey_years(
 
 
 @journey_router.get(
-    "/map",
+    "/map/",
     response_model=JourneysMapResponse,
     responses=JOURNEYS_MAP_RESPONSES,
 )
@@ -193,7 +193,7 @@ async def get_journeys_map(
 
 
 @journey_router.get(
-    "/globe",
+    "/globe/",
     response_model=JourneysGlobeResponse,
     responses=JOURNEYS_GLOBE_RESPONSES,
 )
@@ -207,7 +207,7 @@ async def get_journeys_globe(
 
 
 @journey_router.get(
-    "/movements",
+    "/movements/",
     response_model=MovementsMapResponse,
     responses=MOVEMENTS_MAP_RESPONSES,
 )

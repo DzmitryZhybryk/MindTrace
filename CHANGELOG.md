@@ -15,16 +15,18 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 ### Backend 5.0.0
 
-- **Email и username хранит только auth, users — только профиль.** `GET /v1/users/me` отдаёт `{displayName}` без `username` и `email` (**ломающее изменение**); `displayName` теперь всегда строка: при регистрации он равен username
+- **Email и username хранит только auth, users — только профиль.** `GET /v1/users/me/` отдаёт `{displayName}` без `username` и `email` (**ломающее изменение**); `displayName` теперь всегда строка: при регистрации он равен username
 - Новый `GET /v1/auth/me/` → `{email, username, emailVerified}` — данные учётной записи текущего пользователя
 - Валидный access-токен, для которого нет учётной записи, — теперь 401 `auth.account_not_found` (было 404 `auth.user_credentials_not_found`) в `/v1/auth/me/`, `POST /v1/auth/email/send-verification/` и `POST /v1/auth/email/verify/` (**ломающее изменение**; код `auth.user_credentials_not_found` удалён). Клиент получает 401, refresh не проходит, сессия завершается
 - Email и username сравниваются без учёта регистра: `Alice@Example.com` и `alice@example.com`, `Neo` и `neo` — один аккаунт (уникальные индексы по `lower()`), вход работает в любом регистре. Email хранится и отдаётся в `/v1/auth/me/` в нижнем регистре, username — как ввели
 - Пробелы по краям срезаются до валидации: `username` при регистрации (и в `displayName`), `login` при входе, код в `POST /v1/auth/email/verify/`, `searchText` в `GET /v1/geo/places/search/`
+- Все пути заканчиваются слэшем (**ломающее изменение**): `GET /healthz/`, `GET /v1/users/me/`, `POST /v1/geo/places/resolve/`, `GET /v1/journeys/years/`, `/distance/`, `/map/`, `/globe/`, `/movements/`, `PUT`/`DELETE /v1/journeys/{journey_id}/`, `POST /v1/journeys/{journey_id}/move/`. Старый путь без слэша отвечает 307 на новый
 
 ### Frontend 2.13.2
 
 - Имя в шапке и приветствии берётся из `displayName` без запасного варианта `username` (контракт Backend 5.0.0)
 - Формы регистрации и входа отправляют username, email и логин без пробелов по краям; email с пробелом по краям больше не считается невалидным
+- Запросы к API идут по путям со слэшем в конце (контракт Backend 5.0.0)
 
 ## 2026-10-10
 

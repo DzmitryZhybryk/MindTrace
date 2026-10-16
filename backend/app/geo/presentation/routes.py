@@ -45,7 +45,7 @@ async def search_places(
 
 
 @geo_router.post(
-    "/places/resolve",
+    "/places/resolve/",
     response_model=ResolvePlacesResponse,
     responses=RESOLVE_PLACES_RESPONSES,
     dependencies=[Depends(current_user_id_dependency)],

@@ -28,7 +28,7 @@ function viewBoxWidth(container: HTMLElement): number {
 function recordMovementsRequests(): string[] {
   const queries: string[] = [];
   server.use(
-    http.get("/v1/journeys/movements", ({ request }) => {
+    http.get("/v1/journeys/movements/", ({ request }) => {
       queries.push(new URL(request.url).searchParams.toString());
       return HttpResponse.json(MOVEMENTS_RESPONSE);
     }),
@@ -66,7 +66,7 @@ describe("MovementsMapView", () => {
   it("дуга через край мира — два куска, гаснущих у разреза, стрелка только на втором", async () => {
     // Tokyo -> Los Angeles: the shortest path crosses the Pacific, over the 180th meridian.
     server.use(
-      http.get("/v1/journeys/movements", () =>
+      http.get("/v1/journeys/movements/", () =>
         HttpResponse.json({
           firstYear: 2020,
           lastYear: 2020,
@@ -110,7 +110,7 @@ describe("MovementsMapView", () => {
   it("место, которого нет в справочнике, подписано «Unknown place»", async () => {
     const [moscow] = GEO_PLACES;
     server.use(
-      http.get("/v1/journeys/movements", () =>
+      http.get("/v1/journeys/movements/", () =>
         HttpResponse.json({
           firstYear: 2020,
           lastYear: 2020,
@@ -147,7 +147,7 @@ describe("MovementsMapView", () => {
 
   it("без поездок показывает подсказку и пустую карту", async () => {
     server.use(
-      http.get("/v1/journeys/movements", () => HttpResponse.json({ firstYear: null, lastYear: null, connections: [] })),
+      http.get("/v1/journeys/movements/", () => HttpResponse.json({ firstYear: null, lastYear: null, connections: [] })),
     );
 
     const { container } = renderMovements();
@@ -158,7 +158,7 @@ describe("MovementsMapView", () => {
   });
 
   it("на ошибке показывает алерт, а «Try again» перезагружает маршруты", async () => {
-    server.use(http.get("/v1/journeys/movements", () => new HttpResponse(null, { status: 500 })));
+    server.use(http.get("/v1/journeys/movements/", () => new HttpResponse(null, { status: 500 })));
 
     const { user, container } = renderMovements();
 
@@ -299,7 +299,7 @@ describe("MovementsMapView", () => {
 
   it("засечки лет не теснее 10 px: за полвека на узком ползунке — через год, а не каждый год", async () => {
     server.use(
-      http.get("/v1/journeys/movements", () =>
+      http.get("/v1/journeys/movements/", () =>
         HttpResponse.json({ ...MOVEMENTS_RESPONSE, firstYear: 1976, lastYear: 2026 }),
       ),
     );
@@ -317,7 +317,7 @@ describe("MovementsMapView", () => {
 
   it("поездки одного года — подпись года без ползунка", async () => {
     server.use(
-      http.get("/v1/journeys/movements", () =>
+      http.get("/v1/journeys/movements/", () =>
         HttpResponse.json({ ...MOVEMENTS_RESPONSE, firstYear: 2020, lastYear: 2020 }),
       ),
     );

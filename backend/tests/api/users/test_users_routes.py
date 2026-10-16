@@ -1,5 +1,5 @@
 """
-api-тесты роута ``GET /v1/users/me`` на ASGI-приложении.
+api-тесты роута ``GET /v1/users/me/`` на ASGI-приложении.
 
 Реальный ``UserService`` поверх фейк-UoW, реальный декод Bearer-токена (подписан
 settings-секретом через ``mint_access_token``). Пиннят camelCase-контракт ответа
@@ -15,7 +15,7 @@ from httpx import AsyncClient
 from tests.builders import make_user_entity
 from tests.fakes import FakeUserRepository
 
-_ME_PATH = "/v1/users/me"
+_ME_PATH = "/v1/users/me/"
 
 
 async def test_get_current_user_returns_camelcase_profile(

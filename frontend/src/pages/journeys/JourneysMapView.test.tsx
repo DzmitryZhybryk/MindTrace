@@ -17,7 +17,7 @@ const UNKNOWN_PLACE_ID = "99999999-9999-4999-8999-999999999999";
 /** A map with one visited country (RU) and the given cities. */
 function respondWithRussianCities(placeIds: string[]): void {
   server.use(
-    http.get("/v1/journeys/map", () =>
+    http.get("/v1/journeys/map/", () =>
       HttpResponse.json({
         countries: [
           {
@@ -59,7 +59,7 @@ describe("JourneysMapView", () => {
   });
 
   it("на пустом наборе поездок показывает карту без городов и без ошибки", async () => {
-    server.use(http.get("/v1/journeys/map", () => HttpResponse.json({ countries: [] })));
+    server.use(http.get("/v1/journeys/map/", () => HttpResponse.json({ countries: [] })));
 
     const { container } = renderJourneysMap();
 
@@ -71,7 +71,7 @@ describe("JourneysMapView", () => {
   });
 
   it("на ошибке показывает алерт, а по «Try again» успешно перезагружает карту", async () => {
-    server.use(http.get("/v1/journeys/map", () => new HttpResponse(null, { status: 500 })));
+    server.use(http.get("/v1/journeys/map/", () => new HttpResponse(null, { status: 500 })));
 
     const { user, container } = renderJourneysMap();
 
@@ -80,7 +80,7 @@ describe("JourneysMapView", () => {
 
     // The next request succeeds: on retry the alert goes away and the map fills with cities.
     server.use(
-      http.get("/v1/journeys/map", () =>
+      http.get("/v1/journeys/map/", () =>
         HttpResponse.json({
           countries: [
             {

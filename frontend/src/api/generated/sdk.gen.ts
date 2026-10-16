@@ -42,7 +42,7 @@ export const healthz = <ThrowOnError extends boolean = false>(options?: Options<
     query: z.optional(z.never())
   }).parseAsync(data),
   responseStyle: 'data',
-  url: '/healthz',
+  url: '/healthz/',
   ...options
 });
 
@@ -193,7 +193,7 @@ export const resolvePlaces = <ThrowOnError extends boolean = false>(options: Opt
   responseValidator: async (data) => await zResolvePlacesResponse2.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/geo/places/resolve',
+  url: '/v1/geo/places/resolve/',
   ...options,
   headers: {
     'Content-Type': 'application/json',
@@ -248,7 +248,7 @@ export const deleteJourney = <ThrowOnError extends boolean = false>(options: Opt
   responseValidator: async (data) => await zDeleteJourneyResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/{journey_id}',
+  url: '/v1/journeys/{journey_id}/',
   ...options
 });
 
@@ -264,7 +264,7 @@ export const updateJourney = <ThrowOnError extends boolean = false>(options: Opt
   responseValidator: async (data) => await zUpdateJourneyResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/{journey_id}',
+  url: '/v1/journeys/{journey_id}/',
   ...options,
   headers: {
     'Content-Type': 'application/json',
@@ -284,7 +284,7 @@ export const moveJourney = <ThrowOnError extends boolean = false>(options: Optio
   responseValidator: async (data) => await zMoveJourneyResponse2.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/{journey_id}/move',
+  url: '/v1/journeys/{journey_id}/move/',
   ...options,
   headers: {
     'Content-Type': 'application/json',
@@ -304,7 +304,7 @@ export const estimateJourneyDistance = <ThrowOnError extends boolean = false>(op
   responseValidator: async (data) => await zEstimateJourneyDistanceResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/distance',
+  url: '/v1/journeys/distance/',
   ...options
 });
 
@@ -320,7 +320,7 @@ export const getJourneyYears = <ThrowOnError extends boolean = false>(options?: 
   responseValidator: async (data) => await zGetJourneyYearsResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/years',
+  url: '/v1/journeys/years/',
   ...options
 });
 
@@ -336,7 +336,7 @@ export const getJourneysMap = <ThrowOnError extends boolean = false>(options?: O
   responseValidator: async (data) => await zGetJourneysMapResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/map',
+  url: '/v1/journeys/map/',
   ...options
 });
 
@@ -352,7 +352,7 @@ export const getJourneysGlobe = <ThrowOnError extends boolean = false>(options?:
   responseValidator: async (data) => await zGetJourneysGlobeResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/globe',
+  url: '/v1/journeys/globe/',
   ...options
 });
 
@@ -368,7 +368,7 @@ export const getMovementsMap = <ThrowOnError extends boolean = false>(options?: 
   responseValidator: async (data) => await zGetMovementsMapResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/movements',
+  url: '/v1/journeys/movements/',
   ...options
 });
 
@@ -384,6 +384,6 @@ export const getCurrentUser = <ThrowOnError extends boolean = false>(options?: O
   responseValidator: async (data) => await zGetCurrentUserResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/users/me',
+  url: '/v1/users/me/',
   ...options
 });

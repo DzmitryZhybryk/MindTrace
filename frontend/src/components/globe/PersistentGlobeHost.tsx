@@ -126,7 +126,7 @@ function slotFramingStyle(slot: GlobeSlot): CSSProperties {
  *
  * The point source depends on auth: anonymous users see curated routes (`ROUTE_ARCS` /
  * `ROUTE_CITIES`), logged-in ones their own real visited cities without arcs. The real cities
- * come from the same request as the 2D map (`/v1/journeys/map`); Query owns the cache and its
+ * come from the same request as the 2D map (`/v1/journeys/map/`); Query owns the cache and its
  * reset on session change (see `AuthProvider`).
  */
 export function PersistentGlobeHost() {

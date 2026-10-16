@@ -72,7 +72,7 @@ describe("HomePage", () => {
 
   it("ошибка загрузки профиля: дата остаётся, строка приветствия так и не появляется", async () => {
     server.use(
-      http.get("/v1/users/me", () =>
+      http.get("/v1/users/me/", () =>
         HttpResponse.json({ code: "internal_error", message: "boom" }, { status: 500 }),
       ),
     );

@@ -565,7 +565,7 @@ export type HealthzData = {
   body?: never;
   path?: never;
   query?: never;
-  url: '/healthz';
+  url: '/healthz/';
 };
 
 export type HealthzResponses = {
@@ -870,7 +870,7 @@ export type ResolvePlacesData = {
   body: ResolvePlacesRequest;
   path?: never;
   query?: never;
-  url: '/v1/geo/places/resolve';
+  url: '/v1/geo/places/resolve/';
 };
 
 export type ResolvePlacesErrors = {
@@ -1001,7 +1001,7 @@ export type DeleteJourneyData = {
     journey_id: string;
   };
   query?: never;
-  url: '/v1/journeys/{journey_id}';
+  url: '/v1/journeys/{journey_id}/';
 };
 
 export type DeleteJourneyErrors = {
@@ -1043,7 +1043,7 @@ export type UpdateJourneyData = {
     journey_id: string;
   };
   query?: never;
-  url: '/v1/journeys/{journey_id}';
+  url: '/v1/journeys/{journey_id}/';
 };
 
 export type UpdateJourneyErrors = {
@@ -1089,7 +1089,7 @@ export type MoveJourneyData = {
     journey_id: string;
   };
   query?: never;
-  url: '/v1/journeys/{journey_id}/move';
+  url: '/v1/journeys/{journey_id}/move/';
 };
 
 export type MoveJourneyErrors = {
@@ -1139,7 +1139,7 @@ export type EstimateJourneyDistanceData = {
      */
     destinationPlaceId: string;
   };
-  url: '/v1/journeys/distance';
+  url: '/v1/journeys/distance/';
 };
 
 export type EstimateJourneyDistanceErrors = {
@@ -1176,7 +1176,7 @@ export type GetJourneyYearsData = {
   body?: never;
   path?: never;
   query?: never;
-  url: '/v1/journeys/years';
+  url: '/v1/journeys/years/';
 };
 
 export type GetJourneyYearsErrors = {
@@ -1205,7 +1205,7 @@ export type GetJourneysMapData = {
   body?: never;
   path?: never;
   query?: never;
-  url: '/v1/journeys/map';
+  url: '/v1/journeys/map/';
 };
 
 export type GetJourneysMapErrors = {
@@ -1234,7 +1234,7 @@ export type GetJourneysGlobeData = {
   body?: never;
   path?: never;
   query?: never;
-  url: '/v1/journeys/globe';
+  url: '/v1/journeys/globe/';
 };
 
 export type GetJourneysGlobeErrors = {
@@ -1268,7 +1268,7 @@ export type GetMovementsMapData = {
      */
     transportType?: Array<TransportType> | null;
   };
-  url: '/v1/journeys/movements';
+  url: '/v1/journeys/movements/';
 };
 
 export type GetMovementsMapErrors = {
@@ -1301,7 +1301,7 @@ export type GetCurrentUserData = {
   body?: never;
   path?: never;
   query?: never;
-  url: '/v1/users/me';
+  url: '/v1/users/me/';
 };
 
 export type GetCurrentUserErrors = {

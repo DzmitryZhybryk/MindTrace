@@ -16,7 +16,7 @@ describe("AllJourneysView — расстояние в правке строки"
   it("сохранённая пара показывает расстояние поездки без запроса", async () => {
     const distanceSpy = vi.fn();
     server.use(
-      http.get("/v1/journeys/distance", () => {
+      http.get("/v1/journeys/distance/", () => {
         distanceSpy();
         return HttpResponse.json({ distanceKm: 1 });
       }),
@@ -37,7 +37,7 @@ describe("AllJourneysView — расстояние в правке строки"
       respond = resolve;
     });
     server.use(
-      http.get("/v1/journeys/distance", async ({ request }) => {
+      http.get("/v1/journeys/distance/", async ({ request }) => {
         query = new URL(request.url).searchParams;
         await responded;
         return HttpResponse.json({ distanceKm: 2846 });
@@ -60,7 +60,7 @@ describe("AllJourneysView — расстояние в правке строки"
   it("недозаполненная пара и тот же город — прочерк, запроса нет", async () => {
     const distanceSpy = vi.fn();
     server.use(
-      http.get("/v1/journeys/distance", () => {
+      http.get("/v1/journeys/distance/", () => {
         distanceSpy();
         return HttpResponse.json({ distanceKm: 1 });
       }),
@@ -78,7 +78,7 @@ describe("AllJourneysView — расстояние в правке строки"
 
   it("ошибка расчёта — прочерк, а не число", async () => {
     server.use(
-      http.get("/v1/journeys/distance", () =>
+      http.get("/v1/journeys/distance/", () =>
         HttpResponse.json({ code: "journeys.unknown_place", message: "ru", details: null }, { status: 400 }),
       ),
     );

@@ -46,7 +46,7 @@ describe("sdk", () => {
     const request = requestAt(0);
     // baseUrl is required: without it the client would build a relative URL, which `Request` does
     // not resolve outside a browser.
-    expect(new URL(request.url).pathname).toBe("/v1/users/me");
+    expect(new URL(request.url).pathname).toBe("/v1/users/me/");
     expect(request.headers.get("Authorization")).toBe("Bearer my-token");
     expect(request.credentials).toBe("include");
   });

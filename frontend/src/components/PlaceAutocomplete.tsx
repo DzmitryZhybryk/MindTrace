@@ -49,7 +49,7 @@ function focusNextFormControl(current: HTMLElement | null): void {
 }
 
 /**
- * Place picker with gazetteer autocomplete (`/v1/geo/places/search`).
+ * Place picker with gazetteer autocomplete (`/v1/geo/places/search/`).
  *
  * Typing -> debounce -> request (stale ones are aborted) -> dropdown of candidates; picking puts
  * a `PlaceSearchItem` (with `placeId`) into `value`. `value` stays `null` until a candidate is
