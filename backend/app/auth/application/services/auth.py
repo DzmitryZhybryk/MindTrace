@@ -122,15 +122,9 @@ class AuthService:
             InvalidCredentialsError: Логин не найден или пароль не совпал
         """
         async with self._uow.transaction():
-            # Сначала email: username вида «bob@example.com» не должен перехватывать вход владельца этого email.
-            user_credentials_entity = await self._uow.user_credentials_repository.find_user_credentials_by_email(
-                email=command.login,
+            user_credentials_entity = await self._uow.user_credentials_repository.find_user_credentials_by_login(
+                login=command.login,
             )
-            if user_credentials_entity is None:
-                user_credentials_entity = await self._uow.user_credentials_repository.find_user_credentials_by_username(
-                    username=command.login,
-                )
-
             if user_credentials_entity is None:
                 self._salted_hasher.verify(secret=command.password.get_secret_value(), hashed=_DUMMY_PASSWORD_HASH)
                 raise InvalidCredentialsError()

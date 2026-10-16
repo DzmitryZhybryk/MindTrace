@@ -201,35 +201,6 @@ async def test_login_with_username_returns_token_pair(
     assert len(fake_refresh_token_repository.by_hash) == 1
 
 
-async def test_login_prefers_email_owner_over_username_equal_to_that_email(
-    auth_service: AuthService,
-    fake_user_credentials_repository: FakeUserCredentialsRepository,
-    fake_salted_hasher: FakeSaltedHasher,
-) -> None:
-    """login: строка — чей-то email и чужой username одновременно → входит владелец email."""
-    await fake_user_credentials_repository.insert_user_credentials(
-        user_credentials_entity=make_user_credentials(
-            email="bob@example.com",
-            username="bob",
-            password=make_password(hash=fake_salted_hasher.hash(secret="email-owner-pw")),
-        ),
-    )
-    await fake_user_credentials_repository.insert_user_credentials(
-        user_credentials_entity=make_user_credentials(
-            email="other@example.com",
-            username="bob@example.com",
-            password=make_password(hash=fake_salted_hasher.hash(secret="username-owner-pw")),
-        ),
-    )
-
-    pair = await auth_service.login(
-        command=LoginCommand(login="bob@example.com", password=SecretStr("email-owner-pw")),
-        client_metadata=_CLIENT_METADATA,
-    )
-
-    assert pair.access_token.get_secret_value()
-
-
 async def test_login_raises_when_user_not_found(
     auth_service: AuthService,
     fake_uow: FakeAuthUnitOfWork,

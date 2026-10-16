@@ -40,6 +40,11 @@ class FakeUserCredentialsRepository(UserCredentialsRepositoryPort):
     async def find_user_credentials_by_username(self, username: str) -> UserCredentialsEntity | None:
         return next((c for c in self.by_user_id.values() if c.username.lower() == username.lower()), None)
 
+    async def find_user_credentials_by_login(self, login: str) -> UserCredentialsEntity | None:
+        return await self.find_user_credentials_by_email(email=login) or await self.find_user_credentials_by_username(
+            username=login
+        )
+
 
 class FakeRefreshTokenRepository(RefreshTokenRepositoryPort):
     """Фейк хранилища refresh-токенов поверх ``dict`` по ``token_hash``."""

@@ -95,12 +95,61 @@ async def test_find_by_username_ignores_case(
     assert found.user_id == user_id
 
 
-async def test_find_by_email_and_username_no_match_returns_none(db_session: AsyncSession) -> None:
+@pytest.mark.parametrize("login", ["neo@example.com", "NEO@Example.com", "neo", "NEO"])
+async def test_find_by_login_matches_email_or_username_ignoring_case(
+    session_factory: async_sessionmaker[AsyncSession],
+    login: str,
+) -> None:
+    """``find_user_credentials_by_login`` находит учётку и по email, и по username в любом регистре."""
+    user_id = uuid4()
+    async with session_factory() as writer:
+        repository = UserCredentialsRepository(session=writer)
+        await repository.insert_user_credentials(
+            user_credentials_entity=make_user_credentials(user_id=user_id, email="neo@example.com", username="Neo")
+        )
+        await repository.insert_user_credentials(
+            user_credentials_entity=make_user_credentials(email="trinity@example.com", username="Trinity")
+        )
+        await writer.commit()
+
+    async with session_factory() as reader:
+        found = await UserCredentialsRepository(session=reader).find_user_credentials_by_login(login=login)
+
+    assert found is not None
+    assert found.user_id == user_id
+
+
+async def test_find_by_login_prefers_email_owner_over_matching_username(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Логин — чей-то email и одновременно чужой username → возвращается владелец email."""
+    email_owner_id = uuid4()
+    async with session_factory() as writer:
+        repository = UserCredentialsRepository(session=writer)
+        await repository.insert_user_credentials(
+            user_credentials_entity=make_user_credentials(
+                user_id=email_owner_id, email="bob@example.com", username="bob"
+            )
+        )
+        await repository.insert_user_credentials(
+            user_credentials_entity=make_user_credentials(email="other@example.com", username="bob@example.com")
+        )
+        await writer.commit()
+
+    async with session_factory() as reader:
+        found = await UserCredentialsRepository(session=reader).find_user_credentials_by_login(login="BOB@example.com")
+
+    assert found is not None
+    assert found.user_id == email_owner_id
+
+
+async def test_find_by_email_username_and_login_no_match_returns_none(db_session: AsyncSession) -> None:
     """Поиск без совпадений возвращает ``None``, а не падает."""
     repository = UserCredentialsRepository(session=db_session)
 
     assert await repository.find_user_credentials_by_email(email="nobody@example.com") is None
     assert await repository.find_user_credentials_by_username(username="nobody") is None
+    assert await repository.find_user_credentials_by_login(login="nobody") is None
 
 
 async def test_insert_email_differing_only_by_case_raises_integrity_error(
