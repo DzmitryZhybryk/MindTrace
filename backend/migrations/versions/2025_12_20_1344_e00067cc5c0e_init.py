@@ -44,8 +44,19 @@ def upgrade() -> None:
         sa.Column("role", sa.String(length=20), nullable=False),
         sa.Column("email_verified_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("user_id"),
-        sa.UniqueConstraint("email"),
-        sa.UniqueConstraint("username"),
+    )
+    # Уникальность email и username без учёта регистра.
+    op.create_index(
+        "ix_user_credentials_email_lower",
+        "user_credentials",
+        [sa.text("lower(email)")],
+        unique=True,
+    )
+    op.create_index(
+        "ix_user_credentials_username_lower",
+        "user_credentials",
+        [sa.text("lower(username)")],
+        unique=True,
     )
     op.create_table(
         "refresh_tokens",

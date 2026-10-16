@@ -80,7 +80,7 @@ export function SignUpPage() {
     try {
       const { accessToken } = await register({
         body: {
-          username: values.username,
+          username: values.username.trim(),
           email: values.email,
           password: values.password,
           termsAccepted: values.termsAccepted,

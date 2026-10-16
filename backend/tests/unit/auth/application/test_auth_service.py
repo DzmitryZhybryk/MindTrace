@@ -71,19 +71,21 @@ async def test_register_persists_credentials_calls_users_and_requests_verificati
     assert fake_email_verification_service.requested_user_ids == [stored.user_id]
 
 
+@pytest.mark.parametrize("email", ["neo@example.com", "NEO@Example.com"])
 async def test_register_raises_when_email_already_exists(
     auth_service: AuthService,
     fake_uow: FakeAuthUnitOfWork,
     fake_user_credentials_repository: FakeUserCredentialsRepository,
     fake_users_client: FakeUsersClient,
+    email: str,
 ) -> None:
-    """register: дублирующийся email → EmailAlreadyExistError, без новой записи, вызова users и коммита."""
+    """register: занятый email (в любом регистре) → EmailAlreadyExistError, без новой записи, вызова users и коммита."""
     await fake_user_credentials_repository.insert_user_credentials(
         user_credentials_entity=make_user_credentials(email="neo@example.com", username="existing"),
     )
     command = RegistrationCommand(
         username="neo",
-        email="neo@example.com",
+        email=email,
         password=SecretStr("pw"),
         marketing_emails_consent=False,
     )
@@ -118,17 +120,19 @@ async def test_register_does_not_commit_when_users_creation_fails(
     assert fake_email_verification_service.requested_user_ids == []
 
 
+@pytest.mark.parametrize("username", ["neo", "NeO"])
 async def test_register_raises_when_username_already_taken(
     auth_service: AuthService,
     fake_uow: FakeAuthUnitOfWork,
     fake_user_credentials_repository: FakeUserCredentialsRepository,
+    username: str,
 ) -> None:
-    """register: свободный email, но занятый username → UsernameAlreadyExistError, без коммита."""
+    """register: свободный email, но занятый username (в любом регистре) → UsernameAlreadyExistError, без коммита."""
     await fake_user_credentials_repository.insert_user_credentials(
         user_credentials_entity=make_user_credentials(email="taken@example.com", username="neo"),
     )
     command = RegistrationCommand(
-        username="neo",
+        username=username,
         email="new@example.com",
         password=SecretStr("pw"),
         marketing_emails_consent=False,
@@ -143,14 +147,16 @@ async def test_register_raises_when_username_already_taken(
 # --- login ------------------------------------------------------------------
 
 
+@pytest.mark.parametrize("login", ["neo@example.com", "NEO@Example.COM"])
 async def test_login_with_email_returns_token_pair(
     auth_service: AuthService,
     fake_uow: FakeAuthUnitOfWork,
     fake_user_credentials_repository: FakeUserCredentialsRepository,
     fake_refresh_token_repository: FakeRefreshTokenRepository,
     fake_salted_hasher: FakeSaltedHasher,
+    login: str,
 ) -> None:
-    """login по email с верным паролем выдаёт пару токенов и сохраняет refresh."""
+    """login по email (в любом регистре) с верным паролем выдаёт пару токенов и сохраняет refresh."""
     await fake_user_credentials_repository.insert_user_credentials(
         user_credentials_entity=make_user_credentials(
             email="neo@example.com",
@@ -160,7 +166,7 @@ async def test_login_with_email_returns_token_pair(
     )
 
     pair = await auth_service.login(
-        command=LoginCommand(login="neo@example.com", password=SecretStr("pw")),
+        command=LoginCommand(login=login, password=SecretStr("pw")),
         client_metadata=_CLIENT_METADATA,
     )
 
@@ -169,28 +175,59 @@ async def test_login_with_email_returns_token_pair(
     fake_uow.commit_mock.assert_awaited_once()
 
 
+@pytest.mark.parametrize("login", ["Neo", "neo", "NEO"])
 async def test_login_with_username_returns_token_pair(
     auth_service: AuthService,
     fake_user_credentials_repository: FakeUserCredentialsRepository,
     fake_refresh_token_repository: FakeRefreshTokenRepository,
     fake_salted_hasher: FakeSaltedHasher,
+    login: str,
 ) -> None:
-    """login по username (а не email) тоже работает."""
+    """login по username (в любом регистре), а не email, тоже работает."""
     await fake_user_credentials_repository.insert_user_credentials(
         user_credentials_entity=make_user_credentials(
             email="neo@example.com",
-            username="neo",
+            username="Neo",
             password=make_password(hash=fake_salted_hasher.hash(secret="pw")),
         ),
     )
 
     pair = await auth_service.login(
-        command=LoginCommand(login="neo", password=SecretStr("pw")),
+        command=LoginCommand(login=login, password=SecretStr("pw")),
         client_metadata=_CLIENT_METADATA,
     )
 
     assert pair.access_token.get_secret_value()
     assert len(fake_refresh_token_repository.by_hash) == 1
+
+
+async def test_login_prefers_email_owner_over_username_equal_to_that_email(
+    auth_service: AuthService,
+    fake_user_credentials_repository: FakeUserCredentialsRepository,
+    fake_salted_hasher: FakeSaltedHasher,
+) -> None:
+    """login: строка — чей-то email и чужой username одновременно → входит владелец email."""
+    await fake_user_credentials_repository.insert_user_credentials(
+        user_credentials_entity=make_user_credentials(
+            email="bob@example.com",
+            username="bob",
+            password=make_password(hash=fake_salted_hasher.hash(secret="email-owner-pw")),
+        ),
+    )
+    await fake_user_credentials_repository.insert_user_credentials(
+        user_credentials_entity=make_user_credentials(
+            email="other@example.com",
+            username="bob@example.com",
+            password=make_password(hash=fake_salted_hasher.hash(secret="username-owner-pw")),
+        ),
+    )
+
+    pair = await auth_service.login(
+        command=LoginCommand(login="bob@example.com", password=SecretStr("email-owner-pw")),
+        client_metadata=_CLIENT_METADATA,
+    )
+
+    assert pair.access_token.get_secret_value()
 
 
 async def test_login_raises_when_user_not_found(

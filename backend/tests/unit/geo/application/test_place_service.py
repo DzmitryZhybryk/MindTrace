@@ -12,20 +12,6 @@ from tests.builders import make_place
 from tests.fakes import FakePlaceRepository
 
 
-async def test_search_places_blank_query_short_circuits(
-    place_service: PlaceService,
-    fake_place_repository: FakePlaceRepository,
-) -> None:
-    """search_places: пробельный запрос → пустая выдача, репозиторий не опрашивается (сид не всплывает)."""
-    fake_place_repository.places.append(make_place())
-
-    result = await place_service.search_places(
-        SearchPlacesCommand(search_text="   ", language=Language.EN, limit=10),
-    )
-
-    assert result.items == ()
-
-
 async def test_search_places_maps_candidate_fields(
     place_service: PlaceService,
     fake_place_repository: FakePlaceRepository,

@@ -48,14 +48,16 @@ class AuthService:
         client_metadata: ClientMetadata,
     ) -> TokenPairResult:
         async with self._uow.transaction():
-            conflicts = await self._uow.user_credentials_repository.find_user_credentials_by_email_or_username(
+            email_owner_entity = await self._uow.user_credentials_repository.find_user_credentials_by_email(
                 email=command.email,
-                username=command.username,
             )
-            if any(conflict.email == command.email for conflict in conflicts):
+            if email_owner_entity is not None:
                 raise EmailAlreadyExistError()
 
-            if any(conflict.username == command.username for conflict in conflicts):
+            username_owner_entity = await self._uow.user_credentials_repository.find_user_credentials_by_username(
+                username=command.username,
+            )
+            if username_owner_entity is not None:
                 raise UsernameAlreadyExistError()
 
             password = Password(hash=self._salted_hasher.hash(secret=command.password.get_secret_value()))
@@ -120,14 +122,14 @@ class AuthService:
             InvalidCredentialsError: Логин не найден или пароль не совпал
         """
         async with self._uow.transaction():
-            candidates = await self._uow.user_credentials_repository.find_user_credentials_by_email_or_username(
+            # Сначала email: username вида «bob@example.com» не должен перехватывать вход владельца этого email.
+            user_credentials_entity = await self._uow.user_credentials_repository.find_user_credentials_by_email(
                 email=command.login,
-                username=command.login,
             )
-            user_credentials_entity = next(
-                (c for c in candidates if c.email == command.login or c.username == command.login),
-                None,
-            )
+            if user_credentials_entity is None:
+                user_credentials_entity = await self._uow.user_credentials_repository.find_user_credentials_by_username(
+                    username=command.login,
+                )
 
             if user_credentials_entity is None:
                 self._salted_hasher.verify(secret=command.password.get_secret_value(), hashed=_DUMMY_PASSWORD_HASH)

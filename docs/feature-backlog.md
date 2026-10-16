@@ -19,5 +19,11 @@ SQL), а `display_name` пишется только при регистраци�
   токены (сейчас — да: login ищет по `user_credentials` без предиката `deleted_at` → петля
   «login → 410 на /me → разлогин»); grace-период восстановления; судьба journeys и
   `user_credentials`/refresh-токенов (отзывать ли активные сессии при удалении).
+- **`deleted_at` в auth нигде не читается**: ни login/refresh, ни `GET /v1/auth/me/`, ни
+  подтверждение email (`user_credentials_entity.is_deleted` не проверяется). Закрывать всё
+  разом, не по одному эндпоинту: soft-delete не удаляет refresh-токены (каскад только на
+  физический DELETE), поэтому 401 `auth.account_not_found` из одного `/v1/auth/me/` даст
+  «401 → refresh проходит → снова 401» без разлогина. FK между `users` и `user_credentials`
+  нет — фича решает, какой из двух `deleted_at` главный, или пишет оба.
 - Конвенция чтения soft-deleted зафиксирована в `.claude/rules/python/ddd.md`
   (point-lookup отдаёт всё + entity-guard; списки фильтруют в SQL по умолчанию).

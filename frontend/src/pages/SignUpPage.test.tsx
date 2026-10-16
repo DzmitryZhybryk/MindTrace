@@ -36,6 +36,26 @@ describe("SignUpPage", () => {
     expect(authValue.setAccessToken).toHaveBeenCalledWith(TEST_ACCESS_TOKEN);
   });
 
+  it("username уходит на бэк без пробелов по краям", async () => {
+    let body: unknown = null;
+    server.use(
+      http.post("/v1/auth/register/", async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ accessToken: TEST_ACCESS_TOKEN, tokenType: "bearer" }, { status: 201 });
+      }),
+    );
+    const { user } = renderSignup();
+
+    await user.type(screen.getByLabelText("Username"), "  alice  ");
+    await user.type(screen.getByLabelText("Email"), "alice@example.com");
+    await user.type(screen.getByLabelText("Password"), "s3cret-pass");
+    await user.click(screen.getByRole("checkbox", termsCheckbox));
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+
+    expect(await screen.findByText("home-landing")).toBeInTheDocument();
+    expect(body).toMatchObject({ username: "alice" });
+  });
+
   it("кнопка отправки заблокирована, пока не заполнены поля и не приняты условия", async () => {
     const { user } = renderSignup();
 

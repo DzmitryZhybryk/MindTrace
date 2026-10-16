@@ -30,6 +30,24 @@ describe("LoginPage", () => {
     expect(authValue.setAccessToken).toHaveBeenCalledWith(TEST_ACCESS_TOKEN);
   });
 
+  it("логин уходит на бэк без пробелов по краям", async () => {
+    let body: unknown = null;
+    server.use(
+      http.post("/v1/auth/login/", async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ accessToken: TEST_ACCESS_TOKEN, tokenType: "bearer" }, { status: 200 });
+      }),
+    );
+    const { user } = renderLogin();
+
+    await user.type(screen.getByLabelText("Username or email"), "  alice  ");
+    await user.type(screen.getByLabelText("Password"), "s3cret-pass");
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+
+    expect(await screen.findByText("home-landing")).toBeInTheDocument();
+    expect(body).toMatchObject({ login: "alice" });
+  });
+
   it("кнопка отправки заблокирована, пока не заполнены оба поля", async () => {
     const { user } = renderLogin();
 

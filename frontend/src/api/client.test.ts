@@ -144,18 +144,24 @@ describe("appFetch", () => {
     });
   });
 
-  it("если refresh не удался — эмитит auth-required и бросает исходную ошибку", async () => {
-    const authListener = vi.fn();
-    const off = on("auth-required", authListener);
-    fetchMock
-      .mockResolvedValueOnce(jsonResponse(401, { code: "auth.invalid_access_token", message: "x" }))
-      .mockResolvedValueOnce(jsonResponse(401, { code: "auth.invalid_refresh_token", message: "x" }));
+  // account_not_found: a valid token whose account is gone ends the session the same way.
+  it.each(["auth.invalid_access_token", "auth.account_not_found"])(
+    "если refresh после 401 %s не удался — эмитит auth-required и бросает исходную ошибку",
+    async (code) => {
+      const authListener = vi.fn();
+      const off = on("auth-required", authListener);
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse(401, { code, message: "x" }))
+        .mockResolvedValueOnce(jsonResponse(401, { code: "auth.invalid_refresh_token", message: "x" }));
 
-    await expect(appFetch(`${ORIGIN}/v1/x/`)).rejects.toBeInstanceOf(ApiError);
+      const error: unknown = await appFetch(`${ORIGIN}/v1/x/`).catch((reason: unknown) => reason);
 
-    expect(authListener).toHaveBeenCalledTimes(1);
-    off();
-  });
+      expect(error).toBeInstanceOf(ApiError);
+      expect(error).toMatchObject({ status: 401, code });
+      expect(authListener).toHaveBeenCalledTimes(1);
+      off();
+    },
+  );
 
   it("на ошибку без валидного JSON-тела отдаёт unknown_error", async () => {
     fetchMock.mockResolvedValueOnce(

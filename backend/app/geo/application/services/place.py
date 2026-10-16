@@ -36,12 +36,7 @@ class PlaceService:
         Returns:
             Упорядоченная выдача кандидатов с именами под язык запроса
         """
-        # Убираем пробелы по краям, чтобы не сбить LIKE-паттерн префиксного матча.
-        search_text = command.search_text.strip()
-        if not search_text:
-            return PlaceSearchResult(items=())
-
-        places = await self._repository.search_places_by_name(search_text=search_text, limit=command.limit)
+        places = await self._repository.search_places_by_name(search_text=command.search_text, limit=command.limit)
         items: list[PlaceSearchItem] = []
         for place_entity in places:
             name = place_entity.display_name(language=command.language)

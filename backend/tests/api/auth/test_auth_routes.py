@@ -125,11 +125,41 @@ async def test_register_username_already_taken_returns_409(
     assert body["details"] == {"field": "username"}
 
 
+async def test_register_normalizes_username_and_email(
+    client: AsyncClient,
+    fake_user_credentials_repository: FakeUserCredentialsRepository,
+    fake_users_client: FakeUsersClient,
+) -> None:
+    """register: username хранится без пробелов по краям и в своём регистре (и в display_name), email — в нижнем."""
+    response = await client.post(
+        "/v1/auth/register/",
+        json={
+            "username": "  NewUser  ",
+            "email": "New@Example.COM",
+            "password": "password123",
+            "terms_accepted": True,
+            "marketing_emails_consent": False,
+        },
+    )
+
+    assert response.status_code == 201
+    stored = list(fake_user_credentials_repository.by_user_id.values())
+    assert [(entity.username, entity.email) for entity in stored] == [("NewUser", "new@example.com")]
+    assert [request.display_name for request in fake_users_client.created] == ["NewUser"]
+
+
 @pytest.mark.parametrize(
     "invalid_body",
     [
         {
             "username": "ab",
+            "email": "valid@example.com",
+            "password": "password123",
+            "terms_accepted": True,
+            "marketing_emails_consent": False,
+        },
+        {
+            "username": "  ab  ",
             "email": "valid@example.com",
             "password": "password123",
             "terms_accepted": True,
@@ -152,7 +182,7 @@ async def test_register_username_already_taken_returns_409(
     ],
 )
 async def test_register_invalid_field_returns_422(client: AsyncClient, invalid_body: dict[str, object]) -> None:
-    """register с невалидным полем (короткий username / битый email / короткий пароль) → 422 validation_error."""
+    """register с коротким username (в т.ч. после обрезки пробелов) / битым email / коротким паролем → 422."""
     response = await client.post("/v1/auth/register/", json=invalid_body)
 
     assert response.status_code == 422
@@ -184,6 +214,24 @@ async def test_login_valid_credentials_returns_200_with_token_and_cookie(
     assert body["accessToken"]
     assert body["tokenType"] == "bearer"
     assert find_set_cookie(response=response, name="refresh_token") is not None
+
+
+async def test_login_with_surrounding_spaces_finds_account_returns_200(
+    client: AsyncClient,
+    fake_user_credentials_repository: FakeUserCredentialsRepository,
+    fake_salted_hasher: FakeSaltedHasher,
+) -> None:
+    """login с пробелами по краям логина находит учётку без них → 200."""
+    secret = "password123"
+    user_credentials_entity = make_user_credentials(
+        username="user",
+        password=make_password(hash=fake_salted_hasher.hash(secret)),
+    )
+    fake_user_credentials_repository.by_user_id[user_credentials_entity.user_id] = user_credentials_entity
+
+    response = await client.post("/v1/auth/login/", json={"login": "  user  ", "password": secret})
+
+    assert response.status_code == 200
 
 
 async def test_login_wrong_password_returns_401(

@@ -11,6 +11,7 @@ import datetime as dt
 from collections.abc import Callable
 from uuid import uuid4
 
+import pytest
 from httpx import AsyncClient
 
 from app.auth.application.config import EmailVerificationConfig
@@ -113,17 +114,18 @@ async def test_send_verification_within_cooldown_returns_429(
 # --- verify ------------------------------------------------------------------
 
 
+@pytest.mark.parametrize("submitted_code", ["123456", " 123456 "])
 async def test_verify_valid_code_returns_204_and_marks_verified(
     client: AsyncClient,
     fake_user_credentials_repository: FakeUserCredentialsRepository,
     fake_challenge_repository: FakeChallengeRepository,
     fake_salted_hasher: FakeSaltedHasher,
     mint_access_token: Callable[..., str],
+    submitted_code: str,
 ) -> None:
-    """verify с верным кодом → 204, email помечен подтверждённым, challenge использован."""
-    code = "123456"
+    """verify с верным кодом (в т.ч. с пробелами по краям) → 204, email подтверждён, challenge использован."""
     user_credentials_entity = make_user_credentials()
-    challenge = make_challenge(user_id=user_credentials_entity.user_id, code_hash=fake_salted_hasher.hash(code))
+    challenge = make_challenge(user_id=user_credentials_entity.user_id, code_hash=fake_salted_hasher.hash("123456"))
     fake_user_credentials_repository.by_user_id[user_credentials_entity.user_id] = user_credentials_entity
     fake_challenge_repository.challenges.append(challenge)
     token = mint_access_token(user_id=user_credentials_entity.user_id)
@@ -131,7 +133,7 @@ async def test_verify_valid_code_returns_204_and_marks_verified(
     response = await client.post(
         _VERIFY_URL,
         headers={"Authorization": f"Bearer {token}"},
-        json={"code": code},
+        json={"code": submitted_code},
     )
 
     assert response.status_code == 204

@@ -39,7 +39,7 @@ class UserCredentialsEntity(TimestampedEntityMixin):
     ) -> Self:
         return cls(
             user_id=uuid4(),
-            email=email,
+            email=email.lower(),
             username=username,
             password=password,
             role=role,

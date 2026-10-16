@@ -27,8 +27,8 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
         Добавляет учётные данные пользователя в сессию без коммита.
 
         Запись становится видимой другим транзакциям только после ``commit()``
-        в UnitOfWork. Уникальные индексы по ``email`` и ``username`` могут
-        выбросить ``IntegrityError`` на flush, если конфликт не был отловлен
+        в UnitOfWork. Уникальные индексы по ``lower(email)`` и ``lower(username)``
+        могут выбросить ``IntegrityError`` на flush, если конфликт не был отловлен
         предварительной проверкой.
 
         Args:
@@ -68,35 +68,33 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
         user_credentials_model = await self._fetch_one(query=query)
         return self._to_entity(user_credentials_model=user_credentials_model) if user_credentials_model else None
 
-    async def find_user_credentials_by_email_or_username(
-        self,
-        *,
-        email: str,
-        username: str,
-    ) -> tuple[UserCredentialsEntity, ...]:
+    async def find_user_credentials_by_email(self, email: str) -> UserCredentialsEntity | None:
         """
-        Загружает все записи, у которых совпадает email или username.
-
-        Используется при регистрации, чтобы одним запросом обнаружить конфликт
-        по обоим полям. PostgreSQL планирует это как ``BitmapOr`` из двух
-        independent index scan'ов по уникальным индексам ``email`` и
-        ``username``, поэтому возвращается максимум 2 строки.
+        Загружает учётные данные по email без учёта регистра.
 
         Args:
-            email: Email из запроса регистрации
-            username: Username из запроса регистрации
+            email: Email в любом регистре
 
         Returns:
-            Найденные доменные сущности (0..2 элементов)
+            Доменная сущность учётных данных либо ``None``, если запись не найдена
         """
-        query = sa.select(UserCredentials).where(
-            (UserCredentials.email == email) | (UserCredentials.username == username),
-        )
-        result = await self._session.execute(query)
-        models = result.scalars().all()
-        return tuple(
-            self._to_entity(user_credentials_model=user_credentials_model) for user_credentials_model in models
-        )
+        query = sa.select(UserCredentials).where(sa.func.lower(UserCredentials.email) == sa.func.lower(email))
+        user_credentials_model = await self._fetch_one(query=query)
+        return self._to_entity(user_credentials_model=user_credentials_model) if user_credentials_model else None
+
+    async def find_user_credentials_by_username(self, username: str) -> UserCredentialsEntity | None:
+        """
+        Загружает учётные данные по username без учёта регистра.
+
+        Args:
+            username: Username в любом регистре
+
+        Returns:
+            Доменная сущность учётных данных либо ``None``, если запись не найдена
+        """
+        query = sa.select(UserCredentials).where(sa.func.lower(UserCredentials.username) == sa.func.lower(username))
+        user_credentials_model = await self._fetch_one(query=query)
+        return self._to_entity(user_credentials_model=user_credentials_model) if user_credentials_model else None
 
     def _to_columns(self, user_credentials_entity: UserCredentialsEntity) -> DictStrAny:
         """

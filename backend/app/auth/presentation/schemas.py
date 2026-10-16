@@ -1,13 +1,13 @@
 from typing import Annotated, Self
 
-from pydantic import ConfigDict, EmailStr, Field, SecretStr, model_validator
+from pydantic import ConfigDict, EmailStr, Field, SecretStr, StringConstraints, model_validator
 
 from app.auth.exceptions import TermsNotAcceptedError
 from app.shared.schemas import CamelModel
 
 
 class RegisterRequest(CamelModel):
-    username: Annotated[str, Field(min_length=3, max_length=50)]
+    username: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=50)]
     email: Annotated[EmailStr, Field(max_length=254)]
     password: Annotated[SecretStr, Field(min_length=8, max_length=50)]
     terms_accepted: bool
@@ -45,7 +45,8 @@ class LoginRequest(CamelModel):
     # На login пароль/логин на длину/политику не валидируем — проверяем лишь, что
     # они непустые и в пределах max. Иначе юзер со «старым» коротким паролем
     # залочится на входе; неверные креды и так дадут 401, а не 422.
-    login: Annotated[str, Field(min_length=1, max_length=254)]
+    # Пробелы по краям срезаются, как у username на регистрации: иначе « neo» не найдёт «neo».
+    login: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=254)]
     password: Annotated[SecretStr, Field(min_length=1, max_length=50)]
 
 
@@ -65,4 +66,4 @@ class CurrentAccountResponse(CamelModel):
 
 
 class VerifyEmailRequest(CamelModel):
-    code: Annotated[str, Field(pattern=r"^\d{6}$")]
+    code: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\d{6}$")]
