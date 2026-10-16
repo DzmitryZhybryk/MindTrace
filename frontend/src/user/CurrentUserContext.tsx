@@ -19,7 +19,7 @@ interface CurrentUserProviderProps {
 }
 
 /**
- * Loads the profile (`/v1/users/me`) and exposes it via context.
+ * Loads the profile (`/v1/users/me/`) and exposes it via context.
  *
  * Sits ABOVE `AuthProvider` and follows its state: `loading` until the auth bootstrap finishes
  * (no request, the token may not exist yet), `anonymous` without a session; login/logout flip

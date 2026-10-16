@@ -66,7 +66,7 @@ function Providers({ children, initialPath, authValue, withAuthProvider, queryCl
   // The client is fixed at tree mount: a `rerender` in a test must not reset the cache with it.
   const [client] = useState(() => queryClient ?? createTestQueryClient());
 
-  // The real CurrentUserProvider in both auth modes (an MSW handler for `/v1/users/me` covers the
+  // The real CurrentUserProvider in both auth modes (an MSW handler for `/v1/users/me/` covers the
   // network); the default branch has none, since useAuth would throw without an Auth ancestor.
   let withAuth: ReactNode = children;
   if (authValue !== undefined) {

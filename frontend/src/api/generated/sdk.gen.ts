@@ -4,8 +4,8 @@ import * as z from 'zod/mini';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateJourneyData, CreateJourneyErrors, CreateJourneyResponses, DeleteJourneyData, DeleteJourneyErrors, DeleteJourneyResponses, EstimateJourneyDistanceData, EstimateJourneyDistanceErrors, EstimateJourneyDistanceResponses, GetCurrentUserData, GetCurrentUserErrors, GetCurrentUserResponses, GetJourneysGlobeData, GetJourneysGlobeErrors, GetJourneysGlobeResponses, GetJourneysMapData, GetJourneysMapErrors, GetJourneysMapResponses, GetJourneyYearsData, GetJourneyYearsErrors, GetJourneyYearsResponses, GetMovementsMapData, GetMovementsMapErrors, GetMovementsMapResponses, HealthzData, HealthzResponses, ListJourneysData, ListJourneysErrors, ListJourneysResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, MoveJourneyData, MoveJourneyErrors, MoveJourneyResponses, RefreshData, RefreshErrors, RefreshResponses, RegisterData, RegisterErrors, RegisterResponses, ResolvePlacesData, ResolvePlacesErrors, ResolvePlacesResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses, SendEmailVerificationData, SendEmailVerificationErrors, SendEmailVerificationResponses, UpdateJourneyData, UpdateJourneyErrors, UpdateJourneyResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
-import { zCreateJourneyBody, zDeleteJourneyPath, zDeleteJourneyResponse, zEstimateJourneyDistanceQuery, zEstimateJourneyDistanceResponse, zGetCurrentUserResponse, zGetJourneysGlobeResponse, zGetJourneysMapResponse, zGetJourneyYearsResponse, zGetMovementsMapQuery, zGetMovementsMapResponse, zListJourneysQuery, zListJourneysResponse, zLoginBody, zLoginResponse, zLogoutResponse, zMoveJourneyBody, zMoveJourneyPath, zMoveJourneyResponse2, zRefreshResponse, zRegisterBody, zRegisterResponse, zResolvePlacesBody, zResolvePlacesResponse2, zSearchPlacesQuery, zSearchPlacesResponse, zUpdateJourneyBody, zUpdateJourneyPath, zUpdateJourneyResponse, zVerifyEmailBody, zVerifyEmailResponse } from './zod.gen';
+import type { CreateJourneyData, CreateJourneyErrors, CreateJourneyResponses, DeleteJourneyData, DeleteJourneyErrors, DeleteJourneyResponses, EstimateJourneyDistanceData, EstimateJourneyDistanceErrors, EstimateJourneyDistanceResponses, GetCurrentAccountData, GetCurrentAccountErrors, GetCurrentAccountResponses, GetCurrentUserData, GetCurrentUserErrors, GetCurrentUserResponses, GetJourneysGlobeData, GetJourneysGlobeErrors, GetJourneysGlobeResponses, GetJourneysMapData, GetJourneysMapErrors, GetJourneysMapResponses, GetJourneyYearsData, GetJourneyYearsErrors, GetJourneyYearsResponses, GetMovementsMapData, GetMovementsMapErrors, GetMovementsMapResponses, HealthzData, HealthzResponses, ListJourneysData, ListJourneysErrors, ListJourneysResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, MoveJourneyData, MoveJourneyErrors, MoveJourneyResponses, RefreshData, RefreshErrors, RefreshResponses, RegisterData, RegisterErrors, RegisterResponses, ResolvePlacesData, ResolvePlacesErrors, ResolvePlacesResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses, SendEmailVerificationData, SendEmailVerificationErrors, SendEmailVerificationResponses, UpdateJourneyData, UpdateJourneyErrors, UpdateJourneyResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
+import { zCreateJourneyBody, zDeleteJourneyPath, zDeleteJourneyResponse, zEstimateJourneyDistanceQuery, zEstimateJourneyDistanceResponse, zGetCurrentAccountResponse, zGetCurrentUserResponse, zGetJourneysGlobeResponse, zGetJourneysMapResponse, zGetJourneyYearsResponse, zGetMovementsMapQuery, zGetMovementsMapResponse, zListJourneysQuery, zListJourneysResponse, zLoginBody, zLoginResponse, zLogoutResponse, zMoveJourneyBody, zMoveJourneyPath, zMoveJourneyResponse2, zRefreshResponse, zRegisterBody, zRegisterResponse, zResolvePlacesBody, zResolvePlacesResponse2, zSearchPlacesQuery, zSearchPlacesResponse, zUpdateJourneyBody, zUpdateJourneyPath, zUpdateJourneyResponse, zVerifyEmailBody, zVerifyEmailResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
   /**
@@ -42,7 +42,7 @@ export const healthz = <ThrowOnError extends boolean = false>(options?: Options<
     query: z.optional(z.never())
   }).parseAsync(data),
   responseStyle: 'data',
-  url: '/healthz',
+  url: '/healthz/',
   ...options
 });
 
@@ -115,6 +115,22 @@ export const refresh = <ThrowOnError extends boolean = false>(options?: Options<
 });
 
 /**
+ * Get Current Account
+ */
+export const getCurrentAccount = <ThrowOnError extends boolean = false>(options?: Options<GetCurrentAccountData, ThrowOnError>): RequestResult<GetCurrentAccountResponses, GetCurrentAccountErrors, ThrowOnError, 'data'> => (options?.client ?? client).get<GetCurrentAccountResponses, GetCurrentAccountErrors, ThrowOnError, 'data'>({
+  requestValidator: async (data) => await z.object({
+    body: z.optional(z.never()),
+    path: z.optional(z.never()),
+    query: z.optional(z.never())
+  }).parseAsync(data),
+  responseValidator: async (data) => await zGetCurrentAccountResponse.parseAsync(data),
+  responseStyle: 'data',
+  security: [{ scheme: 'bearer', type: 'http' }],
+  url: '/v1/auth/me/',
+  ...options
+});
+
+/**
  * Send Email Verification
  */
 export const sendEmailVerification = <ThrowOnError extends boolean = false>(options?: Options<SendEmailVerificationData, ThrowOnError>): RequestResult<SendEmailVerificationResponses, SendEmailVerificationErrors, ThrowOnError, 'data'> => (options?.client ?? client).post<SendEmailVerificationResponses, SendEmailVerificationErrors, ThrowOnError, 'data'>({
@@ -177,7 +193,7 @@ export const resolvePlaces = <ThrowOnError extends boolean = false>(options: Opt
   responseValidator: async (data) => await zResolvePlacesResponse2.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/geo/places/resolve',
+  url: '/v1/geo/places/resolve/',
   ...options,
   headers: {
     'Content-Type': 'application/json',
@@ -232,7 +248,7 @@ export const deleteJourney = <ThrowOnError extends boolean = false>(options: Opt
   responseValidator: async (data) => await zDeleteJourneyResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/{journey_id}',
+  url: '/v1/journeys/{journey_id}/',
   ...options
 });
 
@@ -248,7 +264,7 @@ export const updateJourney = <ThrowOnError extends boolean = false>(options: Opt
   responseValidator: async (data) => await zUpdateJourneyResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/{journey_id}',
+  url: '/v1/journeys/{journey_id}/',
   ...options,
   headers: {
     'Content-Type': 'application/json',
@@ -268,7 +284,7 @@ export const moveJourney = <ThrowOnError extends boolean = false>(options: Optio
   responseValidator: async (data) => await zMoveJourneyResponse2.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/{journey_id}/move',
+  url: '/v1/journeys/{journey_id}/move/',
   ...options,
   headers: {
     'Content-Type': 'application/json',
@@ -288,7 +304,7 @@ export const estimateJourneyDistance = <ThrowOnError extends boolean = false>(op
   responseValidator: async (data) => await zEstimateJourneyDistanceResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/distance',
+  url: '/v1/journeys/distance/',
   ...options
 });
 
@@ -304,7 +320,7 @@ export const getJourneyYears = <ThrowOnError extends boolean = false>(options?: 
   responseValidator: async (data) => await zGetJourneyYearsResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/years',
+  url: '/v1/journeys/years/',
   ...options
 });
 
@@ -320,7 +336,7 @@ export const getJourneysMap = <ThrowOnError extends boolean = false>(options?: O
   responseValidator: async (data) => await zGetJourneysMapResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/map',
+  url: '/v1/journeys/map/',
   ...options
 });
 
@@ -336,7 +352,7 @@ export const getJourneysGlobe = <ThrowOnError extends boolean = false>(options?:
   responseValidator: async (data) => await zGetJourneysGlobeResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/globe',
+  url: '/v1/journeys/globe/',
   ...options
 });
 
@@ -352,7 +368,7 @@ export const getMovementsMap = <ThrowOnError extends boolean = false>(options?: 
   responseValidator: async (data) => await zGetMovementsMapResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/journeys/movements',
+  url: '/v1/journeys/movements/',
   ...options
 });
 
@@ -368,6 +384,6 @@ export const getCurrentUser = <ThrowOnError extends boolean = false>(options?: O
   responseValidator: async (data) => await zGetCurrentUserResponse.parseAsync(data),
   responseStyle: 'data',
   security: [{ scheme: 'bearer', type: 'http' }],
-  url: '/v1/users/me',
+  url: '/v1/users/me/',
   ...options
 });

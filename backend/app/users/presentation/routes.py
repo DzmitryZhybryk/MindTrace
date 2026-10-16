@@ -13,7 +13,7 @@ users_router = APIRouter()
 
 
 @users_router.get(
-    "/me",
+    "/me/",
     response_model=CurrentUserResponse,
     responses=GET_CURRENT_USER_RESPONSES,
 )

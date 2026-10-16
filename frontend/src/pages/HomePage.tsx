@@ -63,7 +63,7 @@ export function HomePage() {
         <div className="home-greeting">
           <span className="home-greeting__hello">
             {currentUser.status === "ready"
-              ? t("greeting", { name: currentUser.user.displayName ?? currentUser.user.username })
+              ? t("greeting", { name: currentUser.user.displayName })
               : " "}
           </span>
           <span className="home-greeting__date">{formatGreetingDate(i18n.language)}</span>

@@ -49,7 +49,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       const { accessToken } = await login({
-        body: { login: values.login, password: values.password },
+        body: { login: values.login.trim(), password: values.password },
         throwOnError: true,
       });
       setAccessToken(accessToken);

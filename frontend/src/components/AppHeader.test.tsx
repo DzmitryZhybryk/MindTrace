@@ -45,4 +45,13 @@ describe("AppHeader", () => {
     expect(drawerLink).toHaveClass("app-drawer-link--active");
     expect(drawerLink).toHaveAttribute("aria-current", "page");
   });
+
+  it("после загрузки профиля аватар показывает инициалы displayName", async () => {
+    renderWithProviders(<AppHeader />, {
+      authValue: makeAuthValue({ isAuthenticated: true, emailVerified: true }),
+    });
+
+    // Mantine Avatar renders the first two letters of a single-word name: "traveler" -> "TR".
+    expect(await screen.findByText("TR")).toBeInTheDocument();
+  });
 });

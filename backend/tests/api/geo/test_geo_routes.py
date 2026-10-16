@@ -1,6 +1,6 @@
 """
 api-тесты роутов geo на ASGI-приложении: ``GET /v1/geo/places/search/`` и
-``POST /v1/geo/places/resolve``.
+``POST /v1/geo/places/resolve/``.
 
 Реальная проводка ``place_service`` поверх фейк-репозитория, реальный декод Bearer-токена
 (подписан settings-секретом через ``mint_access_token``). Пиннят camelCase-контракт ответа,
@@ -10,13 +10,14 @@ api-тесты роутов geo на ASGI-приложении: ``GET /v1/geo/pl
 from collections.abc import Callable
 from uuid import UUID, uuid4
 
+import pytest
 from httpx import AsyncClient
 
 from tests.builders import make_place
 from tests.fakes import FakePlaceRepository
 
 _SEARCH_PATH = "/v1/geo/places/search/"
-_RESOLVE_PATH = "/v1/geo/places/resolve"
+_RESOLVE_PATH = "/v1/geo/places/resolve/"
 
 
 async def test_search_places_returns_camelcase_candidates(
@@ -45,6 +46,24 @@ async def test_search_places_returns_camelcase_candidates(
     assert "country_code" not in first
 
 
+async def test_search_places_query_with_surrounding_spaces_is_trimmed(
+    client: AsyncClient,
+    fake_place_repository: FakePlaceRepository,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """200: пробелы по краям searchText срезаются, префикс «Mos» находит Moscow."""
+    fake_place_repository.places.append(make_place(en="Moscow", ru="Москва", country_code="RU"))
+
+    response = await client.get(
+        _SEARCH_PATH,
+        params={"searchText": "  Mos  ", "language": "en"},
+        headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
+    )
+
+    assert response.status_code == 200
+    assert [item["name"] for item in response.json()["items"]] == ["Moscow"]
+
+
 async def test_search_places_without_token_returns_401(client: AsyncClient) -> None:
     """401: запрос без Bearer-токена отклоняется с доменным кодом auth.invalid_access_token."""
     response = await client.get(_SEARCH_PATH, params={"searchText": "Mos", "language": "en"})
@@ -68,14 +87,16 @@ async def test_search_places_missing_language_returns_422(
     assert response.json()["code"] == "validation_error"
 
 
-async def test_search_places_one_char_query_returns_422(
+@pytest.mark.parametrize("search_text", ["M", "  M  ", "   "])
+async def test_search_places_too_short_query_returns_422(
     client: AsyncClient,
     mint_access_token: Callable[..., str],
+    search_text: str,
 ) -> None:
-    """422: поиск по одному символу отклоняется — минимум два."""
+    """422: поиск короче двух символов (в т.ч. после обрезки пробелов) отклоняется."""
     response = await client.get(
         _SEARCH_PATH,
-        params={"searchText": "M", "language": "en"},
+        params={"searchText": search_text, "language": "en"},
         headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
     )
 

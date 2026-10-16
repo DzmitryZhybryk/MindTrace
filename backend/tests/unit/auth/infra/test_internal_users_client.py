@@ -2,9 +2,8 @@
 Юнит-тест адаптера ``InternalUsersClient`` (auth → users).
 
 Реальный ``UserService`` на фейковых UoW/репозитории; фейкаем только I/O-границу users.
-Тест пиннит маппинг ``CreateUserRequest`` → ``CreateUserCommand`` (``from_attributes=True``):
-рассинхрон имён полей между ``CreateUserRequest`` (auth) и ``CreateUserCommand`` (users) тут
-бы и всплыл — ни один другой тест этого не ловит.
+Тест пиннит маппинг ``CreateUserRequest`` → ``CreateUserCommand`` по полям: перепутанное
+или потерянное поле между auth и users всплыло бы тут — ни один другой тест этого не ловит.
 """
 
 import datetime as dt
@@ -28,16 +27,14 @@ async def test_create_user_maps_fields_and_persists_via_user_service() -> None:
     await client.create_user(
         request=CreateUserRequest(
             user_id=user_id,
-            username="newuser",
-            email="new@example.com",
+            display_name="newuser",
             marketing_emails_consent=True,
             terms_accepted_at=terms_accepted_at,
         ),
     )
 
     stored = user_repository.by_user_id[user_id]
-    assert stored.username == "newuser"
-    assert stored.email == "new@example.com"
+    assert stored.display_name == "newuser"
     assert stored.marketing_emails_consent is True
     assert stored.terms_accepted_at == terms_accepted_at
     uow.commit_mock.assert_not_awaited()

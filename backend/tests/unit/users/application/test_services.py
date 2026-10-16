@@ -18,8 +18,7 @@ async def test_create_user_inserts_mapped_entity(
     """`create_user` кладёт в репозиторий entity с полями из команды."""
     command = CreateUserCommand(
         user_id=uuid4(),
-        username="alice",
-        email="alice@example.com",
+        display_name="alice",
         marketing_emails_consent=True,
         terms_accepted_at=dt.datetime(2026, 1, 1, tzinfo=dt.UTC),
     )
@@ -27,8 +26,7 @@ async def test_create_user_inserts_mapped_entity(
     await user_service.create_user(command=command)
 
     stored = fake_user_repository.by_user_id[command.user_id]
-    assert stored.username == command.username
-    assert stored.email == command.email
+    assert stored.display_name == command.display_name
     assert stored.marketing_emails_consent == command.marketing_emails_consent
     assert stored.terms_accepted_at == command.terms_accepted_at
 
@@ -40,8 +38,7 @@ async def test_create_user_does_not_commit(
     """`create_user` НЕ коммитит — фиксацией владеет вызывающий use-case (Option A)."""
     command = CreateUserCommand(
         user_id=uuid4(),
-        username="alice",
-        email="alice@example.com",
+        display_name="alice",
         marketing_emails_consent=True,
         terms_accepted_at=dt.datetime(2026, 1, 1, tzinfo=dt.UTC),
     )
@@ -55,13 +52,13 @@ async def test_get_current_user_returns_profile(
     user_service: UserService,
     fake_user_repository: FakeUserRepository,
 ) -> None:
-    """`get_current_user` отдаёт username/email/display_name найденного пользователя."""
-    user_entity = make_user_entity(username="alice", email="alice@example.com", display_name="Alice D.")
+    """`get_current_user` отдаёт display_name найденного пользователя."""
+    user_entity = make_user_entity(display_name="Alice D.")
     fake_user_repository.by_user_id[user_entity.user_id] = user_entity
 
     result = await user_service.get_current_user(user_id=user_entity.user_id)
 
-    assert result == CurrentUserResult(username="alice", email="alice@example.com", display_name="Alice D.")
+    assert result == CurrentUserResult(display_name="Alice D.")
 
 
 async def test_get_current_user_does_not_commit(

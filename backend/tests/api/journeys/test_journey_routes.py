@@ -1,6 +1,6 @@
 """
-api-тесты роутов journeys (``POST``/``GET /v1/journeys/``, ``PUT``/``DELETE /{id}``, ``/{id}/move``,
-``/years``, ``/distance``, ``/map``, ``/globe``, ``/movements``) на ASGI-приложении.
+api-тесты роутов journeys (``POST``/``GET /v1/journeys/``, ``PUT``/``DELETE /{id}/``, ``/{id}/move/``,
+``/years/``, ``/distance/``, ``/map/``, ``/globe/``, ``/movements/``) на ASGI-приложении.
 
 Реальная проводка ``journey_service`` поверх фейк-UoW, реальный декод Bearer-токена
 (``mint_access_token`` подписывает settings-секретом; ``sub`` токена становится ``user_id``
@@ -39,12 +39,12 @@ from tests.fakes import (
 )
 
 _CREATE_PATH = "/v1/journeys/"
-_MAP_PATH = "/v1/journeys/map"
-_GLOBE_PATH = "/v1/journeys/globe"
-_MOVEMENTS_PATH = "/v1/journeys/movements"
+_MAP_PATH = "/v1/journeys/map/"
+_GLOBE_PATH = "/v1/journeys/globe/"
+_MOVEMENTS_PATH = "/v1/journeys/movements/"
 _FEED_PATH = "/v1/journeys/"
-_YEARS_PATH = "/v1/journeys/years"
-_DISTANCE_PATH = "/v1/journeys/distance"
+_YEARS_PATH = "/v1/journeys/years/"
+_DISTANCE_PATH = "/v1/journeys/distance/"
 _ROUTE = {"originPlaceId": str(MOSCOW_PLACE_ID), "destinationPlaceId": str(LONDON_PLACE_ID)}
 _VALID_BODY: dict[str, Any] = {
     **_ROUTE,
@@ -430,9 +430,9 @@ async def test_get_movements_map_unknown_transport_returns_422(
         ("GET", _FEED_PATH),
         ("GET", _YEARS_PATH),
         ("GET", _DISTANCE_PATH),
-        ("PUT", f"/v1/journeys/{uuid4()}"),
-        ("DELETE", f"/v1/journeys/{uuid4()}"),
-        ("POST", f"/v1/journeys/{uuid4()}/move"),
+        ("PUT", f"/v1/journeys/{uuid4()}/"),
+        ("DELETE", f"/v1/journeys/{uuid4()}/"),
+        ("POST", f"/v1/journeys/{uuid4()}/move/"),
     ],
 )
 async def test_journey_routes_without_token_return_401(client: AsyncClient, method: str, path: str) -> None:
@@ -617,7 +617,7 @@ async def test_update_journey_returns_204_and_replaces_fields(
     fake_journey_repository.journeys = [journey_entity]
 
     response = await client.put(
-        f"/v1/journeys/{journey_entity.journey_id}",
+        f"/v1/journeys/{journey_entity.journey_id}/",
         json=_VALID_BODY,
         headers={"Authorization": f"Bearer {mint_access_token(user_id=user_id)}"},
     )
@@ -655,7 +655,7 @@ async def test_update_journey_rejected_by_request_rules_returns_400(
     fake_journey_repository.journeys = [journey_entity]
 
     response = await client.put(
-        f"/v1/journeys/{journey_entity.journey_id}",
+        f"/v1/journeys/{journey_entity.journey_id}/",
         json={**_VALID_BODY, **overrides},
         headers={"Authorization": f"Bearer {mint_access_token(user_id=user_id)}"},
     )
@@ -675,7 +675,7 @@ async def test_update_journey_of_another_user_returns_404(
     fake_journey_repository.journeys = [journey_entity]
 
     response = await client.put(
-        f"/v1/journeys/{journey_entity.journey_id}",
+        f"/v1/journeys/{journey_entity.journey_id}/",
         json=_VALID_BODY,
         headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
     )
@@ -695,8 +695,8 @@ async def test_delete_journey_returns_204_and_soft_deletes(
     fake_journey_repository.journeys = [journey_entity]
     headers = {"Authorization": f"Bearer {mint_access_token(user_id=user_id)}"}
 
-    first = await client.delete(f"/v1/journeys/{journey_entity.journey_id}", headers=headers)
-    second = await client.delete(f"/v1/journeys/{journey_entity.journey_id}", headers=headers)
+    first = await client.delete(f"/v1/journeys/{journey_entity.journey_id}/", headers=headers)
+    second = await client.delete(f"/v1/journeys/{journey_entity.journey_id}/", headers=headers)
 
     assert first.status_code == 204
     assert fake_journey_repository.journeys[0].is_deleted
@@ -716,7 +716,7 @@ async def test_move_journey_returns_200_with_neighbor_year(
     fake_journey_repository.journeys = [neighbor_entity, moved_entity]
 
     response = await client.post(
-        f"/v1/journeys/{moved_entity.journey_id}/move",
+        f"/v1/journeys/{moved_entity.journey_id}/move/",
         json={"neighborJourneyId": str(neighbor_entity.journey_id), "placement": "before"},
         headers={"Authorization": f"Bearer {mint_access_token(user_id=user_id)}"},
     )
@@ -738,7 +738,7 @@ async def test_move_journey_to_foreign_neighbor_returns_400(
     fake_journey_repository.journeys = [moved_entity, foreign_entity]
 
     response = await client.post(
-        f"/v1/journeys/{moved_entity.journey_id}/move",
+        f"/v1/journeys/{moved_entity.journey_id}/move/",
         json={"neighborJourneyId": str(foreign_entity.journey_id), "placement": "after"},
         headers={"Authorization": f"Bearer {mint_access_token(user_id=user_id)}"},
     )
@@ -754,7 +754,7 @@ async def test_move_journey_unknown_placement_returns_422(
 ) -> None:
     """422: placement не after/before — ошибка формы запроса validation_error."""
     response = await client.post(
-        f"/v1/journeys/{uuid4()}/move",
+        f"/v1/journeys/{uuid4()}/move/",
         json={"neighborJourneyId": str(uuid4()), "placement": "inside"},
         headers={"Authorization": f"Bearer {mint_access_token(user_id=uuid4())}"},
     )

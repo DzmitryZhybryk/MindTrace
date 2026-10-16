@@ -39,16 +39,14 @@ afterEach(() => {
 describe("sdk", () => {
   it("шлёт запрос через транспорт приложения: Bearer, credentials, абсолютный URL", async () => {
     setAccessToken("my-token");
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(200, { username: "traveler", email: "t@example.com", displayName: null }),
-    );
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { displayName: "traveler" }));
 
     await getCurrentUser({ throwOnError: true });
 
     const request = requestAt(0);
     // baseUrl is required: without it the client would build a relative URL, which `Request` does
     // not resolve outside a browser.
-    expect(new URL(request.url).pathname).toBe("/v1/users/me");
+    expect(new URL(request.url).pathname).toBe("/v1/users/me/");
     expect(request.headers.get("Authorization")).toBe("Bearer my-token");
     expect(request.credentials).toBe("include");
   });
@@ -79,7 +77,7 @@ describe("sdk", () => {
   it("ответ не по контракту — invalid_response, а не голый ZodError", async () => {
     // A success status but the body fails the generated zod schema: without the error interceptor a
     // ZodError would escape past applyApiError and the whole error i18n.
-    fetchMock.mockResolvedValueOnce(jsonResponse(200, { username: 42 }));
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { displayName: 42 }));
 
     await expect(getCurrentUser({ throwOnError: true })).rejects.toMatchObject({
       status: 200,

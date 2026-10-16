@@ -18,7 +18,7 @@ type ResolveBody = { placeIds: string[]; language: string };
 function recordResolveRequests(): ResolveBody[] {
   const bodies: ResolveBody[] = [];
   server.use(
-    http.post("/v1/geo/places/resolve", async ({ request }) => {
+    http.post("/v1/geo/places/resolve/", async ({ request }) => {
       const body = (await request.json()) as ResolveBody;
       bodies.push(body);
       const items = GEO_PLACES.filter((place) => body.placeIds.includes(place.placeId)).map((place) => ({
@@ -108,7 +108,7 @@ describe("usePlaceNames", () => {
       release = resolve;
     });
     server.use(
-      http.post("/v1/geo/places/resolve", async () => {
+      http.post("/v1/geo/places/resolve/", async () => {
         await gate;
         return HttpResponse.json({ items: [{ placeId: MOSCOW.placeId, name: "Moscow" }] });
       }),

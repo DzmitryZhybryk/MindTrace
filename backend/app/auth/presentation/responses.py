@@ -1,6 +1,7 @@
 from typing import Final
 
 from app.auth.exceptions import (
+    AccountNotFoundError,
     ChallengeAttemptsExceededError,
     ChallengeExpiredError,
     ChallengeNotFoundError,
@@ -10,7 +11,6 @@ from app.auth.exceptions import (
     InvalidCredentialsError,
     InvalidRefreshTokenError,
     TermsNotAcceptedError,
-    UserCredentialsNotFoundError,
     UsernameAlreadyExistError,
     VerificationCodeInvalidError,
 )
@@ -116,25 +116,42 @@ REFRESH_RESPONSES: Final[dict[int | str, DictStrAny]] = {
 }
 
 
+_ACCOUNT_UNAUTHENTICATED_RESPONSE: Final[DictStrAny] = {
+    "description": "Невалидный или истёкший access-токен, либо учётной записи по токену нет",
+    "model": ErrorResponse,
+    "content": {
+        "application/json": {
+            "examples": {
+                "auth.invalid_access_token": {
+                    "summary": "Невалидный или истёкший access-токен",
+                    "value": error_response_example(InvalidAccessTokenError),
+                },
+                "auth.account_not_found": {
+                    "summary": "Учётная запись не найдена",
+                    "value": error_response_example(AccountNotFoundError),
+                },
+            },
+        }
+    },
+}
+
+
+GET_CURRENT_ACCOUNT_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+    401: _ACCOUNT_UNAUTHENTICATED_RESPONSE,
+    500: {
+        "description": "Внутренняя ошибка сервера",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": error_response_example(InternalError),
+            }
+        },
+    },
+}
+
+
 SEND_EMAIL_VERIFICATION_RESPONSES: Final[dict[int | str, DictStrAny]] = {
-    401: {
-        "description": "Невалидный или истёкший access-токен",
-        "model": ErrorResponse,
-        "content": {
-            "application/json": {
-                "example": error_response_example(InvalidAccessTokenError),
-            }
-        },
-    },
-    404: {
-        "description": "Учётная запись не найдена",
-        "model": ErrorResponse,
-        "content": {
-            "application/json": {
-                "example": error_response_example(UserCredentialsNotFoundError),
-            }
-        },
-    },
+    401: _ACCOUNT_UNAUTHENTICATED_RESPONSE,
     409: {
         "description": "Email уже подтверждён",
         "model": ErrorResponse,
@@ -175,30 +192,13 @@ VERIFY_EMAIL_RESPONSES: Final[dict[int | str, DictStrAny]] = {
             }
         },
     },
-    401: {
-        "description": "Невалидный или истёкший access-токен",
-        "model": ErrorResponse,
-        "content": {
-            "application/json": {
-                "example": error_response_example(InvalidAccessTokenError),
-            }
-        },
-    },
+    401: _ACCOUNT_UNAUTHENTICATED_RESPONSE,
     404: {
-        "description": "Учётная запись или активный challenge не найдены",
+        "description": "Активный challenge отсутствует",
         "model": ErrorResponse,
         "content": {
             "application/json": {
-                "examples": {
-                    "auth.user_credentials_not_found": {
-                        "summary": "Учётная запись не найдена",
-                        "value": error_response_example(UserCredentialsNotFoundError),
-                    },
-                    "auth.challenge_not_found": {
-                        "summary": "Активный challenge отсутствует",
-                        "value": error_response_example(ChallengeNotFoundError),
-                    },
-                },
+                "example": error_response_example(ChallengeNotFoundError),
             }
         },
     },

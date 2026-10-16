@@ -189,7 +189,7 @@ describe("PersistentGlobeHost — источник данных глобуса",
 
   it("место, которого geo не знает, подписано как неизвестное, а не пропадает", async () => {
     server.use(
-      http.get("/v1/journeys/globe", () =>
+      http.get("/v1/journeys/globe/", () =>
         HttpResponse.json({
           places: [
             { placeId: GEO_PLACES[0].placeId, latitude: 55.75, longitude: 37.62 },
@@ -207,7 +207,7 @@ describe("PersistentGlobeHost — источник данных глобуса",
 
   it("пока названия грузятся, города видны точками без подписи", async () => {
     server.use(
-      http.post("/v1/geo/places/resolve", async () => {
+      http.post("/v1/geo/places/resolve/", async () => {
         await delay("infinite");
         return HttpResponse.json({ items: [] });
       }),
@@ -215,7 +215,7 @@ describe("PersistentGlobeHost — источник данных глобуса",
     // The names request goes out only once the globe points are received; wait for exactly that.
     let resolveRequests = 0;
     server.events.on("request:start", ({ request }) => {
-      if (new URL(request.url).pathname === "/v1/geo/places/resolve") {
+      if (new URL(request.url).pathname === "/v1/geo/places/resolve/") {
         resolveRequests += 1;
       }
     });
@@ -229,7 +229,7 @@ describe("PersistentGlobeHost — источник данных глобуса",
   });
 
   it("сбой загрузки названий не стирает точки городов", async () => {
-    server.use(http.post("/v1/geo/places/resolve", () => new HttpResponse(null, { status: 500 })));
+    server.use(http.post("/v1/geo/places/resolve/", () => new HttpResponse(null, { status: 500 })));
 
     renderWithProviders(<PersistentGlobeHost />, { route: "/home", authValue: authedValue("user-1") });
 
@@ -239,7 +239,7 @@ describe("PersistentGlobeHost — источник данных глобуса",
   });
 
   it("ошибка загрузки городов не роняет глобус — остаётся без точек", async () => {
-    server.use(http.get("/v1/journeys/globe", () => HttpResponse.error()));
+    server.use(http.get("/v1/journeys/globe/", () => HttpResponse.error()));
 
     renderWithProviders(<PersistentGlobeHost />, { route: "/home", authValue: authedValue("user-1") });
 
@@ -266,7 +266,7 @@ describe("PersistentGlobeHost — свежесть данных фона", () =>
     let requests = 0;
     const places = cityNames.map((name) => GEO_PLACES.find((place) => place.name === name));
     server.use(
-      http.get("/v1/journeys/globe", () => {
+      http.get("/v1/journeys/globe/", () => {
         requests += 1;
         return HttpResponse.json({
           places: places.map((place) => ({

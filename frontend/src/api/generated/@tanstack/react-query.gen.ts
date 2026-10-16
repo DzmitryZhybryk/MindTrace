@@ -3,8 +3,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { createJourney, deleteJourney, estimateJourneyDistance, getCurrentUser, getJourneysGlobe, getJourneysMap, getJourneyYears, getMovementsMap, healthz, listJourneys, login, logout, moveJourney, type Options, refresh, register, resolvePlaces, searchPlaces, sendEmailVerification, updateJourney, verifyEmail } from '../sdk.gen';
-import type { CreateJourneyData, CreateJourneyError, DeleteJourneyData, DeleteJourneyError, DeleteJourneyResponse, EstimateJourneyDistanceData, EstimateJourneyDistanceError, EstimateJourneyDistanceResponse, GetCurrentUserData, GetCurrentUserError, GetCurrentUserResponse, GetJourneysGlobeData, GetJourneysGlobeError, GetJourneysGlobeResponse, GetJourneysMapData, GetJourneysMapError, GetJourneysMapResponse, GetJourneyYearsData, GetJourneyYearsError, GetJourneyYearsResponse, GetMovementsMapData, GetMovementsMapError, GetMovementsMapResponse, HealthzData, ListJourneysData, ListJourneysError, ListJourneysResponse, LoginData, LoginError, LoginResponse, LogoutData, LogoutError, LogoutResponse, MoveJourneyData, MoveJourneyError, MoveJourneyResponse2, RefreshData, RefreshError, RefreshResponse, RegisterData, RegisterError, RegisterResponse, ResolvePlacesData, ResolvePlacesError, ResolvePlacesResponse2, SearchPlacesData, SearchPlacesError, SearchPlacesResponse, SendEmailVerificationData, SendEmailVerificationError, UpdateJourneyData, UpdateJourneyError, UpdateJourneyResponse, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
+import { createJourney, deleteJourney, estimateJourneyDistance, getCurrentAccount, getCurrentUser, getJourneysGlobe, getJourneysMap, getJourneyYears, getMovementsMap, healthz, listJourneys, login, logout, moveJourney, type Options, refresh, register, resolvePlaces, searchPlaces, sendEmailVerification, updateJourney, verifyEmail } from '../sdk.gen';
+import type { CreateJourneyData, CreateJourneyError, DeleteJourneyData, DeleteJourneyError, DeleteJourneyResponse, EstimateJourneyDistanceData, EstimateJourneyDistanceError, EstimateJourneyDistanceResponse, GetCurrentAccountData, GetCurrentAccountError, GetCurrentAccountResponse, GetCurrentUserData, GetCurrentUserError, GetCurrentUserResponse, GetJourneysGlobeData, GetJourneysGlobeError, GetJourneysGlobeResponse, GetJourneysMapData, GetJourneysMapError, GetJourneysMapResponse, GetJourneyYearsData, GetJourneyYearsError, GetJourneyYearsResponse, GetMovementsMapData, GetMovementsMapError, GetMovementsMapResponse, HealthzData, ListJourneysData, ListJourneysError, ListJourneysResponse, LoginData, LoginError, LoginResponse, LogoutData, LogoutError, LogoutResponse, MoveJourneyData, MoveJourneyError, MoveJourneyResponse2, RefreshData, RefreshError, RefreshResponse, RegisterData, RegisterError, RegisterResponse, ResolvePlacesData, ResolvePlacesError, ResolvePlacesResponse2, SearchPlacesData, SearchPlacesError, SearchPlacesResponse, SendEmailVerificationData, SendEmailVerificationError, UpdateJourneyData, UpdateJourneyError, UpdateJourneyResponse, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
   Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -120,6 +120,21 @@ export const refreshMutation = (options?: Partial<Options<RefreshData>>): UseMut
   };
   return mutationOptions;
 };
+
+export const getCurrentAccountQueryKey = (options?: Options<GetCurrentAccountData>) => createQueryKey('getCurrentAccount', options);
+
+/**
+ * Get Current Account
+ */
+export const getCurrentAccountOptions = (options?: Options<GetCurrentAccountData>) => queryOptions<GetCurrentAccountResponse, GetCurrentAccountError, GetCurrentAccountResponse, ReturnType<typeof getCurrentAccountQueryKey>>({
+  queryFn: async ({ queryKey, signal }) => await getCurrentAccount({
+    ...options,
+    ...queryKey[0],
+    signal,
+    throwOnError: true
+  }),
+  queryKey: getCurrentAccountQueryKey(options)
+});
 
 /**
  * Send Email Verification

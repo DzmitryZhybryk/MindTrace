@@ -7,8 +7,8 @@ from app.auth.application.schemas.commands import VerifyEmailCommand
 from app.auth.domain.entities import ChallengeEntity
 from app.auth.domain.enums import ChallengeType
 from app.auth.exceptions import (
+    AccountNotFoundError,
     ChallengeNotFoundError,
-    UserCredentialsNotFoundError,
     VerificationCodeInvalidError,
 )
 from app.shared.infra.crypto import SaltedHasherPort
@@ -47,7 +47,7 @@ class EmailVerificationService:
             user_id: ID пользователя, которому нужен код
 
         Raises:
-            UserCredentialsNotFoundError: Если учётной записи с таким ``user_id`` не существует
+            AccountNotFoundError: Если учётной записи с таким ``user_id`` не существует
             EmailAlreadyVerifiedError: Если email уже подтверждён
             ChallengeResendCooldownError: Если активный challenge ещё свежее cooldown'а
         """
@@ -56,7 +56,7 @@ class EmailVerificationService:
                 user_id=user_id
             )
             if user_credentials_entity is None:
-                raise UserCredentialsNotFoundError()
+                raise AccountNotFoundError()
 
             user_credentials_entity.ensure_not_verified()
 
@@ -103,7 +103,7 @@ class EmailVerificationService:
             command: Команда с кодом, который ввёл пользователь
 
         Raises:
-            UserCredentialsNotFoundError: Если учётной записи с таким ``user_id`` не существует
+            AccountNotFoundError: Если учётной записи с таким ``user_id`` не существует
             EmailAlreadyVerifiedError: Если email уже подтверждён
             ChallengeNotFoundError: У пользователя нет активного challenge'а для верификации
             VerificationCodeInvalidError: Код не совпал с активным challenge'ом
@@ -115,7 +115,7 @@ class EmailVerificationService:
                 user_id=user_id
             )
             if user_credentials_entity is None:
-                raise UserCredentialsNotFoundError()
+                raise AccountNotFoundError()
 
             user_credentials_entity.ensure_not_verified()
 

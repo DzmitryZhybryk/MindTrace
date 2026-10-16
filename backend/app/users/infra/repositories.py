@@ -36,8 +36,6 @@ class UserRepository(BaseDBRepository[User], UserRepositoryPort):
     def _to_entity(self, user_model: User) -> UserEntity:
         return UserEntity(
             user_id=user_model.id,
-            username=user_model.username,
-            email=user_model.email,
             display_name=user_model.display_name,
             terms_accepted_at=user_model.terms_accepted_at,
             marketing_emails_consent=user_model.marketing_emails_consent,
@@ -49,8 +47,6 @@ class UserRepository(BaseDBRepository[User], UserRepositoryPort):
     def _to_model(self, user_entity: UserEntity) -> User:
         return User(
             id=user_entity.user_id,
-            username=user_entity.username,
-            email=user_entity.email,
             display_name=user_entity.display_name,
             terms_accepted_at=user_entity.terms_accepted_at,
             marketing_emails_consent=user_entity.marketing_emails_consent,

@@ -22,7 +22,7 @@ describe("AllJourneysView — правка и удаление", () => {
   it("Save отправляет все поля строки и закрывает правку", async () => {
     let request: { url: string; body: unknown } | null = null;
     server.use(
-      http.put("/v1/journeys/:journeyId", async ({ request: incoming }) => {
+      http.put("/v1/journeys/:journeyId/", async ({ request: incoming }) => {
         request = { url: new URL(incoming.url).pathname, body: await incoming.json() };
         return new HttpResponse(null, { status: 204 });
       }),
@@ -34,7 +34,7 @@ describe("AllJourneysView — правка и удаление", () => {
 
     await waitFor(() => expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument());
     expect(request).toEqual({
-      url: `/v1/journeys/${MOSCOW_TO_LONDON.journeyId}`,
+      url: `/v1/journeys/${MOSCOW_TO_LONDON.journeyId}/`,
       body: {
         originPlaceId: MOSCOW_TO_LONDON.origin.placeId,
         destinationPlaceId: MOSCOW_TO_LONDON.destination.placeId,
@@ -70,7 +70,7 @@ describe("AllJourneysView — правка и удаление", () => {
   it("новое расстояние после сохранения докручивается до значения с сервера", async () => {
     let isSaved = false;
     server.use(
-      http.put("/v1/journeys/:journeyId", () => {
+      http.put("/v1/journeys/:journeyId/", () => {
         isSaved = true;
         return new HttpResponse(null, { status: 204 });
       }),
@@ -91,7 +91,7 @@ describe("AllJourneysView — правка и удаление", () => {
   it("одинаковые города выбрать можно, а сохранить нельзя — ошибка у поля, запроса нет", async () => {
     const putSpy = vi.fn();
     server.use(
-      http.put("/v1/journeys/:journeyId", () => {
+      http.put("/v1/journeys/:journeyId/", () => {
         putSpy();
         return new HttpResponse(null, { status: 204 });
       }),
@@ -141,7 +141,7 @@ describe("AllJourneysView — правка и удаление", () => {
 
   it("поездку удалили в другом месте — Save показывает «этой поездки больше нет»", async () => {
     server.use(
-      http.put("/v1/journeys/:journeyId", () =>
+      http.put("/v1/journeys/:journeyId/", () =>
         HttpResponse.json({ code: "journeys.journey_not_found", message: "нет" }, { status: 404 }),
       ),
     );
@@ -166,7 +166,7 @@ describe("AllJourneysView — правка и удаление", () => {
     preferReducedMotion();
     let deletedPath: string | null = null;
     server.use(
-      http.delete("/v1/journeys/:journeyId", ({ request }) => {
+      http.delete("/v1/journeys/:journeyId/", ({ request }) => {
         deletedPath = new URL(request.url).pathname;
         return new HttpResponse(null, { status: 204 });
       }),
@@ -177,14 +177,14 @@ describe("AllJourneysView — правка и удаление", () => {
     await user.click(screen.getByRole("button", { name: "Yes" }));
 
     await waitFor(() => expect(within(screen.getByRole("region", { name: "2021" })).getAllByRole("listitem")).toHaveLength(1));
-    expect(deletedPath).toBe(`/v1/journeys/${MOSCOW_TO_LONDON.journeyId}`);
+    expect(deletedPath).toBe(`/v1/journeys/${MOSCOW_TO_LONDON.journeyId}/`);
   });
 
   it("удалена последняя поездка выбранного года — его нет на шкале, выбор снят и лента показывает все годы", async () => {
     preferReducedMotion();
     let isParisToMoscowDeleted = false;
     server.use(
-      http.get("/v1/journeys/years", () => HttpResponse.json({ years: isParisToMoscowDeleted ? [2021] : [2019, 2021] })),
+      http.get("/v1/journeys/years/", () => HttpResponse.json({ years: isParisToMoscowDeleted ? [2021] : [2019, 2021] })),
       http.get("/v1/journeys/", ({ request }) => {
         const yearFrom = new URL(request.url).searchParams.get("yearFrom");
         const journeys = FEED_JOURNEYS.filter(
@@ -194,7 +194,7 @@ describe("AllJourneysView — правка и удаление", () => {
         );
         return HttpResponse.json({ items: journeys, nextCursor: null });
       }),
-      http.delete("/v1/journeys/:journeyId", () => {
+      http.delete("/v1/journeys/:journeyId/", () => {
         isParisToMoscowDeleted = true;
         return new HttpResponse(null, { status: 204 });
       }),
@@ -218,7 +218,7 @@ describe("AllJourneysView — правка и удаление", () => {
   it("уже удалённая поездка (404 на DELETE) просто пропадает — цель достигнута", async () => {
     preferReducedMotion();
     server.use(
-      http.delete("/v1/journeys/:journeyId", () =>
+      http.delete("/v1/journeys/:journeyId/", () =>
         HttpResponse.json({ code: "journeys.journey_not_found", message: "нет" }, { status: 404 }),
       ),
     );

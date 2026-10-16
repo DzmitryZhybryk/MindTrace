@@ -13,7 +13,7 @@ import { useCurrentUser } from "./useCurrentUser";
 /** Probe: prints the state machine status (and the name for ready), without Mantine/Router. */
 function Probe() {
   const state = useCurrentUser();
-  return <span>{state.status === "ready" ? `ready:${state.user.displayName ?? state.user.username}` : state.status}</span>;
+  return <span>{state.status === "ready" ? `ready:${state.user.displayName}` : state.status}</span>;
 }
 
 function tree(authValue: AuthContextValue, queryClient = createTestQueryClient()) {
@@ -44,13 +44,12 @@ describe("CurrentUserProvider", () => {
   it("после логина грузит /me и отдаёт ready с профилем", async () => {
     render(tree(makeAuthValue({ isAuthenticated: true })));
 
-    // The default MSW fixture: displayName=null, so the probe shows username.
     expect(await screen.findByText("ready:traveler")).toBeInTheDocument();
   });
 
   it("ошибка /me переводит в error", async () => {
     server.use(
-      http.get("/v1/users/me", () =>
+      http.get("/v1/users/me/", () =>
         HttpResponse.json({ code: "internal_error", message: "boom" }, { status: 500 }),
       ),
     );
@@ -62,7 +61,7 @@ describe("CurrentUserProvider", () => {
 
   it("код users.user_deleted (410) разлогинивает вместо перехода в error", async () => {
     server.use(
-      http.get("/v1/users/me", () =>
+      http.get("/v1/users/me/", () =>
         HttpResponse.json({ code: "users.user_deleted", message: "удалён" }, { status: 410 }),
       ),
     );
@@ -78,7 +77,7 @@ describe("CurrentUserProvider", () => {
 
   it("код users.user_not_found (404) тоже разлогинивает", async () => {
     server.use(
-      http.get("/v1/users/me", () =>
+      http.get("/v1/users/me/", () =>
         HttpResponse.json({ code: "users.user_not_found", message: "нет такого" }, { status: 404 }),
       ),
     );
@@ -97,7 +96,7 @@ describe("CurrentUserProvider", () => {
     // A client with the real predicate (retryDelay: 0, no point waiting for backoff in a test).
     let attempts = 0;
     server.use(
-      http.get("/v1/users/me", () => {
+      http.get("/v1/users/me/", () => {
         attempts += 1;
         return attempts === 1
           ? HttpResponse.json({ code: "internal_error", message: "boom" }, { status: 500 })
@@ -114,7 +113,7 @@ describe("CurrentUserProvider", () => {
   it("разлогинивающий код (410) не повторяется — бить по удалённому пользователю нечем", async () => {
     let attempts = 0;
     server.use(
-      http.get("/v1/users/me", () => {
+      http.get("/v1/users/me/", () => {
         attempts += 1;
         return HttpResponse.json({ code: "users.user_deleted", message: "удалён" }, { status: 410 });
       }),
@@ -136,7 +135,7 @@ describe("CurrentUserProvider", () => {
       releaseProfile = resolve;
     });
     server.use(
-      http.get("/v1/users/me", async () => {
+      http.get("/v1/users/me/", async () => {
         await gate;
         return HttpResponse.json(TEST_CURRENT_USER);
       }),

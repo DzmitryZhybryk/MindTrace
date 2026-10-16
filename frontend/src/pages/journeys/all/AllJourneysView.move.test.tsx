@@ -45,7 +45,7 @@ describe("AllJourneysView — перенос", () => {
       releaseResponse = resolve;
     });
     server.use(
-      http.post("/v1/journeys/:journeyId/move", async ({ request: incoming }) => {
+      http.post("/v1/journeys/:journeyId/move/", async ({ request: incoming }) => {
         request = { url: new URL(incoming.url).pathname, body: await incoming.json() };
         await responseGate;
         return HttpResponse.json({ traveledYear: 2019 });
@@ -57,7 +57,7 @@ describe("AllJourneysView — перенос", () => {
 
     await waitFor(() =>
       expect(request).toEqual({
-        url: `/v1/journeys/${LONDON_TO_PARIS.journeyId}/move`,
+        url: `/v1/journeys/${LONDON_TO_PARIS.journeyId}/move/`,
         body: { neighborJourneyId: PARIS_TO_MOSCOW.journeyId, placement: "after" },
       }),
     );
@@ -82,11 +82,11 @@ describe("AllJourneysView — перенос", () => {
         feedRequests += 1;
         return HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null });
       }),
-      http.get("/v1/journeys/years", () => {
+      http.get("/v1/journeys/years/", () => {
         yearsRequests += 1;
         return HttpResponse.json({ years: [2019, 2021] });
       }),
-      http.post("/v1/journeys/:journeyId/move", () => HttpResponse.json({ traveledYear: 2019 })),
+      http.post("/v1/journeys/:journeyId/move/", () => HttpResponse.json({ traveledYear: 2019 })),
     );
     try {
       const { user } = renderAllJourneys();
@@ -123,7 +123,7 @@ describe("AllJourneysView — перенос", () => {
         await refetchGate;
         return HttpResponse.json({ items: [FIRST_2021, LONDON_TO_PARIS], nextCursor: null });
       }),
-      http.post("/v1/journeys/:journeyId/move", () =>
+      http.post("/v1/journeys/:journeyId/move/", () =>
         HttpResponse.json({ code: "journeys.invalid_move_target", message: "нет" }, { status: 400 }),
       ),
     );
@@ -181,7 +181,7 @@ describe("AllJourneysView — перенос", () => {
     stackRowsVertically();
     const moveSpy = vi.fn();
     server.use(
-      http.post("/v1/journeys/:journeyId/move", () => {
+      http.post("/v1/journeys/:journeyId/move/", () => {
         moveSpy();
         return HttpResponse.json({ traveledYear: 2019 });
       }),

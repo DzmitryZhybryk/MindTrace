@@ -1,11 +1,20 @@
 import datetime as dt
+from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, SecretStr
 
 __all__ = [
+    "CurrentAccountResult",
     "IssuedRefreshToken",
     "TokenPairResult",
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class CurrentAccountResult:
+    email: str
+    username: str
+    email_verified: bool
 
 
 class IssuedRefreshToken(BaseModel):

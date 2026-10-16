@@ -8,6 +8,7 @@ argon2) — фейки; DI-граф, выпуск/декод JWT, куки и ex
 
 import datetime as dt
 from collections.abc import Callable
+from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
@@ -124,11 +125,41 @@ async def test_register_username_already_taken_returns_409(
     assert body["details"] == {"field": "username"}
 
 
+async def test_register_normalizes_username_and_email(
+    client: AsyncClient,
+    fake_user_credentials_repository: FakeUserCredentialsRepository,
+    fake_users_client: FakeUsersClient,
+) -> None:
+    """register: username хранится без пробелов по краям и в своём регистре (и в display_name), email — в нижнем."""
+    response = await client.post(
+        "/v1/auth/register/",
+        json={
+            "username": "  NewUser  ",
+            "email": "New@Example.COM",
+            "password": "password123",
+            "terms_accepted": True,
+            "marketing_emails_consent": False,
+        },
+    )
+
+    assert response.status_code == 201
+    stored = list(fake_user_credentials_repository.by_user_id.values())
+    assert [(entity.username, entity.email) for entity in stored] == [("NewUser", "new@example.com")]
+    assert [request.display_name for request in fake_users_client.created] == ["NewUser"]
+
+
 @pytest.mark.parametrize(
     "invalid_body",
     [
         {
             "username": "ab",
+            "email": "valid@example.com",
+            "password": "password123",
+            "terms_accepted": True,
+            "marketing_emails_consent": False,
+        },
+        {
+            "username": "  ab  ",
             "email": "valid@example.com",
             "password": "password123",
             "terms_accepted": True,
@@ -151,7 +182,7 @@ async def test_register_username_already_taken_returns_409(
     ],
 )
 async def test_register_invalid_field_returns_422(client: AsyncClient, invalid_body: dict[str, object]) -> None:
-    """register с невалидным полем (короткий username / битый email / короткий пароль) → 422 validation_error."""
+    """register с коротким username (в т.ч. после обрезки пробелов) / битым email / коротким паролем → 422."""
     response = await client.post("/v1/auth/register/", json=invalid_body)
 
     assert response.status_code == 422
@@ -183,6 +214,24 @@ async def test_login_valid_credentials_returns_200_with_token_and_cookie(
     assert body["accessToken"]
     assert body["tokenType"] == "bearer"
     assert find_set_cookie(response=response, name="refresh_token") is not None
+
+
+async def test_login_with_surrounding_spaces_finds_account_returns_200(
+    client: AsyncClient,
+    fake_user_credentials_repository: FakeUserCredentialsRepository,
+    fake_salted_hasher: FakeSaltedHasher,
+) -> None:
+    """login с пробелами по краям логина находит учётку без них → 200."""
+    secret = "password123"
+    user_credentials_entity = make_user_credentials(
+        username="user",
+        password=make_password(hash=fake_salted_hasher.hash(secret)),
+    )
+    fake_user_credentials_repository.by_user_id[user_credentials_entity.user_id] = user_credentials_entity
+
+    response = await client.post("/v1/auth/login/", json={"login": "  user  ", "password": secret})
+
+    assert response.status_code == 200
 
 
 async def test_login_wrong_password_returns_401(
@@ -341,3 +390,44 @@ async def test_refresh_expired_token_returns_401(
 
     assert response.status_code == 401
     assert response.json()["code"] == "auth.invalid_refresh_token"
+
+
+# --- me ----------------------------------------------------------------------
+
+
+async def test_get_current_account_returns_camelcase_account(
+    client: AsyncClient,
+    fake_user_credentials_repository: FakeUserCredentialsRepository,
+    mint_access_token: Callable[..., str],
+    past: dt.datetime,
+) -> None:
+    """me с валидным токеном → 200 {email, username, emailVerified} учётной записи."""
+    user_credentials_entity = make_user_credentials(email="neo@example.com", username="neo", email_verified_at=past)
+    fake_user_credentials_repository.by_user_id[user_credentials_entity.user_id] = user_credentials_entity
+    token = mint_access_token(user_id=user_credentials_entity.user_id)
+
+    response = await client.get("/v1/auth/me/", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    assert response.json() == {"email": "neo@example.com", "username": "neo", "emailVerified": True}
+
+
+async def test_get_current_account_without_bearer_returns_401(client: AsyncClient) -> None:
+    """me без Authorization → 401 auth.invalid_access_token."""
+    response = await client.get("/v1/auth/me/")
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "auth.invalid_access_token"
+
+
+async def test_get_current_account_unknown_user_returns_401(
+    client: AsyncClient,
+    mint_access_token: Callable[..., str],
+) -> None:
+    """me с токеном без учётки в БД → 401 auth.account_not_found."""
+    token = mint_access_token(user_id=uuid4())
+
+    response = await client.get("/v1/auth/me/", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "auth.account_not_found"

@@ -60,32 +60,19 @@ describe("HomePage", () => {
     expect(authValue.openVerifyDialog).toHaveBeenCalled();
   });
 
-  it("дата видна сразу, приветствие появляется после загрузки профиля с фоллбэком на username", async () => {
+  it("дата видна сразу, приветствие с displayName появляется после загрузки профиля", async () => {
     renderHome(makeAuthValue({ isAuthenticated: true, emailVerified: true }));
 
     // The date does not depend on the network and is there from the first render; the greeting line is not yet.
     expect(screen.getByText(/^[A-Za-z]+ · [A-Za-z]+ \d{4}$/u)).toBeInTheDocument();
     expect(screen.queryByText(/Hello,/u)).not.toBeInTheDocument();
 
-    // The default MSW profile: displayName=null, so greet by username.
     expect(await screen.findByText("Hello, traveler")).toBeInTheDocument();
-  });
-
-  it("displayName в приоритете над username в приветствии", async () => {
-    server.use(
-      http.get("/v1/users/me", () =>
-        HttpResponse.json({ username: "traveler", email: "traveler@example.com", displayName: "Alice D." }),
-      ),
-    );
-
-    renderHome(makeAuthValue({ isAuthenticated: true, emailVerified: true }));
-
-    expect(await screen.findByText("Hello, Alice D.")).toBeInTheDocument();
   });
 
   it("ошибка загрузки профиля: дата остаётся, строка приветствия так и не появляется", async () => {
     server.use(
-      http.get("/v1/users/me", () =>
+      http.get("/v1/users/me/", () =>
         HttpResponse.json({ code: "internal_error", message: "boom" }, { status: 500 }),
       ),
     );

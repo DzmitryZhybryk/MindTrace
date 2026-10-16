@@ -27,8 +27,10 @@ class InvalidRefreshTokenError(UnauthenticatedError):
     message = "Невалидный или истёкший refresh-токен"
 
 
-class UserCredentialsNotFoundError(NotFoundError):
-    code = "auth.user_credentials_not_found"
+class AccountNotFoundError(UnauthenticatedError):
+    """Токен валиден, но учётной записи по его ``sub`` нет: токен никого не идентифицирует."""
+
+    code = "auth.account_not_found"
     message = "Учётная запись не найдена"
 
 

@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import StringConstraints
 
 from app.geo.application.schemas.commands import ResolvePlacesCommand, SearchPlacesCommand
 from app.geo.application.services.place import PlaceService
@@ -28,9 +29,11 @@ geo_router = APIRouter()
 async def search_places(
     *,
     place_service: Annotated[PlaceService, Depends(place_service_dependency)],
+    # Пробелы по краям срезаются до проверки длины: « M » — это поиск по одной букве, а не по трём символам.
     search_text: Annotated[
         str,
-        Query(alias="searchText", min_length=2, max_length=100, description="Поисковый запрос (начало имени)."),
+        StringConstraints(strip_whitespace=True, min_length=2, max_length=100),
+        Query(alias="searchText", description="Поисковый запрос (начало имени)."),
     ],
     language: Annotated[Language, Query(description="Язык отображаемых имён.")],
     limit: Annotated[int, Query(ge=1, le=50, description="Максимум кандидатов в выдаче.")] = 10,
@@ -42,7 +45,7 @@ async def search_places(
 
 
 @geo_router.post(
-    "/places/resolve",
+    "/places/resolve/",
     response_model=ResolvePlacesResponse,
     responses=RESOLVE_PLACES_RESPONSES,
     dependencies=[Depends(current_user_id_dependency)],

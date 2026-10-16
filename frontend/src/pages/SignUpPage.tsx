@@ -50,8 +50,9 @@ export function SignUpPage() {
         return null;
       },
       email: (value) => {
-        if (!/^\S+@\S+\.\S+$/u.test(value)) return "auth:validation.emailInvalid";
-        if (value.length > 254) return "auth:validation.emailTooLong";
+        const trimmed = value.trim();
+        if (!/^\S+@\S+\.\S+$/u.test(trimmed)) return "auth:validation.emailInvalid";
+        if (trimmed.length > 254) return "auth:validation.emailTooLong";
         return null;
       },
       password: (value) => {
@@ -80,8 +81,8 @@ export function SignUpPage() {
     try {
       const { accessToken } = await register({
         body: {
-          username: values.username,
-          email: values.email,
+          username: values.username.trim(),
+          email: values.email.trim(),
           password: values.password,
           termsAccepted: values.termsAccepted,
           marketingEmailsConsent: values.marketingEmailsConsent,

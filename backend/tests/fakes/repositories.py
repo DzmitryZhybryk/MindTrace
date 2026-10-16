@@ -34,13 +34,16 @@ class FakeUserCredentialsRepository(UserCredentialsRepositoryPort):
     async def find_user_credentials_by_user_id(self, user_id: UUID) -> UserCredentialsEntity | None:
         return self.by_user_id.get(user_id)
 
-    async def find_user_credentials_by_email_or_username(
-        self,
-        *,
-        email: str,
-        username: str,
-    ) -> tuple[UserCredentialsEntity, ...]:
-        return tuple(c for c in self.by_user_id.values() if c.email == email or c.username == username)
+    async def find_user_credentials_by_email(self, email: str) -> UserCredentialsEntity | None:
+        return next((c for c in self.by_user_id.values() if c.email.lower() == email.lower()), None)
+
+    async def find_user_credentials_by_username(self, username: str) -> UserCredentialsEntity | None:
+        return next((c for c in self.by_user_id.values() if c.username.lower() == username.lower()), None)
+
+    async def find_user_credentials_by_login(self, login: str) -> UserCredentialsEntity | None:
+        return await self.find_user_credentials_by_email(email=login) or await self.find_user_credentials_by_username(
+            username=login
+        )
 
 
 class FakeRefreshTokenRepository(RefreshTokenRepositoryPort):

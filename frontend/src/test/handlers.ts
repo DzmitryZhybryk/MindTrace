@@ -15,7 +15,7 @@ import { setupServer } from "msw/node";
 import type { CurrentUserResponse, JourneyFeedEntry, MovementsMapResponse, PlaceSearchItem } from "../api/sdk";
 
 /**
- * Minimal gazetteer for autocomplete component tests (`/v1/geo/places/search`). Names are already
+ * Minimal gazetteer for autocomplete component tests (`/v1/geo/places/search/`). Names are already
  * "resolved" (the backend returns them per language); the handler filters by prefix like the real
  * search. A test overrides the results via `server.use(...)` for an empty/error case.
  */
@@ -82,13 +82,11 @@ export function makeAccessToken(claims: TokenClaims = {}): string {
 export const TEST_ACCESS_TOKEN = makeAccessToken();
 
 /**
- * Current user profile (`/v1/users/me`). `displayName: null` by default covers the fallback to
- * `username`; a test with a set name or an error overrides the response via `server.use(...)`.
+ * Current user profile (`/v1/users/me/`). A test with another name or an error overrides the
+ * response via `server.use(...)`.
  */
 export const TEST_CURRENT_USER: CurrentUserResponse = {
-  username: "traveler",
-  email: "traveler@example.com",
-  displayName: null,
+  displayName: "traveler",
 };
 
 const successTokenBody = { accessToken: TEST_ACCESS_TOKEN, tokenType: "bearer" };
@@ -179,7 +177,7 @@ export const handlers = [
     return HttpResponse.json({ items });
   }),
   // Place names by id: knows only fixture places and omits unknown ids, like the backend.
-  http.post("/v1/geo/places/resolve", async ({ request }) => {
+  http.post("/v1/geo/places/resolve/", async ({ request }) => {
     const { placeIds } = (await request.json()) as { placeIds: string[] };
     const items = GEO_PLACES.filter((place) => placeIds.includes(place.placeId)).map((place) => ({
       placeId: place.placeId,
@@ -191,7 +189,7 @@ export const handlers = [
   http.post("/v1/journeys/", () => new HttpResponse(null, { status: 201 })),
   // Journey map: the aggregate of visited countries (feeds WorldMap). A test overrides it with an
   // empty/error response via server.use(...).
-  http.get("/v1/journeys/map", () =>
+  http.get("/v1/journeys/map/", () =>
     HttpResponse.json({
       countries: [
         {
@@ -206,7 +204,7 @@ export const handlers = [
     }),
   ),
   // Places for the globe: the same cities as the map, without countries and years.
-  http.get("/v1/journeys/globe", () =>
+  http.get("/v1/journeys/globe/", () =>
     HttpResponse.json({
       places: [
         { placeId: GEO_PLACES[0].placeId, latitude: 55.75, longitude: 37.62 },
@@ -216,18 +214,18 @@ export const handlers = [
   ),
   // Movements map without filters. A test overrides it with an empty/error/filtered response via
   // server.use(...).
-  http.get("/v1/journeys/movements", () => HttpResponse.json(MOVEMENTS_RESPONSE)),
+  http.get("/v1/journeys/movements/", () => HttpResponse.json(MOVEMENTS_RESPONSE)),
   // The feed in one page and years for the chips. A test overrides pages, filters and errors via
   // server.use(...).
   http.get("/v1/journeys/", () => HttpResponse.json({ items: FEED_JOURNEYS, nextCursor: null })),
-  http.get("/v1/journeys/years", () => HttpResponse.json({ years: FEED_YEARS })),
+  http.get("/v1/journeys/years/", () => HttpResponse.json({ years: FEED_YEARS })),
   // Edit and delete: 204 with no body; move returns the neighbour's year (a test sets its own via server.use).
-  http.get("/v1/journeys/distance", () => HttpResponse.json({ distanceKm: ESTIMATED_DISTANCE_KM })),
-  http.put("/v1/journeys/:journeyId", () => new HttpResponse(null, { status: 204 })),
-  http.delete("/v1/journeys/:journeyId", () => new HttpResponse(null, { status: 204 })),
-  http.post("/v1/journeys/:journeyId/move", () => HttpResponse.json({ traveledYear: 2021 })),
+  http.get("/v1/journeys/distance/", () => HttpResponse.json({ distanceKm: ESTIMATED_DISTANCE_KM })),
+  http.put("/v1/journeys/:journeyId/", () => new HttpResponse(null, { status: 204 })),
+  http.delete("/v1/journeys/:journeyId/", () => new HttpResponse(null, { status: 204 })),
+  http.post("/v1/journeys/:journeyId/move/", () => HttpResponse.json({ traveledYear: 2021 })),
   // Current user profile: feeds CurrentUserProvider on any logged-in render.
-  http.get("/v1/users/me", () => HttpResponse.json(TEST_CURRENT_USER)),
+  http.get("/v1/users/me/", () => HttpResponse.json(TEST_CURRENT_USER)),
 ];
 
 export const server = setupServer(...handlers);

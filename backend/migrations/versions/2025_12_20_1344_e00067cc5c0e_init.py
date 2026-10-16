@@ -27,13 +27,10 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("username", sa.String(length=50), nullable=False),
-        sa.Column("email", sa.String(length=254), nullable=False),
-        sa.Column("display_name", sa.String(length=50), nullable=True),
+        sa.Column("display_name", sa.String(length=50), nullable=False),
         sa.Column("terms_accepted_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("marketing_emails_consent", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("email"),
     )
     op.create_table(
         "user_credentials",
@@ -47,8 +44,19 @@ def upgrade() -> None:
         sa.Column("role", sa.String(length=20), nullable=False),
         sa.Column("email_verified_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("user_id"),
-        sa.UniqueConstraint("email"),
-        sa.UniqueConstraint("username"),
+    )
+    # Уникальность email и username без учёта регистра.
+    op.create_index(
+        "ix_user_credentials_email_lower",
+        "user_credentials",
+        [sa.text("lower(email)")],
+        unique=True,
+    )
+    op.create_index(
+        "ix_user_credentials_username_lower",
+        "user_credentials",
+        [sa.text("lower(username)")],
+        unique=True,
     )
     op.create_table(
         "refresh_tokens",
@@ -181,5 +189,7 @@ def downgrade() -> None:
     op.drop_index("ix_refresh_tokens_expires_at", table_name="refresh_tokens")
     op.drop_index("ix_refresh_tokens_user_id", table_name="refresh_tokens")
     op.drop_table("refresh_tokens")
+    op.drop_index("ix_user_credentials_username_lower", table_name="user_credentials")
+    op.drop_index("ix_user_credentials_email_lower", table_name="user_credentials")
     op.drop_table("user_credentials")
     op.drop_table("users")
