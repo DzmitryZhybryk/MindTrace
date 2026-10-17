@@ -27,7 +27,8 @@ codes (A/B/D/K/L…) in the docstrings of the specs; there is no separate plan f
 ## Tooling
 
 - **Vitest** reuses `vite.config.ts`; the `test` block sets `environment: "jsdom"`,
-  `setupFiles: ["./src/test/setup.ts"]` and v8 coverage.
+  `setupFiles: ["./src/test/setup.ts"]`, v8 coverage and `testTimeout` — the per-test cap. A test
+  near the cap is the defect: speed it up, never raise the cap for it.
 - **Testing Library** (`react`, `user-event`, `jest-dom`) for components; **MSW** for the network in
   component tests; **Playwright** for e2e.
 - Scripts: `npm run test` (watch), `test:run` (one-shot), `coverage`. The suite splits by

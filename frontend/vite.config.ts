@@ -43,6 +43,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // Per-test cap: a test near it is a defect to speed up, not a reason to raise the cap.
+    testTimeout: 5000,
     // Only co-located unit/component tests from src (never `e2e/**/*.spec.ts`, those are Playwright).
     // The exact set depends on VITEST_SCOPE (see resolveVitestInclude).
     include: resolveVitestInclude(),

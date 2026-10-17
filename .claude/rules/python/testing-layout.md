@@ -35,6 +35,10 @@ or domain must be registered in `pyproject.toml` `markers`, the conftest tuples 
 rejects unregistered ones) and, for a domain, a `test-<domain>` target in `backend/Makefile` — the
 `%:` catch-all turns a missing one into a silent no-op.
 
+The same hook caps each test's time by level (`_LEVEL_TIMEOUTS`, pytest-timeout). A test that hits
+the cap is the defect: speed it up, never raise the cap for it. `--durations=5` lists the slowest
+tests in every run.
+
 ## Where a fixture lives
 
 pytest resolves fixtures only from `conftest.py` files above the test, and imports the root

@@ -23,6 +23,7 @@ jobs:
   backend:
     name: Backend audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: backend
@@ -40,6 +41,7 @@ jobs:
   frontend:
     name: Frontend audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
