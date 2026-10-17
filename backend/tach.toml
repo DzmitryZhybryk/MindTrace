@@ -33,7 +33,6 @@ depends_on = [
     "app.shared",
     "app.auth.infra",
     "app.users.application",
-    "app.users.infra",
     "app.users.presentation",
 ]
 

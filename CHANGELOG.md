@@ -11,6 +11,17 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-10-17
+
+### Project
+
+- Принятые решения — в `.claude/decisions/`, по файлу на область (учётные записи, границы доменов, места, поездки, фронт), с оглавлением в `.claude/rules/common/decisions.md`; как записывать — скилл `decision-records`
+- `docs/roadmap.md` и `docs/feature-backlog.md` удалены: задачи и идеи ведутся вне репозитория
+- Весь `.claude/` в git, кроме `settings.local.json`: правила `python/ddd.md`, `dto.md`, `component-lifecycle.md` больше не игнорируются
+- Python-правила без дублей и устаревшего: фейки в тестах описаны так, как они устроены, каталог `shared/` заменён правилами, примеры — живыми полями; из карты в `CLAUDE.md` убрана колонка путей загрузки
+- `backend/tach.toml`: убрана неиспользуемая зависимость `auth.presentation → users.infra` — запрет ходить в чужой `infra` теперь проверяется
+- `frontend/README.md` и `docs/deployment.md`: docker-том `node_modules`, `npm ci`, ручные правки на сервере ломают автодеплой
+
 ## 2026-10-12
 
 ### Backend 5.0.0

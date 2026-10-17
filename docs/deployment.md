@@ -273,4 +273,7 @@ docker exec -i mindtrace_pg sh -c \
   IMAGE_TAG=<предыдущий-sha> make prod-up
   ```
 
+- **Автодеплой упал на `git pull --ff-only`** — на сервере правили tracked-файл руками (например,
+  `ops/Caddyfile`). Перед мержем в `main`: `git restore <файл>` на сервере. Сменился только конфиг
+  Caddy — `make prod-up` контейнер не пересоздаст, нужен `docker compose ... restart caddy`.
 - **Полная остановка** (данные сохраняются): `make prod-down`.

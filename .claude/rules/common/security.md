@@ -18,7 +18,7 @@ Before ANY commit:
   by owner (`find_journey_by_id_and_user_id`), never by id alone followed by a comparison in Python.
 - **Someone else's row is "not found", not "forbidden".** No such row and a row owned by another
   user both raise the domain's `*NotFoundError` (404), so the response does not reveal that the id exists.
-- **Every list query is scoped to the owner** (`*_by_user_id`) and excludes soft-deleted rows.
+- **Every list query is scoped to the owner** (`*_by_user_id`).
 - **Cross-domain clients pass ids, not trust.** A domain receiving an id from another domain
   (places, users) re-checks it in its own store before writing it (`journeys.unknown_place`).
 
@@ -29,11 +29,7 @@ Before ANY commit:
 - Validate that required secrets are present at startup
 - Rotate any secrets that may have been exposed
 
-## Security Response Protocol
+## When you find a security issue
 
-If security issue found:
-1. STOP immediately
-2. Apply checks from this file + `rules/python/security.md`
-3. Fix CRITICAL issues before continuing
-4. Rotate any exposed secrets
-5. Review entire codebase for similar issues
+Say so before continuing the current task, and fix a critical one first. An exposed secret is
+rotated, not only removed from the code. Check whether the same pattern occurs elsewhere.

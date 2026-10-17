@@ -17,7 +17,7 @@ mock only the I/O boundary. Commands run from `frontend/`.
 - Assert what the user sees, the returned value, or the resulting state — never call order or
   component internals (props, hooks, state).
 - The only mocked boundary is the network: `fetch` through `vi.stubGlobal` in unit tests, **MSW**
-  in component tests. Never mock `apiFetch` or other internal modules. Everything below the network
+  in component tests. Never mock `appFetch` or other internal modules. Everything below the network
   (token store, jwt decode, error mapping, zod) runs real.
 - Query like a user: `getByRole` / `getByLabelText` / `findByText`, not `data-testid` or CSS classes.
 - `vi.fn()` spies only for side-effect collaborators whose *call* is the behaviour under test

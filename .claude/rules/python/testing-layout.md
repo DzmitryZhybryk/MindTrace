@@ -31,8 +31,9 @@ current domains instead of assuming.
 
 Applied **automatically from the path** by `pytest_collection_modifyitems` in `tests/conftest.py`;
 never hand-tag. Level and domain compose: `-m unit`, `-m users`, `-m "unit and users"`. A new level
-or domain must be registered in `pyproject.toml` `markers` **and** added to the conftest tuples
-(`--strict-markers` rejects unregistered ones).
+or domain must be registered in `pyproject.toml` `markers`, the conftest tuples (`--strict-markers`
+rejects unregistered ones) and, for a domain, a `test-<domain>` target in `backend/Makefile` — the
+`%:` catch-all turns a missing one into a silent no-op.
 
 ## Where a fixture lives
 
@@ -44,7 +45,7 @@ one that reaches every consumer:
   across **levels**. The env bootstrap runs before any `app` import, so child conftests may import
   `app` at top level; the root itself keeps its app imports after the bootstrap (`# noqa: E402`).
 - `tests/unit/conftest.py` — cross-domain, **unit-only** fixtures: stateless infra built with an
-  explicit test config that bypasses `settings` (`jwt_service` with a literal secret, real hashers).
+  explicit test config that bypasses `settings` (`jwt_service` with a literal secret).
   api and integration cannot reuse these, since the app decodes with `settings`.
 - `tests/unit/<domain>/conftest.py` — the domain's service-under-test wired on fakes.
 
@@ -54,14 +55,10 @@ file: put it in a `conftest.py` in that file's own directory.
 
 ## Coverage
 
-Merge threshold is 90% (`make coverage`, `--cov-fail-under=90`), enforced by the pre-commit hook —
-see the `git-workflow` skill. Rough targets: domain ~90%, application ~80%; do not chase 100% on
-infra and presentation at the unit level.
+Gate 90% (`make coverage`, run by the pre-commit hook). Rough targets: domain ~90%, application
+~80%; do not chase 100% on infra and presentation at the unit level.
 
 ## Run targets
 
-- `make test` — unit + api, fast, no Docker. `make coverage` — the same with the gate.
-- By level: `make test-unit` / `test-api` / `test-integration`. By domain: `make test-<domain>`.
-  An intersection of axes: `uv run pytest -m "unit and users"`.
-- Integration needs Docker (testcontainers) and is deliberately **not** in `make check`; run it with
-  `make test-integration` or the root `make test-infra`.
+Beyond CLAUDE.md's commands: `make test-unit` / `test-api`, `make test-<domain>`, and an
+intersection `uv run pytest -m "unit and users"`. Integration stays out of `make check` on purpose.

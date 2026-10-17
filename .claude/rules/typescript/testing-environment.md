@@ -47,6 +47,22 @@ codes (A/B/D/K/L…) in the docstrings of the specs; there is no separate plan f
   and `fireEvent.animationEnd` drops `animationName`: dispatch
   `new Event("webkitAnimationEnd")` with `animationName` defined on it.
 
+## Traps
+
+- Run Vitest only through `npm run` / `make`. A direct `npx vitest` skips the scripts'
+  `NODE_OPTIONS=--no-experimental-webstorage`, and on Node ≥ 26.5 every test then fails on an
+  undefined `localStorage`.
+- Mantine Combobox options stay hidden in jsdom (no computed position): find them with
+  `findByRole("option", { name, hidden: true })`. With two fields offering the same option, scope
+  the search to the field's own listbox — `within(document.getElementById(input.getAttribute("aria-controls")))`.
+  Mantine `Select` puts its label on two inputs, so target the trigger by placeholder.
+- e2e: WebKit drops `Secure` cookies over `http://localhost`, so the cookie flows are skipped on
+  WebKit (`WEBKIT_SECURE_COOKIE_REASON`); lift the skip only with an https `E2E_BASE_URL`.
+- e2e: argon2 hashing saturates the CPU under full parallelism — that is why `workers` is capped and
+  `expect.timeout` is 15 s.
+- e2e stack healthchecks hit `127.0.0.1`, never `localhost`: alpine resolves `localhost` to `::1`
+  first, and the dev servers listen on IPv4 only.
+
 ## Layout
 
 Test files are **co-located** with the module: `jwt.ts` → `jwt.test.ts` in the same folder. Shared
@@ -63,7 +79,8 @@ files already at 100%: for exact per-file numbers use `--coverage.reporter=json-
 ## CI and e2e
 
 - CI (`.github/workflows/ci.yml`) runs the **Frontend gate**: node → `npm ci` → `make check`
-  (lint + typecheck + unit/component). e2e does **not** run in CI.
+  (lint + typecheck + unit/component) on every PR. e2e runs only in `prod.yml`: on a PR into `main`
+  and on a push to `main`.
 - `make test-e2e` starts a throwaway stack (`ops/docker-compose.e2e.yaml`), runs Playwright and
   tears it down with `-v`. `make test-e2e-dev` runs against the already-running dev stack
   (`make run`): faster, but it **writes users into the dev database**. Narrow a run with

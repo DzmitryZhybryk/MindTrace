@@ -35,6 +35,8 @@ Frontend and backend are versioned **separately**; never bump one artifact for a
 | Frontend | `frontend/package.json` | `frontend-vX.Y.Z` | SPA release marker, SemVer is formal |
 | Place datasets | `backend/app/geo/infra/datasets/manifest.toml` | release asset `geo-data-vN` | data, not code: new dataset = new tag + manifest edit |
 
+- A release tag goes on the merge commit of the `dev → main` PR: `git tag <tag> origin/main` from
+  any branch, then push the tags. Tags do not trigger CD — only a push to `main` does.
 - One `CHANGELOG.md` at the root. Entries are grouped by date with sub-sections
   `### Backend X.Y.Z` / `### Frontend X.Y.Z`; repo-level changes go under `### Project` with no version.
 - Version bump and CHANGELOG entry go in the **same commit** as the feature (code + tests):

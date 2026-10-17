@@ -73,7 +73,7 @@ skill `dev-database`. Контракт API (`openapi.json` → сгенерир�
 
 ## Карта: что где лежит
 
-Правила подгружаются автоматически по путям (колонка «Грузится»). Раздел CLAUDE.md не дублирует их;
+Правила по путям подгружаются сами — пути заданы в `paths:` их frontmatter. Раздел CLAUDE.md не дублирует их;
 при конфликте с правилом побеждает более специфичный источник — само правило.
 
 ### Всегда в контексте
@@ -82,31 +82,30 @@ skill `dev-database`. Контракт API (`openapi.json` → сгенерир�
 |---|---|
 | `.claude/rules/common/coding-style.md` | KISS/DRY, иммутабельность, размеры файлов и функций, нейминг |
 | `.claude/rules/common/security.md` | чек-лист безопасности перед коммитом, секреты |
+| `.claude/rules/common/decisions.md` | оглавление принятых решений (`.claude/decisions/`): что прочитать, прежде чем менять область |
 
 ### Rules по путям
 
-| Файл | Грузится при работе с | О чём |
-|---|---|---|
-| `python/code-style.md` | `backend/**/*.py` | ruff/ty, докстринги, named arguments, `Self`, повседневные соглашения |
-| `python/security.md` | `backend/**/*.py` | pydantic-settings, `SecretStr`, bandit через ruff |
-| `python/ddd.md` | `backend/app/**` | слои, раскладка `schemas/` и `ports/`, порты (DIP), UoW, soft-delete, нейминг репозиториев и entity |
-| `python/dto.md` | `backend/app/**` | `*Command`/`*Result`/`*Request`/`*Response`, роли параметров use case (actor/target/payload/metadata), объекты портов (`*Scope`/`*Filters`), pydantic vs dataclass, типы коллекций, где валидация |
-| `python/shared-infrastructure.md` | `backend/app/**` | вертикали `shared/` и их импорты, иерархия исключений, composition root, `TaskBusPort` |
-| `python/component-lifecycle.md` | `backend/app/shared/**`, `main.py` | component+registry против `@cache`-фабрики |
-| `python/testing.md` | `backend/tests/**` | философия, fakes, детерминизм, reuse-before-create |
-| `python/testing-layout.md` | `backend/tests/**` | пирамида, раскладка, маркеры, где живут фикстуры, покрытие, таргеты |
-| `typescript/coding-style.md` | `frontend/**/*.ts(x)` | типы, React, zod, нейминг, комментарии (только English) |
-| `typescript/error-display.md` | `frontend/src/**/*.tsx` | как показывать ошибки в формах; токен, а не готовый текст |
-| `typescript/testing.md` | тесты и `e2e/` фронта | классицизм, мок только сети, детерминизм, конвенции |
-| `typescript/testing-environment.md` | тесты, vite/playwright-конфиги | пирамида, jsdom-квирки, раскладка, CI, e2e |
-| `web/ui-design.md` | `frontend/src/**/*.tsx`, `*.css` | любой дизайн или переделка вида UI начинается с вызова `frontend-design:frontend-design` |
-| `web/performance.md` | `frontend/src/**` | Web Vitals, бюджет бандла, загрузка, картинки, шрифты, ручные UI-проверки |
-| `common/codegen-contract.md` | `openapi.json`, `generated/`, CI | дрейф-гейты, пин генератора, границы стран |
+| Файл | О чём |
+|---|---|
+| `python/code-style.md` | ruff/ty, докстринги, named arguments, `Self`, повседневные соглашения |
+| `python/security.md` | pydantic-settings, `SecretStr`, bandit через ruff |
+| `python/ddd.md` | слои, раскладка `schemas/` и `ports/`, порты (DIP), UoW, soft-delete, нейминг репозиториев и entity |
+| `python/dto.md` | `*Command`/`*Result`/`*Request`/`*Response`, роли параметров use case (actor/target/payload/metadata), объекты портов (`*Scope`/`*Filters`), pydantic vs dataclass, типы коллекций, где валидация |
+| `python/shared-infrastructure.md` | вертикали `shared/`, исключения, паттерны composition root, `TaskBusPort` |
+| `python/component-lifecycle.md` | component+registry против `@cache`-фабрики |
+| `python/testing.md` | философия, fakes, детерминизм, reuse-before-create |
+| `python/testing-layout.md` | пирамида, раскладка, маркеры, где живут фикстуры, покрытие, таргеты |
+| `typescript/coding-style.md` | типы, React, zod, нейминг, комментарии (только English) |
+| `typescript/error-display.md` | как показывать ошибки в формах; токен, а не готовый текст |
+| `typescript/testing.md` | классицизм, мок только сети, детерминизм, конвенции |
+| `typescript/testing-environment.md` | пирамида, jsdom-квирки, ловушки, раскладка, CI, e2e |
+| `web/ui-design.md` | любой дизайн или переделка вида UI начинается с вызова `frontend-design:frontend-design` |
+| `web/performance.md` | Web Vitals, бюджет бандла, загрузка, картинки, шрифты, ручные UI-проверки |
+| `common/codegen-contract.md` | дрейф-гейты, пин генератора, границы стран |
 
-`python/ddd.md`, `python/dto.md`, `python/component-lifecycle.md` — личные конвенции: в git не попадают
-(`.gitignore`), канон лежит в `~/.claude/optional/rules/python/`, здесь рабочая копия. Правишь канон —
-перекопируй сюда и верни строку `paths:` во frontmatter. У клонировавшего репо этих файлов нет — конвенции
-при этом видны по коду.
+`python/ddd.md`, `python/dto.md`, `python/component-lifecycle.md` — копии личных конвенций: канон лежит в
+`~/.claude/optional/rules/python/`. Правишь канон — перекопируй сюда и верни строку `paths:` во frontmatter.
 
 ### Skills
 
@@ -118,6 +117,7 @@ skill `dev-database`. Контракт API (`openapi.json` → сгенерир�
 | `style-audit` | проверка фронта на токен-политику дизайна |
 | `seo-meta-tags` | `<head>` HTML-файлов |
 | `dead-code-audit` | поиск и удаление мёртвого кода |
+| `decision-records` | записать или изменить принятое решение; закрытие плана или задачи из `.plan/` |
 | `frontend-design:frontend-design` (плагин) | проектирование нового UI и редизайн — вызывать сразу, без напоминания |
 | глобальные | `/feature-plan`, `postgres` (дизайн схемы и запросов), `debugging`, `merge-review`, `graphify` |
 
@@ -125,4 +125,6 @@ skill `dev-database`. Контракт API (`openapi.json` → сгенерир�
 
 - `architecture-reviewer` (глобальный, read-only) судит проект по политике из раздела «Архитектурная политика».
 - Ревью кода — встроенные `/code-review` (баги в диффе) и `/security-review`. Механику ловят `make lint` / `make typecheck`.
-- Бэклог отложенных фич — `docs/feature-backlog.md`.
+- Задачи и планы — `.plan/` в корне (сам себя исключает из git), файл на задачу: прямо в `.plan/` — планы
+  `/feature-plan`; `todo/` — в работу, `before-prod/` — к разворачиванию прода, `conditional/` — когда
+  наступит условие, `ideas/` — идеи без обязательств. Сделанная задача удаляется — история в `CHANGELOG.md`.

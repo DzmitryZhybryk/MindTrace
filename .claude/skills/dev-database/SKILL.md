@@ -15,8 +15,8 @@ database on this host.
 published as `5439`.
 
 ```bash
-docker compose exec postgres psql -U mindtrace -d mindtrace    # from the container, simplest
-psql -h localhost -p 5439 -U mindtrace -d mindtrace            # from the host
+docker exec -it mindtrace_pg sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'   # inside the container, simplest
+(set -a; . ./.env; set +a; psql "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5439/$POSTGRES_DB")   # from the host, repo root
 ```
 
 Never print or paste credentials; read variable names from `.env` (see global CLAUDE.md).

@@ -10,11 +10,8 @@ types — `dto.md`.
 
 ## Toolchain
 
-- **ruff** is the single tool: lint (`make lint`), format (`make format`), import sorting. No Black,
-  no isort. Line length 120, double quotes. The config is in `pyproject.toml`.
-- **ty** is the type checker (`make typecheck`). mypy is not used.
-- Cyrillic is allowed in strings, comments and user-facing error messages (RUF001-003 are ignored).
-  Backend only: `frontend/` comments are English.
+ruff lints, formats and sorts imports; ty checks types (`make lint`, `make format`,
+`make typecheck`; config in `pyproject.toml`). Do not add Black, isort or mypy.
 
 ## Docstrings
 
@@ -36,13 +33,17 @@ def get_log_level_for_exception(exc: Exception) -> int:
 Keep them short and in plain language. A comment or docstring carries what the code does not show,
 not a retelling of the decision, its history or metrics.
 
+- A new public method's docstring names its scenario: who calls it and why.
+- Comments and docstrings name no domains, modules or files from elsewhere in the project; describe
+  them by role ("the calling domain"). A supplier domain never names its consumers, not even in a
+  docstring.
+
 ## Named arguments
 
 **Call side:** pass every argument as a keyword.
 
 ```python
-Password(hash=user_model.password)                    # not Password(user_model.password)
-User(id=user_entity.user_id, email=user_entity.email)
+Password(hash=user_credentials_model.password_hash)   # not Password(user_credentials_model.password_hash)
 ```
 
 **Declaration side:** a function, method or constructor with **more than one** parameter makes them
@@ -59,34 +60,17 @@ tasks), pytest test functions and fixtures (fakes and helpers under `tests/` sti
 dunder protocol methods (`__eq__`, `__aexit__`; `__init__` is **not** exempt), callbacks passed to
 `map` / `sorted` / `key=`, and `Protocol` methods mirroring a third-party API.
 
-## `Self` return type
+## `Self` and blank lines
 
-Use `typing.Self`, not a string literal:
-
-```python
-@model_validator(mode="after")
-def validate_terms(self) -> Self: ...
-```
-
-## Blank line after a block
-
-Leave a blank line after a closing `if` block or `for` loop before the next statement:
+- Use `typing.Self` for a method that returns its own instance, not a string literal.
+- Leave a blank line after a closing `if` block or `for` loop before the next statement:
 
 ```python
 if exc.category is ErrorCategory.INTERNAL:
     return logging.ERROR
 
-for handler in registered_handlers:
-    if handler.can_handle(exc):
-        return handler
-
 return default_handler
 ```
-
-## Collection types
-
-`list` is not the default; the type follows the meaning of the data. The table and the reasoning —
-`dto.md` → "Immutable by default". Neighbouring code that still uses `list` is not a precedent.
 
 ## Recurring conventions
 
@@ -101,5 +85,5 @@ return default_handler
 - Use `DictStrAny` and the other aliases from `app.shared.types` instead of inline `dict[str, Any]`.
 - An entity's `updated_at` is touched through the existing `TimestampedEntityMixin._mark_updated()`,
   not by hand-written `touch_*` / `mark_modified` methods.
-- External API clients carry the `Client` suffix (`ResendClient`); the word `Transport` belongs only
-  to `Protocol` roles.
+- External API clients carry the `Client` suffix (`ResendClient`); in a client or port class name,
+  `Transport` is reserved for `Protocol` roles.
