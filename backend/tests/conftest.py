@@ -67,6 +67,14 @@ _EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = 60
 _LEVEL_MARKERS = ("unit", "integration", "api")
 _DOMAIN_MARKERS = ("auth", "users", "shared", "journeys", "geo", "health")
 
+# Потолок времени на один тест по уровню. Integration считает только сам тест: подъём
+# контейнера в session-фикстуре приходится на setup первого теста и в лимит не входит.
+_LEVEL_TIMEOUTS = {
+    "unit": pytest.mark.timeout(timeout=1),
+    "api": pytest.mark.timeout(timeout=1),
+    "integration": pytest.mark.timeout(timeout=30, func_only=True),
+}
+
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     """
@@ -87,6 +95,9 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     - ``pytest -m users`` / ``make test-users`` — все тесты домена users (любой уровень);
     - ``uv run pytest -m "unit and users"`` — пересечение осей (отдельного make-таргета нет).
 
+    Заодно по уровню ставит потолок времени на тест (``_LEVEL_TIMEOUTS``): тест, упёршийся в
+    него, — дефект теста, а не повод поднять лимит.
+
     Args:
         items: Собранные pytest'ом тест-элементы; маркеры добавляются in-place.
     """
@@ -96,6 +107,10 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         for marker_name in known_markers:
             if marker_name in path_segments:
                 item.add_marker(getattr(pytest.mark, marker_name))
+
+        level = next((name for name in _LEVEL_MARKERS if name in path_segments), None)
+        if level is not None:
+            item.add_marker(_LEVEL_TIMEOUTS[level])
 
 
 # Фикстуры, переиспользуемые между УРОВНЯМИ (unit + api). Каталоги нарезаны

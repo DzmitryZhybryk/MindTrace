@@ -83,7 +83,11 @@ hooks: ## Активировать git-хуки репозитория (pre-comm
 
 # --- Quality gate: полный прогон обеих сторон ---
 # Одна сторона — через pass-through (make be-lint, fe-typecheck). Полный гейт — check.
-check: be-check fe-check ## Полный гейт обеих сторон (lint/typecheck/тесты unit+api + arch/audit; integration/e2e отдельно — make test-infra)
+check: context-budget be-check fe-check ## Полный гейт обеих сторон (lint/typecheck/тесты unit+api + arch/audit; integration/e2e отдельно — make test-infra)
+
+context-budget: ## Объём правил Claude, подгружаемых при работе с каждой областью, — в пределах бюджета
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}context-budget${AZURE}' check${RESET}"
+	@uv run --project backend --no-sync python -I .claude/scripts/check_context_budget.py
 
 # --- Tests (fast): дейли-драйвер, без Docker ---
 test-back: ## Backend unit+api (без Docker)

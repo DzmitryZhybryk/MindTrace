@@ -34,11 +34,11 @@ test of a session. Do **not** restate or fork them here — this skill is only t
 3. **Prepare fakes (boundary only).**
    - Reuse / add an in-memory fake in `backend/tests/fakes/` (repositories, clients, `TaskBusPort`,
      hashers). Back repositories with a `dict`; `FakeSaltedHasher` avoids real argon2.
-   - When writing the **first** fake for a repository, add a thin `typing.Protocol` in the
-     **application layer** (`app/<domain>/application/ports/<port>.py`, only the methods used) and type both
-     the real repo and the fake. By DIP the contract belongs to application; `infra` imports the port
-     and implements it (never the reverse). The port module depends only on `domain`.
-   - Fake UoW = simple object with the fake repos + `commit = AsyncMock()`.
+   - When writing the **first** fake for a repository, add its port (a thin `Protocol`, only the
+     methods used) and type both the real repo and the fake with it — placement, naming and
+     imports per `ddd.md` → "Outbound ports".
+   - Fake UoW subclasses its port and holds the fake repos; `commit_mock` / `flush_mock`
+     (`AsyncMock`) record that it committed.
    - Keep **real** stateless infra (`JWTService`, `TokenIssuer`).
 4. **Add builders** for entities/VO in `backend/tests/builders.py` (plain kwargs functions, named
    args, explicit timestamps — no `factory-boy`).
@@ -55,12 +55,11 @@ test of a session. Do **not** restate or fork them here — this skill is only t
 7. **Coverage.** `make coverage`. The 90% threshold is already enforced (`--cov-fail-under=90`
    in the Makefile, forced by the pre-commit hook) — below it the code does not merge, so check
    before committing rather than after.
-8. **Review (optional).** For non-trivial additions, ask the user to run `/code-review` — it
-   reviews the diff in a fresh subagent. It is user-invoked; you cannot launch it yourself.
+8. **Review (optional).** For non-trivial additions, offer to run `/code-review` on the diff.
 
 ## Notes
 
 - Never mock `AsyncSession`/SQLAlchemy or unit-test repositories — that's the integration phase.
 - Don't assert private internals (`service._uow`) — ruff `SLF001` will flag it.
 - Design fakes as full port replacements: they're reused in the api phase via
-  `app.dependency_overrides` and a fake `TaskBusPort` via `app.registry`.
+  `app.dependency_overrides`.

@@ -14,34 +14,32 @@ How a backend test is written. Where it lives, markers, fixtures placement and r
 - **State-based, not interaction-based.** Assert on the resulting state or return value, never on
   call order. Use real objects where they are cheap: domain entities, stateless infra
   (`JWTService`, `TokenIssuer`), real hashers inside their own roundtrip test.
-- **Fake only the I/O boundary:** repositories, the UoW, external clients (`InternalUsersClient`),
-  `TaskBusPort`, the email transport.
+- **Fake only the I/O boundary:** the outbound ports (repositories, UoW, clients, task bus, email
+  transport).
 - **Constructor DI.** Application services are unit-tested by passing fakes directly, bypassing
   FastAPI. `dependency_overrides` belong to the **api** level only.
 
 ### Fakes over mocks
 
-- Hand-written in-memory fakes live in `tests/fakes/` (e.g. a repository backed by a `dict`). They
-  survive refactors and read like scenarios (`find` after `insert` returns it).
-- A fake UoW is a plain object exposing the fake repositories plus `commit = AsyncMock()`.
-- `AsyncMock` / `MagicMock` only for side-effect-only collaborators where the test verifies the call
-  happened: `users_client.create_user`, `task_bus.defer`, `uow.commit`.
-- Never mock `AsyncSession` / SQLAlchemy. Repositories are covered by integration tests on real Postgres.
-- Design a fake as a full replacement of its port, not a one-off stub: the same fakes are reused at
-  the api level through `app.dependency_overrides` and a fake `TaskBusPort` through `app.registry`.
+- Hand-written in-memory fakes live in `tests/fakes/`, each subclassing its port: a repository
+  backed by a `dict`, a client or task bus recording its calls in a list. They survive refactors
+  and read like scenarios (`find` after `insert` returns it).
+- `AsyncMock` only where a fake has nothing to record but the call itself — the fake UoW's
+  `commit_mock` / `flush_mock`.
+- Never mock `AsyncSession` / SQLAlchemy.
+- Design a fake as a full replacement of its port, not a one-off stub: the same fakes serve the
+  api level through `app.dependency_overrides`.
 
 ### Thin Protocols keep fakes honest
 
-The first time a fake is written for a repository, its port is a `Protocol` in
-`app/<domain>/application/ports/<port>.py` declaring only the methods in use; the real repository and the
-fake are both typed with it, so `ty` catches drift. Port rules (layer, naming, imports) —
-`ddd.md`.
+A port declares only the methods in use; the real class and the fake both subclass it, so `ty`
+catches drift. Port rules — `ddd.md`.
 
 ## Determinism
 
 - **Time:** construct entities with explicit timestamps (`expires_at`, `revoked_at` are constructor
-  arguments). Reach for `time-machine` only to assert "`revoke()` sets *now*". Never freeze time
-  globally and never inject a `Clock` into production code for tests.
+  arguments). For a method that stamps *now* (`revoke()`), assert the field is set, not its value.
+  Never freeze time globally and never inject a `Clock` into production code for tests.
 - **Randomness** (`secrets.token_urlsafe`): never predict the value; assert the invariant
   (`entity.token_hash == hasher.digest(plaintext)`).
 - **Argon2 is deliberately slow (~50 ms/hash):** service tests use `FakeSaltedHasher`; the real
@@ -69,23 +67,11 @@ Read only the matching definitions, then reuse by name.
 - **No file-local `_make_*` helpers.** Build the object inline in the test, or use the shared
   builder or fixture. A helper is justified only once the same construction repeats across files,
   and then it becomes a builder or fixture, not a file-local function.
-- Need a stateless infra instance or configured service in a test? Look for an existing fixture
-  first; construct inline only if none exists.
 
 ## Conventions
 
 - Flat functions, **no test classes**. Group by naming (`test_login_*`) and subset with `-k login`.
 - `asyncio_mode = "auto"`: write `async def test_...` with no decorator.
 - Name: `test_<unit>_<condition>_<expected>`, plus a **one-line Russian docstring** stating what is asserted.
-- ruff `PT` applies: `pytest.raises(SomeError, match=...)` where it adds signal; variants through
-  `@pytest.mark.parametrize`.
-- Named arguments everywhere, in tests too.
-
-## Anti-patterns
-
-- Mocking `AsyncSession` or unit-testing a repository in isolation → integration test instead.
-- Asserting on private internals (`service._uow`) → ruff `SLF001` flags it.
-- Over-mocking collaborators and asserting call order.
-- Freezing time globally or injecting a clock.
-- Real Argon2 in every service test.
-- Recreating an existing fixture, fake or builder.
+- Variants through `@pytest.mark.parametrize`; `pytest.raises(SomeError, match=...)` where the
+  message is the signal.
