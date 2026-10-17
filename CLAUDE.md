@@ -34,7 +34,7 @@ docker network create mindtrace-network   # один раз, перед перв
 make run                                  # dev-стек: app + worker + postgres + frontend + logging
 make be-<target>                          # любой backend-таргет (make be-lint, be-format)
 make fe-<target>                          # любой frontend-таргет (make fe-lint, fe-check)
-make check                                # полный гейт обеих сторон (lint + typecheck + тесты)
+make check                                # полный гейт обеих сторон (lint + typecheck + тесты + бюджет правил Claude)
 make test                                 # быстрые тесты обеих сторон, без Docker
 make test-infra                           # тяжёлые: backend integration + frontend e2e (нужен Docker-демон)
 make test-e2e                             # frontend e2e на одноразовом стеке; дев-база не трогается
