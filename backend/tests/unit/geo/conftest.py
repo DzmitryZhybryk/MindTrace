@@ -8,7 +8,7 @@
 
 import pytest
 
-from app.geo.application.services import PlaceService
+from app.geo.application.services.place import PlaceService
 from tests.fakes import FakePlaceRepository
 
 

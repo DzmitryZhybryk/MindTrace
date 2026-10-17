@@ -47,11 +47,10 @@ class PostgresSettings(BaseModel):
         )
 
     @property
-    def procrastinate_dsn(self) -> str:
+    def postgres_libpq_dsn(self) -> str:
         """
-        Plain libpq DSN для procrastinate.PsycopgConnector (без +driver-префикса).
-
-        Procrastinate шарит БД с приложением — отдельная инстанция PG не предусмотрена.
+        Plain libpq DSN (без +driver-префикса) для прямых psycopg-соединений мимо SQLAlchemy:
+        procrastinate и загрузчик датасетов газеттира.
         """
         return (
             f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
@@ -106,12 +105,16 @@ class EmailVerificationSettings(BaseModel):
     EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
 
 
+class GeoDatasetsSettings(BaseModel):
+    GEO_DATASETS_CACHE_DIR: Path = _ROOT_DIR / ".geo-cache"
+
+
 class ProcrastinateSettings(PostgresSettings):
     """
     Procrastinate шарит БД с приложением — наследует PG-конфиг для DSN.
 
     Procrastinate-специфичны только пул и concurrency; connection info
-    приходит через ``procrastinate_dsn`` из ``PostgresSettings``.
+    приходит через ``postgres_libpq_dsn`` из ``PostgresSettings``.
     """
 
     PROCRASTINATE_POOL_MIN_SIZE: int = 2
@@ -125,6 +128,7 @@ class Settings(
     JWTSettings,
     ResendSettings,
     EmailVerificationSettings,
+    GeoDatasetsSettings,
     ProcrastinateSettings,
 ):
     SERVICE_NAME: str = _PYPROJECT_DATA["project"]["name"]

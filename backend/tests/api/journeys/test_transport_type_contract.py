@@ -12,7 +12,7 @@ union, иконки ``TRANSPORT_ICONS`` и подписи в ``locales/{en,ru}/j
 тиринг-генерация типов из OpenAPI здесь оверкилл, а тонкого tripwire с обеих сторон достаточно.
 """
 
-from app.journeys import journey_router
+from app.journeys.presentation.routes import journey_router
 from app.shared.schemas.base import BFastAPI
 
 # Контракт: значения совпадают с фронтовым union TransportType (frontend/src/api/journeys.ts).

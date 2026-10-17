@@ -1,13 +1,13 @@
 from fastapi import Request, Response
 
-from app.auth.application.schemas import TokenPairResult
+from app.auth.application.schemas.results import TokenPairResult
 
 _REFRESH_COOKIE_NAME = "refresh_token"
 _COOKIE_PATH = "/"
 _COOKIE_SAMESITE = "lax"
 
 
-def set_refresh_token_cookie(response: Response, token_pair: TokenPairResult) -> None:
+def set_refresh_token_cookie(*, response: Response, token_pair: TokenPairResult) -> None:
     """
     Устанавливает refresh-токен в HttpOnly Secure cookie.
 

@@ -13,7 +13,7 @@ EmailTransportPort достаётся из ``context.additional_context`` — с
 
 from procrastinate import Blueprint, JobContext, RetryStrategy
 
-from app.auth.application.task_names import SEND_VERIFICATION_EMAIL_TASK
+from app.auth.application.ports.tasks import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.infra.email_renderer import render_verification_email
 from app.shared.infra.email import EmailTransportPort
 from app.shared.infra.http.exceptions import ExternalAPITemporaryError

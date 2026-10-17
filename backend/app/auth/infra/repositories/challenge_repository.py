@@ -3,7 +3,7 @@ from uuid import UUID
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.application.ports import ChallengeRepositoryPort
+from app.auth.application.ports.challenge_repository import ChallengeRepositoryPort
 from app.auth.domain.entities import ChallengeEntity
 from app.auth.domain.enums import ChallengeType
 from app.auth.infra.models import Challenge
@@ -39,6 +39,7 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
 
     async def find_active_challenge_for_update(
         self,
+        *,
         user_id: UUID,
         challenge_type: ChallengeType,
     ) -> ChallengeEntity | None:

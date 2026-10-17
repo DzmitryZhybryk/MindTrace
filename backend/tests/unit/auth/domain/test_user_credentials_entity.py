@@ -24,6 +24,18 @@ def test_create_defaults_to_free_role_and_unverified() -> None:
     assert isinstance(creds.user_id, UUID)
 
 
+def test_create_lowercases_email_and_keeps_username_case() -> None:
+    """`create()` приводит email к нижнему регистру, username оставляет как ввели."""
+    creds = UserCredentialsEntity.create(
+        email="Alice@Example.COM",
+        username="Alice",
+        password=make_password(),
+    )
+
+    assert creds.email == "alice@example.com"
+    assert creds.username == "Alice"
+
+
 def test_is_email_verified_reflects_timestamp() -> None:
     """`is_email_verified` отражает наличие `email_verified_at`."""
     verified = make_user_credentials(email_verified_at=dt.datetime.now(tz=dt.UTC))
