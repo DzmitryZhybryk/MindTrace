@@ -13,12 +13,18 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 ## 2026-10-18
 
+### Backend 5.0.2
+
+- Префиксные индексы `geo_places` объявлены через метку выражения и `postgresql_ops`: `alembic check` больше не выдаёт `UserWarning` и сравнивает выражение индекса. Индексы в базе не меняются, миграция не нужна. Контракт API не меняется
+
 ### Backend 5.0.1
 
 - `POSTGRES_PASSWORD` и `JWT_SECRET_KEY` в настройках — `SecretStr`: значения не попадают в `repr()` и логи, разворачиваются только при сборке DSN и подписи JWT. Контракт API не меняется
 
 ### Project
 
+- `migrations/plugins/opclass_compare.py`: autogenerate-плагин сравнивает классы операторов индексов PostgreSQL (`text_pattern_ops` и др.) с базой по `pg_index`/`pg_opclass` — Alembic их сам не сравнивает; смена класса в модели или в базе теперь видна в `alembic check` и даёт `drop_index` + `create_index`, в `downgrade` возвращаются прежние классы
+- `migrations/script.py.mako`: миграция с несколькими операциями больше не получается битой — операторы после первого раньше выпадали из `def upgrade()` без отступа
 - `backend/Makefile`: убран универсальный таргет `%: @:` — неизвестный таргет (`make test-nonexistent`) теперь падает с ошибкой, а не завершается с кодом 0. Параметры миграций — переменные: `make migrate-create msg="description"`, `make migrate-downgrade [rev=<revision>]`; с корня работают и через префикс (`make be-migrate-create msg="..."`)
 
 ## 2026-10-17
