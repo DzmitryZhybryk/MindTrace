@@ -12,13 +12,14 @@ import { createTestQueryClient, renderWithProviders, screen } from "../test/rend
 
 /** Context probe: renders auth state as text plus a login button to observe from outside. */
 function AuthProbe() {
-  const { isBootstrapping, isAuthenticated, emailVerified, setAccessToken } = useAuth();
+  const { isBootstrapping, isAuthenticated, emailVerified, setAccessToken, openVerifyDialog } = useAuth();
   return (
     <div>
       <p>{`bootstrapping: ${isBootstrapping}`}</p>
       <p>{`authenticated: ${isAuthenticated}`}</p>
       <p>{`verified: ${emailVerified}`}</p>
       <button onClick={() => setAccessToken(makeAccessToken())}>sign in</button>
+      <button onClick={openVerifyDialog}>open verification</button>
     </div>
   );
 }
@@ -63,11 +64,11 @@ describe("AuthProvider", () => {
     expect(screen.getByText("bootstrapping: false")).toBeInTheDocument();
   });
 
-  it("событие verify-required открывает диалог подтверждения email", async () => {
-    renderAuth();
+  it("openVerifyDialog открывает диалог подтверждения email", async () => {
+    const { user } = renderAuth();
     await screen.findByText("bootstrapping: false");
 
-    act(() => emit("verify-required", undefined));
+    await user.click(screen.getByRole("button", { name: "open verification" }));
 
     expect(await screen.findByRole("button", { name: "Send code" })).toBeInTheDocument();
   });
@@ -75,12 +76,12 @@ describe("AuthProvider", () => {
   it("диалог подтверждения email закрывается и открывается повторно", async () => {
     const { user } = renderAuth();
     await screen.findByText("bootstrapping: false");
-    act(() => emit("verify-required", undefined));
+    await user.click(screen.getByRole("button", { name: "open verification" }));
     await user.click(await screen.findByRole("button", { name: "Later" }));
 
     expect(screen.queryByRole("button", { name: "Send code" })).not.toBeInTheDocument();
 
-    act(() => emit("verify-required", undefined));
+    await user.click(screen.getByRole("button", { name: "open verification" }));
 
     expect(await screen.findByRole("button", { name: "Send code" })).toBeInTheDocument();
   });

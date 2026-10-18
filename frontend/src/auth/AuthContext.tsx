@@ -79,10 +79,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [isBootstrapping]);
 
   useEffect(() => {
-    const offVerify = onAuthEvent("verify-required", () => setVerifyDialog("open"));
     const offAuth = onAuthEvent("auth-required", () => clearAccessToken());
     return () => {
-      offVerify();
       offAuth();
     };
   }, []);

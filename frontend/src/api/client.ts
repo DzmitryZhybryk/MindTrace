@@ -2,16 +2,13 @@ import { emit } from "../auth/events";
 import { getAccessToken, setAccessToken } from "../auth/tokenStore";
 import { ApiError, type ApiErrorBody } from "./errors";
 
-const EMAIL_NOT_VERIFIED_CODE = "auth.email_not_verified";
 const INVALID_CREDENTIALS_CODE = "auth.invalid_credentials";
 const REFRESH_PATH = "/v1/auth/refresh/";
 
 let pendingRefresh: Promise<boolean> | null = null;
 
 function shouldRetryAfterRefresh(status: number, code: string, pathname: string): boolean {
-  return (
-    status === 401 && code !== INVALID_CREDENTIALS_CODE && code !== EMAIL_NOT_VERIFIED_CODE && pathname !== REFRESH_PATH
-  );
+  return status === 401 && code !== INVALID_CREDENTIALS_CODE && pathname !== REFRESH_PATH;
 }
 
 /**
@@ -19,7 +16,7 @@ function shouldRetryAfterRefresh(status: number, code: string, pathname: string)
  *
  * The SDK parses and validates successful responses; this handles the session and failures:
  * Bearer from `tokenStore`, refresh cookie, single-flight refresh on 401 with a retry, and the
- * `auth-required` / `verify-required` events. Throws `ApiError` on non-2xx.
+ * `auth-required` event. Throws `ApiError` on non-2xx.
  */
 export async function appFetch(input: URL | RequestInfo, init?: RequestInit): Promise<Response> {
   const request = new Request(input, init);
@@ -47,10 +44,6 @@ export async function appFetch(input: URL | RequestInfo, init?: RequestInit): Pr
     }
 
     emit("auth-required", undefined);
-  }
-
-  if (response.status === 401 && errorBody.code === EMAIL_NOT_VERIFIED_CODE) {
-    emit("verify-required", undefined);
   }
 
   throw new ApiError(response.status, errorBody);
