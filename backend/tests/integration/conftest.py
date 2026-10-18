@@ -22,6 +22,7 @@ from uuid import UUID
 
 import pytest
 import sqlalchemy as sa
+from pydantic import SecretStr
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -92,7 +93,7 @@ def postgres_settings(_postgres_container: PostgresContainer) -> PostgresSetting
     """``PostgresSettings`` на параметры контейнера — для тестов lifecycle (``SqlAlchemyComponent``)."""
     return PostgresSettings(
         POSTGRES_USER=_postgres_container.username,
-        POSTGRES_PASSWORD=_postgres_container.password,
+        POSTGRES_PASSWORD=SecretStr(_postgres_container.password),
         POSTGRES_DB=_postgres_container.dbname,
         POSTGRES_HOST=_postgres_container.get_container_host_ip(),
         POSTGRES_PORT=int(_postgres_container.get_exposed_port(5432)),

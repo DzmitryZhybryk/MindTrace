@@ -71,7 +71,7 @@ def get_jwt_service() -> JWTService:
     на presentation-обёртке.
     """
     return JWTService(
-        secret=settings.JWT_SECRET_KEY,
+        secret=settings.JWT_SECRET_KEY.get_secret_value(),
         algorithm=settings.JWT_ALGORITHM,
         access_token_expire_minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
     )

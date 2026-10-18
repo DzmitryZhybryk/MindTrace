@@ -11,6 +11,16 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-10-18
+
+### Backend 5.0.1
+
+- `POSTGRES_PASSWORD` и `JWT_SECRET_KEY` в настройках — `SecretStr`: значения не попадают в `repr()` и логи, разворачиваются только при сборке DSN и подписи JWT. Контракт API не меняется
+
+### Project
+
+- `backend/Makefile`: убран универсальный таргет `%: @:` — неизвестный таргет (`make test-nonexistent`) теперь падает с ошибкой, а не завершается с кодом 0. Параметры миграций — переменные: `make migrate-create msg="description"`, `make migrate-downgrade [rev=<revision>]`; с корня работают и через префикс (`make be-migrate-create msg="..."`)
+
 ## 2026-10-17
 
 ### Project

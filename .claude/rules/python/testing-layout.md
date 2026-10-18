@@ -32,8 +32,8 @@ current domains instead of assuming.
 Applied **automatically from the path** by `pytest_collection_modifyitems` in `tests/conftest.py`;
 never hand-tag. Level and domain compose: `-m unit`, `-m users`, `-m "unit and users"`. A new level
 or domain must be registered in `pyproject.toml` `markers`, the conftest tuples (`--strict-markers`
-rejects unregistered ones) and, for a domain, a `test-<domain>` target in `backend/Makefile` — the
-`%:` catch-all turns a missing one into a silent no-op.
+rejects unregistered ones) and, for a domain, a `test-<domain>` target in `backend/Makefile` — `make`
+fails on an unknown target, so a missing one shows up as an error, not a green run.
 
 The same hook caps each test's time by level (`_LEVEL_TIMEOUTS`, pytest-timeout). A test that hits
 the cap is the defect: speed it up, never raise the cap for it. `--durations=5` lists the slowest

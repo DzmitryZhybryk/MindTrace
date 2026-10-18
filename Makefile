@@ -31,8 +31,8 @@ help: ## Show this help message
 
 # --- Pass-through: проксируют ЛЮБОЙ таргет под-Makefile с префиксом be-/fe- ---
 # Напр.: make be-lint, make be-format, make be-migrate-upgrade, make fe-dev, make fe-build.
-# Ограничение: таргеты с позиционным аргументом (migrate-create "desc", migrate-downgrade <rev>)
-# запускай из backend/ — аргумент через префикс корректно не пробрасывается.
+# Параметры таргетов — переменные (make be-migrate-create msg="desc", make be-migrate-downgrade rev=<rev>):
+# переменные командной строки доходят до под-Makefile сами.
 be-%: ## Проксировать backend-таргет: make be-<target> (be-lint, be-format, …)
 	@$(MAKE) -C backend $*
 

@@ -24,9 +24,9 @@ Never print or paste credentials; read variable names from `.env` (see global CL
 ## Migrations (from `backend/`, against the running container)
 
 ```bash
-make migrate-create "description"    # autogenerate
+make migrate-create msg="description"  # autogenerate
 make migrate-upgrade                 # apply, then the procrastinate schema (see below)
-make migrate-downgrade               # roll back one
+make migrate-downgrade               # roll back one (rev=<revision> for a specific one)
 make migrate-history
 make migrate-current
 uv run alembic upgrade <base>:<head> --sql    # SQL only, without applying - to inspect locks
