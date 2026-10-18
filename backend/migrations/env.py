@@ -3,6 +3,7 @@ from logging.config import fileConfig
 
 from alembic import context
 from alembic.runtime.environment import NameFilterParentNames, NameFilterType
+from alembic.runtime.plugins import Plugin
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -15,6 +16,9 @@ from app.journeys.infra import models as _journeys_models  # noqa: F401
 from app.shared.models import BaseDBModel
 from app.shared.settings import settings
 from app.users.infra import models as _users_models  # noqa: F401
+from migrations.plugins import opclass_compare
+
+Plugin.setup_plugin_from_module(opclass_compare, opclass_compare.PLUGIN_NAME)
 
 config = context.config
 
@@ -80,7 +84,12 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Run migrations with given connection."""
-    context.configure(connection=connection, target_metadata=target_metadata, include_name=include_name)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_name=include_name,
+        autogenerate_plugins=["alembic.autogenerate.*", opclass_compare.PLUGIN_NAME],
+    )
 
     with context.begin_transaction():
         context.run_migrations()
