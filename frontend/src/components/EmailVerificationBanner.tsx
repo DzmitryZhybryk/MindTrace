@@ -3,6 +3,12 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { dismissVerifyBanner, isVerifyBannerDismissed } from "../auth/verifyBannerStorage";
+import { GLIDE_MS } from "./glide";
+
+// Body class for the glide's duration after the banner goes away: the globe on the journey form
+// glides with the page layer instead of snapping (see persistent-globe.css).
+const CLOSING_CLASS = "verify-banner-closing";
+let closingTimer: number | undefined;
 
 interface EmailVerificationBannerProps {
   onVerifyClick: () => void;
@@ -21,7 +27,14 @@ export function EmailVerificationBanner({ onVerifyClick }: EmailVerificationBann
     // background to free space for the banner (see persistent-globe.css); removing it on
     // close/unmount restores the full height. Harmless on other screens.
     document.body.classList.add("has-verify-banner");
-    return () => document.body.classList.remove("has-verify-banner");
+    return () => {
+      // Both classes change in the same style recalculation, so the transition the closing class
+      // turns on also covers the scale the removed `has-verify-banner` changes.
+      document.body.classList.remove("has-verify-banner");
+      document.body.classList.add(CLOSING_CLASS);
+      window.clearTimeout(closingTimer);
+      closingTimer = window.setTimeout(() => document.body.classList.remove(CLOSING_CLASS), GLIDE_MS);
+    };
   }, [dismissed]);
 
   if (dismissed) {

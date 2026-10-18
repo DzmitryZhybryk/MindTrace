@@ -1,9 +1,9 @@
 import { useLayoutEffect, type RefObject } from "react";
 
+import { GLIDE_MS } from "../../components/glide";
 import { prefersReducedMotion } from "../../components/reducedMotion";
 
 // The same glide as the globe and the home greeting: `--dur-glide` / `--ease-glide` in index.css.
-const GLIDE_MS = 1300;
 const GLIDE_EASING = "cubic-bezier(0.4, 0, 0.2, 1)";
 // Below it the section stacks and scrolls; the jump is the page's ordinary reflow there.
 const DESKTOP_QUERY = "(min-width: 62em)";

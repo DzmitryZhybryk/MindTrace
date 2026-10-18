@@ -625,7 +625,15 @@
 
 /* From/to block: a relative anchor for the floating swap button in the gap between fields. */
 .add-journey__route {
+  --add-journey-swap-inset: 16px;
+  --add-journey-swap-size: 34px;
+
   position: relative;
+}
+
+/* A field error ends before the swap button instead of running under it: a long one wraps. */
+.add-journey__route .mantine-InputWrapper-error {
+  padding-right: calc(var(--add-journey-swap-inset) + var(--add-journey-swap-size) + 8px);
 }
 
 /* Round "swap" button sitting in the gap between the fields near the right edge (like a flight
@@ -634,13 +642,13 @@
 .add-journey__swap {
   position: absolute;
   top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  right: var(--add-journey-swap-inset);
+  transform: translateY(-50%);
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: var(--add-journey-swap-size);
+  height: var(--add-journey-swap-size);
   padding: 0;
   border-radius: 50%;
   /* A slightly thicker background-coloured ring around the button: it "sits" on the field seam instead of hanging in the air. */
@@ -674,11 +682,11 @@
   box-shadow:
     0 0 0 4px var(--surface),
     0 6px 14px rgb(var(--ink-rgb) / 0.16);
-  transform: translate(-50%, -50%) rotate(180deg);
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .add-journey__swap:active:not(:disabled) {
-  transform: translate(-50%, -50%) scale(0.92);
+  transform: translateY(-50%) scale(0.92);
 }
 
 .add-journey__swap:focus-visible {
