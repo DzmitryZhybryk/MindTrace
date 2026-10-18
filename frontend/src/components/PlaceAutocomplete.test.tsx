@@ -24,6 +24,67 @@ describe("PlaceAutocomplete", () => {
     expect(onChange).toHaveBeenCalledWith(GEO_PLACES[0]);
   });
 
+  it("название, набранное целиком руками (в любом регистре), засчитывается при уходе из поля", async () => {
+    const onChange = vi.fn();
+    const { user } = renderWithProviders(
+      <PlaceAutocomplete label="From" placeholder="City" value={null} onChange={onChange} />,
+    );
+
+    await user.type(screen.getByLabelText("From"), "moscow");
+    await screen.findByRole("option", { name: /Moscow/iu, hidden: true });
+    await user.click(document.body);
+
+    expect(onChange).toHaveBeenCalledWith(GEO_PLACES[0]);
+    expect(screen.getByLabelText("From")).toHaveValue("Moscow");
+  });
+
+  it("если подсказки пришли уже после ухода из поля, название тоже засчитывается", async () => {
+    const onChange = vi.fn();
+    const { user } = renderWithProviders(
+      <PlaceAutocomplete label="From" placeholder="City" value={null} onChange={onChange} />,
+    );
+
+    await user.type(screen.getByLabelText("From"), "Moscow");
+    // Leaving right away: neither the debounce nor the response has happened yet.
+    await user.click(document.body);
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith(GEO_PLACES[0]);
+    });
+  });
+
+  it("неполное название при уходе из поля не засчитывается", async () => {
+    const onChange = vi.fn();
+    const { user } = renderWithProviders(
+      <PlaceAutocomplete label="From" placeholder="City" value={null} onChange={onChange} />,
+    );
+
+    await user.type(screen.getByLabelText("From"), "Mos");
+    await screen.findByRole("option", { name: /Moscow/iu, hidden: true });
+    await user.click(document.body);
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("если у нескольких мест одно название, засчитывается первое из выдачи", async () => {
+    const [moscow] = GEO_PLACES;
+    const namesake = { ...moscow, placeId: "55555555-5555-4555-8555-555555555555", countryCode: "US" };
+    server.use(http.get("/v1/geo/places/search/", () => HttpResponse.json({ items: [moscow, namesake] })));
+    const onChange = vi.fn();
+    const { user } = renderWithProviders(
+      <PlaceAutocomplete label="From" placeholder="City" value={null} onChange={onChange} />,
+    );
+
+    await user.type(screen.getByLabelText("From"), "Moscow");
+    await waitFor(() => {
+      expect(screen.getAllByRole("option", { hidden: true })).toHaveLength(2);
+    });
+    await user.click(document.body);
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(moscow);
+  });
+
   it("подтягивает видимый текст при внешней смене value (swap городов в форме)", () => {
     const [moscow, london] = GEO_PLACES;
     const { rerender } = renderWithProviders(

@@ -1,7 +1,7 @@
 import { Combobox, Group, InputBase, Loader, ScrollArea, Stack, Text, useCombobox } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { searchPlacesOptions, type PlaceSearchItem } from "../api/sdk";
@@ -128,6 +128,16 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
     combobox.openDropdown();
   };
 
+  const pickPlace = useCallback(
+    (picked: PlaceSearchItem) => {
+      setSelectedName(picked.name);
+      lastEmittedRef.current = picked;
+      onChange(picked);
+      setSearch(picked.name);
+    },
+    [onChange],
+  );
+
   const handleOptionSubmit = (optionValue: string) => {
     const picked = options.find((place) => place.placeId === optionValue);
     combobox.closeDropdown();
@@ -137,14 +147,27 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
       return;
     }
 
-    setSelectedName(picked.name);
-    lastEmittedRef.current = picked;
-    onChange(picked);
-    setSearch(picked.name);
+    pickPlace(picked);
     // Picked: move focus to the next field (other city / transport) so the cursor does not stick
     // in the filled field after Enter/Tab on a suggestion.
     focusNextFormControl(inputRef.current);
   };
+
+  // A name typed in full without picking from the list counts as picked once the suggestions for
+  // exactly this text have arrived. Several places can share a name: the first one wins, as with
+  // Tab (the backend orders by relevance).
+  const typedMatch =
+    value === null && !isFetching && !isBelowMinLength && trimmedSearch === search.trim()
+      ? options.find((place) => place.name.toLocaleLowerCase() === trimmedSearch.toLocaleLowerCase())
+      : undefined;
+  const isFocusedRef = useRef(false);
+
+  // The suggestions can arrive after the user has already left the field (typed and clicked on).
+  useEffect(() => {
+    if (typedMatch !== undefined && !isFocusedRef.current) {
+      pickPlace(typedMatch);
+    }
+  }, [typedMatch, pickPlace]);
 
   const isEmpty = !isBelowMinLength && !isFetching && options.length === 0 && value === null;
 
@@ -160,8 +183,17 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
             radius="md"
             value={search}
             onChange={(event) => handleInputChange(event.currentTarget.value)}
-            onFocus={() => combobox.openDropdown()}
-            onBlur={() => combobox.closeDropdown()}
+            onFocus={() => {
+              isFocusedRef.current = true;
+              combobox.openDropdown();
+            }}
+            onBlur={() => {
+              isFocusedRef.current = false;
+              combobox.closeDropdown();
+              if (typedMatch !== undefined) {
+                pickPlace(typedMatch);
+              }
+            }}
             // Tab (like Enter) applies the first suggestion. Suppress default Tab: handleOptionSubmit
             // moves focus itself (otherwise it would jump on or to the swap button). Shift+Tab is
             // left to the browser (step back). Uses capture because Mantine intercepts onKeyDown.
