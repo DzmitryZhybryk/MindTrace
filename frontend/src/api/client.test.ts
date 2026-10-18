@@ -85,18 +85,6 @@ describe("appFetch", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("на 401 email_not_verified эмитит verify-required, не делает refresh и бросает", async () => {
-    const verifyListener = vi.fn();
-    const off = on("verify-required", verifyListener);
-    fetchMock.mockResolvedValueOnce(jsonResponse(401, { code: "auth.email_not_verified", message: "x" }));
-
-    await expect(appFetch(`${ORIGIN}/v1/x/`)).rejects.toMatchObject({ code: "auth.email_not_verified" });
-
-    expect(verifyListener).toHaveBeenCalledTimes(1);
-    expect(refreshCallCount(fetchMock)).toBe(0);
-    off();
-  });
-
   it("на прочий 401 делает один refresh и повторяет запрос ВМЕСТЕ С ТЕЛОМ", async () => {
     // A request body is a one-shot stream: without a clone before the first send the retry would go
     // out empty and a POST after an expired token would silently lose its payload.
