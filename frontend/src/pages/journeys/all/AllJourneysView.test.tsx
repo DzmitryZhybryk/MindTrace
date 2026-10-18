@@ -55,6 +55,42 @@ describe("AllJourneysView", () => {
     await waitFor(() => expect(mapLabels()).toEqual(["London", "Paris"]));
   });
 
+  it("дуга наведённой поездки кончается стрелкой у места назначения", async () => {
+    matchMediaQueries(DESKTOP_QUERY);
+    const { container } = renderAllJourneys();
+    const year2021 = await screen.findByRole("region", { name: "2021" });
+    await within(year2021).findByRole("button", { name: "Moscow" });
+    const [moscowToLondon] = within(year2021).getAllByRole("listitem");
+
+    fireEvent.pointerOver(moscowToLondon);
+
+    await waitFor(() => expect(container.querySelectorAll(".feed-arc__line")).toHaveLength(1));
+    const [line] = container.querySelectorAll(".feed-arc__line");
+    expect(line.getAttribute("marker-end")).toBe("url(#feed-arc-arrow)");
+    expect(container.querySelector("#feed-arc-arrow")).not.toBeNull();
+  });
+
+  it("дуга через край мира: стрелка только на куске, который приходит в место назначения", async () => {
+    matchMediaQueries(DESKTOP_QUERY);
+    // Tokyo -> Los Angeles: the shortest path crosses the Pacific, over the 180th meridian.
+    const [moscowToLondon] = FEED_JOURNEYS;
+    const tokyoToLosAngeles = {
+      ...moscowToLondon,
+      origin: { ...moscowToLondon.origin, latitude: 35.69, longitude: 139.69 },
+      destination: { ...moscowToLondon.destination, latitude: 34.05, longitude: -118.24 },
+    };
+    recordFeedRequests(() => HttpResponse.json({ items: [tokyoToLosAngeles], nextCursor: null }));
+    const { container } = renderAllJourneys();
+    const year2021 = await screen.findByRole("region", { name: "2021" });
+    const [row] = await within(year2021).findAllByRole("listitem");
+
+    fireEvent.pointerOver(row);
+
+    await waitFor(() => expect(container.querySelectorAll(".feed-arc__line")).toHaveLength(2));
+    const lines = [...container.querySelectorAll(".feed-arc__line")];
+    expect(lines.map((line) => line.getAttribute("marker-end"))).toEqual([null, "url(#feed-arc-arrow)"]);
+  });
+
   it("на узком экране карты за лентой нет", async () => {
     const { container } = renderAllJourneys();
     await screen.findByRole("region", { name: "2021" });

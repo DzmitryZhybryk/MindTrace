@@ -99,6 +99,27 @@
   stroke-linecap: round;
 }
 
+/* Hovering a route thickens all its pieces at once (an arc across the world edge is two). The arrow
+   keeps its size: its marker is in canvas units, independent of the stroke width. */
+.movement-route .movement-line {
+  transition: stroke-width var(--dur-fast) ease;
+}
+
+.movement-route:hover .movement-line {
+  stroke-width: 3;
+}
+
+/* The overlay ignores the mouse so the map beneath stays live; only this wide transparent stroke
+   catches it. Its width is in screen pixels (non-scaling-stroke). While a drag is in progress
+   useMapZoom holds the pointer on the canvas, so the route is not hovered mid-pan. */
+.movement-route__hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  stroke-linecap: round;
+  pointer-events: stroke;
+}
+
 .movement-arrow {
   fill: var(--movement-line);
 }
@@ -783,7 +804,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .journeys-map,
-  .journeys-map--hidden {
+  .journeys-map--hidden,
+  .movement-route .movement-line {
     transition: none;
   }
 }

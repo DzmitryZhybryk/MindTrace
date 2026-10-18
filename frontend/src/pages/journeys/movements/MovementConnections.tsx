@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import type { MapPoint } from "../../../api/sdk";
 import { projectToScreen } from "../../../components/worldProjection";
+import { ArrowMarker } from "./ArrowMarker";
 import { placeLabels } from "./labelPlacement";
 import { piecePath, splitEdgeFade, type ArcPieces } from "./movementGeometry";
 
@@ -82,18 +83,7 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
   return (
     <>
       <defs>
-        <marker
-          id={ARROW_MARKER_ID}
-          viewBox="0 0 10 10"
-          refX="10"
-          refY="5"
-          markerUnits="userSpaceOnUse"
-          markerWidth={arrowSize}
-          markerHeight={arrowSize}
-          orient="auto"
-        >
-          <path className="movement-arrow" d="M0 1L10 5L0 9Z" />
-        </marker>
+        <ArrowMarker id={ARROW_MARKER_ID} size={arrowSize} className="movement-arrow" />
       </defs>
       {/* Dots under the lines: the arrow tip lands on the destination dot instead of hiding under it. */}
       <g>
@@ -111,15 +101,27 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
       <g>
         {connections.map((connection, connectionIndex) => {
           const [first, second] = connection.arc;
+          // The transparent wide stroke is the hover zone: the thin line itself is hard to hit.
+          // It sits in the same group as the line pieces, so hovering any piece highlights the whole route.
+          const hitZones = connection.arc.map((piece) => (
+            <path
+              key={`hit:${piece[0][0]},${piece[0][1]}`}
+              className="movement-route__hit"
+              d={piecePath(piece)}
+              vectorEffect="non-scaling-stroke"
+            />
+          ));
           if (!second) {
             return (
-              <path
-                key={connection.key}
-                className="movement-line"
-                d={piecePath(first)}
-                markerEnd={`url(#${ARROW_MARKER_ID})`}
-                vectorEffect="non-scaling-stroke"
-              />
+              <g key={connection.key} className="movement-route">
+                <path
+                  className="movement-line"
+                  d={piecePath(first)}
+                  markerEnd={`url(#${ARROW_MARKER_ID})`}
+                  vectorEffect="non-scaling-stroke"
+                />
+                {hitZones}
+              </g>
             );
           }
 
@@ -131,7 +133,7 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
             { split: splitEdgeFade(second, "start", fadeLength), endsAtDestination: true },
           ];
           return (
-            <g key={connection.key}>
+            <g key={connection.key} className="movement-route">
               {pieces.map(({ split, endsAtDestination }, pieceIndex) => {
                 const gradientId = `movement-edge-fade-${connectionIndex}-${pieceIndex}`;
                 const [[innerX, innerY], [edgeX, edgeY]] = split.fadeAxis;
@@ -172,6 +174,7 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
                   </g>
                 );
               })}
+              {hitZones}
             </g>
           );
         })}

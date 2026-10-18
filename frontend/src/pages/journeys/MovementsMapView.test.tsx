@@ -12,6 +12,8 @@ import { MovementsMapView } from "./MovementsMapView";
 // Arcs, dots and labels are SVG without accessible roles, so map data is observed by class.
 const ARC = ".movement-line";
 const DOT = ".movement-dot";
+const ROUTE = ".movement-route";
+const HIT_ZONE = ".movement-route__hit";
 
 const UNKNOWN_PLACE_ID = "99999999-9999-4999-8999-999999999999";
 
@@ -34,6 +36,25 @@ function recordMovementsRequests(): string[] {
     }),
   );
   return queries;
+}
+
+/** One Tokyo -> Los Angeles route: the shortest path crosses the Pacific, over the 180th meridian. */
+function stubTokyoToLosAngeles(): void {
+  server.use(
+    http.get("/v1/journeys/movements/", () =>
+      HttpResponse.json({
+        firstYear: 2020,
+        lastYear: 2020,
+        connections: [
+          {
+            origin: { placeId: GEO_PLACES[0].placeId, latitude: 35.69, longitude: 139.69 },
+            destination: { placeId: GEO_PLACES[1].placeId, latitude: 34.05, longitude: -118.24 },
+            years: [2020],
+          },
+        ],
+      }),
+    ),
+  );
 }
 
 /** Waits until all three fixture routes appear on the map. */
@@ -64,22 +85,7 @@ describe("MovementsMapView", () => {
   });
 
   it("дуга через край мира — два куска, гаснущих у разреза, стрелка только на втором", async () => {
-    // Tokyo -> Los Angeles: the shortest path crosses the Pacific, over the 180th meridian.
-    server.use(
-      http.get("/v1/journeys/movements/", () =>
-        HttpResponse.json({
-          firstYear: 2020,
-          lastYear: 2020,
-          connections: [
-            {
-              origin: { placeId: GEO_PLACES[0].placeId, latitude: 35.69, longitude: 139.69 },
-              destination: { placeId: GEO_PLACES[1].placeId, latitude: 34.05, longitude: -118.24 },
-              years: [2020],
-            },
-          ],
-        }),
-      ),
-    );
+    stubTokyoToLosAngeles();
 
     const { container } = renderMovements();
 
@@ -95,6 +101,30 @@ describe("MovementsMapView", () => {
     const withArrow = arcs.filter((arc) => arc.getAttribute("marker-end") === "url(#movement-arrow)");
     expect(withArrow).toEqual([arcs[3]]);
     expect(arcs[3].style.stroke).toBe("");
+  });
+
+  it("у каждого маршрута есть зона наведения в одной группе с его линией", async () => {
+    const { container } = renderMovements();
+    await waitForAllRoutes(container);
+
+    const routes = container.querySelectorAll(ROUTE);
+    expect(routes).toHaveLength(3);
+    for (const route of routes) {
+      expect(route.querySelectorAll(ARC)).toHaveLength(1);
+      expect(route.querySelectorAll(HIT_ZONE)).toHaveLength(1);
+    }
+  });
+
+  it("дуга через край мира подсвечивается целиком: обе зоны наведения в одной группе со всеми кусками линии", async () => {
+    stubTokyoToLosAngeles();
+    const { container } = renderMovements();
+
+    await waitFor(() => {
+      expect(container.querySelectorAll(ROUTE)).toHaveLength(1);
+    });
+    const [route] = container.querySelectorAll(ROUTE);
+    expect(route.querySelectorAll(HIT_ZONE)).toHaveLength(2);
+    expect(route.querySelectorAll(ARC)).toHaveLength(4);
   });
 
   it("подписывает места их названиями и указывает источник названий", async () => {

@@ -8,6 +8,7 @@ import { projectToScreen, WORLD_VIEW_BOX, type ViewBox } from "../../../componen
 import { MAP_TONE } from "../journeys-data";
 import type { JourneysMapScene } from "../map/journeysMapScene";
 import { usePublishMapScene } from "../map/usePublishMapScene";
+import { ArrowMarker } from "../movements/ArrowMarker";
 import { connectionBounds } from "../movements/connectionBounds";
 import { placeLabels } from "../movements/labelPlacement";
 import { piecePath, projectArc } from "../movements/movementGeometry";
@@ -16,6 +17,9 @@ const NO_COUNTRIES: readonly MapCountry[] = [];
 // Sizes in canvas units at the whole-world view.
 const DOT_RADIUS = 2.6;
 const LINE_WIDTH = 1.8;
+const ARROW_SIZE = 7;
+// One arc at a time on this map, so one marker id; the leaving layer fades with the same shape.
+const ARROW_MARKER_ID = "feed-arc-arrow";
 const LABEL_FONT_SIZE = 8;
 // Label offset from the dot edge, clearance from the arc, halo stroke behind the text.
 const LABEL_GAP = 2;
@@ -91,13 +95,18 @@ export function useFeedMapScene({ journeys, activeJourney, occluderRef, isEnable
 
       return (
         <g key={activeJourney.journeyId} className="feed-arc">
-          {arc.map((piece) => (
+          <defs>
+            <ArrowMarker id={ARROW_MARKER_ID} size={ARROW_SIZE * unitScale} className="feed-arc__arrow" />
+          </defs>
+          {arc.map((piece, pieceIndex) => (
             <path
               key={`${piece[0][0]},${piece[0][1]}`}
               className="feed-arc__line"
               d={piecePath(piece)}
               pathLength={1}
               strokeWidth={LINE_WIDTH * unitScale}
+              // An arc across the world edge is several pieces: only the last one ends at the destination.
+              markerEnd={pieceIndex === arc.length - 1 ? `url(#${ARROW_MARKER_ID})` : undefined}
             />
           ))}
           {places.map((place) => (
