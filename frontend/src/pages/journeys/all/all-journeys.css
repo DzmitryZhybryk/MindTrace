@@ -21,6 +21,13 @@
   animation: feed-arc-dot 0.3s ease-out both;
 }
 
+/* The arrow appears when the line has been drawn to the destination (the draw-in lasts 0.6 s): a
+   marker is painted at the path end regardless of the dash, so without the delay it would show first. */
+.feed-arc__arrow {
+  fill: var(--accent);
+  animation: feed-arc-dot 0.3s ease-out 0.6s both;
+}
+
 /* Place name: a background-coloured stroke under the text keeps it readable over land and the arc. */
 .feed-arc__label {
   fill: var(--text);
@@ -54,6 +61,7 @@
 
 /* The leaving layer remounts the overlay under a new key; replaying the entry would redraw the arc as it fades. */
 .world-map__leaving .feed-arc__line,
+.world-map__leaving .feed-arc__arrow,
 .world-map__leaving .feed-arc__dot,
 .world-map__leaving .feed-arc__label {
   animation: none;
@@ -476,6 +484,7 @@
 @media (prefers-reduced-motion: reduce) {
   .all-journeys__column,
   .feed-arc__line,
+  .feed-arc__arrow,
   .feed-arc__dot,
   .feed-arc__label,
   .journey-row__drop-year,
