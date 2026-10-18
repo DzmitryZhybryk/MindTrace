@@ -18,7 +18,7 @@ _PYPROJECT_DATA: Final[DictStrAny] = read_file(_ROOT_DIR / "pyproject.toml")
 
 class PostgresSettings(BaseModel):
     POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
+    POSTGRES_PASSWORD: SecretStr
     POSTGRES_DB: str
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
@@ -42,7 +42,7 @@ class PostgresSettings(BaseModel):
         для атомарного defer_async() в одной транзакции.
         """
         return (
-            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD.get_secret_value()}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
@@ -53,7 +53,7 @@ class PostgresSettings(BaseModel):
         procrastinate и загрузчик датасетов газеттира.
         """
         return (
-            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD.get_secret_value()}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
@@ -86,7 +86,7 @@ class WebSettings(BaseModel):
 
 
 class JWTSettings(BaseModel):
-    JWT_SECRET_KEY: str
+    JWT_SECRET_KEY: SecretStr
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30

@@ -116,14 +116,13 @@ openapi-dump: ## Rewrite backend/openapi.json from the app (drift gate is the sn
 	@echo "${GREEN}INFO :  ${AZURE}Update '${PURPLE}openapi.json${AZURE}' snapshot${RESET}"
 	@UPDATE_OPENAPI=1 uv run --no-sync pytest tests/api/test_openapi_schema.py -q
 
-migrate-create: ## Create a new migration (usage: make migrate-create "description")
-	@ARGS="$(filter-out $@,$(MAKECMDGOALS))"; \
-	if [ -z "$$ARGS" ]; then \
-		echo "${RED}ERROR: Message is required. Usage: make migrate-create \"description\"${RESET}"; \
+migrate-create: ## Create a new migration (usage: make migrate-create msg="description")
+	@if [ -z "$$msg" ]; then \
+		echo "${RED}ERROR: Message is required. Usage: make migrate-create msg=\"description\"${RESET}"; \
 		exit 1; \
 	fi; \
-	echo "${GREEN}INFO :  ${AZURE}Creating migration: ${PURPLE}$$ARGS${RESET}"; \
-	docker exec -it mindtrace_app uv run alembic revision --autogenerate -m "$$ARGS"
+	echo "${GREEN}INFO :  ${AZURE}Creating migration: ${PURPLE}$$msg${RESET}"; \
+	docker exec -it mindtrace_app uv run alembic revision --autogenerate -m "$$msg"
 
 migrate-upgrade: ## Apply all pending migrations and the procrastinate schema
 	@echo "${GREEN}INFO :  ${AZURE}Applying migrations${RESET}"
@@ -131,16 +130,10 @@ migrate-upgrade: ## Apply all pending migrations and the procrastinate schema
 	@echo "${GREEN}INFO :  ${AZURE}Applying procrastinate schema${RESET}"
 	@docker exec -it mindtrace_app uv run python -m app.shared.infra.procrastinate
 
-migrate-downgrade: ## Downgrade one migration (usage: make migrate-downgrade)
-	@REVISION="$(filter-out $@,$(MAKECMDGOALS))"; \
-	if [ -z "$$REVISION" ]; then \
-		REVISION="-1"; \
-	fi; \
+migrate-downgrade: ## Downgrade one migration, or to a revision (usage: make migrate-downgrade [rev=<revision>])
+	@REVISION="$${rev:--1}"; \
 	echo "${GREEN}INFO :  ${AZURE}Downgrading migration: ${PURPLE}$$REVISION${RESET}"; \
-	docker exec -it mindtrace_app uv run alembic downgrade $$REVISION
-
-%:
-	@:
+	docker exec -it mindtrace_app uv run alembic downgrade "$$REVISION"
 
 migrate-history: ## Show migration history
 	@echo "${GREEN}INFO :  ${AZURE}Migration history${RESET}"
