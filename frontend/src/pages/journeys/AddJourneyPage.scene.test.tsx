@@ -42,6 +42,7 @@ function renderWithSceneProbe() {
 describe("AddJourneyPage — сцена глобуса", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("публикует глобусу маршрут по мере заполнения формы", async () => {
@@ -62,6 +63,37 @@ describe("AddJourneyPage — сцена глобуса", () => {
   it("публикует прямоугольник колонки глобуса во viewport-координатах", () => {
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
       DOMRect.fromRect({ x: 700, y: 100, width: 300, height: 600 }),
+    );
+
+    renderWithSceneProbe();
+
+    expect(screen.getByTestId("scene")).toHaveAttribute("data-slot", "700,100,300,600");
+  });
+
+  it("сдвиг от transform-анимации слоя страницы не попадает в прямоугольник колонки", () => {
+    // The banner-close glide moves the page layer by `translateY`; the slot must be published where
+    // the layout settles, not where the glide happens to be at that moment.
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+      DOMRect.fromRect({ x: 700, y: 166, width: 300, height: 600 }),
+    );
+    const computedStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) =>
+      element.classList.contains("add-journey")
+        ? ({ transform: "matrix(1, 0, 0, 1, 0, 66)" } as CSSStyleDeclaration)
+        : computedStyle(element, pseudo),
+    );
+    // jsdom has no DOMMatrix: a minimal one that reads the translation out of `matrix(a, b, c, d, e, f)`.
+    vi.stubGlobal(
+      "DOMMatrixReadOnly",
+      class {
+        m41: number;
+        m42: number;
+
+        constructor(transform: string) {
+          const values = transform.replace(/^matrix\(|\)$/gu, "").split(",").map(Number);
+          [this.m41, this.m42] = [values[4], values[5]];
+        }
+      },
     );
 
     renderWithSceneProbe();

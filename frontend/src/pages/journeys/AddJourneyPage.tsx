@@ -8,14 +8,39 @@ import { JourneyForm } from "./JourneyForm";
 import { JOURNEY_FORM_VALIDATE, type JourneyFormValues } from "./journeyFormRules";
 
 /**
- * Slot rectangle in viewport coordinates; zero size (column hidden on a narrow screen via
- * `display: none`) means "no room for the globe".
+ * Translation that the element's own and its ancestors' transforms add to its rectangle. Only
+ * translations occur on the page layers (the banner-close glide animates `translateY`), so scale
+ * and rotation are ignored.
+ */
+function transformTranslation(element: HTMLElement): { x: number; y: number } {
+  let x = 0;
+  let y = 0;
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    const { transform } = getComputedStyle(node);
+    if (transform !== "none") {
+      const matrix = new DOMMatrixReadOnly(transform);
+      x += matrix.m41;
+      y += matrix.m42;
+    }
+  }
+
+  return { x, y };
+}
+
+/**
+ * Slot rectangle in viewport coordinates, as the layout settles it: a transform animation on an
+ * ancestor does not count. Closing the email banner glides the page layer by `transform`, and a
+ * rectangle measured mid-glide would be shifted by the current offset, which no later resize
+ * corrects (the slot size does not change while it slides): the globe would stay where the layer
+ * started. Zero size (column hidden on a narrow screen via `display: none`) means "no room for the
+ * globe".
  */
 function measureSlot(element: HTMLElement): GlobeSlot | null {
   const rect = element.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) return null;
 
-  return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+  const { x, y } = transformTranslation(element);
+  return { left: rect.left - x, top: rect.top - y, width: rect.width, height: rect.height };
 }
 
 /**
