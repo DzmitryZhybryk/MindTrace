@@ -66,6 +66,10 @@ def salted_hasher_dependency() -> SaltedHasherPort:
 
     Stateless singleton на процесс (см. ``get_argon2_salted_hasher``).
     Через override этой dependency тесты подменяют реализацию.
+
+    Scenarios:
+        - регистрация и вход: пароль
+        - отправка и ввод кода в диалоге «Подтвердите email»
     """
     return get_argon2_salted_hasher()
 
@@ -76,15 +80,22 @@ def deterministic_hasher_dependency() -> DeterministicHasherPort:
 
     Stateless singleton на процесс (см. ``get_sha256_deterministic_hasher``).
     Через override этой dependency тесты подменяют реализацию.
+
+    Scenarios:
+        - регистрация и вход: выпуск refresh-токена
+        - выход из аккаунта
+        - обновление сессии
     """
     return get_sha256_deterministic_hasher()
 
 
 def optional_refresh_secret_dependency(request: Request) -> str | None:
     """
-    Возвращает plaintext-секрет refresh-токена из cookie или ``None``.
+    Возвращает plaintext-секрет refresh-токена из cookie или ``None``: выход идемпотентен и
+    отвечает 204 даже без cookie.
 
-    Используется в /logout: операция идемпотентна и должна 204'нуть даже без cookie.
+    Scenarios:
+        - выход из аккаунта
     """
     return read_refresh_token_cookie(request=request)
 
@@ -93,8 +104,11 @@ def required_refresh_secret_dependency(request: Request) -> str:
     """
     Возвращает plaintext-секрет refresh-токена из cookie или 401.
 
-    Используется в /refresh: без cookie ротация невозможна, поэтому
-    отсутствие cookie — это уже ошибка аутентификации, а не валидации тела.
+    Без cookie ротация невозможна, поэтому отсутствие cookie — это уже ошибка
+    аутентификации, а не валидации тела.
+
+    Scenarios:
+        - обновление сессии
 
     Raises:
         InvalidRefreshTokenError: Cookie ``refresh_token`` отсутствует

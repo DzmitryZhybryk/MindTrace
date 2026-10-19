@@ -32,7 +32,12 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next: Any) -> Response:
-        """Обрабатывает запрос, логирует его и перехватывает исключения."""
+        """
+        Обрабатывает запрос, логирует его и перехватывает исключения.
+
+        Scenarios:
+            - каждый HTTP-запрос
+        """
         start_time = time.perf_counter()
 
         request_context = extract_request_context(request)

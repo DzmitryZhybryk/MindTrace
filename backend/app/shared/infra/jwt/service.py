@@ -37,6 +37,9 @@ class JWTService:
         зависимость от pyjwt в инфраструктурном слое, presentation работает
         только с этим типом.
 
+        Scenarios:
+            - любой эндпоинт, которому нужен текущий пользователь
+
         Args:
             token: Plaintext JWT access-токен из заголовка Authorization
 
@@ -69,6 +72,10 @@ def get_jwt_service() -> JWTService:
     JWTService stateless и иммутабельный — пересоздавать на каждый запрос
     бессмысленно. Тестируемость сохраняется через ``app.dependency_overrides``
     на presentation-обёртке.
+
+    Scenarios:
+        - выпуск access-токена
+        - любой эндпоинт, которому нужен текущий пользователь
     """
     return JWTService(
         secret=settings.JWT_SECRET_KEY.get_secret_value(),

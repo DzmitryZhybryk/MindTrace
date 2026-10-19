@@ -42,6 +42,9 @@ class UserEntity(TimestampedEntityMixin):
         """
         Гарантирует, что пользователь не удалён.
 
+        Scenarios:
+            - приветствие на главной и имя в меню профиля: удалённый пользователь разлогинивается по 410
+
         Raises:
             UserDeletedError: Если пользователь удалён (soft-delete).
         """

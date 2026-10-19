@@ -56,5 +56,8 @@ def get_argon2_salted_hasher() -> Argon2SaltedHasher:
     Hasher stateless и thread-safe, пересоздавать на каждый запрос
     бессмысленно. Тестируемость сохраняется через ``app.dependency_overrides``
     на presentation-обёртке.
+
+    Scenarios:
+        - домен, который хранит пароли и одноразовые коды
     """
     return Argon2SaltedHasher()

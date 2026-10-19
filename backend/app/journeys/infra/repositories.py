@@ -283,7 +283,13 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
 
     @staticmethod
     def _place_visits(*, user_id: UUID) -> Subquery:
-        """Визиты мест: каждая неудалённая поездка пользователя даёт два — отправление и назначение."""
+        """
+        Визиты мест: каждая неудалённая поездка пользователя даёт два — отправление и назначение.
+
+        Scenarios:
+            - «Карта путешествий»
+            - глобус на главной и в форме добавления поездки
+        """
         is_user_journey = (Journey.user_id == user_id, Journey.deleted_at.is_(None))
         origins = select(
             Journey.origin_place_id.label("place_id"),
@@ -304,6 +310,10 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
     def _to_entity(self, journey_model: Journey) -> JourneyEntity:
         """
         Конвертирует ORM-модель в доменную сущность.
+
+        Scenarios:
+            - лента «Все путешествия»
+            - правка, удаление и перетаскивание поездки в ленте
 
         Args:
             journey_model: ORM-модель из БД
@@ -341,6 +351,10 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
 
         Источник истины для обоих путей записи: INSERT (``Journey(**columns)``) и UPDATE (те же
         колонки минус PK) — новое поле добавляется здесь один раз и попадает в оба.
+
+        Scenarios:
+            - добавление поездки
+            - правка, удаление и перетаскивание поездки в ленте «Все путешествия»
 
         Args:
             journey_entity: Доменная сущность поездки

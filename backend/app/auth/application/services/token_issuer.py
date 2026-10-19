@@ -37,9 +37,12 @@ class TokenIssuer:
         """
         Возвращает детерминированный hash plaintext-секрета для поиска в БД.
 
-        Используется в ``logout``/``refresh``, когда из cookie приходит
-        plaintext, а в БД лежит только hash — нужно посчитать тот же hash,
+        Из cookie приходит plaintext, а в БД лежит только hash — нужно посчитать тот же hash,
         чтобы найти соответствующий ``RefreshTokenEntity``.
+
+        Scenarios:
+            - выход из аккаунта
+            - обновление сессии по refresh-cookie
 
         Args:
             refresh_secret: Plaintext-секрет из cookie
@@ -61,6 +64,11 @@ class TokenIssuer:
         Plaintext уходит в HttpOnly cookie, в БД лежит только его
         детерминированный hash — компрометация дампа БД не даёт rerun'нуть
         существующие сессии без знания самого секрета.
+
+        Scenarios:
+            - регистрация
+            - вход
+            - обновление сессии: старый токен меняется на новый
 
         Args:
             user_id: ID пользователя, которому выдаём токен
@@ -88,6 +96,11 @@ class TokenIssuer:
     ) -> TokenPairResult:
         """
         Собирает ``TokenPairResult`` из credentials и пары plaintext/entity.
+
+        Scenarios:
+            - регистрация
+            - вход
+            - обновление сессии
 
         Args:
             user_credentials_entity: Доменная сущность учётных данных (нужна для role + email_verified в JWT)

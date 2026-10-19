@@ -11,6 +11,9 @@ def extract_request_context(request: Request) -> DictStrAny:
     """
     Извлекает базовый контекст из HTTP запроса.
 
+    Scenarios:
+        - лог каждого HTTP-запроса
+
     Args:
         request: HTTP запрос
 
@@ -43,6 +46,9 @@ def build_log_context(
 ) -> DictStrAny:
     """
     Формирует полный контекст для логирования HTTP запроса.
+
+    Scenarios:
+        - лог каждого HTTP-запроса
 
     Args:
         request: HTTP запрос
@@ -77,6 +83,9 @@ def build_error_log_context(
 ) -> tuple[DictStrAny, int, bool]:
     """
     Формирует контекст для логирования ошибки и определяет параметры логирования.
+
+    Scenarios:
+        - лог HTTP-запроса, завершившегося исключением
 
     Args:
         request: HTTP запрос

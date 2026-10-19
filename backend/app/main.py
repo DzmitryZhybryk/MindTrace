@@ -33,6 +33,9 @@ def route_operation_id(route: APIRoute) -> str:
     кодогенератор фронтового SDK делает нечитаемые имена методов. Уникальность имён
     проверяет ``tests/api/test_openapi_schema.py``.
 
+    Scenarios:
+        - сборка OpenAPI-документа: имена методов в сгенерированном клиенте фронта
+
     Args:
         route: Маршрут FastAPI
 
@@ -50,6 +53,9 @@ def create_default_app(
     """
     Создает BFastAPI приложение с инициализированным registry и lifecycle events.
 
+    Scenarios:
+        - запуск API-процесса
+
     Args:
         components: Список компонентов для регистрации
         **kwargs: Дополнительные аргументы для FastAPI
@@ -62,7 +68,12 @@ def create_default_app(
 
     @asynccontextmanager
     async def lifespan(_app: BFastAPI) -> AsyncGenerator[None]:
-        """Lifecycle events для компонентов."""
+        """
+        Lifecycle events для компонентов.
+
+        Scenarios:
+            - старт и остановка API-процесса: подъём и закрытие компонентов
+        """
         # Startup
         for component in components_list:
             await component.startup(registry)
@@ -87,7 +98,12 @@ def create_default_app(
 
 
 def create_app() -> BFastAPI:
-    """Создает и настраивает FastAPI приложение."""
+    """
+    Создает и настраивает FastAPI приложение.
+
+    Scenarios:
+        - запуск API-процесса: в Docker-стеках dev, e2e и prod и локально
+    """
     configure_logging(include_debug=settings.ENVIRONMENT in (AppEnvEnum.LOCAL, AppEnvEnum.DEVELOPMENT))
 
     # В production не публикуем интерактивную документацию и OpenAPI-схему наружу:

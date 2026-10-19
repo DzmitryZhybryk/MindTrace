@@ -18,6 +18,9 @@ async def ensure_procrastinate_schema(*, procrastinate_app: ProcrastinateApp) ->
     наличие ключевой таблицы ``procrastinate_jobs`` через ``to_regclass``
     и применяем схему только если её нет. Версию схемы проверка не сверяет.
 
+    Scenarios:
+        - схема очереди фоновых задач при развёртывании, до старта приложения и воркера
+
     Args:
         procrastinate_app: Открытый ``ProcrastinateApp`` (после ``open_async``)
     """

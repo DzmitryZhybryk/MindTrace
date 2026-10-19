@@ -47,6 +47,26 @@ class AuthService:
         command: RegistrationCommand,
         client_metadata: ClientMetadata,
     ) -> TokenPairResult:
+        """
+        Регистрирует пользователя.
+
+        Учётные данные, профиль пользователя и refresh-токен сохраняются одной транзакцией; после
+        неё запрашивается код подтверждения email.
+
+        Scenarios:
+            - регистрация на странице «Создать аккаунт»
+
+        Args:
+            command: Username, email, пароль и согласие на рассылку
+            client_metadata: IP/user-agent для аудита refresh-токена
+
+        Returns:
+            Пара access + refresh для presentation-слоя
+
+        Raises:
+            EmailAlreadyExistError: email уже занят
+            UsernameAlreadyExistError: username уже занят
+        """
         async with self._uow.transaction():
             await self._ensure_credentials_unique(email=command.email, username=command.username)
             password = Password(hash=self._salted_hasher.hash(secret=command.password.get_secret_value()))
@@ -92,6 +112,9 @@ class AuthService:
         """
         Гарантирует, что email и username ещё не заняты другой учётной записью.
 
+        Scenarios:
+            - регистрация
+
         Args:
             email: Email новой учётной записи
             username: Username новой учётной записи
@@ -121,6 +144,9 @@ class AuthService:
         Timing-attack mitigation: если по логину никого не найдено, мы всё
         равно вызываем ``salted_hasher.verify`` против ``_DUMMY_PASSWORD_HASH``. Без
         этого юзер-enumeration был бы тривиален по разнице во времени ответа.
+
+        Scenarios:
+            - вход
 
         Args:
             command: Введённые логин и пароль
@@ -168,6 +194,9 @@ class AuthService:
         Это позволяет фронту звать /logout без предварительной проверки
         состояния и без боязни race с другим табом.
 
+        Scenarios:
+            - выход из аккаунта кнопкой в шапке
+
         Args:
             refresh_secret: Plaintext-секрет из cookie или ``None``, если cookie не пришла
         """
@@ -202,6 +231,11 @@ class AuthService:
           4. Подгружаем credentials по ``user_id`` (нужно для нового access-token'а).
              Если их нет — race с удалением аккаунта, 401.
           5. Старый токен помечаем revoked, выпускаем новый, всё одной транзакцией.
+
+        Scenarios:
+            - восстановление сессии при открытии приложения
+            - повтор запроса, получившего 401 из-за истёкшего access-токена
+            - новый access-токен после подтверждения email
 
         Args:
             refresh_secret: Plaintext-секрет из cookie

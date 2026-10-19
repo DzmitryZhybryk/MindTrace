@@ -30,7 +30,12 @@ logger = get_logger(__name__)
 
 
 async def run_worker() -> None:  # pragma: no cover — entry-point обвязка (компоненты+run), не unit-тестируется
-    """Поднимает компоненты и запускает procrastinate-worker."""
+    """
+    Поднимает компоненты и запускает procrastinate-worker.
+
+    Scenarios:
+        - запуск воркера фоновых задач
+    """
     configure_logging(include_debug=settings.ENVIRONMENT in (AppEnvEnum.LOCAL, AppEnvEnum.DEVELOPMENT))
 
     registry = ComponentRegistry()

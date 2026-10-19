@@ -39,6 +39,9 @@ class TimestampedEntityMixin:
         Вызывается изнутри мутирующих методов наследников. Внешний код
         в норме не зовёт его напрямую — изменение состояния должно идти
         через явные доменные операции, которые сами вызывают ``_mark_updated``.
+
+        Scenarios:
+            - любая доменная операция, меняющая сущность с отметками времени
         """
         self._updated_at = dt.datetime.now(tz=dt.UTC)
 
@@ -47,6 +50,9 @@ class TimestampedEntityMixin:
         Помечает сущность удалённой (soft-delete): ``deleted_at`` и ``updated_at`` — один момент.
 
         Как и ``_mark_updated``, вызывается изнутри доменной операции удаления наследника.
+
+        Scenarios:
+            - удаление сущности с soft-delete
         """
         now = dt.datetime.now(tz=dt.UTC)
         self._deleted_at = now

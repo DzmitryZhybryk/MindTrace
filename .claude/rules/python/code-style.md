@@ -33,7 +33,6 @@ def get_log_level_for_exception(exc: Exception) -> int:
 Keep them short and in plain language. A comment or docstring carries what the code does not show,
 not a retelling of the decision, its history or metrics.
 
-- A new public method's docstring names its scenario: who calls it and why.
 - Comments and docstrings name no domains, modules or files from elsewhere in the project; describe
   them by role ("the calling domain"). A supplier domain never names its consumers, not even in a
   docstring.

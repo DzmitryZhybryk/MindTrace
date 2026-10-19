@@ -92,6 +92,7 @@ skill `dev-database`. Контракт API (`openapi.json` → сгенерир�
 | `python/security.md` | pydantic-settings, `SecretStr`, bandit через ruff |
 | `python/ddd.md` | слои, раскладка `schemas/` и `ports/`, порты (DIP), UoW, soft-delete, нейминг репозиториев и entity |
 | `python/use-case-helpers.md` | когда кусок use case выносится из тела, куда (domain, приватный метод, модуль, `shared/utils`) и как назвать |
+| `python/docstring-scenarios.md` | секция `Scenarios:` в докстринге: в каких сценариях нужна функция |
 | `python/dto.md` | `*Command`/`*Result`/`*Request`/`*Response`, роли параметров use case (actor/target/payload/metadata), объекты портов (`*Scope`/`*Filters`), pydantic vs dataclass, типы коллекций, где валидация |
 | `python/shared-infrastructure.md` | вертикали `shared/`, исключения, паттерны composition root, `TaskBusPort` |
 | `python/component-lifecycle.md` | component+registry против `@cache`-фабрики |
@@ -105,7 +106,7 @@ skill `dev-database`. Контракт API (`openapi.json` → сгенерир�
 | `web/performance.md` | Web Vitals, бюджет бандла, загрузка, картинки, шрифты, ручные UI-проверки |
 | `common/codegen-contract.md` | дрейф-гейты, пин генератора, границы стран |
 
-`python/ddd.md`, `python/dto.md`, `python/component-lifecycle.md`, `python/use-case-helpers.md` — копии личных конвенций: канон лежит в
+`python/ddd.md`, `python/dto.md`, `python/component-lifecycle.md`, `python/use-case-helpers.md`, `python/docstring-scenarios.md` — копии личных конвенций: канон лежит в
 `~/.claude/optional/rules/python/`. Правишь канон — перекопируй сюда и верни строку `paths:` во frontmatter.
 
 ### Skills

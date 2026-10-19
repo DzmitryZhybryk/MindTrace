@@ -39,6 +39,9 @@ class PlaceRepository(BaseDBRepository[GeoPlace], PlaceRepositoryPort):
 
         Ложится на btree ``text_pattern_ops`` по ``lower(name_*)`` — берётся
         range-scan'ом для запроса любой длины (даже 1 символ).
+
+        Scenarios:
+            - автокомплит места в полях маршрута
         """
         prefix = f"{self._escape_like(search_text).lower()}%"
         return select(GeoPlace).where(
@@ -50,7 +53,12 @@ class PlaceRepository(BaseDBRepository[GeoPlace], PlaceRepositoryPort):
 
     @staticmethod
     def _escape_like(search_text: str) -> str:
-        """Экранирует LIKE-метасимволы (``\\`` ``%`` ``_``) в пользовательском вводе."""
+        """
+        Экранирует LIKE-метасимволы (``\\`` ``%`` ``_``) в пользовательском вводе.
+
+        Scenarios:
+            - автокомплит места в полях маршрута
+        """
         return (
             search_text.replace(_LIKE_ESCAPE, _LIKE_ESCAPE * 2)
             .replace("%", f"{_LIKE_ESCAPE}%")

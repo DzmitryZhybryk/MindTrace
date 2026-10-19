@@ -40,6 +40,9 @@ class PostgresSettings(BaseModel):
         Драйвер — psycopg3 (async). Выбран сознательно вместо asyncpg, чтобы
         procrastinate.PsycopgConnector мог делить connection с SQLAlchemy
         для атомарного defer_async() в одной транзакции.
+
+        Scenarios:
+            - подключение приложения, воркера и миграций к базе
         """
         return (
             f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD.get_secret_value()}"
@@ -49,8 +52,11 @@ class PostgresSettings(BaseModel):
     @property
     def postgres_libpq_dsn(self) -> str:
         """
-        Plain libpq DSN (без +driver-префикса) для прямых psycopg-соединений мимо SQLAlchemy:
-        procrastinate и загрузчик датасетов газеттира.
+        Plain libpq DSN (без +driver-префикса) для прямых psycopg-соединений мимо SQLAlchemy.
+
+        Scenarios:
+            - очередь фоновых задач
+            - массовая загрузка справочных данных в базу
         """
         return (
             f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD.get_secret_value()}"
@@ -140,7 +146,12 @@ class Settings(
 
 @cache
 def get_app_settings() -> Settings:
-    """Get application settings."""
+    """
+    Возвращает настройки приложения, один экземпляр на процесс.
+
+    Scenarios:
+        - запуск API, воркера, миграций и CLI-скриптов
+    """
     return Settings()
 
 

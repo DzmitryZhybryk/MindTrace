@@ -75,7 +75,17 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
 
     async def insert_journey(self, journey_entity: JourneyEntity) -> None: ...
 
-    async def update_journey_by_id(self, journey_entity: JourneyEntity) -> None: ...
+    async def update_journey_by_id(self, journey_entity: JourneyEntity) -> None:
+        """
+        Записывает изменённое состояние поездки.
+
+        Scenarios:
+            - правка, удаление и перетаскивание поездки в ленте «Все путешествия»
+
+        Args:
+            journey_entity: Поездка с уже изменённым состоянием
+        """
+        ...
 
     async def find_journey_by_id_and_user_id_for_update(
         self,
@@ -87,6 +97,9 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
         Находит поездку пользователя по id и блокирует строку до конца транзакции.
 
         Чужая поездка не находится. Удалённая находится — что с ней делать, решает вызывающий.
+
+        Scenarios:
+            - правка, удаление и перетаскивание поездки в ленте «Все путешествия»
 
         Args:
             journey_id: Id поездки
@@ -103,6 +116,9 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
 
         Чужая поездка не находится. Удалённая находится — что с ней делать, решает вызывающий.
 
+        Scenarios:
+            - перетаскивание поездки в ленте «Все путешествия»: поиск соседа, рядом с которым она встаёт
+
         Args:
             journey_id: Id поездки
             user_id: Владелец поездки
@@ -118,6 +134,10 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
 
         Место — отправление или назначение любой неудалённой поездки пользователя. Порядок —
         по коду страны, внутри страны по ``place_id``: места одной страны идут подряд.
+
+        Scenarios:
+            - «Карта путешествий»
+            - глобус на главной и в форме добавления поездки
 
         Args:
             user_id: Владелец поездок
@@ -140,6 +160,9 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
         У маршрута — годы его поездок, по возрастанию. Порядок — по ``place_id`` отправления,
         затем назначения.
 
+        Scenarios:
+            - «Карта перемещений»
+
         Args:
             user_id: Владелец поездок
             transport_types: Виды транспорта, поездки на которых учитываются
@@ -161,6 +184,9 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
 
         Порядок — свежий год сверху, внутри года — по ключу порядка.
 
+        Scenarios:
+            - лента «Все путешествия»
+
         Args:
             user_id: Владелец поездок
             page: Курсор и размер страницы
@@ -177,6 +203,10 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
     async def find_journey_years_by_user_id(self, user_id: UUID) -> tuple[int, ...]:
         """
         Возвращает годы неудалённых поездок пользователя, по возрастанию, без повторов.
+
+        Scenarios:
+            - шкала лет в фильтре ленты «Все путешествия»
+            - шкала лет на «Карте перемещений»
 
         Args:
             user_id: Владелец поездок

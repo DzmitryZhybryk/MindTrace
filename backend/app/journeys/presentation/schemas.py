@@ -24,7 +24,14 @@ class OriginAndDestination(CamelModel):
 
     @model_validator(mode="after")
     def validate_distinct_endpoints(self) -> Self:
-        """Отклоняет маршрут в то же место."""
+        """
+        Отклоняет маршрут в то же место.
+
+        Scenarios:
+            - добавление поездки
+            - правка поездки в ленте «Все путешествия»
+            - расстояние нового маршрута при правке поездки
+        """
         if self.origin_place_id == self.destination_place_id:
             raise SameOriginAndDestinationError()
 
@@ -50,6 +57,10 @@ class JourneyFields(OriginAndDestination):
         Бросает доменную ошибку, а не ``ValueError``: pydantic превращает в 422 только ``ValueError``,
         ``AssertionError`` и ``PydanticCustomError``, остальные исключения доходят до общего обработчика
         со своим кодом.
+
+        Scenarios:
+            - добавление поездки
+            - правка поездки в ленте «Все путешествия»
         """
         if traveled_year > dt.datetime.now(tz=dt.UTC).year:
             raise JourneyDateInFutureError()
@@ -106,7 +117,12 @@ class JourneysFeedRequest(CursorPaginationFields):
 
     @model_validator(mode="after")
     def validate_year_range(self) -> Self:
-        """Отклоняет диапазон лет, где начало позже конца."""
+        """
+        Отклоняет диапазон лет, где начало позже конца.
+
+        Scenarios:
+            - фильтр по годам в ленте «Все путешествия»
+        """
         if self.year_from is not None and self.year_to is not None and self.year_from > self.year_to:
             raise InvalidYearRangeError()
 

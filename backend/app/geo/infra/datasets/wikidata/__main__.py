@@ -65,7 +65,14 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    """Читает датасет, дописывает имена из Wikidata и пишет новый файл."""
+    """
+    Читает датасет, дописывает имена из Wikidata и пишет новый файл.
+
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata
+        - выгрузка споров о русских названиях на арбитраж
+        - запись вердиктов арбитра в файл решений
+    """
     configure_logging(include_debug=False)
     args = _parse_args()
     with httpx.Client(follow_redirects=True, timeout=_HTTP_TIMEOUT_SECONDS) as http_client:

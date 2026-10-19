@@ -16,6 +16,11 @@ def set_refresh_token_cookie(*, response: Response, token_pair: TokenPairResult)
     при cross-site запросах. Значение — plaintext-секрет; в БД лежит
     только его детерминированный hash.
 
+    Scenarios:
+        - регистрация
+        - вход
+        - обновление сессии
+
     Args:
         response: HTTP-ответ FastAPI, в который добавляется cookie
         token_pair: Пара токенов, из которой берётся refresh-секрет и его срок жизни
@@ -35,6 +40,10 @@ def read_refresh_token_cookie(request: Request) -> str | None:
     """
     Возвращает plaintext-значение refresh-cookie или ``None``, если cookie нет.
 
+    Scenarios:
+        - выход из аккаунта
+        - обновление сессии
+
     Args:
         request: HTTP-запрос FastAPI
 
@@ -51,6 +60,9 @@ def clear_refresh_token_cookie(response: Response) -> None:
     Атрибуты ``path``/``samesite`` дублируют параметры ``set_refresh_token_cookie``:
     браузер удаляет cookie только при совпадающем (name, path, domain), а
     SameSite/Secure не должны конфликтовать с ранее установленным значением.
+
+    Scenarios:
+        - выход из аккаунта
 
     Args:
         response: HTTP-ответ FastAPI, в который добавляется ``Set-Cookie: ...; Max-Age=0``
