@@ -30,6 +30,9 @@ def current_user_id_dependency(
     запроса, общая для всех доменов, — иначе каждый presentation-слой зависел бы
     от auth.presentation, замыкая цикл auth ↔ users.
 
+    Scenarios:
+        - любой эндпоинт, которому нужен текущий пользователь
+
     Args:
         credentials: Распарсенный ``Authorization`` (или ``None`` если заголовка нет)
         jwt_service: Сервис подписи/декодирования JWT

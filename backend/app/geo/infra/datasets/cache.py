@@ -18,6 +18,10 @@ def ensure_cached(*, spec: DatasetSpec, cache_dir: Path, http_client: httpx.Clie
     Файл из кеша перепроверяется по sha256; битый удаляется и скачивается заново. Скачанный файл
     попадает в кеш только после проверки, атомарным переименованием.
 
+    Scenarios:
+        - загрузка справочника мест в базу: при развёртывании до старта приложения и в дев-стеке
+        - сборка новой версии датасета с русскими названиями из Wikidata: исходный файл
+
     Args:
         spec: Датасет из манифеста
         cache_dir: Папка кеша
@@ -59,7 +63,13 @@ def ensure_cached(*, spec: DatasetSpec, cache_dir: Path, http_client: httpx.Clie
 
 
 def _sha256_of(*, path: Path) -> str:
-    """Считает sha256 файла потоково, не загружая его в память целиком."""
+    """
+    Считает sha256 файла потоково, не загружая его в память целиком.
+
+    Scenarios:
+        - загрузка справочника мест в базу: проверка файла из кеша
+        - сборка новой версии датасета с русскими названиями из Wikidata: проверка исходного файла
+    """
     digest = hashlib.sha256()
     with path.open("rb") as dataset_file:
         for chunk in iter(lambda: dataset_file.read(_CHUNK_SIZE), b""):

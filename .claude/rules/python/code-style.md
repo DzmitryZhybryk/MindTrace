@@ -33,7 +33,6 @@ def get_log_level_for_exception(exc: Exception) -> int:
 Keep them short and in plain language. A comment or docstring carries what the code does not show,
 not a retelling of the decision, its history or metrics.
 
-- A new public method's docstring names its scenario: who calls it and why.
 - Comments and docstrings name no domains, modules or files from elsewhere in the project; describe
   them by role ("the calling domain"). A supplier domain never names its consumers, not even in a
   docstring.
@@ -74,10 +73,6 @@ return default_handler
 
 ## Recurring conventions
 
-- Do **not** carve pieces of a use case into private `_helper` methods of the service: the code stays
-  in the use case; shared pure logic goes to `shared/utils`. The one agreed exception: the same
-  check-and-raise block repeated across several use cases of one service may become a private
-  method (`JourneyService._find_route_points`). Hiding the steps of a single use case is still out.
 - Do **not** alias a repository (`repository = self._uow.x_repository`); always call
   `self._uow.x_repository.method(...)` directly.
 - A single-row `find` in a repository ends with a ternary `self._to_entity(...) if model else None`,

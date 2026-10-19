@@ -12,4 +12,18 @@ class EmailTransportPort(Protocol):
     под ключом ``EmailTransportPort``.
     """
 
-    async def send(self, *, message: EmailMessage) -> None: ...
+    async def send(self, *, message: EmailMessage) -> None:
+        """
+        Отправляет письмо.
+
+        Scenarios:
+            - фоновая задача, которая шлёт письмо
+
+        Args:
+            message: Готовое письмо с отрендеренным телом
+
+        Raises:
+            ExternalAPITemporaryError: временный сбой провайдера — кандидат на retry
+            ExternalAPIPersistentError: постоянный сбой — без retry
+        """
+        ...

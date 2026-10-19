@@ -12,7 +12,7 @@ class JourneyEntity(TimestampedEntityMixin):
     """
     Поездка пользователя: маршрут origin→destination, среда передвижения, расстояние и год.
 
-    ``distance_km`` считает application-слой по координатам маршрута (``great_circle_km``).
+    ``distance_km`` считает application-слой по маршруту (``GeoPoint.distance_km_to``).
     ``sort_key`` — место поездки среди поездок того же года (дробный ключ, см.
     ``app.shared.fractional_index``).
     """
@@ -58,6 +58,9 @@ class JourneyEntity(TimestampedEntityMixin):
         Идентификатор сущность генерирует сама (``uuid4``), как и прочие фабрики домена;
         снаружи он передаётся только при реконституции из БД через ``__init__``.
 
+        Scenarios:
+            - добавление поездки
+
         Args:
             user_id: Владелец поездки
             origin: Место отправления
@@ -85,6 +88,9 @@ class JourneyEntity(TimestampedEntityMixin):
         """
         Гарантирует, что поездка не удалена.
 
+        Scenarios:
+            - правка, удаление и перетаскивание поездки в ленте «Все путешествия»
+
         Raises:
             JourneyNotFoundError: поездка удалена (soft-delete)
         """
@@ -101,6 +107,9 @@ class JourneyEntity(TimestampedEntityMixin):
     ) -> None:
         """
         Заменяет маршрут, транспорт и расстояние поездки.
+
+        Scenarios:
+            - правка поездки в ленте «Все путешествия»
 
         Args:
             origin: Место отправления
@@ -120,6 +129,10 @@ class JourneyEntity(TimestampedEntityMixin):
 
         Год и ключ меняются только вместе: ключ имеет смысл лишь среди поездок своего года.
 
+        Scenarios:
+            - перетаскивание поездки в ленте «Все путешествия»
+            - правка поездки со сменой года: она встаёт в конец нового года
+
         Args:
             traveled_year: Год поездки
             sort_key: Место среди поездок этого года
@@ -129,5 +142,10 @@ class JourneyEntity(TimestampedEntityMixin):
         self._mark_updated()
 
     def delete(self) -> None:
-        """Помечает поездку удалённой (soft-delete)."""
+        """
+        Помечает поездку удалённой (soft-delete).
+
+        Scenarios:
+            - удаление поездки из её правки в ленте «Все путешествия»
+        """
         self._mark_deleted()

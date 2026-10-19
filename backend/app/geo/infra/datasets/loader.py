@@ -46,6 +46,9 @@ def load_datasets(
     Датасет с той же версией и sha256 в ``geo_dataset_loads`` пропускается. Остальные пишутся
     upsert'ом в одной транзакции вместе с записью о загрузке. Места не удаляются.
 
+    Scenarios:
+        - загрузка справочника мест в базу: при развёртывании до старта приложения и в дев-стеке
+
     Args:
         datasets: Датасеты из манифеста
         cache_dir: Папка кеша файлов
@@ -67,7 +70,12 @@ def load_datasets(
 
 
 def _is_loaded(*, connection: psycopg.Connection, spec: DatasetSpec) -> bool:
-    """Проверяет, загружена ли уже эта версия датасета."""
+    """
+    Проверяет, загружена ли уже эта версия датасета.
+
+    Scenarios:
+        - загрузка справочника мест в базу: уже загруженная версия пропускается
+    """
     cursor = connection.execute(
         "SELECT 1 FROM geo_dataset_loads WHERE name = %s AND version = %s AND sha256 = %s",
         (spec.name, spec.version, spec.sha256),
@@ -78,6 +86,9 @@ def _is_loaded(*, connection: psycopg.Connection, spec: DatasetSpec) -> bool:
 def _load_file(*, connection: psycopg.Connection, path: Path) -> int:
     """
     Копирует файл во временную staging-таблицу и переносит её upsert'ом в ``geo_places``.
+
+    Scenarios:
+        - загрузка справочника мест в базу: при развёртывании до старта приложения и в дев-стеке
 
     Args:
         connection: Соединение с открытой транзакцией
@@ -103,7 +114,12 @@ def _load_file(*, connection: psycopg.Connection, path: Path) -> int:
 
 
 def _record_load(*, connection: psycopg.Connection, spec: DatasetSpec) -> None:
-    """Записывает загрузку датасета в журнал."""
+    """
+    Записывает загрузку датасета в журнал.
+
+    Scenarios:
+        - загрузка справочника мест в базу: при развёртывании до старта приложения и в дев-стеке
+    """
     connection.execute(
         """
         INSERT INTO geo_dataset_loads (name, version, sha256, loaded_at)

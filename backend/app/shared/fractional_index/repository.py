@@ -20,6 +20,9 @@ class BaseSortKeyRepository[ModelT: SortKeyModel, ScopeT](BaseDBRepository[Model
         """
         Переводит область порядка в условия выборки её строк.
 
+        Scenarios:
+            - любой список с ручным порядком: блокировка области и поиск ключей в ней
+
         Args:
             scope: Область порядка
 

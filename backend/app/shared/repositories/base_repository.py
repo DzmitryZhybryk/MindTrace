@@ -22,6 +22,9 @@ class BaseDBRepository[ModelT: BaseDBModel]:
         """
         Выполняет запрос и возвращает одну модель или ``None``.
 
+        Scenarios:
+            - поиск одной строки в любом репозитории
+
         Args:
             query: SELECT-запрос, возвращающий не более одной строки
 
@@ -37,6 +40,9 @@ class BaseDBRepository[ModelT: BaseDBModel]:
 
         Реальная вставка в БД произойдёт на ближайшем flush, а видимой другим
         транзакциям запись станет только после ``commit()`` в UnitOfWork.
+
+        Scenarios:
+            - добавление строки в любом репозитории
 
         Args:
             data: Экземпляр ORM-модели для вставки

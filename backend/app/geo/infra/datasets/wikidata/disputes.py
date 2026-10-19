@@ -82,6 +82,10 @@ def find_disputes(
 
     Различия только в «ё»/«е», дефисах, пробелах и регистре спором не считаются.
 
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata
+        - выгрузка споров о русских названиях на арбитраж
+
     Args:
         rows: Строки файла датасета
         labels: Метки Wikidata по id GeoNames
@@ -130,6 +134,10 @@ def apply_decisions(
     На входе может быть и версия датасета, уже собранная с этими решениями: имя из решения в строке
     значит, что решение применено. Решение по месту, где спора нет, а в строке другое имя, устарело —
     место уходит на арбитраж без меток Wikidata.
+
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata
+        - выгрузка споров о русских названиях на арбитраж: споры без актуального решения
 
     Args:
         rows: Строки файла датасета
@@ -188,6 +196,9 @@ def merge_decisions(
     """
     Дописывает новые решения к файлу решений; решение по тому же месту заменяет прежнее.
 
+    Scenarios:
+        - запись вердиктов арбитра в файл решений
+
     Args:
         decisions: Решения из файла по ``external_id``
         recorded: Новые решения (см. ``record_verdicts``)
@@ -230,6 +241,9 @@ def record_verdicts(
 
     Для места в споре решение запоминает оба спорящих имени; для места без спора — правка
     сломанного имени GeoNames — только его, с пустыми метками Wikidata.
+
+    Scenarios:
+        - запись вердиктов арбитра в файл решений
 
     Args:
         verdicts: Вердикты арбитра
@@ -281,6 +295,10 @@ def read_decisions(*, path: Path = DECISIONS_PATH) -> dict[str, RuNameDecision]:
     """
     Читает файл решений арбитра.
 
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata: применение решений
+        - запись вердиктов арбитра в файл решений
+
     Args:
         path: Путь к CSV (по умолчанию — ``ru_name_decisions.csv`` рядом с манифестом)
 
@@ -317,6 +335,9 @@ def write_decisions(*, decisions: Iterable[RuNameDecision], path: Path = DECISIO
     """
     Пишет файл решений арбитра, отсортированный по ``external_id`` — чтобы дифф показывал только правки.
 
+    Scenarios:
+        - запись вердиктов арбитра в файл решений
+
     Args:
         decisions: Решения
         path: Путь к CSV
@@ -338,7 +359,12 @@ def write_decisions(*, decisions: Iterable[RuNameDecision], path: Path = DECISIO
 
 
 def _decides(*, decision: RuNameDecision, dispute: RuNameDispute) -> bool:
-    """Решает ли решение этот спор: те же метки Wikidata, а в строке имя GeoNames или уже имя из решения."""
+    """
+    Решает ли решение этот спор: те же метки Wikidata, а в строке имя GeoNames или уже имя из решения.
+
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata: применение решений
+    """
     return decision.wikidata_ru == dispute.wikidata_ru and dispute.geonames_ru in {
         decision.geonames_ru,
         decision.name_ru,
@@ -346,7 +372,12 @@ def _decides(*, decision: RuNameDecision, dispute: RuNameDispute) -> bool:
 
 
 def _stale_decision_dispute(*, row: Mapping[str, str]) -> RuNameDispute:
-    """Место устаревшего решения для повторного арбитража; метки Wikidata не передаются."""
+    """
+    Место устаревшего решения для повторного арбитража; метки Wikidata не передаются.
+
+    Scenarios:
+        - выгрузка споров о русских названиях на арбитраж: устаревшие решения
+    """
     return RuNameDispute(
         external_id=row["external_id"],
         name_en=row["name_en"],
@@ -365,6 +396,10 @@ def _check_decision(*, external_id: str, name_ru: str, decided_by: str, seen_ids
     места. Пробелы по краям и неизвестный автор — признаки сломанной записи. Второе решение по тому же
     месту молча затёрло бы первое.
 
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata: чтение файла решений
+        - запись вердиктов арбитра в файл решений
+
     Raises:
         InvalidRuNameDecisionError: решение не проходит проверку
     """
@@ -379,7 +414,12 @@ def _check_decision(*, external_id: str, name_ru: str, decided_by: str, seen_ids
 
 
 def _same_name(*, left: str, right: str) -> bool:
-    """Одно ли это имя с точностью до «ё»/«е», дефисов, пробелов и регистра."""
+    """
+    Одно ли это имя с точностью до «ё»/«е», дефисов, пробелов и регистра.
+
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata: поиск споров
+    """
     return _normalize(name=left) == _normalize(name=right)
 
 

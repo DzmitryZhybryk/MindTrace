@@ -33,7 +33,6 @@ from app.journeys.exceptions import (
     UnknownPlaceError,
 )
 from app.shared.fractional_index import MovePlacement, generate_key_between
-from app.shared.utils.great_circle import great_circle_km
 
 
 class JourneyService:
@@ -49,6 +48,9 @@ class JourneyService:
 
         Страну и координаты мест отправления и назначения берёт у geo.
 
+        Scenarios:
+            - форма «+ Добавить путешествие»
+
         Args:
             user_id: Владелец поездки
             command: Данные для создания поездки (места, транспорт, год)
@@ -62,12 +64,7 @@ class JourneyService:
             origin_place_id=command.origin_place_id,
             destination_place_id=command.destination_place_id,
         )
-        distance_km = great_circle_km(
-            origin_latitude=origin.latitude,
-            origin_longitude=origin.longitude,
-            destination_latitude=destination.latitude,
-            destination_longitude=destination.longitude,
-        )
+        distance_km = origin.distance_km_to(destination=destination)
         async with self._uow.transaction():
             order_scope = JourneyOrderScope(user_id=user_id, traveled_year=command.traveled_year)
             await self._uow.journey_repository.lock_sort_keys(scope=order_scope)
@@ -88,6 +85,9 @@ class JourneyService:
         """
         Заменяет все поля поездки; при смене года поездка встаёт в конец нового года.
 
+        Scenarios:
+            - правка поездки в ленте «Все путешествия»
+
         Args:
             user_id: Владелец поездки
             journey_id: Какая поездка
@@ -102,23 +102,11 @@ class JourneyService:
             origin_place_id=command.origin_place_id,
             destination_place_id=command.destination_place_id,
         )
-        distance_km = great_circle_km(
-            origin_latitude=origin.latitude,
-            origin_longitude=origin.longitude,
-            destination_latitude=destination.latitude,
-            destination_longitude=destination.longitude,
-        )
+        distance_km = origin.distance_km_to(destination=destination)
         async with self._uow.transaction():
             target_scope = JourneyOrderScope(user_id=user_id, traveled_year=command.traveled_year)
             await self._uow.journey_repository.lock_sort_keys(scope=target_scope)
-            journey_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id_for_update(
-                journey_id=journey_id,
-                user_id=user_id,
-            )
-            if journey_entity is None:
-                raise JourneyNotFoundError()
-
-            journey_entity.ensure_not_deleted()
+            journey_entity = await self._find_user_journey_for_update(user_id=user_id, journey_id=journey_id)
             journey_entity.revise(
                 origin=origin,
                 destination=destination,
@@ -139,6 +127,9 @@ class JourneyService:
         """
         Удаляет поездку (soft-delete, без восстановления).
 
+        Scenarios:
+            - удаление поездки из её правки в ленте «Все путешествия»
+
         Args:
             user_id: Владелец поездки
             journey_id: Какая поездка
@@ -147,14 +138,7 @@ class JourneyService:
             JourneyNotFoundError: у пользователя нет такой поездки или она уже удалена
         """
         async with self._uow.transaction():
-            journey_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id_for_update(
-                journey_id=journey_id,
-                user_id=user_id,
-            )
-            if journey_entity is None:
-                raise JourneyNotFoundError()
-
-            journey_entity.ensure_not_deleted()
+            journey_entity = await self._find_user_journey_for_update(user_id=user_id, journey_id=journey_id)
             journey_entity.delete()
             await self._uow.journey_repository.update_journey_by_id(journey_entity=journey_entity)
             await self._uow.commit()
@@ -162,6 +146,9 @@ class JourneyService:
     async def move_journey(self, *, user_id: UUID, journey_id: UUID, command: MoveJourneyCommand) -> MoveJourneyResult:
         """
         Переносит поездку после или перед поездкой-соседом; год берётся от соседа.
+
+        Scenarios:
+            - перетаскивание поездки в ленте «Все путешествия»
 
         Args:
             user_id: Владелец поездки
@@ -199,27 +186,12 @@ class JourneyService:
             ):
                 raise InvalidMoveTargetError()
 
-            journey_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id_for_update(
-                journey_id=journey_id,
-                user_id=user_id,
+            journey_entity = await self._find_user_journey_for_update(user_id=user_id, journey_id=journey_id)
+            before_sort_key, after_sort_key = await self._find_move_bounds(
+                scope=target_scope,
+                neighbor_sort_key=neighbor_entity.sort_key,
+                placement=command.placement,
             )
-            if journey_entity is None:
-                raise JourneyNotFoundError()
-
-            journey_entity.ensure_not_deleted()
-            if command.placement is MovePlacement.AFTER:
-                before_sort_key = neighbor_entity.sort_key
-                after_sort_key = await self._uow.journey_repository.find_next_sort_key(
-                    scope=target_scope,
-                    after_sort_key=neighbor_entity.sort_key,
-                )
-            else:
-                after_sort_key = neighbor_entity.sort_key
-                before_sort_key = await self._uow.journey_repository.find_previous_sort_key(
-                    scope=target_scope,
-                    before_sort_key=neighbor_entity.sort_key,
-                )
-
             journey_entity.move(
                 traveled_year=neighbor_entity.traveled_year,
                 sort_key=generate_key_between(before=before_sort_key, after=after_sort_key),
@@ -232,6 +204,9 @@ class JourneyService:
     async def estimate_journey_distance(self, command: EstimateJourneyDistanceCommand) -> JourneyDistanceResult:
         """
         Считает расстояние маршрута тем же способом, каким его сохранит поездка.
+
+        Scenarios:
+            - расстояние нового маршрута, пока поездку правят в ленте «Все путешествия»
 
         Args:
             command: Места концов маршрута
@@ -247,19 +222,18 @@ class JourneyService:
             origin_place_id=command.origin_place_id,
             destination_place_id=command.destination_place_id,
         )
-        distance_km = great_circle_km(
-            origin_latitude=origin.latitude,
-            origin_longitude=origin.longitude,
-            destination_latitude=destination.latitude,
-            destination_longitude=destination.longitude,
-        )
-        return JourneyDistanceResult(distance_km=distance_km)
+        return JourneyDistanceResult(distance_km=origin.distance_km_to(destination=destination))
 
     async def _find_route_points(
         self, *, origin_place_id: UUID, destination_place_id: UUID
     ) -> tuple[GeoPoint, GeoPoint]:
         """
         Берёт у geo страну и координаты мест отправления и назначения.
+
+        Scenarios:
+            - добавление поездки
+            - правка поездки в ленте «Все путешествия»
+            - расстояние нового маршрута при правке поездки
 
         Args:
             origin_place_id: Место отправления
@@ -307,9 +281,69 @@ class JourneyService:
         origin, destination = route_points
         return origin, destination
 
+    async def _find_user_journey_for_update(self, *, user_id: UUID, journey_id: UUID) -> JourneyEntity:
+        """
+        Берёт неудалённую поездку пользователя под блокировку строки.
+
+        Scenarios:
+            - правка, удаление и перетаскивание поездки в ленте «Все путешествия»
+
+        Args:
+            user_id: Владелец поездки
+            journey_id: Какая поездка
+
+        Returns:
+            Поездка пользователя
+
+        Raises:
+            JourneyNotFoundError: у пользователя нет такой поездки или она удалена
+        """
+        journey_entity = await self._uow.journey_repository.find_journey_by_id_and_user_id_for_update(
+            journey_id=journey_id,
+            user_id=user_id,
+        )
+        if journey_entity is None:
+            raise JourneyNotFoundError()
+
+        journey_entity.ensure_not_deleted()
+        return journey_entity
+
+    async def _find_move_bounds(
+        self, *, scope: JourneyOrderScope, neighbor_sort_key: str, placement: MovePlacement
+    ) -> tuple[str | None, str | None]:
+        """
+        Находит ключи, между которыми встаёт переносимая поездка: ключ соседа и ближайший к нему с нужной стороны.
+
+        Scenarios:
+            - перетаскивание поездки в ленте «Все путешествия»
+
+        Args:
+            scope: Год пользователя, куда переносится поездка
+            neighbor_sort_key: Ключ соседа
+            placement: С какой стороны от соседа встать
+
+        Returns:
+            Ключи до и после нового места; ``None`` — с этой стороны в году поездок нет
+        """
+        if placement is MovePlacement.AFTER:
+            next_sort_key = await self._uow.journey_repository.find_next_sort_key(
+                scope=scope,
+                after_sort_key=neighbor_sort_key,
+            )
+            return neighbor_sort_key, next_sort_key
+
+        previous_sort_key = await self._uow.journey_repository.find_previous_sort_key(
+            scope=scope,
+            before_sort_key=neighbor_sort_key,
+        )
+        return previous_sort_key, neighbor_sort_key
+
     async def list_journeys(self, *, user_id: UUID, command: ListJourneysCommand) -> ListJourneysResult:
         """
         Отдаёт страницу ленты поездок пользователя: свежий год сверху, внутри года — порядок пользователя.
+
+        Scenarios:
+            - лента «Все путешествия»: подгрузка страниц при прокрутке, фильтр по годам и транспорту
 
         Args:
             user_id: Владелец поездок
@@ -343,6 +377,9 @@ class JourneyService:
         """
         Отдаёт годы, в которые пользователь ездил, по возрастанию — без учёта фильтров ленты.
 
+        Scenarios:
+            - шкала лет в фильтре ленты «Все путешествия»
+
         Args:
             user_id: Владелец поездок
 
@@ -358,6 +395,9 @@ class JourneyService:
 
         В поездке посещёнными считаются оба города — и отправления, и назначения, а год визита —
         год поездки. Один и тот же город из разных поездок становится одной точкой.
+
+        Scenarios:
+            - «Карта путешествий»: посещённые страны и города
 
         Args:
             user_id: Владелец поездок
@@ -390,6 +430,9 @@ class JourneyService:
         """
         Собирает места для глобуса: где пользователь побывал, каждое место по одному разу.
 
+        Scenarios:
+            - глобус на главной и в форме добавления поездки: города пользователя
+
         Args:
             user_id: Владелец поездок
 
@@ -405,6 +448,9 @@ class JourneyService:
 
         Годы первой и последней поездки считаются по всем поездкам, без фильтра транспорта: по
         ним фронт строит шкалу лет, и она не должна меняться от выбранного транспорта.
+
+        Scenarios:
+            - «Карта перемещений»: маршруты, фильтр по транспорту и шкала лет
 
         Args:
             user_id: Владелец поездок

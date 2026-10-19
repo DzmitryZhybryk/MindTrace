@@ -17,6 +17,9 @@ class SortKeyRepositoryPort[ScopeT](Protocol):
         Ключ считается от ключей соседей; без блокировки две параллельные операции прочитают
         одних и тех же соседей и получат одинаковый ключ. Вызывается первым в транзакции.
 
+        Scenarios:
+            - любой список с ручным порядком: каждая операция, которая считает новый ключ
+
         Args:
             scope: Область порядка
         """
@@ -25,6 +28,9 @@ class SortKeyRepositoryPort[ScopeT](Protocol):
     async def find_last_sort_key(self, scope: ScopeT) -> str | None:
         """
         Возвращает наибольший ключ области.
+
+        Scenarios:
+            - любой список с ручным порядком: новая строка встаёт в конец своей области
 
         Args:
             scope: Область порядка
@@ -38,6 +44,9 @@ class SortKeyRepositoryPort[ScopeT](Protocol):
         """
         Возвращает ближайший ключ области, больший ``after_sort_key``.
 
+        Scenarios:
+            - любой список с ручным порядком: перенос строки после соседа
+
         Args:
             scope: Область порядка
             after_sort_key: Ключ, после которого искать
@@ -50,6 +59,9 @@ class SortKeyRepositoryPort[ScopeT](Protocol):
     async def find_previous_sort_key(self, *, scope: ScopeT, before_sort_key: str) -> str | None:
         """
         Возвращает ближайший ключ области, меньший ``before_sort_key``.
+
+        Scenarios:
+            - любой список с ручным порядком: перенос строки перед соседом
 
         Args:
             scope: Область порядка

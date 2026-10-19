@@ -1,5 +1,7 @@
 from uuid import UUID
 
+from app.shared.utils.great_circle import great_circle_km
+
 
 class GeoPoint:
     """
@@ -36,3 +38,25 @@ class GeoPoint:
     @property
     def longitude(self) -> float:
         return self._longitude
+
+    def distance_km_to(self, destination: GeoPoint) -> int:
+        """
+        Считает расстояние маршрута до точки назначения — так его хранит поездка.
+
+        Scenarios:
+            - добавление поездки
+            - правка поездки в ленте «Все путешествия»
+            - расстояние нового маршрута при правке поездки
+
+        Args:
+            destination: Точка назначения
+
+        Returns:
+            Расстояние по большой окружности, км
+        """
+        return great_circle_km(
+            origin_latitude=self.latitude,
+            origin_longitude=self.longitude,
+            destination_latitude=destination.latitude,
+            destination_longitude=destination.longitude,
+        )

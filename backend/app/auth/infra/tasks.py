@@ -49,6 +49,9 @@ async def send_verification_email(
     ``ExternalAPITemporaryError`` и попадают под retry-стратегию (3 попытки,
     экспоненциальный backoff от 10 сек).
 
+    Scenarios:
+        - фоновая отправка письма с кодом: после регистрации и по кнопке в диалоге «Подтвердите email»
+
     Args:
         context: Procrastinate JobContext с ``additional_context``, в котором
             worker должен предоставить ``email_transport: EmailTransportPort``

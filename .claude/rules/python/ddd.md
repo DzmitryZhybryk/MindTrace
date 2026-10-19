@@ -45,7 +45,8 @@ A small domain gets the same packages — one layout everywhere is worth more th
 - **A helper that is not a use case** — a collaborator the services share or delegate to
   (`TokenIssuer`) — lives in `services/` beside them, under its own name. Presentation only
   constructs it; it never gets a package of its own. Pure logic with no dependencies goes to
-  `shared/utils` instead.
+  `shared/utils` when several domains need it; logic only one module needs stays a private
+  function in that module.
 - **Task names** are the contract between the use case that defers a task through the shared task
   bus and the `infra` handler registered under that name — the same `infra → application`
   direction as a port, so they live in `ports/tasks.py`.

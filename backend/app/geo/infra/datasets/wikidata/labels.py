@@ -50,6 +50,9 @@ def geonames_id_of(*, external_id: str) -> str | None:
     """
     Достаёт id GeoNames из ключа места.
 
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata
+
     Args:
         external_id: Ключ места с префиксом источника (``GeoNames:524901``)
 
@@ -65,6 +68,9 @@ def geonames_id_of(*, external_id: str) -> str | None:
 def candidate_geonames_id(*, row: Mapping[str, str], min_population: int) -> str | None:
     """
     Решает, искать ли месту русское имя: имени нет, место из GeoNames и не меньше порога.
+
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata
 
     Args:
         row: Строка файла датасета
@@ -87,6 +93,9 @@ def acceptable_ru_names(*, labels: Iterable[str]) -> frozenset[str]:
     Уточнение в скобках в конце срезается. Отбрасываются метки без кириллицы (латиница, оставленная
     в поле ``ru``) и с запятой (имя с регионом: «Айвенго, штат Виктория, Австралия»).
 
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata: дописывание имён и поиск споров
+
     Args:
         labels: Метки ``ru`` всех объектов Wikidata с одним id GeoNames
 
@@ -105,6 +114,9 @@ def fetch_ru_labels(
 ) -> dict[str, frozenset[str]]:
     """
     Запрашивает у Wikidata метки ``ru`` объектов по их id GeoNames.
+
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata
 
     Args:
         geonames_ids: Id GeoNames
@@ -131,7 +143,12 @@ def fetch_ru_labels(
 
 
 def _post_query(*, http_client: httpx.Client, query: str, retry_delays: Sequence[float]) -> httpx.Response:
-    """Отправляет SPARQL-запрос, повторяя его после пауз, пока сервис отвечает временной ошибкой."""
+    """
+    Отправляет SPARQL-запрос, повторяя его после пауз, пока сервис отвечает временной ошибкой.
+
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata
+    """
     for delay in retry_delays:
         response = _send_query(http_client=http_client, query=query)
         if response.status_code not in _TRANSIENT_STATUSES:
@@ -158,6 +175,9 @@ def enrich_rows(
 ) -> tuple[tuple[dict[str, str], ...], EnrichmentReport]:
     """
     Дописывает русские имена местам без них; уже заполненные имена не меняются.
+
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata
 
     Args:
         rows: Строки файла датасета

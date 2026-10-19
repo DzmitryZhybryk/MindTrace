@@ -92,6 +92,9 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
         и UPDATE (те же колонки минус PK). Новое поле добавляется здесь один раз —
         и попадает и в INSERT, и в UPDATE, рассинхрон между ними невозможен.
 
+        Scenarios:
+            - отправка и ввод кода в диалоге «Подтвердите email», код после регистрации
+
         Args:
             challenge_entity: Доменная сущность challenge'а
 
@@ -114,6 +117,9 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
     def _to_entity(self, challenge_model: Challenge) -> ChallengeEntity:
         """
         Конвертирует ORM-модель в доменную сущность.
+
+        Scenarios:
+            - повторный запрос и ввод кода в диалоге «Подтвердите email»
 
         Args:
             challenge_model: ORM-модель из БД

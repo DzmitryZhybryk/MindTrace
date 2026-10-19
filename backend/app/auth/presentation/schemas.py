@@ -29,6 +29,9 @@ class RegisterRequest(CamelModel):
         пробрасывается наружу как есть и ловится глобальным exception handler'ом →
         HTTP 400 с правильным ``code`` по доменной категории, а не 422 от FastAPI.
 
+        Scenarios:
+            - регистрация
+
         Returns:
             Сам валидируемый объект (контракт ``model_validator(mode="after")``)
 

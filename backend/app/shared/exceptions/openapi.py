@@ -17,6 +17,9 @@ def rewrite_validation_responses(schema: DictStrAny) -> None:
     перехватывает ``validation_exception_handler`` и заворачивает в общий envelope. Без правки
     схема обещает клиенту форму, которой не существует, а кодогенератор SDK делает по ней тип.
 
+    Scenarios:
+        - сборка OpenAPI-документа: ``/docs``, снапшот контракта и генерация клиента фронта
+
     Args:
         schema: OpenAPI-документ; изменяется на месте
     """

@@ -129,6 +129,10 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
         и UPDATE (те же колонки минус PK). Новое поле добавляется здесь один раз —
         и попадает и в INSERT, и в UPDATE, рассинхрон между ними невозможен.
 
+        Scenarios:
+            - регистрация
+            - верный код в диалоге «Подтвердите email»
+
         Args:
             user_credentials_entity: Доменная сущность учётных данных
 
@@ -150,6 +154,12 @@ class UserCredentialsRepository(BaseDBRepository[UserCredentials], UserCredentia
     def _to_entity(self, user_credentials_model: UserCredentials) -> UserCredentialsEntity:
         """
         Конвертирует ORM-модель в доменную сущность учётных данных.
+
+        Scenarios:
+            - регистрация: проверка, что email и username свободны
+            - вход и обновление сессии
+            - отправка и ввод кода в диалоге «Подтвердите email»
+            - данные входа текущего пользователя
 
         Args:
             user_credentials_model: ORM-модель из БД

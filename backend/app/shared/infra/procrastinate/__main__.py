@@ -11,7 +11,12 @@ from app.shared.settings import settings
 
 
 async def main() -> None:
-    """Применяет procrastinate-схему, если её ещё нет в базе."""
+    """
+    Применяет procrastinate-схему, если её ещё нет в базе.
+
+    Scenarios:
+        - схема очереди фоновых задач при развёртывании, до старта приложения и воркера
+    """
     configure_logging(include_debug=settings.ENVIRONMENT in (AppEnvEnum.LOCAL, AppEnvEnum.DEVELOPMENT))
 
     registry = ComponentRegistry()

@@ -17,6 +17,8 @@ def configure_logging(include_debug: bool = False) -> None:
     Основано на документации structlog:
     https://www.structlog.org/en/stable/standard-library.html#rendering-using-structlog-based-formatters-within-logging
 
+    Scenarios:
+        - запуск API, воркера и CLI-скриптов
     """
     log_level = logging.DEBUG if include_debug else logging.INFO
 
@@ -95,6 +97,9 @@ def configure_logging(include_debug: bool = False) -> None:
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """
     Получает настроенный логгер structlog.
+
+    Scenarios:
+        - любой модуль, который пишет в лог
 
     Args:
         name: Имя логгера (обычно __name__ модуля). Если None, используется имя вызывающего модуля.
