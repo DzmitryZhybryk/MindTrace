@@ -41,9 +41,6 @@ class PlaceService:
         for place_entity in places:
             name = place_entity.display_name(language=command.language)
             if place_entity.localized_name(language=command.language) is None:
-                # Сигнал качества данных: место без перевода на язык запроса (отдаём фоллбэк
-                # name_en). Фильтр в Grafana/Loki: event="geo.place_name_missing"; топ
-                # кандидатов на ручной бэкфилл = count by place_id, приоритет по population.
                 logger.info(
                     "geo.place_name_missing",
                     language=command.language,

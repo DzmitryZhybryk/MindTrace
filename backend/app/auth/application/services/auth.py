@@ -48,18 +48,7 @@ class AuthService:
         client_metadata: ClientMetadata,
     ) -> TokenPairResult:
         async with self._uow.transaction():
-            email_owner_entity = await self._uow.user_credentials_repository.find_user_credentials_by_email(
-                email=command.email,
-            )
-            if email_owner_entity is not None:
-                raise EmailAlreadyExistError()
-
-            username_owner_entity = await self._uow.user_credentials_repository.find_user_credentials_by_username(
-                username=command.username,
-            )
-            if username_owner_entity is not None:
-                raise UsernameAlreadyExistError()
-
+            await self._ensure_credentials_unique(email=command.email, username=command.username)
             password = Password(hash=self._salted_hasher.hash(secret=command.password.get_secret_value()))
             user_credentials_entity = UserCredentialsEntity.create(
                 email=command.email,
@@ -98,6 +87,28 @@ class AuthService:
             refresh_secret=refresh_secret,
             refresh_token_entity=refresh_token_entity,
         )
+
+    async def _ensure_credentials_unique(self, *, email: str, username: str) -> None:
+        """
+        Гарантирует, что email и username ещё не заняты другой учётной записью.
+
+        Args:
+            email: Email новой учётной записи
+            username: Username новой учётной записи
+
+        Raises:
+            EmailAlreadyExistError: email уже занят
+            UsernameAlreadyExistError: username уже занят
+        """
+        email_owner_entity = await self._uow.user_credentials_repository.find_user_credentials_by_email(email=email)
+        if email_owner_entity is not None:
+            raise EmailAlreadyExistError()
+
+        username_owner_entity = await self._uow.user_credentials_repository.find_user_credentials_by_username(
+            username=username,
+        )
+        if username_owner_entity is not None:
+            raise UsernameAlreadyExistError()
 
     async def login(self, *, command: LoginCommand, client_metadata: ClientMetadata) -> TokenPairResult:
         """

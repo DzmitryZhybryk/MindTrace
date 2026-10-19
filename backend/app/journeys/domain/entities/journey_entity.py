@@ -12,7 +12,7 @@ class JourneyEntity(TimestampedEntityMixin):
     """
     Поездка пользователя: маршрут origin→destination, среда передвижения, расстояние и год.
 
-    ``distance_km`` считает application-слой по координатам маршрута (``great_circle_km``).
+    ``distance_km`` считает application-слой по маршруту (``GeoPoint.distance_km_to``).
     ``sort_key`` — место поездки среди поездок того же года (дробный ключ, см.
     ``app.shared.fractional_index``).
     """
