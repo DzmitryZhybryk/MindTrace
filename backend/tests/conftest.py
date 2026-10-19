@@ -37,19 +37,23 @@ for _key, _value in _TEST_ENV_DEFAULTS.items():
 
 # Импорты app/tests.fakes — строго ПОСЛЕ env-bootstrap: ``app`` на импорте строит
 # синглтон ``settings``, которому нужны заполненные env-поля (E402 осознанно).
-from app.auth.application.settings import EmailVerificationConfig  # noqa: E402
+from app.auth.application.config import EmailVerificationConfig  # noqa: E402
 from app.shared.infra.crypto import Sha256DeterministicHasher  # noqa: E402
+from tests.builders import LONDON_PLACE_ID, make_place_location_response  # noqa: E402
 from tests.fakes import (  # noqa: E402
     FakeAuthUnitOfWork,
     FakeChallengeRepository,
     FakeJourneyRepository,
     FakeJourneyUnitOfWork,
     FakePlaceRepository,
+    FakePlacesClient,
     FakeRefreshTokenRepository,
     FakeSaltedHasher,
     FakeTaskBus,
     FakeUserCredentialsRepository,
+    FakeUserRepository,
     FakeUsersClient,
+    FakeUserUnitOfWork,
 )
 
 _EMAIL_VERIFICATION_TTL_MINUTES = 15
@@ -62,6 +66,14 @@ _EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = 60
 # pyproject.toml (``--strict-markers`` запрещает незарегистрированные маркеры).
 _LEVEL_MARKERS = ("unit", "integration", "api")
 _DOMAIN_MARKERS = ("auth", "users", "shared", "journeys", "geo", "health")
+
+# Потолок времени на один тест по уровню. Integration считает только сам тест: подъём
+# контейнера в session-фикстуре приходится на setup первого теста и в лимит не входит.
+_LEVEL_TIMEOUTS = {
+    "unit": pytest.mark.timeout(timeout=1),
+    "api": pytest.mark.timeout(timeout=1),
+    "integration": pytest.mark.timeout(timeout=30, func_only=True),
+}
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -83,6 +95,9 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     - ``pytest -m users`` / ``make test-users`` — все тесты домена users (любой уровень);
     - ``uv run pytest -m "unit and users"`` — пересечение осей (отдельного make-таргета нет).
 
+    Заодно по уровню ставит потолок времени на тест (``_LEVEL_TIMEOUTS``): тест, упёршийся в
+    него, — дефект теста, а не повод поднять лимит.
+
     Args:
         items: Собранные pytest'ом тест-элементы; маркеры добавляются in-place.
     """
@@ -92,6 +107,10 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         for marker_name in known_markers:
             if marker_name in path_segments:
                 item.add_marker(getattr(pytest.mark, marker_name))
+
+        level = next((name for name in _LEVEL_MARKERS if name in path_segments), None)
+        if level is not None:
+            item.add_marker(_LEVEL_TIMEOUTS[level])
 
 
 # Фикстуры, переиспользуемые между УРОВНЯМИ (unit + api). Каталоги нарезаны
@@ -136,6 +155,18 @@ def fake_users_client() -> FakeUsersClient:
 
 
 @pytest.fixture
+def fake_user_repository() -> FakeUserRepository:
+    return FakeUserRepository()
+
+
+@pytest.fixture
+def fake_user_uow(fake_user_repository: FakeUserRepository) -> FakeUserUnitOfWork:
+    # Репозиторий — отдельная фикстура того же инстанса: тест сидит/ассертит его состояние
+    # по конкретному типу (на uow он под port-типом, без .by_user_id).
+    return FakeUserUnitOfWork(user_repository=fake_user_repository)
+
+
+@pytest.fixture
 def fake_salted_hasher() -> FakeSaltedHasher:
     return FakeSaltedHasher()
 
@@ -157,6 +188,17 @@ def fake_place_repository() -> FakePlaceRepository:
 
 
 @pytest.fixture
+def fake_places_client() -> FakePlacesClient:
+    """Справочник с Москвой и Лондоном — в порядке запроса поездки Москва → Лондон."""
+    return FakePlacesClient(
+        locations=(
+            make_place_location_response(),
+            make_place_location_response(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
+        )
+    )
+
+
+@pytest.fixture
 def fake_journey_repository() -> FakeJourneyRepository:
     return FakeJourneyRepository()
 
@@ -169,9 +211,9 @@ def fake_journey_uow(fake_journey_repository: FakeJourneyRepository) -> FakeJour
 
 
 @pytest.fixture
-def email_verification_settings() -> EmailVerificationConfig:
+def email_verification_config() -> EmailVerificationConfig:
     return EmailVerificationConfig(
-        email_verification_ttl_minutes=_EMAIL_VERIFICATION_TTL_MINUTES,
-        email_verification_max_attempts=_EMAIL_VERIFICATION_MAX_ATTEMPTS,
-        email_verification_resend_cooldown_seconds=_EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS,
+        ttl_minutes=_EMAIL_VERIFICATION_TTL_MINUTES,
+        max_attempts=_EMAIL_VERIFICATION_MAX_ATTEMPTS,
+        resend_cooldown_seconds=_EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS,
     )

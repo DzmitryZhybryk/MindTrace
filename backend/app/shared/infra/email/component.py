@@ -29,7 +29,7 @@ class ResendComponent(BaseComponent):
         )
 
     async def startup(self, registry: ComponentRegistry) -> None:
-        registry.set(EmailTransportPort, self._client)
+        registry.set(key=EmailTransportPort, value=self._client)
 
     async def shutdown(self) -> None:
         await self._client.aclose()

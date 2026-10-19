@@ -23,7 +23,7 @@ def test_get_returns_registered_value() -> None:
     """``get`` возвращает ровно тот инстанс, что положили под ключом-классом."""
     registry = ComponentRegistry()
     value = _ComponentA()
-    registry.set(_ComponentA, value)
+    registry.set(key=_ComponentA, value=value)
 
     assert registry.get(_ComponentA) is value
 
@@ -41,8 +41,8 @@ def test_set_overwrites_existing_value() -> None:
     registry = ComponentRegistry()
     first = _ComponentA()
     second = _ComponentA()
-    registry.set(_ComponentA, first)
-    registry.set(_ComponentA, second)
+    registry.set(key=_ComponentA, value=first)
+    registry.set(key=_ComponentA, value=second)
 
     assert registry.get(_ComponentA) is second
 
@@ -50,7 +50,7 @@ def test_set_overwrites_existing_value() -> None:
 def test_contains_reflects_registration() -> None:
     """``in`` отражает наличие ключа в registry."""
     registry = ComponentRegistry()
-    registry.set(_ComponentA, _ComponentA())
+    registry.set(key=_ComponentA, value=_ComponentA())
 
     assert _ComponentA in registry
     assert _ComponentB not in registry

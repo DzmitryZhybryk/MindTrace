@@ -17,7 +17,7 @@ class ComponentRegistry:
 
         self._store = store
 
-    def set[Component](self, key: type[Component], value: Component) -> None:
+    def set[Component](self, *, key: type[Component], value: Component) -> None:
         self._store[key] = value
 
     def get[Component](self, key: type[Component]) -> Component:

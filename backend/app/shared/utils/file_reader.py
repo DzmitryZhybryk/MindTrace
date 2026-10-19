@@ -15,7 +15,12 @@ class BaseFileReader[T](ABC):
 
     @abstractmethod
     def read(self, file_path: Path) -> T:
-        """Read file and return its contents."""
+        """
+        Читает файл и возвращает его содержимое.
+
+        Scenarios:
+            - имя и версия приложения из ``pyproject.toml`` при загрузке настроек
+        """
         raise NotImplementedError
 
 
@@ -44,7 +49,12 @@ class FileReaderFactory:
 
     @classmethod
     def create_for_file(cls, file_path: Path) -> BaseFileReader[Any]:
-        """Create appropriate reader based on file extension."""
+        """
+        Подбирает читателя по расширению файла.
+
+        Scenarios:
+            - имя и версия приложения из ``pyproject.toml`` при загрузке настроек
+        """
         suffix = file_path.suffix.lower()
         reader_class = cls._readers.get(suffix)
         if reader_class is None:
@@ -54,6 +64,11 @@ class FileReaderFactory:
 
 
 def read_file(file_path: Path) -> Any:
-    """Convenience function to read a file using appropriate reader."""
+    """
+    Читает файл читателем, подходящим по расширению.
+
+    Scenarios:
+        - имя и версия приложения из ``pyproject.toml`` при загрузке настроек
+    """
     reader = FileReaderFactory.create_for_file(file_path=file_path)
     return reader.read(file_path=file_path)

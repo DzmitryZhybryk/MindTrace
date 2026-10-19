@@ -13,7 +13,7 @@ EmailTransportPort достаётся из ``context.additional_context`` — с
 
 from procrastinate import Blueprint, JobContext, RetryStrategy
 
-from app.auth.application.task_names import SEND_VERIFICATION_EMAIL_TASK
+from app.auth.application.ports.tasks import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.infra.email_renderer import render_verification_email
 from app.shared.infra.email import EmailTransportPort
 from app.shared.infra.http.exceptions import ExternalAPITemporaryError
@@ -48,6 +48,9 @@ async def send_verification_email(
     Temporary (502/503/504, таймаут, сетевая ошибка) поднимают
     ``ExternalAPITemporaryError`` и попадают под retry-стратегию (3 попытки,
     экспоненциальный backoff от 10 сек).
+
+    Scenarios:
+        - фоновая отправка письма с кодом: после регистрации и по кнопке в диалоге «Подтвердите email»
 
     Args:
         context: Procrastinate JobContext с ``additional_context``, в котором

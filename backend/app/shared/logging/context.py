@@ -11,6 +11,9 @@ def extract_request_context(request: Request) -> DictStrAny:
     """
     Извлекает базовый контекст из HTTP запроса.
 
+    Scenarios:
+        - лог каждого HTTP-запроса
+
     Args:
         request: HTTP запрос
 
@@ -35,6 +38,7 @@ def extract_request_context(request: Request) -> DictStrAny:
 
 
 def build_log_context(
+    *,
     request: Request,
     status_code: int,
     process_time: float,
@@ -42,6 +46,9 @@ def build_log_context(
 ) -> DictStrAny:
     """
     Формирует полный контекст для логирования HTTP запроса.
+
+    Scenarios:
+        - лог каждого HTTP-запроса
 
     Args:
         request: HTTP запрос
@@ -68,6 +75,7 @@ def build_log_context(
 
 
 def build_error_log_context(
+    *,
     request: Request,
     exc: Exception,
     process_time: float,
@@ -75,6 +83,9 @@ def build_error_log_context(
 ) -> tuple[DictStrAny, int, bool]:
     """
     Формирует контекст для логирования ошибки и определяет параметры логирования.
+
+    Scenarios:
+        - лог HTTP-запроса, завершившегося исключением
 
     Args:
         request: HTTP запрос
@@ -87,7 +98,12 @@ def build_error_log_context(
     """
     status_code = get_status_code_from_exception(exc)
 
-    log_context = build_log_context(request, status_code, process_time, context)
+    log_context = build_log_context(
+        request=request,
+        status_code=status_code,
+        process_time=process_time,
+        context=context,
+    )
 
     log_context["error_type"] = type(exc).__name__
 

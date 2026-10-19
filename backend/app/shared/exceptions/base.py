@@ -51,6 +51,7 @@ class BaseDomainError(Exception):
 
     def __init__(
         self,
+        *,
         message: str | None = None,
         code: str | None = None,
         details: OptionalDict = None,

@@ -5,7 +5,12 @@ from app.shared.types import DictStrAny
 
 
 def error_response_example(error_cls: type[BaseDomainError]) -> DictStrAny:
-    """Вернуть словарь для примера `ErrorResponse` по исключению."""
+    """
+    Вернуть словарь для примера `ErrorResponse` по исключению.
+
+    Scenarios:
+        - примеры ошибок в OpenAPI: каждый домен описывает ими ответы своих эндпоинтов
+    """
 
     return {
         "code": error_cls.code,

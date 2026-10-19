@@ -3,7 +3,7 @@ from uuid import UUID
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.application.ports import ChallengeRepositoryPort
+from app.auth.application.ports.challenge_repository import ChallengeRepositoryPort
 from app.auth.domain.entities import ChallengeEntity
 from app.auth.domain.enums import ChallengeType
 from app.auth.infra.models import Challenge
@@ -39,6 +39,7 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
 
     async def find_active_challenge_for_update(
         self,
+        *,
         user_id: UUID,
         challenge_type: ChallengeType,
     ) -> ChallengeEntity | None:
@@ -91,6 +92,9 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
         и UPDATE (те же колонки минус PK). Новое поле добавляется здесь один раз —
         и попадает и в INSERT, и в UPDATE, рассинхрон между ними невозможен.
 
+        Scenarios:
+            - отправка и ввод кода в диалоге «Подтвердите email», код после регистрации
+
         Args:
             challenge_entity: Доменная сущность challenge'а
 
@@ -113,6 +117,9 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
     def _to_entity(self, challenge_model: Challenge) -> ChallengeEntity:
         """
         Конвертирует ORM-модель в доменную сущность.
+
+        Scenarios:
+            - повторный запрос и ввод кода в диалоге «Подтвердите email»
 
         Args:
             challenge_model: ORM-модель из БД

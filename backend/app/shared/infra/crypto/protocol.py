@@ -17,6 +17,9 @@ class SaltedHasherPort(Protocol):
         """
         Хеширует сырой секрет.
 
+        Scenarios:
+            - домен, который хранит пароли и одноразовые коды: хеш при сохранении
+
         Args:
             secret: Секрет в открытом виде
 
@@ -25,9 +28,12 @@ class SaltedHasherPort(Protocol):
         """
         ...
 
-    def verify(self, secret: str, hashed: str) -> bool:
+    def verify(self, *, secret: str, hashed: str) -> bool:
         """
         Проверяет соответствие сырого секрета переданному хешу.
+
+        Scenarios:
+            - домен, который хранит пароли и одноразовые коды: проверка введённого значения
 
         Args:
             secret: Секрет в открытом виде
@@ -61,6 +67,9 @@ class DeterministicHasherPort(Protocol):
     def digest(self, secret: str) -> str:
         """
         Детерминированно хеширует значение.
+
+        Scenarios:
+            - домен, который ищет запись по секрету от клиента: хеш при сохранении и при поиске
 
         Args:
             secret: Plaintext, предполагается high-entropy

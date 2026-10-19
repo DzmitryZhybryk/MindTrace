@@ -18,7 +18,7 @@ _PYPROJECT_DATA: Final[DictStrAny] = read_file(_ROOT_DIR / "pyproject.toml")
 
 class PostgresSettings(BaseModel):
     POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
+    POSTGRES_PASSWORD: SecretStr
     POSTGRES_DB: str
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
@@ -40,21 +40,26 @@ class PostgresSettings(BaseModel):
         Драйвер — psycopg3 (async). Выбран сознательно вместо asyncpg, чтобы
         procrastinate.PsycopgConnector мог делить connection с SQLAlchemy
         для атомарного defer_async() в одной транзакции.
+
+        Scenarios:
+            - подключение приложения, воркера и миграций к базе
         """
         return (
-            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD.get_secret_value()}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
     @property
-    def procrastinate_dsn(self) -> str:
+    def postgres_libpq_dsn(self) -> str:
         """
-        Plain libpq DSN для procrastinate.PsycopgConnector (без +driver-префикса).
+        Plain libpq DSN (без +driver-префикса) для прямых psycopg-соединений мимо SQLAlchemy.
 
-        Procrastinate шарит БД с приложением — отдельная инстанция PG не предусмотрена.
+        Scenarios:
+            - очередь фоновых задач
+            - массовая загрузка справочных данных в базу
         """
         return (
-            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD.get_secret_value()}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
@@ -87,7 +92,7 @@ class WebSettings(BaseModel):
 
 
 class JWTSettings(BaseModel):
-    JWT_SECRET_KEY: str
+    JWT_SECRET_KEY: SecretStr
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -106,12 +111,16 @@ class EmailVerificationSettings(BaseModel):
     EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
 
 
+class GeoDatasetsSettings(BaseModel):
+    GEO_DATASETS_CACHE_DIR: Path = _ROOT_DIR / ".geo-cache"
+
+
 class ProcrastinateSettings(PostgresSettings):
     """
     Procrastinate шарит БД с приложением — наследует PG-конфиг для DSN.
 
     Procrastinate-специфичны только пул и concurrency; connection info
-    приходит через ``procrastinate_dsn`` из ``PostgresSettings``.
+    приходит через ``postgres_libpq_dsn`` из ``PostgresSettings``.
     """
 
     PROCRASTINATE_POOL_MIN_SIZE: int = 2
@@ -125,6 +134,7 @@ class Settings(
     JWTSettings,
     ResendSettings,
     EmailVerificationSettings,
+    GeoDatasetsSettings,
     ProcrastinateSettings,
 ):
     SERVICE_NAME: str = _PYPROJECT_DATA["project"]["name"]
@@ -136,7 +146,12 @@ class Settings(
 
 @cache
 def get_app_settings() -> Settings:
-    """Get application settings."""
+    """
+    Возвращает настройки приложения, один экземпляр на процесс.
+
+    Scenarios:
+        - запуск API, воркера, миграций и CLI-скриптов
+    """
     return Settings()
 
 

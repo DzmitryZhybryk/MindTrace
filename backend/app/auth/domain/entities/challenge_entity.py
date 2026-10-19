@@ -37,6 +37,7 @@ class ChallengeEntity(TimestampedEntityMixin):
 
     def __init__(
         self,
+        *,
         challenge_id: UUID,
         user_id: UUID,
         challenge_type: ChallengeType,
@@ -60,6 +61,9 @@ class ChallengeEntity(TimestampedEntityMixin):
         """
         Генерирует криптостойкий 6-значный числовой код.
 
+        Scenarios:
+            - отправка кода подтверждения email: после регистрации и из диалога «Подтвердите email»
+
         Returns:
             Строка из 6 цифр, равномерно распределённая по `secrets.choice`
         """
@@ -68,6 +72,7 @@ class ChallengeEntity(TimestampedEntityMixin):
     @classmethod
     def create(
         cls,
+        *,
         user_id: UUID,
         challenge_type: ChallengeType,
         code_hash: str,
@@ -75,6 +80,9 @@ class ChallengeEntity(TimestampedEntityMixin):
     ) -> Self:
         """
         Создаёт новый challenge с истечением через ``ttl_minutes`` минут.
+
+        Scenarios:
+            - отправка кода подтверждения email: после регистрации и из диалога «Подтвердите email»
 
         Args:
             user_id: ID пользователя, которому принадлежит challenge
@@ -98,6 +106,9 @@ class ChallengeEntity(TimestampedEntityMixin):
         """
         Проверяет, что challenge не использован и не истёк.
 
+        Scenarios:
+            - ввод кода в диалоге «Подтвердите email»
+
         Returns:
             ``True`` если challenge ещё можно использовать, иначе ``False``
         """
@@ -108,8 +119,11 @@ class ChallengeEntity(TimestampedEntityMixin):
         Проверяет, что прошло достаточно времени с момента выдачи challenge'а,
         чтобы можно было выпустить новый.
 
-        Используется в resend-флоу: если активный challenge был выпущен слишком
-        недавно, нельзя инвалидировать его и сгенерировать новый.
+        Если активный challenge был выпущен слишком недавно, нельзя инвалидировать его и
+        сгенерировать новый.
+
+        Scenarios:
+            - кнопка «Отправить код повторно» в диалоге «Подтвердите email»
 
         Args:
             cooldown_seconds: Минимальное число секунд между последовательными
@@ -131,6 +145,9 @@ class ChallengeEntity(TimestampedEntityMixin):
         нарушение — это переход, который нельзя совершить, и ответственность
         за защиту лежит на entity, а не на каждом сервисе-вызывающем.
 
+        Scenarios:
+            - ввод кода в диалоге «Подтвердите email»
+
         Args:
             max_attempts: Максимально разрешённое число попыток ввода кода
 
@@ -145,11 +162,22 @@ class ChallengeEntity(TimestampedEntityMixin):
             raise ChallengeAttemptsExceededError()
 
     def register_failed_attempt(self) -> None:
-        """Увеличивает счётчик неудачных попыток ввода кода на 1."""
+        """
+        Увеличивает счётчик неудачных попыток ввода кода на 1.
+
+        Scenarios:
+            - неверный код в диалоге «Подтвердите email»
+        """
         self.attempts += 1
         self._mark_updated()
 
     def mark_used(self) -> None:
-        """Помечает challenge как использованный."""
+        """
+        Помечает challenge как использованный.
+
+        Scenarios:
+            - верный код в диалоге «Подтвердите email»
+            - повторный запрос кода: прежний код гасится
+        """
         self.used_at = dt.datetime.now(tz=dt.UTC)
         self._mark_updated()

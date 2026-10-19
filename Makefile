@@ -31,8 +31,8 @@ help: ## Show this help message
 
 # --- Pass-through: проксируют ЛЮБОЙ таргет под-Makefile с префиксом be-/fe- ---
 # Напр.: make be-lint, make be-format, make be-migrate-upgrade, make fe-dev, make fe-build.
-# Ограничение: таргеты с позиционным аргументом (migrate-create "desc", migrate-downgrade <rev>)
-# запускай из backend/ — аргумент через префикс корректно не пробрасывается.
+# Параметры таргетов — переменные (make be-migrate-create msg="desc", make be-migrate-downgrade rev=<rev>):
+# переменные командной строки доходят до под-Makefile сами.
 be-%: ## Проксировать backend-таргет: make be-<target> (be-lint, be-format, …)
 	@$(MAKE) -C backend $*
 
@@ -76,14 +76,18 @@ prod-down: ## Остановить прод-стек (тома/данные со
 	$(COMPOSE_PROD) down
 
 # --- Git hooks: мерж-гейт покрытия без CI ---
-# Разовая активация pre-push hook'а (.githooks/pre-push): блокирует push при покрытии < 90%.
-hooks: ## Активировать git-хуки репозитория (pre-push coverage-гейт, core.hooksPath=.githooks)
+# Разовая активация pre-commit hook'а (.githooks/pre-commit): блокирует commit при покрытии < 90%.
+hooks: ## Активировать git-хуки репозитория (pre-commit coverage-гейт, core.hooksPath=.githooks)
 	@git config core.hooksPath .githooks
 	@echo "${GREEN}INFO :  ${AZURE}git hooks активированы: ${PURPLE}core.hooksPath=.githooks${RESET}"
 
 # --- Quality gate: полный прогон обеих сторон ---
 # Одна сторона — через pass-through (make be-lint, fe-typecheck). Полный гейт — check.
-check: be-check fe-check ## Полный гейт обеих сторон (lint/typecheck/тесты unit+api + arch/audit; integration/e2e отдельно — make test-infra)
+check: context-budget be-check fe-check ## Полный гейт обеих сторон (lint/typecheck/тесты unit+api + arch/audit; integration/e2e отдельно — make test-infra)
+
+context-budget: ## Объём правил Claude, подгружаемых при работе с каждой областью, — в пределах бюджета
+	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}context-budget${AZURE}' check${RESET}"
+	@uv run --project backend --no-sync python -I .claude/scripts/check_context_budget.py
 
 # --- Tests (fast): дейли-драйвер, без Docker ---
 test-back: ## Backend unit+api (без Docker)
@@ -107,17 +111,17 @@ test-integration: ## Backend integration (testcontainers → Docker-демон)
 # Поднимает одноразовый e2e-стек (tmpfs-Postgres, дев-база не трогается), гоняет Playwright и сносит
 # всё начисто. Защитный `down` ПЕРЕД `up` подчищает хвосты прерванного прошлого прогона (Ctrl-C до
 # teardown'а). Финальный `down` выполняется всегда (даже при падении тестов), exit-код — от тестов.
-# `--wait frontend` (а не голый `--wait`) ждёт healthcheck фронта по цепочке и не спотыкается о
-# штатный выход one-shot'а migrate.
+# `--wait frontend worker` (а не голый `--wait`) ждёт healthcheck фронта по цепочке и не спотыкается
+# о штатный выход one-shot'а migrate. worker назван явно: от него никто не зависит, по цепочке он не поднимется.
 test-e2e: ## Frontend e2e (Playwright; сам поднимает одноразовый стек и полностью сносит его после — docker compose up НЕ нужен)
 	@echo "${GREEN}INFO :  ${AZURE}Up ephemeral e2e stack (${PURPLE}ops/docker-compose.e2e.yaml${AZURE})${RESET}"
 	@$(COMPOSE_E2E) down -v --remove-orphans 2>/dev/null || true
-	@{ $(COMPOSE_E2E) up -d --wait frontend && \
+	@{ $(COMPOSE_E2E) up -d --wait frontend worker && \
 	   E2E_BASE_URL=http://localhost:5273 $(MAKE) -C frontend test-e2e; }; \
 	status=$$?; \
 	if [ $$status -ne 0 ]; then \
 		echo "${GREEN}INFO :  ${AZURE}e2e failed (exit $$status) — tail логов сервисов перед сносом${RESET}"; \
-		$(COMPOSE_E2E) logs --tail=50 migrate worker app frontend 2>/dev/null || true; \
+		$(COMPOSE_E2E) logs --tail=50 migrate geo-load worker app frontend 2>/dev/null || true; \
 	fi; \
 	echo "${GREEN}INFO :  ${AZURE}Tearing down ephemeral e2e stack (containers + network + volumes)${RESET}"; \
 	$(COMPOSE_E2E) down -v --remove-orphans; \
@@ -134,7 +138,7 @@ DEV_BASE_URL ?= http://localhost:5173
 # Готовность проверяем POST'ом на /v1/auth/refresh/, а не GET'ом на «/»: он проходит весь путь,
 # который нужен тестам — Vite отдаёт SPA И проксирует /v1 на backend. Живой стек отвечает 401
 # (нет cookie), мёртвый — не отвечает вовсе. GET «/» показал бы только что Vite жив, а бэк за
-# ним мог бы лежать. `/healthz` для этого не годится: он подключён без префикса /v1, а Vite
+# ним мог бы лежать. `/healthz/` для этого не годится: он подключён без префикса /v1, а Vite
 # проксирует только /v1 — снаружи его не достать.
 test-e2e-dev: ## Frontend e2e по УЖЕ ПОДНЯТОМУ дев-стеку (make run). Быстро, но ПИШЕТ В ДЕВ-БАЗУ. E2E_ARGS="--project=chromium"
 	@code=$$(curl -s -o /dev/null -X POST -w '%{http_code}' --max-time 5 $(DEV_BASE_URL)/v1/auth/refresh/ 2>/dev/null); \

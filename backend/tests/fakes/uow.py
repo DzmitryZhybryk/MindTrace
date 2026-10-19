@@ -1,18 +1,16 @@
 """Фейк ``AuthUnitOfWorkPort``: держит фейк-репозитории, мокнутый commit и sentinel-сессию."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import cast
 from unittest.mock import AsyncMock
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.application.ports import (
-    AuthUnitOfWorkPort,
-    ChallengeRepositoryPort,
-    RefreshTokenRepositoryPort,
-    UserCredentialsRepositoryPort,
-)
+from app.auth.application.ports.challenge_repository import ChallengeRepositoryPort
+from app.auth.application.ports.refresh_token_repository import RefreshTokenRepositoryPort
+from app.auth.application.ports.unit_of_work import AuthUnitOfWorkPort
+from app.auth.application.ports.user_credentials_repository import UserCredentialsRepositoryPort
 
 
 class FakeAuthUnitOfWork(AuthUnitOfWorkPort):
@@ -47,7 +45,7 @@ class FakeAuthUnitOfWork(AuthUnitOfWorkPort):
         return self._session
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[None]:
+    async def transaction(self) -> AsyncGenerator[None]:
         yield
 
     async def flush(self) -> None:

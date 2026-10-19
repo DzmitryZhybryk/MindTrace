@@ -3,16 +3,17 @@ from uuid import uuid4
 
 import pytest
 
-from app.auth.application.email_verification_service import EmailVerificationService
-from app.auth.application.task_names import SEND_VERIFICATION_EMAIL_TASK
+from app.auth.application.ports.tasks import SEND_VERIFICATION_EMAIL_TASK
+from app.auth.application.schemas.commands import VerifyEmailCommand
+from app.auth.application.services.email_verification import EmailVerificationService
 from app.auth.domain.enums import ChallengeType
 from app.auth.exceptions import (
+    AccountNotFoundError,
     ChallengeAttemptsExceededError,
     ChallengeExpiredError,
     ChallengeNotFoundError,
     ChallengeResendCooldownError,
     EmailAlreadyVerifiedError,
-    UserCredentialsNotFoundError,
     VerificationCodeInvalidError,
 )
 from tests.builders import make_challenge, make_user_credentials
@@ -71,8 +72,8 @@ async def test_request_raises_when_user_not_found(
     fake_challenge_repository: FakeChallengeRepository,
     fake_task_bus: FakeTaskBus,
 ) -> None:
-    """request: нет учётной записи → UserCredentialsNotFoundError, без challenge, defer'а и коммита."""
-    with pytest.raises(UserCredentialsNotFoundError):
+    """request: нет учётной записи → AccountNotFoundError, без challenge, defer'а и коммита."""
+    with pytest.raises(AccountNotFoundError):
         await email_verification_service.request_email_verification(user_id=uuid4())
 
     assert fake_challenge_repository.challenges == []
@@ -166,7 +167,10 @@ async def test_verify_marks_email_verified_on_correct_code(
     )
     await fake_challenge_repository.insert_challenge(challenge_entity=challenge_entity)
 
-    await email_verification_service.verify_email(user_id=user_credentials_entity.user_id, code="123456")
+    await email_verification_service.verify_email(
+        user_id=user_credentials_entity.user_id,
+        command=VerifyEmailCommand(code="123456"),
+    )
 
     assert user_credentials_entity.is_email_verified
     assert challenge_entity.used_at is not None
@@ -192,7 +196,10 @@ async def test_verify_increments_attempts_and_raises_on_wrong_code(
     await fake_challenge_repository.insert_challenge(challenge_entity=challenge_entity)
 
     with pytest.raises(VerificationCodeInvalidError):
-        await email_verification_service.verify_email(user_id=user_credentials_entity.user_id, code="000000")
+        await email_verification_service.verify_email(
+            user_id=user_credentials_entity.user_id,
+            command=VerifyEmailCommand(code="000000"),
+        )
 
     assert challenge_entity.attempts == 1
     assert not user_credentials_entity.is_email_verified
@@ -203,9 +210,9 @@ async def test_verify_raises_when_user_not_found(
     email_verification_service: EmailVerificationService,
     fake_uow: FakeAuthUnitOfWork,
 ) -> None:
-    """verify: нет учётной записи → UserCredentialsNotFoundError, без коммита."""
-    with pytest.raises(UserCredentialsNotFoundError):
-        await email_verification_service.verify_email(user_id=uuid4(), code="123456")
+    """verify: нет учётной записи → AccountNotFoundError, без коммита."""
+    with pytest.raises(AccountNotFoundError):
+        await email_verification_service.verify_email(user_id=uuid4(), command=VerifyEmailCommand(code="123456"))
 
     fake_uow.commit_mock.assert_not_awaited()
 
@@ -220,7 +227,10 @@ async def test_verify_raises_when_email_already_verified(
     await fake_user_credentials_repository.insert_user_credentials(user_credentials_entity=user_credentials_entity)
 
     with pytest.raises(EmailAlreadyVerifiedError):
-        await email_verification_service.verify_email(user_id=user_credentials_entity.user_id, code="123456")
+        await email_verification_service.verify_email(
+            user_id=user_credentials_entity.user_id,
+            command=VerifyEmailCommand(code="123456"),
+        )
 
     fake_uow.commit_mock.assert_not_awaited()
 
@@ -235,7 +245,10 @@ async def test_verify_raises_when_no_active_challenge(
     await fake_user_credentials_repository.insert_user_credentials(user_credentials_entity=user_credentials_entity)
 
     with pytest.raises(ChallengeNotFoundError):
-        await email_verification_service.verify_email(user_id=user_credentials_entity.user_id, code="123456")
+        await email_verification_service.verify_email(
+            user_id=user_credentials_entity.user_id,
+            command=VerifyEmailCommand(code="123456"),
+        )
 
     fake_uow.commit_mock.assert_not_awaited()
 
@@ -259,7 +272,10 @@ async def test_verify_raises_when_attempts_exhausted(
     await fake_challenge_repository.insert_challenge(challenge_entity=challenge_entity)
 
     with pytest.raises(ChallengeAttemptsExceededError):
-        await email_verification_service.verify_email(user_id=user_credentials_entity.user_id, code="123456")
+        await email_verification_service.verify_email(
+            user_id=user_credentials_entity.user_id,
+            command=VerifyEmailCommand(code="123456"),
+        )
 
     fake_uow.commit_mock.assert_not_awaited()
 
@@ -283,6 +299,9 @@ async def test_verify_raises_when_challenge_expired(
     await fake_challenge_repository.insert_challenge(challenge_entity=challenge_entity)
 
     with pytest.raises(ChallengeExpiredError):
-        await email_verification_service.verify_email(user_id=user_credentials_entity.user_id, code="123456")
+        await email_verification_service.verify_email(
+            user_id=user_credentials_entity.user_id,
+            command=VerifyEmailCommand(code="123456"),
+        )
 
     fake_uow.commit_mock.assert_not_awaited()

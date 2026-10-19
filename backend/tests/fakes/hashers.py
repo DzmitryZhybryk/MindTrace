@@ -9,5 +9,5 @@ class FakeSaltedHasher(SaltedHasherPort):
     def hash(self, secret: str) -> str:
         return f"hashed::{secret}"
 
-    def verify(self, secret: str, hashed: str) -> bool:
+    def verify(self, *, secret: str, hashed: str) -> bool:
         return hashed == f"hashed::{secret}"

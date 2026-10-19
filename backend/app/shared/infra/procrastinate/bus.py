@@ -29,15 +29,52 @@ from app.shared.infra.procrastinate.component import ProcrastinateApp
 class SessionBoundTaskBusPort(Protocol):
     """Контракт defer'а procrastinate-таски в текущей SA-транзакции."""
 
-    async def defer(self, *, task_name: str, lock: str | None = None, **task_kwargs: Any) -> None: ...
+    async def defer(self, *, task_name: str, lock: str | None = None, **task_kwargs: Any) -> None:
+        """
+        Ставит задачу в той же транзакции, что и записи use case'а; фиксирует её commit UnitOfWork.
+
+        Scenarios:
+            - use case, который ставит фоновую задачу атомарно со своими записями
+
+        Args:
+            task_name: Имя задачи
+            lock: Lock-строка: одновременно выполняется только одна задача с ним; ``None`` — без lock'а
+            **task_kwargs: Аргументы задачи
+        """
+        ...
 
 
 class TaskBusPort(Protocol):
     """Контракт постановки procrastinate-задач: fire-and-forget defer и привязка к транзакции."""
 
-    async def defer(self, *, task_name: str, lock: str | None = None, **task_kwargs: Any) -> None: ...
+    async def defer(self, *, task_name: str, lock: str | None = None, **task_kwargs: Any) -> None:
+        """
+        Ставит задачу вне транзакции.
 
-    def bind_to(self, session: AsyncSession) -> SessionBoundTaskBusPort: ...
+        Scenarios:
+            - фоновая задача, не связанная с записями use case'а; сейчас так задачи не ставит никто
+
+        Args:
+            task_name: Имя задачи
+            lock: Lock-строка: одновременно выполняется только одна задача с ним; ``None`` — без lock'а
+            **task_kwargs: Аргументы задачи
+        """
+        ...
+
+    def bind_to(self, session: AsyncSession) -> SessionBoundTaskBusPort:
+        """
+        Привязывает постановку задач к транзакции сессии.
+
+        Scenarios:
+            - use case, который ставит фоновую задачу атомарно со своими записями
+
+        Args:
+            session: Активная сессия UnitOfWork
+
+        Returns:
+            Шина, чей ``defer`` попадает в транзакцию сессии
+        """
+        ...
 
 
 class ProcrastinateSessionBoundTaskBus(SessionBoundTaskBusPort):
