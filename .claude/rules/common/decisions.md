@@ -11,3 +11,4 @@ may already have been rejected. Writing or changing an entry: skill `decision-re
 | `places.md` | what a journey stores about a place and where names come from; how place names are stored per language; where place data comes from and what a provider must allow |
 | `journeys.md` | what one journey record represents; what date a journey carries |
 | `frontend.md` | where icons come from |
+| `backend.md` | how the process reads its settings; whether anything but the settings module may build `Settings` |

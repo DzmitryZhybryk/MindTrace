@@ -4,19 +4,22 @@ from typing import Any
 
 from fastapi.routing import APIRoute
 
-from app.auth.infra import auth_blueprint
 from app.auth.presentation.routes import auth_router
+from app.blueprints import TASK_BLUEPRINTS
 from app.geo.presentation.routes import geo_router
 from app.health.presentation.routes import health_router
 from app.journeys.presentation.routes import journey_router
 from app.shared.enums import AppEnvEnum
-from app.shared.exceptions import register_exception_handlers
+from app.shared.exceptions.handlers import register_exception_handlers
 from app.shared.infra.di.base import BaseComponent
+from app.shared.infra.di.lifecycle import run_components
 from app.shared.infra.di.registry import ComponentRegistry
-from app.shared.infra.email import ResendComponent
+from app.shared.infra.email.component import ResendComponent
 from app.shared.infra.postgres.component import SqlAlchemyComponent
-from app.shared.infra.procrastinate import ProcrastinateComponent, TaskBusComponent
-from app.shared.logging import HTTPLoggingMiddleware, configure_logging, get_logger
+from app.shared.infra.procrastinate.bus_component import TaskBusComponent
+from app.shared.infra.procrastinate.component import ProcrastinateComponent
+from app.shared.logging import configure_logging, get_logger
+from app.shared.logging.middleware import HTTPLoggingMiddleware
 from app.shared.schemas.base import BFastAPI
 from app.shared.settings import settings
 from app.shared.types import DictStrAny
@@ -74,21 +77,13 @@ def create_default_app(
         Scenarios:
             - старт и остановка API-процесса: подъём и закрытие компонентов
         """
-        # Startup
-        for component in components_list:
-            await component.startup(registry)
-
-        # Логируем успешный старт приложения
-        logger.info(
-            "Application started successfully",
-            service_name=_app.title,
-            version=_app.version,
-        )
-
-        yield
-        # Shutdown
-        for component in components_list:
-            await component.shutdown()
+        async with run_components(components=components_list, registry=registry):
+            logger.info(
+                "Application started successfully",
+                service_name=_app.title,
+                version=_app.version,
+            )
+            yield
 
     app = BFastAPI(lifespan=lifespan, **kwargs)
     app.components = components_list
@@ -120,7 +115,7 @@ def create_app() -> BFastAPI:
         components=[
             SqlAlchemyComponent(settings=settings),
             ResendComponent(settings=settings),
-            ProcrastinateComponent(settings=settings, blueprints=[auth_blueprint]),
+            ProcrastinateComponent(settings=settings, blueprints=TASK_BLUEPRINTS),
             TaskBusComponent(),
         ],
         **docs_kwargs,

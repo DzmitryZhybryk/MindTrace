@@ -1,16 +1,18 @@
 """
-In-memory фейк geo-репозитория поверх ``list[PlaceEntity]``.
+In-memory фейки geo: репозиторий поверх ``list[PlaceEntity]`` и UoW вокруг него.
 
-Реализует ``PlaceRepositoryPort`` — тот же контракт, что и боевой SQLAlchemy-репозиторий,
-поэтому ``ty`` ловит расхождение сигнатур. Повторяет наблюдаемое поведение поиска
+Реализуют порты ``app.geo.application.ports.*`` — тот же контракт, что и боевые реализации,
+поэтому ``ty`` ловит расхождение сигнатур. Репозиторий повторяет наблюдаемое поведение поиска
 (префиксный матч по имени en/ru, сортировка по убыванию населения, лимит), чтобы тот же
 фейк годился и на api-уровне через ``app.dependency_overrides``.
 """
 
-from collections.abc import Collection
+from collections.abc import AsyncGenerator, Collection
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 from app.geo.application.ports.place_repository import PlaceRepositoryPort
+from app.geo.application.ports.unit_of_work import GeoUnitOfWorkPort
 from app.geo.domain.entities import PlaceEntity
 from app.geo.domain.enums import Language
 
@@ -39,3 +41,16 @@ class FakePlaceRepository(PlaceRepositoryPort):
         """Совпадение, если имя на en ИЛИ ru начинается с префикса (как ``LIKE 'q%'`` в боевом репо)."""
         names = (place_entity.localized_name(language=Language.EN), place_entity.localized_name(language=Language.RU))
         return any(name is not None and name.lower().startswith(prefix) for name in names)
+
+
+class FakeGeoUnitOfWork(GeoUnitOfWorkPort):
+    """In-memory UoW geo: фейк-репозиторий и no-op ``transaction``, считающая открытые области."""
+
+    def __init__(self, *, place_repository: PlaceRepositoryPort) -> None:
+        self.place_repository = place_repository
+        self.transactions_started = 0
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncGenerator[None]:
+        self.transactions_started += 1
+        yield

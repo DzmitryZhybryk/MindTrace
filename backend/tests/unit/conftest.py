@@ -21,7 +21,7 @@ Cross-доменные фикстуры **уровня unit**.
 
 import pytest
 
-from app.shared.infra.jwt import JWTService
+from app.shared.infra.jwt.service import JWTService
 
 _JWT_SECRET = "unit-test-secret-at-least-32-bytes-long"
 _JWT_ALGORITHM = "HS256"

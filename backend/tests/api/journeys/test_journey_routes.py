@@ -17,7 +17,7 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 
-from app.geo.presentation.dependencies import place_repository_dependency
+from app.geo.presentation.dependencies import geo_uow_dependency
 from app.journeys.application.ports.journey_repository import MovementConnection, VisitedPlace
 from app.journeys.domain.enums import TransportType
 from app.journeys.presentation.dependencies import places_client_dependency
@@ -31,6 +31,7 @@ from tests.builders import (
     make_place_location_response,
 )
 from tests.fakes import (
+    FakeGeoUnitOfWork,
     FakeJourneyRepository,
     FakeJourneyUnitOfWork,
     FakePlaceRepository,
@@ -194,11 +195,12 @@ async def test_create_journey_checks_places_through_real_geo_wiring(
     make_async_client: Callable[[BFastAPI], AsyncClient],
     fake_journey_repository: FakeJourneyRepository,
     fake_place_repository: FakePlaceRepository,
+    fake_geo_uow: FakeGeoUnitOfWork,
     mint_access_token: Callable[..., str],
 ) -> None:
-    """400: без подмены клиента мест проверка идёт через настоящую цепочку journeys → geo до репозитория geo."""
+    """400: без подмены клиента мест проверка идёт через настоящую цепочку journeys → geo до UoW geo."""
     app.dependency_overrides.pop(places_client_dependency)
-    app.dependency_overrides[place_repository_dependency] = lambda: fake_place_repository
+    app.dependency_overrides[geo_uow_dependency] = lambda: fake_geo_uow
     fake_place_repository.places.append(make_place(place_id=MOSCOW_PLACE_ID))
 
     async with make_async_client(app) as client:

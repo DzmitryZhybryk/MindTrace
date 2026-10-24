@@ -38,6 +38,6 @@ Where the block goes — the first row that fits:
 |---|---|
 | Reads only the data of domain objects | a method of their type in `domain/` (`GeoPoint.distance_km_to`) |
 | Needs the service's dependencies; one service uses it | a private method of that service |
-| Has dependencies of its own; several services use it | a collaborator in `services/` (`ddd.md`, `TokenIssuer`) |
+| Has dependencies of its own; several services use it | a collaborator in `services/` (`layers.md`, `TokenIssuer`) |
 | Has no dependencies; one module uses it | a private module-level function in that module |
 | Has no dependencies; several domains use it | `shared/utils` |

@@ -4,7 +4,7 @@ paths:
 ---
 # DTO conventions for layered Python services
 
-> Stated in terms of boundaries, so it fits any layered service. Pairs with `ddd.md` (layers,
+> Stated in terms of boundaries, so it fits any layered service. Pairs with `layers.md` (layers,
 > ports). Where a project already has its own answer, the project wins.
 
 ## Naming by boundary
