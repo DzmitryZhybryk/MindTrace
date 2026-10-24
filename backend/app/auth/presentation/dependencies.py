@@ -19,9 +19,11 @@ from app.shared.infra.crypto import (
     get_argon2_salted_hasher,
     get_sha256_deterministic_hasher,
 )
-from app.shared.infra.jwt import JWTService, jwt_service_dependency
+from app.shared.infra.jwt.dependency import jwt_service_dependency
+from app.shared.infra.jwt.service import JWTService
 from app.shared.infra.postgres.dependency import db_session_dependency
-from app.shared.infra.procrastinate import ProcrastinateTaskBus, TaskBusPort
+from app.shared.infra.procrastinate import TaskBusPort
+from app.shared.infra.procrastinate.bus import ProcrastinateTaskBus
 from app.shared.schemas.base import BFastAPI
 from app.shared.settings import settings
 from app.users.application.services.user import UserService
@@ -148,7 +150,7 @@ def token_issuer_dependency(
 ) -> TokenIssuer:
     return TokenIssuer(
         deterministic_hasher=deterministic_hasher,
-        jwt_service=jwt_service,
+        access_token_issuer=jwt_service,
         refresh_token_ttl_days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
     )
 

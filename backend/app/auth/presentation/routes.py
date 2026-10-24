@@ -33,7 +33,7 @@ from app.auth.presentation.schemas import (
     TokenResponse,
     VerifyEmailRequest,
 )
-from app.shared.infra.jwt import current_user_id_dependency
+from app.shared.infra.jwt.dependency import current_user_id_dependency
 
 auth_router = APIRouter()
 

@@ -3,6 +3,7 @@
 import asyncio
 
 from app.shared.enums import AppEnvEnum
+from app.shared.infra.di.lifecycle import run_components
 from app.shared.infra.di.registry import ComponentRegistry
 from app.shared.infra.procrastinate.component import ProcrastinateApp, ProcrastinateComponent
 from app.shared.infra.procrastinate.schema import ensure_procrastinate_schema
@@ -20,12 +21,8 @@ async def main() -> None:
     configure_logging(include_debug=settings.ENVIRONMENT in (AppEnvEnum.LOCAL, AppEnvEnum.DEVELOPMENT))
 
     registry = ComponentRegistry()
-    component = ProcrastinateComponent(settings=settings, blueprints=[])
-    await component.startup(registry)
-    try:
+    async with run_components(components=[ProcrastinateComponent(settings=settings)], registry=registry):
         await ensure_procrastinate_schema(procrastinate_app=registry.get(ProcrastinateApp))
-    finally:
-        await component.shutdown()
 
 
 if __name__ == "__main__":

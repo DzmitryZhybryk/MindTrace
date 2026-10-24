@@ -171,8 +171,9 @@ async def test_get_journeys_map_no_journeys_returns_empty(journey_service: Journ
 async def test_get_journeys_map_groups_places_by_country(
     journey_service: JourneyService,
     fake_journey_repository: FakeJourneyRepository,
+    fake_journey_uow: FakeJourneyUnitOfWork,
 ) -> None:
-    """get_journeys_map: места, идущие по стране подряд, собираются в страны с городами и годами."""
+    """get_journeys_map: места подряд по стране собираются в страны с городами и годами; чтение в транзакции."""
     user_id = uuid4()
     paris_id = uuid4()
     fake_journey_repository.visited_places_by_user_id[user_id] = [
@@ -201,6 +202,7 @@ async def test_get_journeys_map_groups_places_by_country(
             ),
         )
     )
+    assert fake_journey_uow.transactions_started == 1
 
 
 async def test_get_journeys_map_keeps_several_cities_of_one_country_together(
@@ -225,8 +227,9 @@ async def test_get_journeys_map_keeps_several_cities_of_one_country_together(
 async def test_get_journeys_globe_returns_places_without_years(
     journey_service: JourneyService,
     fake_journey_repository: FakeJourneyRepository,
+    fake_journey_uow: FakeJourneyUnitOfWork,
 ) -> None:
-    """get_journeys_globe: те же места, что у карты, каждое по одному разу."""
+    """get_journeys_globe: те же места, что у карты, каждое по одному разу; чтение в транзакции."""
     user_id = uuid4()
     fake_journey_repository.visited_places_by_user_id[user_id] = [
         VisitedPlace(place=_LONDON, years=(2019, 2021)),
@@ -237,11 +240,13 @@ async def test_get_journeys_globe_returns_places_without_years(
 
     assert [place.place_id for place in result.places] == [LONDON_PLACE_ID, MOSCOW_PLACE_ID]
     assert result.places[1].latitude == pytest.approx(55.75)
+    assert fake_journey_uow.transactions_started == 1
 
 
 async def test_get_movements_map_returns_connections_and_year_bounds(
     journey_service: JourneyService,
     fake_journey_repository: FakeJourneyRepository,
+    fake_journey_uow: FakeJourneyUnitOfWork,
 ) -> None:
     """get_movements_map: маршруты с годами и годы первой и последней поездки; транспорт доходит до запроса."""
     user_id = uuid4()
@@ -260,13 +265,15 @@ async def test_get_movements_map_returns_connections_and_year_bounds(
     assert fake_journey_repository.movement_connection_queries == [
         MovementConnectionQuery(user_id=user_id, transport_types=frozenset({TransportType.AIR}))
     ]
+    assert fake_journey_uow.transactions_started == 1
 
 
 async def test_get_movements_map_without_journeys_skips_connections_query(
     journey_service: JourneyService,
     fake_journey_repository: FakeJourneyRepository,
+    fake_journey_uow: FakeJourneyUnitOfWork,
 ) -> None:
-    """get_movements_map: поездок нет → пустой ответ без годов, маршруты не запрашиваются."""
+    """get_movements_map: поездок нет → пустой ответ без годов, маршруты не запрашиваются; чтение в транзакции."""
     user_id = uuid4()
     command = GetMovementsMapCommand(transport_types=None)
 
@@ -274,6 +281,7 @@ async def test_get_movements_map_without_journeys_skips_connections_query(
 
     assert result == MovementsMapResult(first_year=None, last_year=None, connections=())
     assert fake_journey_repository.movement_connection_queries == []
+    assert fake_journey_uow.transactions_started == 1
 
 
 async def test_create_journey_goes_to_end_of_its_year(
@@ -635,8 +643,9 @@ async def test_move_journey_unavailable_journey_raises_not_found(
 async def test_list_journeys_maps_page_items_and_cursor(
     journey_service: JourneyService,
     fake_journey_repository: FakeJourneyRepository,
+    fake_journey_uow: FakeJourneyUnitOfWork,
 ) -> None:
-    """list_journeys: строки страницы — поля поездок в порядке ленты, курсор следующей страницы передан."""
+    """list_journeys: строки страницы — поля поездок в порядке ленты, курсор следующей передан; чтение в транзакции."""
     user_id = uuid4()
     newer = make_journey(user_id=user_id, traveled_year=2021, sort_key="a", distance_km=10)
     older = make_journey(user_id=user_id, traveled_year=2019, sort_key="b", distance_km=20)
@@ -669,13 +678,15 @@ async def test_list_journeys_maps_page_items_and_cursor(
         ),
     )
     assert result.next_cursor is not None
+    assert fake_journey_uow.transactions_started == 1
 
 
 async def test_get_journey_years_returns_repository_years(
     journey_service: JourneyService,
     fake_journey_repository: FakeJourneyRepository,
+    fake_journey_uow: FakeJourneyUnitOfWork,
 ) -> None:
-    """get_journey_years: годы неудалённых поездок пользователя, по возрастанию."""
+    """get_journey_years: годы неудалённых поездок пользователя, по возрастанию; чтение в транзакции."""
     user_id = uuid4()
     fake_journey_repository.journeys = [
         make_journey(user_id=user_id, traveled_year=2021),
@@ -686,15 +697,20 @@ async def test_get_journey_years_returns_repository_years(
     result = await journey_service.get_journey_years(user_id=user_id)
 
     assert result == JourneyYearsResult(years=(2019, 2021))
+    assert fake_journey_uow.transactions_started == 1
 
 
-async def test_estimate_journey_distance_uses_geo_coordinates(journey_service: JourneyService) -> None:
-    """estimate_journey_distance: расстояние Москва → Лондон по координатам из geo, как сохранит поездка (~2500 км)."""
+async def test_estimate_journey_distance_uses_geo_coordinates(
+    journey_service: JourneyService,
+    fake_journey_uow: FakeJourneyUnitOfWork,
+) -> None:
+    """estimate_journey_distance: ~2500 км Москва → Лондон по координатам geo; своих данных нет — без транзакции."""
     result = await journey_service.estimate_journey_distance(
         command=EstimateJourneyDistanceCommand(origin_place_id=MOSCOW_PLACE_ID, destination_place_id=LONDON_PLACE_ID),
     )
 
     assert result.distance_km == pytest.approx(2500, abs=60)
+    assert fake_journey_uow.transactions_started == 0
 
 
 async def test_estimate_journey_distance_unknown_place_raises(

@@ -68,7 +68,7 @@ audit: ## Scan dependencies for known vulnerabilities (uv audit)
 
 arch: ## Enforce DDD layer/import boundaries (tach)
 	@echo "${GREEN}INFO :  ${AZURE}Run '${PURPLE}tach${AZURE}' boundary check${RESET}"
-	@uv run --no-sync tach check
+	@uv run --no-sync tach check --exact
 
 check: format lint typecheck arch dead-code audit test ## Run format + lint + typecheck + arch + dead-code + audit + fast tests (unit+api; integration → test-integration)
 

@@ -11,6 +11,24 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-10-24
+
+### Backend 5.0.4
+
+- Старт и остановка компонентов — одна функция `run_components` для API-процесса, воркера и шага схемы procrastinate: упавший на старте компонент больше не оставляет открытыми уже поднятые, остановка идёт в обратном порядке и не прерывается на первом сбое. `ProcrastinateComponent` закрывает пул, если база недоступна на старте. Список blueprint'ов задач — один (`app/blueprints.py`); таска воркера берёт зависимости из реестра компонентов, а не по строковому ключу на каждую
+- Вход по несуществующему логину хеширует введённый пароль тем же хешером вместо проверки против заранее посчитанного при импорте argon2-хеша; `TokenIssuer` зависит от порта `AccessTokenIssuerPort`, а не от `JWTService`
+- Каждый use case, который читает свои данные, открывает транзакцию — и чтения тоже: пять чтений journeys и все use case'ы geo. У geo свой UoW (`GeoUnitOfWork`), `PlaceService` получает его вместо репозитория
+- Код `application/` и `domain/` больше не загружает при импорте FastAPI, Starlette и SQLAlchemy, воркер — FastAPI и Starlette: `__init__` shared-пакетов отдают только порты, исключения, DTO, чистые функции и `get_*`-фабрики, реализации импортируются из своих модулей; порты вертикалей — в `ports.py`. Это фиксирует тест `tests/unit/shared/test_import_hygiene.py`
+- `make arch` запускает `tach check --exact`: исключения доменов — отдельные модули tach, неиспользуемые зависимости в `tach.toml` роняют гейт
+- Поведение и контракт API не меняются
+
+### Project
+
+- Решение: настройки бэкенда остаются одним синглтоном на процесс — `Settings`, проброшенный из точки входа через реестр, отвергнут (`.claude/decisions/backend.md`)
+- `.claude/rules/python/layers.md`: транзакция у каждого use case, читающего свои данные; участник чужой транзакции свою не открывает; чужой use case, из которого только читают, вызывается до своей транзакции
+- Правило `.claude/rules/python/imports.md` (бэкенд и его тесты): `__init__` shared-пакета отдаёт только контракт, и он импортируется из пакета, реализации — из своего модуля; тип, который порт использует только в аннотациях, импортируется под `TYPE_CHECKING`. Заменило фразу «import from the package» в `shared-infrastructure.md`
+- Ревизия правил Claude: `ddd.md` разобран на `layers.md` (слои, конфиг домена, порты, UoW, read models), `naming.md` (имена модулей, портов, методов репозитория и entity, суффиксы слоя) и `soft-delete.md`; инварианты владения из `common/security.md` — в `python/authorization.md`, который грузится по путям бэкенда, а не в каждой сессии; `python/code-style.md` → `coding-style.md`, `typescript/testing-environment.md` → `testing-layout.md`; `common/coding-style`, `common/security`, `python/coding-style`, `security`, `testing`, `imports` — копии личного канона, `make canon-drift` (часть `make check`) ловит расхождение с ним; skill `decision-records` стал глобальным
+
 ## 2026-10-19
 
 ### Backend 5.0.3
