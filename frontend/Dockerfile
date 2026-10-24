@@ -34,7 +34,7 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 # nginx-unprivileged: master and workers run non-root (uid 101) and listen on :8080 (a port >1024,
 # no root needed). Proxying /v1 is done by the external Caddy (reverse_proxy frontend:8080).
-FROM nginxinc/nginx-unprivileged:alpine@sha256:b9241c6e7b8e9a862f129d8d4199ab64b10390949a78bdd5603379b32c844083 AS final
+FROM nginxinc/nginx-unprivileged:alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e AS final
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 8080
