@@ -75,6 +75,10 @@ globalThis.IntersectionObserver = IntersectionObserverStub as unknown as typeof 
 // on the active option.
 Element.prototype.scrollIntoView = () => {};
 
+// window.scrollTo: jsdom reports "Not implemented" on every call; leaving a journey card restores
+// the page scroll with it on narrow screens (the default in tests).
+window.scrollTo = () => {};
+
 // setPointerCapture: absent in jsdom; card dragging and map gestures capture the pointer with it.
 Element.prototype.setPointerCapture = () => {};
 

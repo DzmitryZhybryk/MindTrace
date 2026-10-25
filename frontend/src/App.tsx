@@ -129,7 +129,8 @@ export default function App() {
                 {/*
                  * Journeys section: shared shell (header + panel) with sub-tabs via <Outlet/>.
                  * The index route is the map, "movements" the movements map, "all" the feed of all
-                 * journeys, "add" the add-journey form; wishlist is a placeholder (element={null}).
+                 * journeys ("all/<id>" its journey card: one route, so the feed stays mounted under
+                 * the card), "add" the add-journey form; wishlist is a placeholder (element={null}).
                  */}
                 <Route
                   path="/journeys"
@@ -141,7 +142,7 @@ export default function App() {
                 >
                   <Route index element={<JourneysMapView />} />
                   <Route path="movements" element={<MovementsMapView />} />
-                  <Route path="all" element={<AllJourneysView />} />
+                  <Route path="all/:journeyId?" element={<AllJourneysView />} />
                   <Route path="wishlist" element={null} />
                   <Route path="add" element={<AddJourneyPage />} />
                 </Route>

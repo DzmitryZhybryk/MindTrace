@@ -16,9 +16,12 @@ const LEAVE_MS = 240;
 
 // Routes whose tab draws on the shared map; on the rest (wishlist, add) the map is hidden.
 const MAP_ROUTES: ReadonlySet<string> = new Set(["/journeys", "/journeys/movements", "/journeys/all"]);
+// The feed's journey card (/journeys/all/<id>) is the same tab and draws the journey's arc.
+const JOURNEY_CARD_PREFIX = "/journeys/all/";
 
 function isMapRoute(pathname: string): boolean {
-  return MAP_ROUTES.has(pathname.replace(/\/+$/u, ""));
+  const path = pathname.replace(/\/+$/u, "");
+  return MAP_ROUTES.has(path) || path.startsWith(JOURNEY_CARD_PREFIX);
 }
 
 /**

@@ -1,11 +1,34 @@
+import { http, HttpResponse } from "msw";
 import { useMemo, useRef, type ReactElement } from "react";
 import { Link, Outlet, Route, Routes } from "react-router";
 
+import type { JourneyFeedEntry } from "../api/sdk";
 import { AllJourneysView } from "../pages/journeys/all/AllJourneysView";
 import type { JourneysOutletContext } from "../pages/journeys/JourneysLayout";
 import { JourneysMapHost } from "../pages/journeys/map/JourneysMapHost";
 import { JourneysMapSceneProvider } from "../pages/journeys/map/JourneysMapSceneProvider";
+import { FEED_JOURNEYS, server } from "./handlers";
 import { renderWithProviders, screen, within } from "./render";
+
+/**
+ * Serves the feed in one page filtered by `yearFrom` / `yearTo` like the backend, from what
+ * `journeys()` returns at request time (a test changes it after a save or a delete). Returns the
+ * recorded request queries.
+ */
+export function serveFeedByYears(journeys: () => readonly JourneyFeedEntry[] = () => FEED_JOURNEYS): URLSearchParams[] {
+  const requests: URLSearchParams[] = [];
+  server.use(
+    http.get("/v1/journeys/", ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      requests.push(params);
+      const yearFrom = Number(params.get("yearFrom") ?? Number.NEGATIVE_INFINITY);
+      const yearTo = Number(params.get("yearTo") ?? Number.POSITIVE_INFINITY);
+      const items = journeys().filter((journey) => journey.traveledYear >= yearFrom && journey.traveledYear <= yearTo);
+      return HttpResponse.json({ items, nextCursor: null });
+    }),
+  );
+  return requests;
+}
 
 export interface JourneysTab {
   path: string;
@@ -36,17 +59,20 @@ function JourneysMapShell({ paths }: { paths: readonly string[] }) {
   );
 }
 
-/** The feed tab alone, as its scenario-split test files render it. */
-export function renderAllJourneys() {
-  return renderJourneysTabs([{ path: "/journeys/all", element: <AllJourneysView /> }]);
+/**
+ * The feed tab alone, as its scenario-split test files render it, with its card route (as in
+ * App.tsx); `route` opens a journey card by its address.
+ */
+export function renderAllJourneys(route = "/journeys/all") {
+  return renderJourneysTabs([{ path: "/journeys/all/:journeyId?", element: <AllJourneysView /> }], route);
 }
 
-/** Opens the feed and editing of the Moscow -> London row (`FEED_JOURNEYS[0]`) by clicking its departure place. */
-export async function openMoscowToLondonEditor() {
+/** Opens the feed, then the Moscow -> London card (`FEED_JOURNEYS[0]`) by clicking its row. */
+export async function openMoscowToLondonCard() {
   const rendered = renderAllJourneys();
   const year2021 = await screen.findByRole("region", { name: "2021" });
-  await rendered.user.click(await within(year2021).findByRole("button", { name: "Moscow" }));
-  await screen.findByRole("button", { name: "Save" });
+  await rendered.user.click(await within(year2021).findByRole("link", { name: /Moscow to London/u }));
+  await screen.findByRole("heading", { level: 1, name: "Moscow to London" });
   return rendered;
 }
 

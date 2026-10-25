@@ -16,9 +16,9 @@ interface FlipItem {
 }
 
 /** A list with `data-flip-id`; a row's layout position is set by `data-top` (jsdom has no layout). */
-function FlipList({ items, isPaused }: { items: readonly FlipItem[]; isPaused: boolean }) {
+function FlipList({ items, isPaused, isHidden }: { items: readonly FlipItem[]; isPaused: boolean; isHidden?: boolean }) {
   const ref = useRef<HTMLUListElement>(null);
-  useFlip(ref, isPaused);
+  useFlip(ref, isPaused, isHidden);
 
   return (
     <ul ref={ref}>
@@ -87,6 +87,21 @@ describe("useFlip", () => {
     expect(animate).not.toHaveBeenCalled();
 
     rerender(<FlipList items={[{ id: "b", top: 0 }, { id: "a", top: 50 }]} isPaused={false} />);
+    expect(animate).not.toHaveBeenCalled();
+  });
+
+  it("скрытый список не замеряет нулевые позиции: после показа строки стоят на месте без анимации", () => {
+    const animate = stubLayoutAndAnimations();
+    const items = [
+      { id: "a", top: 0 },
+      { id: "b", top: 50 },
+    ];
+    const { rerender } = render(<FlipList items={items} isPaused={false} />);
+
+    // Under `display: none` every row reports offsetTop 0.
+    rerender(<FlipList items={items.map((item) => ({ ...item, top: 0 }))} isPaused={false} isHidden />);
+    rerender(<FlipList items={items} isPaused={false} />);
+
     expect(animate).not.toHaveBeenCalled();
   });
 

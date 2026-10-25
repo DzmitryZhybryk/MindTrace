@@ -3,12 +3,17 @@ import { useMediaQuery } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Navigate, useParams } from "react-router";
 
+import { usePlaceNames } from "../../../api/placeNames";
 import { getJourneyYearsOptions, zTransportType, type JourneyFeedEntry, type TransportType } from "../../../api/sdk";
 import { YearRangeSlider } from "../movements/YearRangeSlider";
-import { JourneyFeed } from "./JourneyFeed";
+import { JourneyCard } from "./JourneyCard";
+import { ALL_JOURNEYS_PATH } from "./journeyCardPath";
+import { JourneyFeed, type FeedStatus } from "./JourneyFeed";
 import { TransportChips } from "./TransportChips";
 import { useFeedMapScene } from "./useFeedMapScene";
+import { useFeedReturn } from "./useFeedReturn";
 import { fitYearRange, type YearRange } from "./yearRange";
 import "./all-journeys.css";
 
@@ -19,14 +24,21 @@ const DESKTOP_QUERY = "(min-width: 62em)";
 
 /**
  * "All journeys" sub-tab, route /journeys/all: a feed of journeys by year with year and
- * transport filters.
+ * transport filters; /journeys/all/<id> shows that journey's card in place of the column.
  *
  * The year scale runs from the user's first to last year, ignoring filters: it must not shrink
  * from its own selection. Thumbs at the scale edges mean all years, no filter. Behind the column
  * the shared map shows muted land with the active journey's arc (desktop only).
+ *
+ * The card takes its journey from the loaded feed (there is no request for one journey). The feed
+ * stays mounted under the card, so filters, loaded pages and scroll survive. Until the journey is
+ * found the feed shows its own loading or error; if the loaded feed has no such journey (a reload
+ * past the first page, a stale link), the address falls back to the list. Once found, the card
+ * keeps its journey even if a refetch drops it from the filtered feed.
  */
 export function AllJourneysView() {
   const { t } = useTranslation("journeys");
+  const { journeyId } = useParams<{ journeyId?: string }>();
   const years = useQuery({ ...getJourneyYearsOptions(), staleTime: Infinity });
   const [yearRange, setYearRange] = useState<YearRange | null>(null);
   const [transportTypes, setTransportTypes] = useState<readonly TransportType[]>(zTransportType.options);
@@ -45,20 +57,51 @@ export function AllJourneysView() {
   const isDesktop = useMediaQuery(DESKTOP_QUERY, false, { getInitialValueInEffect: false });
   const hasTransport = transportTypes.length > 0;
   const columnRef = useRef<HTMLDivElement>(null);
+  const feedRef = useRef<HTMLElement>(null);
   const [loadedJourneys, setLoadedJourneys] = useState<readonly JourneyFeedEntry[]>(NO_JOURNEYS);
+  // "pending" until the feed reports, so the first render cannot fall back to the list.
+  const [feedStatus, setFeedStatus] = useState<FeedStatus>("pending");
   const [activeJourney, setActiveJourney] = useState<JourneyFeedEntry | null>(null);
+
+  // The card's journey: the feed's latest entry while it has one, the last known entry otherwise.
+  const [cardEntry, setCardEntry] = useState<JourneyFeedEntry | null>(null);
+  const feedEntry = journeyId === undefined ? null : (loadedJourneys.find((entry) => entry.journeyId === journeyId) ?? null);
+  if (feedEntry !== null && feedEntry !== cardEntry) {
+    setCardEntry(feedEntry);
+  } else if (journeyId === undefined && cardEntry !== null) {
+    setCardEntry(null);
+  }
+  const cardJourney = cardEntry !== null && cardEntry.journeyId === journeyId ? cardEntry : null;
+  const isCardMissing = journeyId !== undefined && cardJourney === null && feedStatus === "loaded";
+  useFeedReturn(feedRef, cardJourney?.journeyId ?? null, isDesktop);
+
+  // The card's journey may have left the filtered feed; the map still needs its places.
+  const mapJourneys = useMemo(
+    () => (cardJourney === null || loadedJourneys.includes(cardJourney) ? loadedJourneys : [...loadedJourneys, cardJourney]),
+    [cardJourney, loadedJourneys],
+  );
+  // The same place set as the feed and the map, so the card shares their names request.
+  const nameOf = usePlaceNames(mapJourneys.flatMap((journey) => [journey.origin.placeId, journey.destination.placeId]));
   // Narrow screens have no map: the column is full width.
   useFeedMapScene({
-    journeys: hasTransport ? loadedJourneys : NO_JOURNEYS,
-    activeJourney: hasTransport ? activeJourney : null,
+    journeys: hasTransport ? mapJourneys : NO_JOURNEYS,
+    activeJourney: cardJourney ?? (hasTransport ? activeJourney : null),
     occluderRef: columnRef,
     isEnabled: isDesktop,
   });
 
   return (
     <div className="all-journeys">
+      {/* Beside the feed, not instead of it: the list address is the same route, so the feed stays
+          mounted and its requests in flight are not dropped. */}
+      {isCardMissing && <Navigate to={ALL_JOURNEYS_PATH} replace />}
       <div ref={columnRef} className="all-journeys__column">
-        <section className="all-journeys__filters journeys-card" aria-label={t("all.filters")}>
+        {cardJourney !== null && <JourneyCard key={cardJourney.journeyId} journey={cardJourney} nameOf={nameOf} />}
+        <section
+          className="all-journeys__filters journeys-card"
+          aria-label={t("all.filters")}
+          hidden={journeyId !== undefined}
+        >
           <h1 className="all-journeys__title">{t("nav.all")}</h1>
           {/* A single year leaves nothing to choose, so no scale. */}
           {firstYear !== undefined && lastYear !== undefined && firstYear < lastYear && (
@@ -77,13 +120,21 @@ export function AllJourneysView() {
           <TransportChips transportTypes={transportTypes} onTransportTypesChange={setTransportTypes} />
         </section>
 
-        <section className="all-journeys__feed journeys-card" aria-label={t("all.feed")}>
+        <section
+          ref={feedRef}
+          className="all-journeys__feed journeys-card"
+          aria-label={t("all.feed")}
+          tabIndex={-1}
+          hidden={cardJourney !== null}
+        >
           {hasTransport ? (
             <JourneyFeed
               yearRange={shownYearRange}
               transportTypes={transportTypes}
               hasJourneys={yearList.length > 0}
+              isHidden={cardJourney !== null}
               onJourneysChange={setLoadedJourneys}
+              onStatusChange={setFeedStatus}
               onActiveJourneyChange={setActiveJourney}
             />
           ) : (

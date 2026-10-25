@@ -34,7 +34,7 @@ describe("AllJourneysView", () => {
     const year2021 = await screen.findByRole("region", { name: "2021" });
     const year2019 = screen.getByRole("region", { name: "2019" });
     expect(year2021.compareDocumentPosition(year2019) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(await within(year2021).findByRole("button", { name: "Moscow" })).toBeInTheDocument();
+    expect(await within(year2021).findByRole("link", { name: "Air Moscow to London 2,500 km" })).toBeInTheDocument();
     expect(within(year2021).getAllByRole("listitem")).toHaveLength(2);
     expect(within(year2021).getByText("2,500 km")).toBeInTheDocument();
     expect(within(year2019).getAllByRole("listitem")).toHaveLength(1);
@@ -44,7 +44,7 @@ describe("AllJourneysView", () => {
     matchMediaQueries(DESKTOP_QUERY);
     const { container } = renderAllJourneys();
     const year2021 = await screen.findByRole("region", { name: "2021" });
-    await within(year2021).findByRole("button", { name: "Moscow" });
+    await within(year2021).findByRole("link", { name: /Moscow to London/u });
     const [moscowToLondon, londonToParis] = within(year2021).getAllByRole("listitem");
     const mapLabels = () => [...container.querySelectorAll(".feed-arc__label")].map((label) => label.textContent).sort();
 
@@ -59,7 +59,7 @@ describe("AllJourneysView", () => {
     matchMediaQueries(DESKTOP_QUERY);
     const { container } = renderAllJourneys();
     const year2021 = await screen.findByRole("region", { name: "2021" });
-    await within(year2021).findByRole("button", { name: "Moscow" });
+    await within(year2021).findByRole("link", { name: /Moscow to London/u });
     const [moscowToLondon] = within(year2021).getAllByRole("listitem");
 
     fireEvent.pointerOver(moscowToLondon);

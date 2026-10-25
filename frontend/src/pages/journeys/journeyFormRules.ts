@@ -11,6 +11,9 @@ export type JourneyFormValues = {
   year: string | null;
 };
 
+/** A journey deleted elsewhere: saving reports it, deleting treats it as already done. */
+export const JOURNEY_NOT_FOUND_CODE = "journeys.journey_not_found";
+
 const PLACE_ERROR_CODES: ReadonlySet<string> = new Set(["journeys.unknown_place", "journeys.place_without_country"]);
 
 type PlaceWithCountry = PlaceSearchItem & { countryCode: string };
