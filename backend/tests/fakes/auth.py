@@ -1,5 +1,5 @@
 """
-In-memory фейки auth-репозиториев.
+In-memory фейки auth: репозитории, UoW, клиент к users и сервис подтверждения email.
 
 Каждый фейк реализует соответствующий порт из ``app.auth.application.ports.*`` —
 тот же контракт, что и реальный SQLAlchemy-репозиторий. ``ty`` сверяет обе
@@ -10,11 +10,20 @@ In-memory фейки auth-репозиториев.
 ``update``-вызова (моделирует identity map SQLAlchemy-сессии).
 """
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from typing import cast
+from unittest.mock import AsyncMock
 from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.application.ports.challenge_repository import ChallengeRepositoryPort
 from app.auth.application.ports.refresh_token_repository import RefreshTokenRepositoryPort
+from app.auth.application.ports.unit_of_work import AuthUnitOfWorkPort
 from app.auth.application.ports.user_credentials_repository import UserCredentialsRepositoryPort
+from app.auth.application.ports.users_client import CreateUserRequest, UsersClientPort
+from app.auth.application.services.email_verification import EmailVerificationService
 from app.auth.domain.entities import ChallengeEntity, RefreshTokenEntity, UserCredentialsEntity
 from app.auth.domain.enums import ChallengeType
 
@@ -94,3 +103,80 @@ class FakeChallengeRepository(ChallengeRepositoryPort):
 
     async def update_challenge_by_id(self, challenge_entity: ChallengeEntity) -> None:
         """No-op: сущность мутируется на месте, список держит ту же ссылку."""
+
+
+class FakeAuthUnitOfWork(AuthUnitOfWorkPort):
+    """
+    In-memory UoW.
+
+    Репозитории передаются снаружи (фикстуры держат те же инстансы, чтобы тест
+    мог проверять их состояние), ``commit``/``flush`` — ``AsyncMock``
+    (``commit_mock``/``flush_mock``) для проверки факта фиксации/сброса,
+    ``transaction`` — no-op область (rollback реальной сессии проверяется в
+    integration), ``session`` — sentinel: фейк-bus её не использует, но тест
+    сверяет, что atomic-defer сделан именно в этой сессии. Порядок INSERT'ов на
+    ``flush`` (FK-зависимости) проверяется только на реальном Postgres в integration.
+    """
+
+    def __init__(
+        self,
+        *,
+        user_credentials_repository: UserCredentialsRepositoryPort,
+        refresh_token_repository: RefreshTokenRepositoryPort,
+        challenge_repository: ChallengeRepositoryPort,
+    ) -> None:
+        self.user_credentials_repository = user_credentials_repository
+        self.refresh_token_repository = refresh_token_repository
+        self.challenge_repository = challenge_repository
+        self.commit_mock = AsyncMock()
+        self.flush_mock = AsyncMock()
+        self._session = cast(AsyncSession, object())
+
+    @property
+    def session(self) -> AsyncSession:
+        return self._session
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncGenerator[None]:
+        yield
+
+    async def flush(self) -> None:
+        await self.flush_mock()
+
+    async def commit(self) -> None:
+        await self.commit_mock()
+
+
+class FakeUsersClient(UsersClientPort):
+    """
+    Записывает каждый ``create_user`` в ``created`` вместо реального вызова users-сервиса.
+
+    Тест может выставить ``error`` — тогда ``create_user`` поднимает его вместо записи,
+    моделируя сбой создания users-профиля (например, для проверки атомарного rollback'а register).
+    """
+
+    def __init__(self) -> None:
+        self.created: list[CreateUserRequest] = []
+        self.error: Exception | None = None
+
+    async def create_user(self, request: CreateUserRequest) -> None:
+        if self.error is not None:
+            raise self.error
+
+        self.created.append(request)
+
+
+class FakeEmailVerificationService(EmailVerificationService):
+    """
+    Подменяет реальный ``EmailVerificationService`` в тестах ``AuthService``.
+
+    ``__init__`` без зависимостей; ``request_email_verification`` лишь записывает
+    ``user_id`` в ``requested_user_ids`` — register-флоу проверяет, что верификация
+    была запрошена, не дёргая настоящий сервис.
+    """
+
+    def __init__(self) -> None:
+        self.requested_user_ids: list[UUID] = []
+
+    async def request_email_verification(self, user_id: UUID) -> None:
+        self.requested_user_ids.append(user_id)

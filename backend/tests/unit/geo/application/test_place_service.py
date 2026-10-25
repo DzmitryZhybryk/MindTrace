@@ -1,4 +1,4 @@
-"""Unit-тесты ``PlaceService`` на фейк-репозитории: поиск, названия мест по id, страна и координаты мест по id."""
+"""Unit-тесты ``PlaceService`` на фейк-UoW: поиск, названия мест по id, страна и координаты мест по id."""
 
 from uuid import uuid4
 
@@ -9,14 +9,15 @@ from app.geo.application.schemas.results import PlaceLocation
 from app.geo.application.services.place import PlaceService
 from app.geo.domain.enums import Language
 from tests.builders import make_place
-from tests.fakes import FakePlaceRepository
+from tests.fakes import FakeGeoUnitOfWork, FakePlaceRepository
 
 
 async def test_search_places_maps_candidate_fields(
     place_service: PlaceService,
     fake_place_repository: FakePlaceRepository,
+    fake_geo_uow: FakeGeoUnitOfWork,
 ) -> None:
-    """search_places: поля кандидата (place_id/имя/страна/координаты/население) маппятся в PlaceSearchItem.
+    """search_places: поля кандидата (id, имя, страна, координаты, население) — в PlaceSearchItem; в транзакции.
 
     Сортировку по населению и обрезку по limit делает SQL-репозиторий, не сервис — они покрыты
     integration-тестом ``PlaceRepository`` против реального Postgres, поэтому в unit не дублируются.
@@ -35,6 +36,7 @@ async def test_search_places_maps_candidate_fields(
     assert item.latitude == moscow.latitude
     assert item.longitude == moscow.longitude
     assert item.population == moscow.population
+    assert fake_geo_uow.transactions_started == 1
 
 
 async def test_search_places_resolves_names_under_language_and_flags_missing(
@@ -61,8 +63,9 @@ async def test_search_places_resolves_names_under_language_and_flags_missing(
 async def test_resolve_places_returns_names_in_requested_language_with_en_fallback(
     place_service: PlaceService,
     fake_place_repository: FakePlaceRepository,
+    fake_geo_uow: FakeGeoUnitOfWork,
 ) -> None:
-    """resolve_places: названия на языке запроса, у места без перевода — английское."""
+    """resolve_places: названия на языке запроса, у места без перевода — английское; чтение в транзакции."""
     moscow = make_place(en="Moscow", ru="Москва")
     mostar = make_place(en="Mostar", ru=None, country_code="BA")
     fake_place_repository.places.extend([moscow, mostar])
@@ -72,6 +75,7 @@ async def test_resolve_places_returns_names_in_requested_language_with_en_fallba
     )
 
     assert {item.place_id: item.name for item in result.items} == {moscow.place_id: "Москва", mostar.place_id: "Mostar"}
+    assert fake_geo_uow.transactions_started == 1
 
 
 async def test_resolve_places_omits_unknown_ids_and_warns(
@@ -124,8 +128,9 @@ async def test_resolve_places_all_known_does_not_warn(
 async def test_get_places_by_ids_returns_location_of_known_places_only(
     place_service: PlaceService,
     fake_place_repository: FakePlaceRepository,
+    fake_geo_uow: FakeGeoUnitOfWork,
 ) -> None:
-    """get_places_by_ids: страна и координаты найденных мест; неизвестного id в ответе нет."""
+    """get_places_by_ids: страна и координаты найденных мест; неизвестного id в ответе нет; чтение в транзакции."""
     moscow = make_place()
     sea = make_place(en="Barents Sea", ru=None, country_code=None, latitude=75.0, longitude=40.0, population=None)
     fake_place_repository.places.extend([moscow, sea])
@@ -139,6 +144,7 @@ async def test_get_places_by_ids_returns_location_of_known_places_only(
         PlaceLocation(place_id=moscow.place_id, country_code="RU", latitude=55.75, longitude=37.62),
         PlaceLocation(place_id=sea.place_id, country_code=None, latitude=75.0, longitude=40.0),
     ]
+    assert fake_geo_uow.transactions_started == 1
 
 
 async def test_get_places_by_ids_nothing_known_returns_empty(place_service: PlaceService) -> None:

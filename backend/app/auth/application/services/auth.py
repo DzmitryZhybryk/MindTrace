@@ -1,5 +1,3 @@
-from typing import Final
-
 from app.auth.application.ports.unit_of_work import AuthUnitOfWorkPort
 from app.auth.application.ports.users_client import CreateUserRequest, UsersClientPort
 from app.auth.application.schemas.commands import LoginCommand, RegistrationCommand
@@ -15,14 +13,7 @@ from app.auth.exceptions import (
     InvalidRefreshTokenError,
     UsernameAlreadyExistError,
 )
-from app.shared.infra.crypto import SaltedHasherPort, get_argon2_salted_hasher
-
-# Заранее посчитанный argon2-хеш фиксированной строки. Используется в ``login``
-# для timing mitigation: если по логину никого не найдено, мы всё равно делаем
-# ``salted_hasher.verify`` против этой константы, чтобы потраченное время не отличалось
-# от случая «юзер найден, пароль неверный». Считается один раз при импорте —
-# по-запросный argon2 был бы +50ms на каждом login'е.
-_DUMMY_PASSWORD_HASH: Final[str] = get_argon2_salted_hasher().hash(secret="timing_mitigation_dummy")  # noqa: S106
+from app.shared.infra.crypto import SaltedHasherPort
 
 
 class AuthService:
@@ -141,8 +132,8 @@ class AuthService:
         в один и тот же ``InvalidCredentialsError`` — это не даёт атакующему
         отличить "несуществующий логин" от "неверный пароль" по коду ответа.
 
-        Timing-attack mitigation: если по логину никого не найдено, мы всё
-        равно вызываем ``salted_hasher.verify`` против ``_DUMMY_PASSWORD_HASH``. Без
+        Timing-attack mitigation: если по логину никого не найдено, введённый пароль
+        всё равно хешируется — столько же работы, сколько у проверки найденного. Без
         этого юзер-enumeration был бы тривиален по разнице во времени ответа.
 
         Scenarios:
@@ -163,7 +154,9 @@ class AuthService:
                 login=command.login,
             )
             if user_credentials_entity is None:
-                self._salted_hasher.verify(secret=command.password.get_secret_value(), hashed=_DUMMY_PASSWORD_HASH)
+                # Результат не нужен: хеш стоит столько же, сколько verify ниже, и ответ по
+                # несуществующему логину не приходит заметно быстрее, чем по существующему.
+                self._salted_hasher.hash(secret=command.password.get_secret_value())
                 raise InvalidCredentialsError()
 
             if not self._salted_hasher.verify(

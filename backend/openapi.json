@@ -3,7 +3,7 @@
   "info": {
     "title": "MindTrace",
     "description": "Service for managing mindtrace",
-    "version": "5.0.4"
+    "version": "5.0.5"
   },
   "paths": {
     "/healthz/": {

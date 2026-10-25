@@ -3,7 +3,7 @@ from typing import Annotated, Self
 from pydantic import ConfigDict, EmailStr, Field, SecretStr, StringConstraints, model_validator
 
 from app.auth.exceptions import TermsNotAcceptedError
-from app.shared.schemas import CamelModel
+from app.shared.schemas.base import CamelModel
 
 
 class RegisterRequest(CamelModel):

@@ -2,12 +2,10 @@
 paths:
   - "backend/tests/**"
 ---
-
 # Backend tests: philosophy and style
 
-How a backend test is written. Where it lives, markers, fixtures placement and run targets are in
-`testing-layout.md`; the `backend-tests` skill is the procedure for writing one. Commands run from
-`backend/`.
+How a test is written. Where it lives, markers, fixture placement and run targets are the
+project's own layout rule (`testing-layout.md`).
 
 ## Classicist, with hand-written fakes
 
@@ -17,7 +15,7 @@ How a backend test is written. Where it lives, markers, fixtures placement and r
 - **Fake only the I/O boundary:** the outbound ports (repositories, UoW, clients, task bus, email
   transport).
 - **Constructor DI.** Application services are unit-tested by passing fakes directly, bypassing
-  FastAPI. `dependency_overrides` belong to the **api** level only.
+  the web framework. `dependency_overrides` belong to the **api** level only.
 
 ### Fakes over mocks
 
@@ -32,8 +30,8 @@ How a backend test is written. Where it lives, markers, fixtures placement and r
 
 ### Thin Protocols keep fakes honest
 
-A port declares only the methods in use; the real class and the fake both subclass it, so `ty`
-catches drift. Port rules — `ddd.md`.
+A port declares only the methods in use; the real class and the fake both subclass it, so the type
+checker catches drift. Port rules — `layers.md`.
 
 ## Determinism
 
@@ -42,8 +40,8 @@ catches drift. Port rules — `ddd.md`.
   Never freeze time globally and never inject a `Clock` into production code for tests.
 - **Randomness** (`secrets.token_urlsafe`): never predict the value; assert the invariant
   (`entity.token_hash == hasher.digest(plaintext)`).
-- **Argon2 is deliberately slow (~50 ms/hash):** service tests use `FakeSaltedHasher`; the real
-  `Argon2SaltedHasher` is covered once in `unit/shared/infra/crypto/` (roundtrip + wrong secret fails).
+- **Slow primitives** (a password hash tuned to tens of milliseconds): service tests use a fake
+  hasher; the real one is covered once, in its own roundtrip test.
 - **No sleeps:** wait for the condition, not a duration.
 
 ## Test data builders

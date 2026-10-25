@@ -12,7 +12,7 @@ from app.geo.application.services.place import PlaceService
 from app.journeys.application.ports.places_client import PlaceLocationResponse
 from app.journeys.infra.clients.internal_places_client import InternalPlacesClient
 from tests.builders import make_place
-from tests.fakes import FakePlaceRepository
+from tests.fakes import FakeGeoUnitOfWork, FakePlaceRepository
 
 
 async def test_find_place_locations_maps_known_places_from_geo() -> None:
@@ -21,7 +21,9 @@ async def test_find_place_locations_maps_known_places_from_geo() -> None:
     sea = make_place(en="Barents Sea", ru=None, country_code=None, latitude=75.0, longitude=40.0, population=None)
     place_repository = FakePlaceRepository()
     place_repository.places.extend([moscow, sea])
-    client = InternalPlacesClient(place_service=PlaceService(repository=place_repository))
+    client = InternalPlacesClient(
+        place_service=PlaceService(uow=FakeGeoUnitOfWork(place_repository=place_repository)),
+    )
 
     locations = await client.find_place_locations(place_ids=(moscow.place_id, sea.place_id, uuid4()))
 

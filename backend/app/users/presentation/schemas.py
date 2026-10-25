@@ -1,6 +1,6 @@
 from pydantic import ConfigDict
 
-from app.shared.schemas import CamelModel
+from app.shared.schemas.base import CamelModel
 
 
 class CurrentUserResponse(CamelModel):

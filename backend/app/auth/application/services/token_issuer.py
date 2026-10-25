@@ -8,7 +8,7 @@ from app.auth.application.schemas.metadata import ClientMetadata
 from app.auth.application.schemas.results import IssuedRefreshToken, TokenPairResult
 from app.auth.domain.entities import RefreshTokenEntity, UserCredentialsEntity
 from app.shared.infra.crypto import DeterministicHasherPort
-from app.shared.infra.jwt import JWTService
+from app.shared.infra.jwt import AccessTokenIssuerPort
 
 _REFRESH_TOKEN_SECRET_BYTES: Final[int] = 32
 
@@ -26,11 +26,11 @@ class TokenIssuer:
         self,
         *,
         deterministic_hasher: DeterministicHasherPort,
-        jwt_service: JWTService,
+        access_token_issuer: AccessTokenIssuerPort,
         refresh_token_ttl_days: int,
     ) -> None:
         self._deterministic_hasher = deterministic_hasher
-        self._jwt_service = jwt_service
+        self._access_token_issuer = access_token_issuer
         self._refresh_token_ttl_days = refresh_token_ttl_days
 
     def hash_refresh_secret(self, refresh_secret: str) -> str:
@@ -110,7 +110,7 @@ class TokenIssuer:
         Returns:
             Готовый к отдаче через presentation-слой результат
         """
-        access_token = self._jwt_service.create_access_token(
+        access_token = self._access_token_issuer.create_access_token(
             user_id=user_credentials_entity.user_id,
             role=user_credentials_entity.role.value,
             email_verified=user_credentials_entity.is_email_verified,

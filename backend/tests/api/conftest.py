@@ -40,7 +40,7 @@ from fastapi import APIRouter
 from httpx import ASGITransport, AsyncClient, Response
 
 from app.main import create_app, create_default_app
-from app.shared.exceptions import register_exception_handlers
+from app.shared.exceptions.handlers import register_exception_handlers
 from app.shared.infra.jwt import get_jwt_service
 from app.shared.schemas.base import BFastAPI
 from app.shared.types import DictStrAny

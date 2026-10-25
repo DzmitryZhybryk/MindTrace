@@ -13,7 +13,7 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 
-from app.shared.infra.crypto import Sha256DeterministicHasher
+from app.shared.infra.crypto.sha256 import Sha256DeterministicHasher
 from tests.builders import make_password, make_refresh_token, make_user_credentials
 from tests.fakes import (
     FakeRefreshTokenRepository,

@@ -34,7 +34,7 @@ docker network create mindtrace-network   # один раз, перед перв
 make run                                  # dev-стек: app + worker + postgres + frontend + logging
 make be-<target>                          # любой backend-таргет (make be-lint, be-format)
 make fe-<target>                          # любой frontend-таргет (make fe-lint, fe-check)
-make check                                # полный гейт обеих сторон (lint + typecheck + тесты + бюджет правил Claude)
+make check                                # полный гейт обеих сторон (lint + typecheck + тесты + бюджет и дрейф правил Claude)
 make test                                 # быстрые тесты обеих сторон, без Docker
 make test-infra                           # тяжёлые: backend integration + frontend e2e (нужен Docker-демон)
 make test-e2e                             # frontend e2e на одноразовом стеке; дев-база не трогается
@@ -88,26 +88,30 @@ skill `dev-database`. Контракт API (`openapi.json` → сгенерир�
 
 | Файл | О чём |
 |---|---|
-| `python/code-style.md` | ruff/ty, докстринги, named arguments, `Self`, повседневные соглашения |
+| `python/coding-style.md` | один инструмент на задачу, докстринги, named arguments, `Self`, повторяющиеся формы |
 | `python/security.md` | pydantic-settings, `SecretStr`, bandit через ruff |
-| `python/ddd.md` | слои, раскладка `schemas/` и `ports/`, порты (DIP), UoW, soft-delete, нейминг репозиториев и entity |
+| `python/authorization.md` | инварианты владения: личность только из токена, owner-scoped lookup, чужая строка это 404, cross-domain id перепроверяется |
+| `python/layers.md` | слои, раскладка `schemas/` и `ports/`, конфиг домена, порты (DIP), UoW, read models, кто собирает VO |
+| `python/naming.md` | имена модулей, портов и реализаций, методов репозитория и entity, суффиксы слоя у переменных |
+| `python/soft-delete.md` | чтение soft-deleted строк: точечный поиск без предиката, списки с фильтром в SQL |
 | `python/use-case-helpers.md` | когда кусок use case выносится из тела, куда (domain, приватный метод, модуль, `shared/utils`) и как назвать |
 | `python/docstring-scenarios.md` | секция `Scenarios:` в докстринге: в каких сценариях нужна функция |
 | `python/dto.md` | `*Command`/`*Result`/`*Request`/`*Response`, роли параметров use case (actor/target/payload/metadata), объекты портов (`*Scope`/`*Filters`), pydantic vs dataclass, типы коллекций, где валидация |
 | `python/shared-infrastructure.md` | вертикали `shared/`, исключения, паттерны composition root, `TaskBusPort` |
+| `python/imports.md` | откуда импортировать из shared-пакета; `TYPE_CHECKING` в портах |
 | `python/component-lifecycle.md` | component+registry против `@cache`-фабрики |
 | `python/testing.md` | философия, fakes, детерминизм, reuse-before-create |
 | `python/testing-layout.md` | пирамида, раскладка, маркеры, где живут фикстуры, покрытие, таргеты |
 | `typescript/coding-style.md` | типы, React, zod, нейминг, комментарии (только English) |
 | `typescript/error-display.md` | как показывать ошибки в формах; токен, а не готовый текст |
 | `typescript/testing.md` | классицизм, мок только сети, детерминизм, конвенции |
-| `typescript/testing-environment.md` | пирамида, jsdom-квирки, ловушки, раскладка, CI, e2e |
+| `typescript/testing-layout.md` | пирамида, jsdom-квирки, ловушки, раскладка, CI, e2e |
 | `web/ui-design.md` | любой дизайн или переделка вида UI начинается с вызова `frontend-design:frontend-design` |
 | `web/performance.md` | Web Vitals, бюджет бандла, загрузка, картинки, шрифты, ручные UI-проверки |
 | `common/codegen-contract.md` | дрейф-гейты, пин генератора, границы стран |
 
-`python/ddd.md`, `python/dto.md`, `python/component-lifecycle.md`, `python/use-case-helpers.md`, `python/docstring-scenarios.md` — копии личных конвенций: канон лежит в
-`~/.claude/optional/rules/python/`. Правишь канон — перекопируй сюда и верни строку `paths:` во frontmatter.
+Правило, у которого в `~/.claude/optional/rules/` есть файл по тому же пути, — копия личного канона плюс frontmatter
+`paths:`. Правишь канон — перекопируй сюда; `make canon-drift` (часть `make check`) падает на расхождении.
 
 ### Skills
 
@@ -119,9 +123,8 @@ skill `dev-database`. Контракт API (`openapi.json` → сгенерир�
 | `style-audit` | проверка фронта на токен-политику дизайна |
 | `seo-meta-tags` | `<head>` HTML-файлов |
 | `dead-code-audit` | поиск и удаление мёртвого кода |
-| `decision-records` | записать или изменить принятое решение; закрытие плана или задачи из `.plan/` |
 | `frontend-design:frontend-design` (плагин) | проектирование нового UI и редизайн — вызывать сразу, без напоминания |
-| глобальные | `/feature-plan`, `postgres` (дизайн схемы и запросов), `debugging`, `merge-review`, `graphify` |
+| глобальные | `/feature-plan`, `postgres` (дизайн схемы и запросов), `debugging`, `merge-review`, `graphify`, `decision-records` (записать или изменить решение; закрытие плана или задачи из `.plan/`), `prompt-audit` (ревизия конфигурации Claude; раз в 30 дней напоминает хук) |
 
 ### Агенты и ревью
 

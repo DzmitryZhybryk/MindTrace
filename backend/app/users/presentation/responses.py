@@ -1,7 +1,8 @@
 from typing import Final
 
-from app.shared.exceptions import ErrorResponse, InternalError
+from app.shared.exceptions import InternalError
 from app.shared.exceptions.examples import error_response_example
+from app.shared.exceptions.schemas import ErrorResponse
 from app.shared.infra.jwt import InvalidAccessTokenError
 from app.shared.types import DictStrAny
 from app.users.exceptions import UserDeletedError, UserNotFoundError

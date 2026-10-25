@@ -1,5 +1,5 @@
 """
-In-memory фейки journeys: репозиторий поверх ``list``/``dict`` и UoW с мокнутым commit.
+In-memory фейки journeys: репозиторий поверх ``list``/``dict``, UoW с мокнутым commit и клиент к geo.
 
 Каждый фейк реализует соответствующий порт из ``app.journeys.application.ports.*`` — тот же
 контракт, что и боевые реализации, поэтому ``ty`` ловит расхождение сигнатур. ``transaction``
@@ -26,6 +26,7 @@ from app.journeys.application.ports.journey_repository import (
     MovementConnection,
     VisitedPlace,
 )
+from app.journeys.application.ports.places_client import PlaceLocationResponse, PlacesClientPort
 from app.journeys.application.ports.unit_of_work import JourneyUnitOfWorkPort
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
@@ -193,3 +194,20 @@ class FakeJourneyUnitOfWork(JourneyUnitOfWorkPort):
 
     async def commit(self) -> None:
         await self.commit_mock()
+
+
+class FakePlacesClient(PlacesClientPort):
+    """
+    Фейк клиента journeys → geo: хранит места справочника и записывает вызовы.
+
+    Найденные места отдаёт в порядке хранения, а не запроса — как geo, у которого порядок
+    произвольный; тест может переставить ``locations``, чтобы проверить сопоставление по id.
+    """
+
+    def __init__(self, *, locations: Collection[PlaceLocationResponse] = ()) -> None:
+        self.locations = {location.place_id: location for location in locations}
+        self.calls: list[tuple[UUID, ...]] = []
+
+    async def find_place_locations(self, *, place_ids: Collection[UUID]) -> tuple[PlaceLocationResponse, ...]:
+        self.calls.append(tuple(place_ids))
+        return tuple(location for place_id, location in self.locations.items() if place_id in place_ids)

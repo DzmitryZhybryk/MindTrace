@@ -31,20 +31,15 @@ test of a session. Do **not** restate or fork them here — this skill is only t
    `backend/tests/` rather than assuming. **Never hand-tag markers:** the
    `pytest_collection_modifyitems` hook in `tests/conftest.py` applies level and domain markers
    from the file path.
-3. **Prepare fakes (boundary only).**
-   - Reuse / add an in-memory fake in `backend/tests/fakes/` (repositories, clients, `TaskBusPort`,
-     hashers). Back repositories with a `dict`; `FakeSaltedHasher` avoids real argon2.
-   - When writing the **first** fake for a repository, add its port (a thin `Protocol`, only the
-     methods used) and type both the real repo and the fake with it — placement, naming and
-     imports per `ddd.md` → "Outbound ports".
-   - Fake UoW subclasses its port and holds the fake repos; `commit_mock` / `flush_mock`
-     (`AsyncMock`) record that it committed.
-   - Keep **real** stateless infra (`JWTService`, `TokenIssuer`).
-4. **Add builders** for entities/VO in `backend/tests/builders.py` (plain kwargs functions, named
-   args, explicit timestamps — no `factory-boy`).
-5. **Write the test.** `async def test_<unit>_<condition>_<expected>` (no decorator —
-   `asyncio_mode=auto`). State-based assertions; `pytest.raises(Err, match=...)`; parametrize
-   variants; named arguments everywhere; assert invariants for random/time values.
+3. **Prepare fakes (boundary only).** Reuse or add an in-memory fake in `backend/tests/fakes/`,
+   shaped per `testing.md` → "Fakes over mocks". When writing the **first** fake for a
+   repository, add its port (a thin `Protocol`, only the methods used) and type both the real
+   repo and the fake with it — placement and imports per `layers.md` → "Outbound ports", the
+   name per `naming.md`.
+4. **Add builders** in `backend/tests/builders.py` only when the same construction repeats across
+   files (`testing.md` → "Test data builders", "Reuse before create").
+5. **Write the test** to the conventions of `testing.md`: naming, state-based assertions,
+   parametrized variants, determinism.
 6. **Verify green:**
    ```bash
    cd backend
@@ -59,7 +54,5 @@ test of a session. Do **not** restate or fork them here — this skill is only t
 
 ## Notes
 
-- Never mock `AsyncSession`/SQLAlchemy or unit-test repositories — that's the integration phase.
+- Repositories are not unit-tested — that's the integration phase.
 - Don't assert private internals (`service._uow`) — ruff `SLF001` will flag it.
-- Design fakes as full port replacements: they're reused in the api phase via
-  `app.dependency_overrides`.

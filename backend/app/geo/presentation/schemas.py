@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import ConfigDict, Field
 
 from app.geo.domain.enums import Language
-from app.shared.schemas import CamelModel
+from app.shared.schemas.base import CamelModel
 
 
 class PlaceSearchItem(CamelModel):

@@ -42,8 +42,6 @@ Frontend and backend are versioned **separately**; never bump one artifact for a
 - Version bump and CHANGELOG entry go in the **same commit** as the feature (code + tests):
   backend feature → `pyproject.toml` + Backend section; frontend feature → `package.json` +
   Frontend section; cross-cutting → both.
-- Before writing a CHANGELOG sentence about a file, check it is tracked
-  (`git check-ignore -v <path>`); gitignored files are not project history.
 
 ## Before commit and before push
 
