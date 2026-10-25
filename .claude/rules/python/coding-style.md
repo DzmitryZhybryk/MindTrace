@@ -2,16 +2,15 @@
 paths:
   - "backend/**/*.py"
 ---
+# Python coding style
 
-# Python code style (`backend/`)
-
-Extends `common/coding-style.md`. Layers and naming — `ddd.md`; transfer objects and collection
-types — `dto.md`.
+Extends `common/coding-style.md`. Layers — `layers.md`; names across layers — `naming.md`;
+transfer objects and collection types — `dto.md`.
 
 ## Toolchain
 
-ruff lints, formats and sorts imports; ty checks types (`make lint`, `make format`,
-`make typecheck`; config in `pyproject.toml`). Do not add Black, isort or mypy.
+The linter, formatter, import sorter and type checker are whatever `pyproject.toml` configures,
+one tool per job. Do not add a second tool beside it (Black or isort beside ruff, mypy beside ty).
 
 ## Docstrings
 
@@ -71,14 +70,9 @@ if exc.category is ErrorCategory.INTERNAL:
 return default_handler
 ```
 
-## Recurring conventions
+## Recurring shapes
 
 - Do **not** alias a repository (`repository = self._uow.x_repository`); always call
   `self._uow.x_repository.method(...)` directly.
 - A single-row `find` in a repository ends with a ternary `self._to_entity(...) if model else None`,
   not an early return. Before adding a method to a layer, grep its neighbours and repeat their shape.
-- Use `DictStrAny` and the other aliases from `app.shared.types` instead of inline `dict[str, Any]`.
-- An entity's `updated_at` is touched through the existing `TimestampedEntityMixin._mark_updated()`,
-  not by hand-written `touch_*` / `mark_modified` methods.
-- External API clients carry the `Client` suffix (`ResendClient`); in a client or port class name,
-  `Transport` is reserved for `Protocol` roles.

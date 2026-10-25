@@ -13,6 +13,15 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 ## 2026-10-25
 
+### Backend 5.0.5
+
+- Старт и остановка компонентов — одна функция `run_components` для API-процесса, воркера и шага схемы procrastinate: упавший на старте компонент больше не оставляет открытыми уже поднятые, остановка идёт в обратном порядке и не прерывается на первом сбое. `ProcrastinateComponent` закрывает пул, если ожидание первых соединений прервано на старте. Список blueprint'ов задач — один (`app/blueprints.py`); таска воркера берёт зависимости из реестра компонентов, а не по строковому ключу на каждую
+- Вход по несуществующему логину хеширует введённый пароль тем же хешером вместо проверки против заранее посчитанного при импорте argon2-хеша; `TokenIssuer` зависит от порта `AccessTokenIssuerPort`, а не от `JWTService`
+- Каждый use case, который читает свои данные, открывает транзакцию — и чтения тоже: пять чтений journeys и все use case'ы geo. У geo свой UoW (`GeoUnitOfWork`), `PlaceService` получает его вместо репозитория
+- Код `application/` и `domain/` больше не загружает при импорте FastAPI, Starlette и SQLAlchemy, воркер — FastAPI и Starlette: `__init__` shared-пакетов отдают только порты, исключения, DTO, чистые функции и `get_*`-фабрики, реализации импортируются из своих модулей; порты вертикалей — в `ports.py`. Это фиксирует тест `tests/unit/shared/test_import_hygiene.py` — для модулей слоёв и для точки входа воркера
+- `make arch` запускает `tach check --exact`: исключения доменов — отдельные модули tach, неиспользуемые зависимости в `tach.toml` роняют гейт
+- Поведение и контракт API не меняются
+
 ### Backend 5.0.4
 
 - Транзитивные зависимости обновлены под свежие advisory, на которых падал `uv audit` в `make check`: `certifi` до 2026.10.23 (GHSA-6q48-6c7w-9gw2, critical: скомпрометированные корневые CA emSign; тянут `httpx` и `requests`), `opentelemetry-api` и вся семья `opentelemetry-*` до 1.45.1 (GHSA-xcq7-p3pf-p88h: DoS при разборе `tracestate`; тянет `fastapi`), `gitpython` до 3.2.1 (GHSA-83vg-56qc-22m7: RCE при клонировании сабмодулей; тянет `tach`, только dev). Поведение и контракт API не меняются
@@ -20,6 +29,10 @@ CHANGELOG остаётся один. Новые записи группирую�
 ### Project
 
 - Транзитивный `undici` обновлён до 8.12.3 (GHSA-xjj6-f33q-929c, GHSA-4qv8-2p9j-2685, GHSA-f72v-6w45-q472: DoS и обход SRI); тянет `jsdom` — только тесты, прод-бандла не касается. На этом падал `npm audit` в `make check`
+- Решение: настройки бэкенда остаются одним синглтоном на процесс — `Settings`, проброшенный из точки входа через реестр, отвергнут (`.claude/decisions/backend.md`)
+- `.claude/rules/python/layers.md`: транзакция у каждого use case, читающего свои данные; участник чужой транзакции свою не открывает; чужой use case, из которого только читают, вызывается до своей транзакции; `unit_of_work.py` — в каждом домене со своим хранилищем, не только в пишущем
+- Правило `.claude/rules/python/imports.md` (бэкенд и его тесты): `__init__` shared-пакета отдаёт только контракт, и он импортируется из пакета, реализации — из своего модуля; тип, который порт использует только в аннотациях, импортируется под `TYPE_CHECKING`. Заменило фразу «import from the package» в `shared-infrastructure.md`
+- Ревизия правил Claude: `ddd.md` разобран на `layers.md` (слои, конфиг домена, порты, UoW, read models), `naming.md` (имена модулей, портов, методов репозитория и entity, суффиксы слоя) и `soft-delete.md`; инварианты владения из `common/security.md` — в `python/authorization.md`, который грузится по путям бэкенда, а не в каждой сессии; `python/code-style.md` → `coding-style.md`, `typescript/testing-environment.md` → `testing-layout.md`; `common/coding-style`, `common/security`, `python/coding-style`, `security`, `testing`, `imports` — копии личного канона, `make canon-drift` (часть `make check`) ловит расхождение с ним; skill `decision-records` стал глобальным; бюджеты `check_context_budget.py` для правил бэкенда подняты под новые файлы (app — 56 000 B, shared — 59 000 B)
 
 ## 2026-10-19
 

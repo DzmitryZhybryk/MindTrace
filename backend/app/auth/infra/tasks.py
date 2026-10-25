@@ -6,17 +6,19 @@ Procrastinate-таски домена auth.
 blueprint'ы всех доменов и передаёт их в ``ProcrastinateComponent``,
 который через ``add_tasks_from`` подключает их к App-инстансу.
 
-EmailTransportPort достаётся из ``context.additional_context`` — словарь
-наполняется на старте worker'а (см. Phase 6) — а не через module-level
-синглтоны: воркер и API-процесс могут собирать registry по-разному.
+Зависимости таска достаёт из реестра компонентов воркера — он лежит в
+``context.additional_context`` под ``WORKER_REGISTRY_KEY`` — а не через module-level
+синглтоны: воркер и API-процесс собирают registry по-разному.
 """
 
 from procrastinate import Blueprint, JobContext, RetryStrategy
 
 from app.auth.application.ports.tasks import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.infra.email_renderer import render_verification_email
+from app.shared.infra.di.registry import ComponentRegistry
 from app.shared.infra.email import EmailTransportPort
 from app.shared.infra.http.exceptions import ExternalAPITemporaryError
+from app.shared.infra.procrastinate.component import WORKER_REGISTRY_KEY
 from app.shared.logging import get_logger
 
 auth_blueprint = Blueprint()
@@ -53,14 +55,15 @@ async def send_verification_email(
         - фоновая отправка письма с кодом: после регистрации и по кнопке в диалоге «Подтвердите email»
 
     Args:
-        context: Procrastinate JobContext с ``additional_context``, в котором
-            worker должен предоставить ``email_transport: EmailTransportPort``
+        context: Procrastinate JobContext с реестром компонентов воркера в
+            ``additional_context``; из реестра берётся ``EmailTransportPort``
         user_id: ID пользователя; используется только для логов и lock'а
             (lock задаётся при defer'е в сервисе, не здесь)
         email: Адрес получателя
         code: Plaintext-код, который увидит пользователь в письме
     """
-    transport: EmailTransportPort = context.additional_context["email_transport"]
+    registry: ComponentRegistry = context.additional_context[WORKER_REGISTRY_KEY]
+    transport = registry.get(EmailTransportPort)
     message = render_verification_email(email=email, code=code)
     await transport.send(message=message)
     logger.info("auth.verification_email.sent", user_id=user_id, email=email)

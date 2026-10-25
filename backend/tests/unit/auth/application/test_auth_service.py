@@ -14,7 +14,7 @@ from app.auth.exceptions import (
     InvalidRefreshTokenError,
     UsernameAlreadyExistError,
 )
-from app.shared.infra.crypto import Sha256DeterministicHasher
+from app.shared.infra.crypto.sha256 import Sha256DeterministicHasher
 from tests.builders import make_password, make_refresh_token, make_user_credentials
 from tests.fakes import (
     FakeAuthUnitOfWork,
@@ -205,8 +205,9 @@ async def test_login_raises_when_user_not_found(
     auth_service: AuthService,
     fake_uow: FakeAuthUnitOfWork,
     fake_refresh_token_repository: FakeRefreshTokenRepository,
+    fake_salted_hasher: FakeSaltedHasher,
 ) -> None:
-    """login: несуществующий логин → InvalidCredentialsError, без refresh и коммита."""
+    """login: несуществующий логин → InvalidCredentialsError без refresh и коммита; пароль всё равно хешируется."""
     with pytest.raises(InvalidCredentialsError):
         await auth_service.login(
             command=LoginCommand(login="ghost@example.com", password=SecretStr("pw")),
@@ -215,6 +216,7 @@ async def test_login_raises_when_user_not_found(
 
     assert fake_refresh_token_repository.by_hash == {}
     fake_uow.commit_mock.assert_not_awaited()
+    assert fake_salted_hasher.hashed_secrets == ["pw"]
 
 
 async def test_login_raises_when_password_wrong(

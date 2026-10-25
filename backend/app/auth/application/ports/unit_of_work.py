@@ -1,11 +1,12 @@
 from contextlib import AbstractAsyncContextManager
-from typing import Protocol
-
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import TYPE_CHECKING, Protocol
 
 from app.auth.application.ports.challenge_repository import ChallengeRepositoryPort
 from app.auth.application.ports.refresh_token_repository import RefreshTokenRepositoryPort
 from app.auth.application.ports.user_credentials_repository import UserCredentialsRepositoryPort
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 __all__ = ["AuthUnitOfWorkPort"]
 

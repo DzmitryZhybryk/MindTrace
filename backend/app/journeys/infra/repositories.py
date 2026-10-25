@@ -16,7 +16,7 @@ from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
 from app.journeys.domain.value_objects import GeoPoint
 from app.journeys.infra.models import Journey
-from app.shared.fractional_index import BaseSortKeyRepository
+from app.shared.fractional_index.repository import BaseSortKeyRepository
 from app.shared.pagination import CursorPage, PageQuery, decode_cursor, split_page
 from app.shared.types import DictStrAny
 

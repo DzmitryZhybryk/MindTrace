@@ -9,7 +9,7 @@ paths:
 # Frontend tests: philosophy and style
 
 How a frontend test is written. Pyramid, tooling, jsdom quirks, layout, coverage, CI and e2e —
-`testing-environment.md`. Mirrors the backend rule `python/testing.md`: unit-first, classicist,
+`testing-layout.md`. Mirrors the backend rule `python/testing.md`: unit-first, classicist,
 mock only the I/O boundary. Commands run from `frontend/`.
 
 ## Classicist, mock only the network

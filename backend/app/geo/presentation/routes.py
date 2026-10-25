@@ -15,7 +15,7 @@ from app.geo.presentation.schemas import (
     ResolvePlacesRequest,
     ResolvePlacesResponse,
 )
-from app.shared.infra.jwt import current_user_id_dependency
+from app.shared.infra.jwt.dependency import current_user_id_dependency
 
 geo_router = APIRouter()
 

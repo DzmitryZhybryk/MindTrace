@@ -1,4 +1,4 @@
-from app.geo.application.ports.place_repository import PlaceRepositoryPort
+from app.geo.application.ports.unit_of_work import GeoUnitOfWorkPort
 from app.geo.application.schemas.commands import GetPlacesByIdsCommand, ResolvePlacesCommand, SearchPlacesCommand
 from app.geo.application.schemas.results import (
     PlaceLocation,
@@ -16,14 +16,14 @@ logger = get_logger(__name__)
 class PlaceService:
     """Поиск мест в газеттире и их названия на нужном языке."""
 
-    def __init__(self, *, repository: PlaceRepositoryPort, logged_unknown_place_ids_limit: int = 10) -> None:
+    def __init__(self, *, uow: GeoUnitOfWorkPort, logged_unknown_place_ids_limit: int = 10) -> None:
         """
         Args:
-            repository: Репозиторий мест
+            uow: Транзакция и репозиторий мест
             logged_unknown_place_ids_limit: Сколько неизвестных id попадает в лог — для сигнала хватает
                 примера, а весь запрос — до 1000 id
         """
-        self._repository = repository
+        self._uow = uow
         self._logged_unknown_place_ids_limit = logged_unknown_place_ids_limit
 
     async def search_places(self, command: SearchPlacesCommand) -> PlaceSearchResult:
@@ -39,7 +39,12 @@ class PlaceService:
         Returns:
             Упорядоченная выдача кандидатов с именами под язык запроса
         """
-        places = await self._repository.search_places_by_name(search_text=command.search_text, limit=command.limit)
+        async with self._uow.transaction():
+            places = await self._uow.place_repository.search_places_by_name(
+                search_text=command.search_text,
+                limit=command.limit,
+            )
+
         items: list[PlaceSearchItem] = []
         for place_entity in places:
             name = place_entity.display_name(language=command.language)
@@ -83,7 +88,9 @@ class PlaceService:
         Returns:
             Названия найденных мест
         """
-        places = await self._repository.find_places_by_ids(place_ids=command.place_ids)
+        async with self._uow.transaction():
+            places = await self._uow.place_repository.find_places_by_ids(place_ids=command.place_ids)
+
         missing_place_ids = set(command.place_ids) - {place_entity.place_id for place_entity in places}
         if missing_place_ids:
             logger.warning(
@@ -114,7 +121,9 @@ class PlaceService:
         Returns:
             Найденные места в произвольном порядке
         """
-        places = await self._repository.find_places_by_ids(place_ids=command.place_ids)
+        async with self._uow.transaction():
+            places = await self._uow.place_repository.find_places_by_ids(place_ids=command.place_ids)
+
         items = tuple(
             PlaceLocation(
                 place_id=place_entity.place_id,

@@ -38,7 +38,7 @@ Validate at system boundaries (HTTP body, external API responses, file content).
 - Constants: `UPPER_SNAKE_CASE`
 - Descriptive names; 1–2 letter names only in short lambdas/loops
 
-> Casing follows the language: Python — `snake_case`/`PascalCase` (PEP 8), TypeScript — `camelCase`/`PascalCase`/`use*` for hooks (see `typescript/coding-style.md`).
+> Casing follows the language: Python — `snake_case`/`PascalCase` (PEP 8), TypeScript — `camelCase`/`PascalCase`/`use*` for hooks (see the language's own style rule).
 
 ## Code Smells
 

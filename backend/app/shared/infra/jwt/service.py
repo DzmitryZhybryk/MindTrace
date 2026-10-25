@@ -12,6 +12,8 @@ class JWTDecodeError(Exception):
 
 
 class JWTService:
+    """Реализация ``AccessTokenIssuerPort`` и проверка access-токенов запроса."""
+
     def __init__(self, *, secret: str, algorithm: str, access_token_expire_minutes: int) -> None:
         self._secret = secret
         self._algorithm = algorithm

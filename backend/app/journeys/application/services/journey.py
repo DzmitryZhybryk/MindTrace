@@ -355,11 +355,13 @@ class JourneyService:
         Raises:
             InvalidCursorError: курсор не разбирается или выдан другим списком
         """
-        journeys_page = await self._uow.journey_repository.find_journeys_page_by_user_id(
-            user_id=user_id,
-            page=command.page,
-            filters=command.filters,
-        )
+        async with self._uow.transaction():
+            journeys_page = await self._uow.journey_repository.find_journeys_page_by_user_id(
+                user_id=user_id,
+                page=command.page,
+                filters=command.filters,
+            )
+
         items = tuple(
             JourneyFeedItem(
                 journey_id=journey_entity.journey_id,
@@ -386,7 +388,9 @@ class JourneyService:
         Returns:
             Годы поездок
         """
-        years = await self._uow.journey_repository.find_journey_years_by_user_id(user_id=user_id)
+        async with self._uow.transaction():
+            years = await self._uow.journey_repository.find_journey_years_by_user_id(user_id=user_id)
+
         return JourneyYearsResult(years=years)
 
     async def get_journeys_map(self, *, user_id: UUID) -> JourneysMapResult:
@@ -405,7 +409,9 @@ class JourneyService:
         Returns:
             Посещённые страны (по коду) с городами и годами визитов
         """
-        visited_places = await self._uow.journey_repository.find_visited_places_by_user_id(user_id=user_id)
+        async with self._uow.transaction():
+            visited_places = await self._uow.journey_repository.find_visited_places_by_user_id(user_id=user_id)
+
         # Репозиторий отдаёт места упорядоченными по стране — groupby собирает каждую страну целиком.
         countries = tuple(
             MapCountryVisits(
@@ -439,7 +445,9 @@ class JourneyService:
         Returns:
             Посещённые места с координатами
         """
-        visited_places = await self._uow.journey_repository.find_visited_places_by_user_id(user_id=user_id)
+        async with self._uow.transaction():
+            visited_places = await self._uow.journey_repository.find_visited_places_by_user_id(user_id=user_id)
+
         return JourneysGlobeResult(places=tuple(visited_place.place for visited_place in visited_places))
 
     async def get_movements_map(self, *, user_id: UUID, command: GetMovementsMapCommand) -> MovementsMapResult:
@@ -459,12 +467,14 @@ class JourneyService:
         Returns:
             Маршруты поездок и годы первой и последней поездки
         """
-        years = await self._uow.journey_repository.find_journey_years_by_user_id(user_id=user_id)
-        if not years:
-            return MovementsMapResult(first_year=None, last_year=None, connections=())
+        async with self._uow.transaction():
+            years = await self._uow.journey_repository.find_journey_years_by_user_id(user_id=user_id)
+            if not years:
+                return MovementsMapResult(first_year=None, last_year=None, connections=())
 
-        connections = await self._uow.journey_repository.find_movement_connections_by_user_id(
-            user_id=user_id,
-            transport_types=command.transport_types,
-        )
+            connections = await self._uow.journey_repository.find_movement_connections_by_user_id(
+                user_id=user_id,
+                transport_types=command.transport_types,
+            )
+
         return MovementsMapResult(first_year=min(years), last_year=max(years), connections=connections)

@@ -21,6 +21,9 @@ Two orthogonal axes: **level** (speed and dependencies) and **domain** (mirror o
 
 Most of the value is in `unit/`; keep integration and api thin.
 
+Argon2 is deliberately slow (~50 ms/hash): service tests use `FakeSaltedHasher`; the real
+`Argon2SaltedHasher` is covered once in `unit/shared/infra/crypto/` (roundtrip + wrong secret fails).
+
 ## Layout
 
 Top level by level, then mirror `app/<domain>/<layer>`: `tests/<level>/<domain>/<layer>/test_*.py`.

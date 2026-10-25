@@ -41,7 +41,7 @@ from app.journeys.presentation.schemas import (
     MovementsMapResponse,
     UpdateJourneyRequest,
 )
-from app.shared.infra.jwt import current_user_id_dependency
+from app.shared.infra.jwt.dependency import current_user_id_dependency
 from app.shared.pagination import PageQuery
 
 journey_router = APIRouter()
