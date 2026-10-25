@@ -53,15 +53,22 @@ export function useAnimatedNumber(value: number): number {
  *
  * Positions are measured after every render, so the animation fires on any reorder: a filter, a
  * move, an edit with another year. While `isPaused` (a drag is in progress and dnd-kit moves the
- * rows) it only measures. Elements must be positioned relative to the container.
+ * rows) it only measures. While `isHidden` (the list sits under `display: none`) it forgets the
+ * positions, so the first render after showing again only measures. Elements must be positioned
+ * relative to the container.
  */
-export function useFlip(containerRef: RefObject<HTMLElement | null>, isPaused: boolean): void {
+export function useFlip(containerRef: RefObject<HTMLElement | null>, isPaused: boolean, isHidden = false): void {
   // Position is `offsetTop` within the feed, not the on-screen position: scrolling does not change it.
   const tops = useRef(new Map<string, number>());
 
   // No dependency array: measuring is needed after every render, and there is always something to compare against.
   useLayoutEffect(() => {
     const container = containerRef.current;
+    // Hidden rows have no layout and report `offsetTop` 0: comparing against that would fly every row in.
+    if (isHidden) {
+      tops.current = new Map();
+      return;
+    }
     if (!container) {
       return;
     }

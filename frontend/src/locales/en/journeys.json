@@ -44,13 +44,8 @@
     "empty": "No journeys yet",
     "addFirst": "Add your first journey",
     "noMatches": "No journeys match these filters",
-    "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
-    "deleteConfirm": "Delete?",
-    "deleteYes": "Yes",
-    "deleteNo": "No",
-    "distance": "Distance ≈",
     "dragHandle": "Drag to reorder",
     "dnd": {
       "instructions": "To reorder a journey, press Space, move it with the arrow keys, then press Space again to drop it or Escape to cancel.",
@@ -59,6 +54,23 @@
       "end": "{{route}} dropped into {{year}}",
       "cancel": "Moving {{route}} cancelled"
     }
+  },
+  "card": {
+    "back": "All journeys",
+    "saved": "Saved",
+    "undo": "Undo",
+    "undone": "Change undone",
+    "menu": "More actions",
+    "deleteJourney": "Delete journey",
+    "deleteTitle": "Delete this journey?",
+    "deleteBody": "{{route}} will disappear from the feed and the maps. This can't be undone.",
+    "transport": "Transport",
+    "year": "Year",
+    "distance": "Distance",
+    "photos": "Photo report",
+    "photosSoon": "Photos from the trip will live here",
+    "impressions": "Impressions",
+    "impressionsSoon": "What you liked and what you didn't"
   },
   "addJourney": {
     "title": "New journey",

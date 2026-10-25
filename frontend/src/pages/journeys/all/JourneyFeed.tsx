@@ -13,7 +13,7 @@ import {
 import { SortableContext, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Button, Loader, Text } from "@mantine/core";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
@@ -29,25 +29,34 @@ import {
 } from "./feedMove";
 import { feedQueryOptions, filterFeedPages, groupFeedByYear, isFeedFullyLoaded, NO_FEED_FILTERS } from "./feedQuery";
 import { JourneyFeedRow } from "./JourneyFeedRow";
-import { JourneyRowEditor, type JourneyEditField } from "./JourneyRowEditor";
 import { useFlip } from "./motion";
+import { useDistanceFormat } from "./useDistanceFormat";
 import { useJourneyMove } from "./useJourneyMove";
 import { YearHeader } from "./YearHeader";
 import type { YearRange } from "./yearRange";
+
+/**
+ * Where the feed's own data stands: `pending` until the server has answered for these filters
+ * (rows built from another variant are placeholders), `error` when the first page failed.
+ */
+export type FeedStatus = "pending" | "loaded" | "error";
 
 interface JourneyFeedProps {
   yearRange: YearRange | null;
   transportTypes: readonly TransportType[];
   /** Whether the user has any journeys at all: tells "empty so far" from "the filter found nothing". */
   hasJourneys: boolean;
-  /** Loaded rows in display order; the map builds its frame from them. */
+  /** The feed sits under `display: none` behind the journey card. */
+  isHidden: boolean;
+  /** Loaded rows in display order; the map builds its frame from them, the card looks its journey up. */
   onJourneysChange: (journeys: readonly JourneyFeedEntry[]) => void;
-  /** The journey the user is on: dragging, editing, hovering or focusing. */
+  onStatusChange: (status: FeedStatus) => void;
+  /** The journey the user is on: dragging, hovering or focusing. */
   onActiveJourneyChange: (journey: JourneyFeedEntry | null) => void;
 }
 
 /**
- * Feed of journeys by year with infinite scroll, row editing and drag and drop.
+ * Feed of journeys by year with infinite scroll and drag and drop; a row opens the journey card.
  *
  * The next page loads when about half a screen remains to the end of the loaded rows: an
  * invisible sentinel is stretched upward from the list bottom. While a feed request or a move is
@@ -62,10 +71,12 @@ export function JourneyFeed({
   yearRange,
   transportTypes,
   hasJourneys,
+  isHidden,
   onJourneysChange,
+  onStatusChange,
   onActiveJourneyChange,
 }: JourneyFeedProps) {
-  const { t, i18n } = useTranslation("journeys");
+  const { t } = useTranslation("journeys");
   const { t: tCommon } = useTranslation("common");
   const queryClient = useQueryClient();
   const filters = { yearRange, transportTypes };
@@ -102,26 +113,19 @@ export function JourneyFeed({
   const journeys = useMemo(() => groups.flatMap((group) => group.journeys), [groups]);
   const journeyIds = useMemo(() => journeys.map((journey) => journey.journeyId), [journeys]);
   const nameOf = usePlaceNames(journeys.flatMap((journey) => [journey.origin.placeId, journey.destination.placeId]));
-  const distanceFormat = useMemo(
-    () => new Intl.NumberFormat(i18n.language, { style: "unit", unit: "kilometer", maximumFractionDigits: 0 }),
-    [i18n.language],
-  );
+  const distanceFormat = useDistanceFormat();
 
-  // At most one row is edited: a click on another row switches editing to it.
-  const [editing, setEditing] = useState<{ journeyId: string; field: JourneyEditField } | null>(null);
   const [dropYear, setDropYear] = useState<number | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   // Which row the dragged one is over and its height: year headings shift by them.
   const [dragOver, setDragOver] = useState<{ overId: string; rowHeight: number } | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
-  // A just-saved row flashes a highlight.
-  const [savedId, setSavedId] = useState<string | null>(null);
-  const isDragDisabled = editing !== null || isMoving || feed.isPlaceholderData;
+  const isDragDisabled = isMoving || feed.isPlaceholderData;
 
   const containerRef = useRef<HTMLDivElement>(null);
   // The dropped row already stands where it is seen; FLIP only records the new positions,
   // otherwise it would replay the move again from the old spot.
-  useFlip(containerRef, dragId !== null || isDropShown);
+  useFlip(containerRef, dragId !== null || isDropShown, isHidden);
 
   // The row under the cursor or with focus inside, via one listener for the whole feed. Focus moving
   // to a neighbouring button of the same row does not change the row.
@@ -154,11 +158,22 @@ export function JourneyFeed({
     };
   }, [hasRows]);
 
-  const activeId = dragId ?? editing?.journeyId ?? hoverId;
+  const activeId = dragId ?? hoverId;
   const activeJourney = journeys.find((journey) => journey.journeyId === activeId) ?? null;
-  useEffect(() => {
+  let status: FeedStatus = "loaded";
+  if (feed.isPending || feed.isPlaceholderData) {
+    status = "pending";
+  } else if (feed.isError && !data) {
+    status = "error";
+  }
+  // Layout effects: a card opened by its address replaces the feed before the first paint,
+  // instead of one frame of the full list.
+  useLayoutEffect(() => {
     onJourneysChange(journeys);
   }, [journeys, onJourneysChange]);
+  useLayoutEffect(() => {
+    onStatusChange(status);
+  }, [status, onStatusChange]);
   useEffect(() => {
     onActiveJourneyChange(activeJourney);
   }, [activeJourney, onActiveJourneyChange]);
@@ -327,31 +342,16 @@ export function JourneyFeed({
               <section key={group.year} className="journey-feed__year" aria-labelledby={headerId}>
                 <YearHeader id={headerId} year={group.year} shift={headerShift} />
                 <ol className="journey-feed__rows">
-                  {group.journeys.map((journey) =>
-                    editing?.journeyId === journey.journeyId ? (
-                      <JourneyRowEditor
-                        key={journey.journeyId}
-                        journey={journey}
-                        nameOf={nameOf}
-                        distanceFormat={distanceFormat}
-                        focusField={editing.field}
-                        onClose={() => setEditing(null)}
-                        onSaved={() => setSavedId(journey.journeyId)}
-                      />
-                    ) : (
-                      <JourneyFeedRow
-                        key={journey.journeyId}
-                        journey={journey}
-                        nameOf={nameOf}
-                        distanceFormat={distanceFormat}
-                        onEdit={(field) => setEditing({ journeyId: journey.journeyId, field })}
-                        isDragDisabled={isDragDisabled}
-                        dropYear={dropYear}
-                        isSaved={savedId === journey.journeyId}
-                        onSavedShown={() => setSavedId(null)}
-                      />
-                    ),
-                  )}
+                  {group.journeys.map((journey) => (
+                    <JourneyFeedRow
+                      key={journey.journeyId}
+                      journey={journey}
+                      nameOf={nameOf}
+                      distanceFormat={distanceFormat}
+                      isDragDisabled={isDragDisabled}
+                      dropYear={dropYear}
+                    />
+                  ))}
                 </ol>
               </section>
             );

@@ -8,37 +8,13 @@ import { useNavigate } from "react-router";
 import { applyApiError, resolveErrorToken } from "../../api/errors";
 import { createJourneyMutation, zTransportType, type TransportType } from "../../api/sdk";
 import { PlaceAutocomplete } from "../../components/PlaceAutocomplete";
+import { SwapVerticalIcon } from "../../components/SwapVerticalIcon";
 import { TRANSPORT_ICONS } from "../../components/transportIcons";
 import { invalidateJourneyAggregates, invalidateJourneyFeed } from "./journeyCache";
 import { applyPlaceError, hasCountry, type JourneyFormValues } from "./journeyFormRules";
 import { JourneyYearField } from "./JourneyYearField";
 
 const TRANSPORT_ICON_SIZE = 22;
-
-/**
- * Inline "swap" icon: vertical up/down arrows. SVG, not Noto emoji, since it is a UI control:
- * drawn as a stroke in `currentColor` so it themes with the button.
- */
-function SwapVerticalIcon() {
-  return (
-    <svg
-      width={20}
-      height={20}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M7 4v15" />
-      <path d="M4 7l3 -3l3 3" />
-      <path d="M17 20v-15" />
-      <path d="M14 17l3 3l3 -3" />
-    </svg>
-  );
-}
 
 interface JourneyFormProps {
   form: UseFormReturnType<JourneyFormValues>;

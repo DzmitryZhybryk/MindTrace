@@ -5,8 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { resolveErrorToken } from "../../api/errors";
 import type { JourneyFormValues } from "./journeyFormRules";
-
-const YEARS_BACK = 100;
+import { journeyYearOptions } from "./journeyYears";
 
 interface JourneyYearFieldProps {
   form: UseFormReturnType<JourneyFormValues>;
@@ -18,10 +17,7 @@ export function JourneyYearField({ form }: JourneyYearFieldProps) {
   const values = form.getValues();
 
   // The current year is read once when the field appears: reading the clock every render is impure.
-  const [yearOptions] = useState(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: YEARS_BACK + 1 }, (_, i) => String(currentYear - i));
-  });
+  const [yearOptions] = useState(() => journeyYearOptions(new Date().getFullYear()));
 
   return (
     <Stack gap="sm">

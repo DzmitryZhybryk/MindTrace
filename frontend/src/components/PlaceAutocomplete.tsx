@@ -23,6 +23,8 @@ const DROPDOWN_MAX_HEIGHT = 320;
 
 interface PlaceAutocompleteProps {
   label: string;
+  /** The label names the field for screen readers only: something else on screen already does. */
+  isLabelHidden?: boolean;
   placeholder: string;
   value: PlaceSearchItem | null;
   onChange: (place: PlaceSearchItem | null) => void;
@@ -56,7 +58,14 @@ function focusNextFormControl(current: HTMLElement | null): void {
  * picked (the form requires one). On empty results a hint suggests another spelling or the
  * English name (insurance against gaps in `name_ru`).
  */
-export function PlaceAutocomplete({ label, placeholder, value, onChange, error }: PlaceAutocompleteProps) {
+export function PlaceAutocomplete({
+  label,
+  isLabelHidden = false,
+  placeholder,
+  value,
+  onChange,
+  error,
+}: PlaceAutocompleteProps) {
   const { t, i18n } = useTranslation("journeys");
   const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -177,7 +186,8 @@ export function PlaceAutocomplete({ label, placeholder, value, onChange, error }
         <Combobox.Target>
           <InputBase
             ref={inputRef}
-            label={label}
+            label={isLabelHidden ? undefined : label}
+            aria-label={isLabelHidden ? label : undefined}
             placeholder={placeholder}
             size="md"
             radius="md"

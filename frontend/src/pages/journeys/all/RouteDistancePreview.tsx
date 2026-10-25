@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
 
 import { estimateJourneyDistanceOptions, type JourneyFeedEntry, type PlaceSearchItem } from "../../../api/sdk";
 import { hasCountry } from "../journeyFormRules";
 
 interface RouteDistancePreviewProps {
-  /** The saved journey: its pair needs no request, its distance is already known. */
+  /** The journey as the feed has it: its pair needs no request, its distance is already known. */
   journey: JourneyFeedEntry;
   origin: PlaceSearchItem | null;
   destination: PlaceSearchItem | null;
@@ -13,15 +12,15 @@ interface RouteDistancePreviewProps {
 }
 
 /**
- * Distance of the pair picked in the row editor, before saving.
+ * Distance value of the journey card's pair; the card labels it.
  *
- * Always rendered with the same height: the feed's FLIP measures rows on every render. An incomplete
- * or invalid pair, or a failed request, shows a dash; while a new pair is being calculated the dash is
- * dimmed and `aria-busy`. No previous number is kept: editing a place field already clears the pick
- * (`PlaceAutocomplete` emits `null` on typing), so every new pair starts from the dash anyway.
+ * The pair of the feed's journey shows its distance without a request; another pair asks the
+ * backend for an estimate. An incomplete or invalid pair, or a failed request, shows a dash; while a
+ * new pair is being calculated the dash is dimmed and `aria-busy`. No previous number is kept:
+ * editing a place field already clears the pick (`PlaceAutocomplete` emits `null` on typing), so
+ * every new pair starts from the dash anyway.
  */
 export function RouteDistancePreview({ journey, origin, destination, distanceFormat }: RouteDistancePreviewProps) {
-  const { t } = useTranslation("journeys");
   const isSavedPair = origin?.placeId === journey.origin.placeId && destination?.placeId === journey.destination.placeId;
   const isPairValid = Boolean(
     origin && destination && hasCountry(origin) && hasCountry(destination) && origin.placeId !== destination.placeId,
@@ -49,17 +48,14 @@ export function RouteDistancePreview({ journey, origin, destination, distanceFor
   const shownKm = settledKm ?? null;
 
   return (
-    <p className="journey-editor__distance" aria-live="polite" aria-busy={isRecalculating}>
-      {t("all.distance")}{" "}
-      <span
-        className={
-          isRecalculating
-            ? "journey-editor__distance-value journey-editor__distance-value--recalculating"
-            : "journey-editor__distance-value"
-        }
-      >
-        {shownKm === null ? "—" : distanceFormat.format(shownKm)}
-      </span>
-    </p>
+    <span
+      className={
+        isRecalculating ? "journey-card__distance journey-card__distance--recalculating" : "journey-card__distance"
+      }
+      aria-live="polite"
+      aria-busy={isRecalculating}
+    >
+      {shownKm === null ? "—" : distanceFormat.format(shownKm)}
+    </span>
   );
 }
