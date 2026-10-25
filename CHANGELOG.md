@@ -11,6 +11,16 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-10-25
+
+### Backend 5.0.4
+
+- Транзитивные зависимости обновлены под свежие advisory, на которых падал `uv audit` в `make check`: `certifi` до 2026.10.23 (GHSA-6q48-6c7w-9gw2, critical: скомпрометированные корневые CA emSign; тянут `httpx` и `requests`), `opentelemetry-api` и вся семья `opentelemetry-*` до 1.45.1 (GHSA-xcq7-p3pf-p88h: DoS при разборе `tracestate`; тянет `fastapi`), `gitpython` до 3.2.1 (GHSA-83vg-56qc-22m7: RCE при клонировании сабмодулей; тянет `tach`, только dev). Поведение и контракт API не меняются
+
+### Project
+
+- Транзитивный `undici` обновлён до 8.12.3 (GHSA-xjj6-f33q-929c, GHSA-4qv8-2p9j-2685, GHSA-f72v-6w45-q472: DoS и обход SRI); тянет `jsdom` — только тесты, прод-бандла не касается. На этом падал `npm audit` в `make check`
+
 ## 2026-10-19
 
 ### Backend 5.0.3
