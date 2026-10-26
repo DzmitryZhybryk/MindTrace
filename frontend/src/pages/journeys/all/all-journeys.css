@@ -28,7 +28,7 @@
   animation: feed-arc-dot 0.3s ease-out 0.6s both;
 }
 
-/* Place name: a background-coloured stroke under the text keeps it readable over land and the arc. */
+/* City name: a background-coloured stroke under the text keeps it readable over land and the arc. */
 .feed-arc__label {
   fill: var(--text);
   stroke: var(--surface);
@@ -362,7 +362,7 @@
   color: var(--text);
 }
 
-.journey-row__place {
+.journey-row__city {
   overflow-wrap: anywhere;
 }
 
@@ -506,7 +506,7 @@
 }
 
 /* A city being edited: the add form's field, in body type, about as wide as a long city name. */
-.journey-card__editor--place {
+.journey-card__editor--city {
   flex: 1 1 14rem;
   min-width: 12rem;
   max-width: 20rem;
@@ -571,7 +571,7 @@
   outline: none;
 }
 
-.journey-card__place {
+.journey-card__city {
   overflow-wrap: anywhere;
 }
 

@@ -18,7 +18,7 @@ interface Coordinates {
 // A great-circle arc is drawn as a polyline: with this many segments no kinks show even across half the world.
 const ARC_SEGMENTS = 48;
 
-/** Projects the great-circle arc between two places onto the map canvas. */
+/** Projects the great-circle arc between two cities onto the map canvas. */
 export function projectArc(origin: Coordinates, destination: Coordinates): ArcPieces {
   const pieces: ScreenPoint[][] = [];
   let prevLng: number | null = null;

@@ -51,7 +51,7 @@ _DEFAULT_MIN_POPULATION: Final[int] = 0
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Дописать русские имена мест из Wikidata")
+    parser = argparse.ArgumentParser(description="Дописать русские имена городов из Wikidata")
     parser.add_argument("--output", type=Path, required=True, help="Куда записать новый .csv.gz")
     parser.add_argument("--input", type=Path, help="Исходный .csv.gz; по умолчанию — датасет из манифеста")
     parser.add_argument("--min-population", type=int, default=_DEFAULT_MIN_POPULATION)

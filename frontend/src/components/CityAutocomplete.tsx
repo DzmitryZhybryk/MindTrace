@@ -4,15 +4,15 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { searchPlacesOptions, type PlaceSearchItem } from "../api/sdk";
+import { searchCitiesOptions, type CitySearchItem } from "../api/sdk";
 import pinIcon from "../assets/emoji/pin.svg";
 import { toApiLanguage } from "../i18n/apiLanguage";
-import "./place-autocomplete.css";
+import "./city-autocomplete.css";
 
 const PIN_ICON_SIZE = 20;
 // Stable reference for empty results: the "highlight the first option" effect depends on
 // `options` identity and would rerun every render with a fresh `[]`.
-const NO_OPTIONS: readonly PlaceSearchItem[] = [];
+const NO_OPTIONS: readonly CitySearchItem[] = [];
 
 // The backend accepts queries from 2 characters.
 const MIN_LENGTH = 2;
@@ -21,20 +21,20 @@ const RESULT_LIMIT = 20;
 // Capped height: a long list scrolls inside the dropdown instead of stretching the page.
 const DROPDOWN_MAX_HEIGHT = 320;
 
-interface PlaceAutocompleteProps {
+interface CityAutocompleteProps {
   label: string;
   /** The label names the field for screen readers only: something else on screen already does. */
   isLabelHidden?: boolean;
   placeholder: string;
-  value: PlaceSearchItem | null;
-  onChange: (place: PlaceSearchItem | null) => void;
+  value: CitySearchItem | null;
+  onChange: (city: CitySearchItem | null) => void;
   error?: ReactNode;
 }
 
 /**
  * Moves focus to the next form control (input/select) after `current`.
  *
- * After a place is picked, Enter/Tab must not leave the cursor in the filled field. Buttons
+ * After a city is picked, Enter/Tab must not leave the cursor in the filled field. Buttons
  * (including swap) are skipped: focus follows input fields only.
  */
 function focusNextFormControl(current: HTMLElement | null): void {
@@ -51,21 +51,21 @@ function focusNextFormControl(current: HTMLElement | null): void {
 }
 
 /**
- * Place picker with gazetteer autocomplete (`/v1/geo/places/search/`).
+ * City picker with gazetteer autocomplete (`/v1/geo/cities/search/`).
  *
  * Typing -> debounce -> request (stale ones are aborted) -> dropdown of candidates; picking puts
- * a `PlaceSearchItem` (with `placeId`) into `value`. `value` stays `null` until a candidate is
+ * a `CitySearchItem` (with `cityId`) into `value`. `value` stays `null` until a candidate is
  * picked (the form requires one). On empty results a hint suggests another spelling or the
  * English name (insurance against gaps in `name_ru`).
  */
-export function PlaceAutocomplete({
+export function CityAutocomplete({
   label,
   isLabelHidden = false,
   placeholder,
   value,
   onChange,
   error,
-}: PlaceAutocompleteProps) {
+}: CityAutocompleteProps) {
   const { t, i18n } = useTranslation("journeys");
   const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -78,7 +78,7 @@ export function PlaceAutocomplete({
   const [selectedName, setSelectedName] = useState<string | null>(value?.name ?? null);
   // Last value WE emitted via onChange. If the parent sends a different `value` (e.g. a
   // from/to swap), the change is external and the visible text must follow (see the effect below).
-  const lastEmittedRef = useRef<PlaceSearchItem | null>(value);
+  const lastEmittedRef = useRef<CitySearchItem | null>(value);
 
   // An external `value` change (city swap) syncs the visible text and the name anchor. Our own
   // pick/edit already set `lastEmittedRef`, so the condition skips a needless run and does not
@@ -102,7 +102,7 @@ export function PlaceAutocomplete({
   const isBelowMinLength = trimmedSearch.length < MIN_LENGTH;
 
   const { data, isFetching, isError } = useQuery({
-    ...searchPlacesOptions({ query: { searchText: trimmedSearch, language, limit: RESULT_LIMIT } }),
+    ...searchCitiesOptions({ query: { searchText: trimmedSearch, language, limit: RESULT_LIMIT } }),
     enabled: !isBelowMinLength && trimmedSearch !== selectedName,
     // Previous suggestions stay on screen while the next request is in flight, so the list does
     // not collapse on every keystroke. Query aborts the stale request itself (the signal goes
@@ -127,7 +127,7 @@ export function PlaceAutocomplete({
 
   const handleInputChange = (text: string) => {
     setSearch(text);
-    // Editing clears the picked place: value stays empty until a new candidate is picked.
+    // Editing clears the picked city: value stays empty until a new candidate is picked.
     setSelectedName(null);
     if (value !== null) {
       lastEmittedRef.current = null;
@@ -137,8 +137,8 @@ export function PlaceAutocomplete({
     combobox.openDropdown();
   };
 
-  const pickPlace = useCallback(
-    (picked: PlaceSearchItem) => {
+  const pickCity = useCallback(
+    (picked: CitySearchItem) => {
       setSelectedName(picked.name);
       lastEmittedRef.current = picked;
       onChange(picked);
@@ -148,7 +148,7 @@ export function PlaceAutocomplete({
   );
 
   const handleOptionSubmit = (optionValue: string) => {
-    const picked = options.find((place) => place.placeId === optionValue);
+    const picked = options.find((city) => city.cityId === optionValue);
     combobox.closeDropdown();
     // optionValue comes from a rendered Combobox.Option's value, so `picked` is always found.
     /* v8 ignore next 3 */
@@ -156,27 +156,27 @@ export function PlaceAutocomplete({
       return;
     }
 
-    pickPlace(picked);
+    pickCity(picked);
     // Picked: move focus to the next field (other city / transport) so the cursor does not stick
     // in the filled field after Enter/Tab on a suggestion.
     focusNextFormControl(inputRef.current);
   };
 
   // A name typed in full without picking from the list counts as picked once the suggestions for
-  // exactly this text have arrived. Several places can share a name: the first one wins, as with
+  // exactly this text have arrived. Several cities can share a name: the first one wins, as with
   // Tab (the backend orders by relevance).
   const typedMatch =
     value === null && !isFetching && !isBelowMinLength && trimmedSearch === search.trim()
-      ? options.find((place) => place.name.toLocaleLowerCase() === trimmedSearch.toLocaleLowerCase())
+      ? options.find((city) => city.name.toLocaleLowerCase() === trimmedSearch.toLocaleLowerCase())
       : undefined;
   const isFocusedRef = useRef(false);
 
   // The suggestions can arrive after the user has already left the field (typed and clicked on).
   useEffect(() => {
     if (typedMatch !== undefined && !isFocusedRef.current) {
-      pickPlace(typedMatch);
+      pickCity(typedMatch);
     }
-  }, [typedMatch, pickPlace]);
+  }, [typedMatch, pickCity]);
 
   const isEmpty = !isBelowMinLength && !isFetching && options.length === 0 && value === null;
 
@@ -201,7 +201,7 @@ export function PlaceAutocomplete({
               isFocusedRef.current = false;
               combobox.closeDropdown();
               if (typedMatch !== undefined) {
-                pickPlace(typedMatch);
+                pickCity(typedMatch);
               }
             }}
             // Tab (like Enter) applies the first suggestion. Suppress default Tab: handleOptionSubmit
@@ -210,7 +210,7 @@ export function PlaceAutocomplete({
             onKeyDownCapture={(event) => {
               if (event.key === "Tab" && !event.shiftKey && combobox.dropdownOpened && options.length > 0) {
                 event.preventDefault();
-                handleOptionSubmit(options[0].placeId);
+                handleOptionSubmit(options[0].cityId);
               }
             }}
             rightSection={isFetching ? <Loader size="xs" /> : null}
@@ -222,25 +222,19 @@ export function PlaceAutocomplete({
         <Combobox.Dropdown hidden={options.length === 0}>
           <Combobox.Options>
             <ScrollArea.Autosize mah={DROPDOWN_MAX_HEIGHT} type="scroll">
-              {options.map((place) => {
-                // Places like seas have no country: show no country label.
-                const country = place.countryCode ? (countryNames.of(place.countryCode) ?? place.countryCode) : null;
-                return (
-                  <Combobox.Option className="place-option" value={place.placeId} key={place.placeId}>
-                    <Group gap="xs" wrap="nowrap">
-                      <img src={pinIcon} width={PIN_ICON_SIZE} height={PIN_ICON_SIZE} alt="" />
-                      <div>
-                        <Text size="sm">{place.name}</Text>
-                        {country && (
-                          <Text size="xs" className="place-option__country">
-                            {country}
-                          </Text>
-                        )}
-                      </div>
-                    </Group>
-                  </Combobox.Option>
-                );
-              })}
+              {options.map((city) => (
+                <Combobox.Option className="city-option" value={city.cityId} key={city.cityId}>
+                  <Group gap="xs" wrap="nowrap">
+                    <img src={pinIcon} width={PIN_ICON_SIZE} height={PIN_ICON_SIZE} alt="" />
+                    <div>
+                      <Text size="sm">{city.name}</Text>
+                      <Text size="xs" className="city-option__country">
+                        {countryNames.of(city.countryCode) ?? city.countryCode}
+                      </Text>
+                    </div>
+                  </Group>
+                </Combobox.Option>
+              ))}
             </ScrollArea.Autosize>
           </Combobox.Options>
         </Combobox.Dropdown>
@@ -248,7 +242,7 @@ export function PlaceAutocomplete({
 
       {isEmpty && (
         <Text size="sm" c="var(--text-muted)">
-          {t("addJourney.place.hintEmpty")}
+          {t("addJourney.city.hintEmpty")}
         </Text>
       )}
     </Stack>

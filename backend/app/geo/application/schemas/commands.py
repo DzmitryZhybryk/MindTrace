@@ -4,16 +4,16 @@ from uuid import UUID
 from app.geo.domain.enums import Language
 
 __all__ = [
-    "GetPlacesByIdsCommand",
-    "ResolvePlacesCommand",
-    "SearchPlacesCommand",
+    "GetCitiesByIdsCommand",
+    "ResolveCitiesCommand",
+    "SearchCitiesCommand",
 ]
 
 
 @dataclass(frozen=True, slots=True)
-class SearchPlacesCommand:
+class SearchCitiesCommand:
     """
-    Намерение «найти места по префиксу имени» — вход ``PlaceService.search_places``.
+    Намерение «найти города по префиксу имени» — вход ``CityService.search_cities``.
 
     Транспортный объект без валидации/семантических типов → dataclass (см. DTO
     conventions).
@@ -25,15 +25,15 @@ class SearchPlacesCommand:
 
 
 @dataclass(frozen=True, slots=True)
-class ResolvePlacesCommand:
-    """Запрос названий мест по их id на нужном языке."""
+class ResolveCitiesCommand:
+    """Запрос названий городов по их id на нужном языке."""
 
-    place_ids: tuple[UUID, ...]
+    city_ids: tuple[UUID, ...]
     language: Language
 
 
 @dataclass(frozen=True, slots=True)
-class GetPlacesByIdsCommand:
-    """Id мест, страну и координаты которых нужно отдать."""
+class GetCitiesByIdsCommand:
+    """Id городов, страну и координаты которых нужно отдать."""
 
-    place_ids: frozenset[UUID]
+    city_ids: frozenset[UUID]

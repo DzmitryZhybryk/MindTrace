@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { PlaceSearchItem } from "../../api/sdk";
+import type { CitySearchItem } from "../../api/sdk";
 import {
   altitudeForSeparation,
   apexScale,
@@ -10,15 +10,15 @@ import {
   CAMERA_MIN_ALTITUDE,
   clamp,
   greatCirclePoint,
-  isRealPlace,
+  isRealCity,
   routeCameraPov,
   type GlobeRoute,
 } from "./route";
 
-// Minsk as a "real" place from autocomplete; coordinates are overridden per case.
-function makePlace(overrides: Partial<PlaceSearchItem> = {}): PlaceSearchItem {
+// Minsk as a "real" city from autocomplete; coordinates are overridden per case.
+function makeCity(overrides: Partial<CitySearchItem> = {}): CitySearchItem {
   return {
-    placeId: "1",
+    cityId: "1",
     name: "Minsk",
     countryCode: "BY",
     latitude: 53.9,
@@ -143,30 +143,30 @@ describe("buildTrail", () => {
   });
 });
 
-describe("isRealPlace", () => {
+describe("isRealCity", () => {
   it("false для null", () => {
-    expect(isRealPlace(null)).toBe(false);
+    expect(isRealCity(null)).toBe(false);
   });
 
-  it("false для места с нулевыми координатами", () => {
-    expect(isRealPlace(makePlace({ latitude: 0, longitude: 0 }))).toBe(false);
+  it("false для города с нулевыми координатами", () => {
+    expect(isRealCity(makeCity({ latitude: 0, longitude: 0 }))).toBe(false);
   });
 
-  it("true для места с реальными координатами", () => {
-    expect(isRealPlace(makePlace({ latitude: 53.9, longitude: 27.56 }))).toBe(true);
+  it("true для города с реальными координатами", () => {
+    expect(isRealCity(makeCity({ latitude: 53.9, longitude: 27.56 }))).toBe(true);
   });
 
   it("true если хотя бы одна координата ненулевая", () => {
-    expect(isRealPlace(makePlace({ latitude: 0, longitude: 27.56 }))).toBe(true);
+    expect(isRealCity(makeCity({ latitude: 0, longitude: 27.56 }))).toBe(true);
   });
 });
 
 describe("routeCameraPov", () => {
-  const MINSK = makePlace();
-  const VILNIUS = makePlace({ placeId: "2", name: "Vilnius", countryCode: "LT", latitude: 54.69, longitude: 25.28 });
-  const TOKYO = makePlace({ placeId: "3", name: "Tokyo", countryCode: "JP", latitude: 35.68, longitude: 139.69 });
+  const MINSK = makeCity();
+  const VILNIUS = makeCity({ cityId: "2", name: "Vilnius", countryCode: "LT", latitude: 54.69, longitude: 25.28 });
+  const TOKYO = makeCity({ cityId: "3", name: "Tokyo", countryCode: "JP", latitude: 35.68, longitude: 139.69 });
 
-  function makeRoute(origin: PlaceSearchItem | null, destination: PlaceSearchItem | null): GlobeRoute {
+  function makeRoute(origin: CitySearchItem | null, destination: CitySearchItem | null): GlobeRoute {
     return { origin, destination, transportType: "air", originLabel: "", destinationLabel: "" };
   }
 
@@ -194,8 +194,8 @@ describe("routeCameraPov", () => {
     expect(pov.lat).toBeCloseTo(TOKYO.latitude * 0.6);
   });
 
-  it("место без координат не считается выбранным — камера идёт на реальный конец", () => {
-    const pov = routeCameraPov(makeRoute(makePlace({ latitude: 0, longitude: 0 }), TOKYO));
+  it("город без координат не считается выбранным — камера идёт на реальный конец", () => {
+    const pov = routeCameraPov(makeRoute(makeCity({ latitude: 0, longitude: 0 }), TOKYO));
 
     expect(pov.lng).toBeCloseTo(TOKYO.longitude);
   });

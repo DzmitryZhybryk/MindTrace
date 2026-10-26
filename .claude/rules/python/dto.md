@@ -23,7 +23,7 @@ disambiguates a command from an entity of the same name.
 **The suffix marks the type that *is* the boundary** — on every boundary in the table: the
 direct parameter or return value of the use case (`*Command`/`*Result`), the request body or
 response model of a handler (`*Request`/`*Response`), the argument or return value of an
-outbound call. Types nested inside it are named for what they are (`PlaceSearchItem`,
+outbound call. Types nested inside it are named for what they are (`CitySearchItem`,
 `MapCityVisit`, `IssuedRefreshToken`), not `*ResultItem` or `*ItemResponse`. A suffix on every
 nested type stops carrying information: `MapCityResponse` inside `JourneysMapResponse` reads as
 a second endpoint's response.

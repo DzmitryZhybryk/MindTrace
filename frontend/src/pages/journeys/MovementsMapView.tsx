@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useOutletContext } from "react-router";
 import { Button, Loader, Text } from "@mantine/core";
 
-import { placeLabel, usePlaceNames } from "../../api/placeNames";
+import { cityLabel, useCityNames } from "../../api/cityNames";
 import { zTransportType, type MovementsMapResponse, type TransportType } from "../../api/sdk";
 import type { MapCountry } from "../../components/WorldMap";
 import { WORLD_VIEW_BOX, type ViewBox } from "../../components/worldProjection";
@@ -41,7 +41,7 @@ function toMovementsData(response: MovementsMapResponse): MovementsData {
     firstYear: response.firstYear,
     lastYear: response.lastYear,
     connections: response.connections.map((connection) => ({
-      key: `${connection.origin.placeId}>${connection.destination.placeId}`,
+      key: `${connection.origin.cityId}>${connection.destination.cityId}`,
       origin: connection.origin,
       destination: connection.destination,
       years: connection.years,
@@ -52,11 +52,11 @@ function toMovementsData(response: MovementsMapResponse): MovementsData {
 
 /**
  * "Movements map" sub-tab, route /journeys/movements: where the user travelled, an arrow per
- * route, with place names. Routes are filtered by a year window and transport types.
+ * route, with city names. Routes are filtered by a year window and transport types.
  *
  * The year window applies on the client, by the years each route carries, so lines change as the
  * slider is dragged, with no requests. Transport goes through a request: while a new set loads,
- * the previous routes stay on the map. The year scale, map frame and place names come from all
+ * the previous routes stay on the map. The year scale, map frame and city names come from all
  * journeys, unfiltered, so the frame does not jump. Countries are one colour, no tooltips.
  */
 export function MovementsMapView() {
@@ -100,11 +100,11 @@ export function MovementsMapView() {
     () => connectionBounds(allConnections.map((connection) => connection.arc)),
     [allConnections],
   );
-  const nameOf = usePlaceNames(
-    allConnections.flatMap((connection) => [connection.origin.placeId, connection.destination.placeId]),
+  const nameOf = useCityNames(
+    allConnections.flatMap((connection) => [connection.origin.cityId, connection.destination.cityId]),
   );
-  const unknownLabel = tCommon("map.unknownPlace");
-  const labelOf = useCallback((placeId: string) => placeLabel(nameOf(placeId), unknownLabel), [nameOf, unknownLabel]);
+  const unknownLabel = tCommon("map.unknownCity");
+  const labelOf = useCallback((cityId: string) => cityLabel(nameOf(cityId), unknownLabel), [nameOf, unknownLabel]);
 
   const overlay = useCallback(
     (view: ViewBox) => (

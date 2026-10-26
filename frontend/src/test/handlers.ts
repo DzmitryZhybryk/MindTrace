@@ -12,18 +12,18 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
-import type { CurrentUserResponse, JourneyFeedEntry, MovementsMapResponse, PlaceSearchItem } from "../api/sdk";
+import type { CitySearchItem, CurrentUserResponse, JourneyFeedEntry, MovementsMapResponse } from "../api/sdk";
 
 /**
- * Minimal gazetteer for autocomplete component tests (`/v1/geo/places/search/`). Names are already
+ * Minimal gazetteer for autocomplete component tests (`/v1/geo/cities/search/`). Names are already
  * "resolved" (the backend returns them per language); the handler filters by prefix like the real
  * search. A test overrides the results via `server.use(...)` for an empty/error case.
  */
-export const GEO_PLACES: readonly PlaceSearchItem[] = [
-  // placeId must be a UUID: the SDK validates the response with the generated schema (`z.uuid()`)
+export const GEO_CITIES: readonly CitySearchItem[] = [
+  // cityId must be a UUID: the SDK validates the response with the generated schema (`z.uuid()`)
   // and a "speaking" identifier from the fixture fails it.
   {
-    placeId: "11111111-1111-4111-8111-111111111111",
+    cityId: "11111111-1111-4111-8111-111111111111",
     name: "Moscow",
     countryCode: "RU",
     latitude: 55.75,
@@ -31,7 +31,7 @@ export const GEO_PLACES: readonly PlaceSearchItem[] = [
     population: 10_000_000,
   },
   {
-    placeId: "22222222-2222-4222-8222-222222222222",
+    cityId: "22222222-2222-4222-8222-222222222222",
     name: "London",
     countryCode: "GB",
     latitude: 51.5,
@@ -39,7 +39,7 @@ export const GEO_PLACES: readonly PlaceSearchItem[] = [
     population: 9_000_000,
   },
   {
-    placeId: "33333333-3333-4333-8333-333333333333",
+    cityId: "33333333-3333-4333-8333-333333333333",
     name: "Paris",
     countryCode: "FR",
     latitude: 48.85,
@@ -91,8 +91,8 @@ export const TEST_CURRENT_USER: CurrentUserResponse = {
 
 const successTokenBody = { accessToken: TEST_ACCESS_TOKEN, tokenType: "bearer" };
 
-const [MOSCOW_POINT, LONDON_POINT, PARIS_POINT] = GEO_PLACES.map(({ placeId, latitude, longitude }) => ({
-  placeId,
+const [MOSCOW_POINT, LONDON_POINT, PARIS_POINT] = GEO_CITIES.map(({ cityId, latitude, longitude }) => ({
+  cityId,
   latitude,
   longitude,
 }));
@@ -111,9 +111,9 @@ export const MOVEMENTS_RESPONSE: MovementsMapResponse = {
   ],
 };
 
-const [MOSCOW_PLACE, LONDON_PLACE, PARIS_PLACE] = GEO_PLACES.map(({ placeId, countryCode, latitude, longitude }) => ({
-  placeId,
-  countryCode: countryCode ?? "",
+const [MOSCOW_CITY, LONDON_CITY, PARIS_CITY] = GEO_CITIES.map(({ cityId, countryCode, latitude, longitude }) => ({
+  cityId,
+  countryCode,
   latitude,
   longitude,
 }));
@@ -125,24 +125,24 @@ const [MOSCOW_PLACE, LONDON_PLACE, PARIS_PLACE] = GEO_PLACES.map(({ placeId, cou
 export const FEED_JOURNEYS: readonly JourneyFeedEntry[] = [
   {
     journeyId: "aaaaaaaa-0000-4000-8000-000000000001",
-    origin: MOSCOW_PLACE,
-    destination: LONDON_PLACE,
+    origin: MOSCOW_CITY,
+    destination: LONDON_CITY,
     transportType: "air",
     traveledYear: 2021,
     distanceKm: 2500,
   },
   {
     journeyId: "aaaaaaaa-0000-4000-8000-000000000002",
-    origin: LONDON_PLACE,
-    destination: PARIS_PLACE,
+    origin: LONDON_CITY,
+    destination: PARIS_CITY,
     transportType: "land",
     traveledYear: 2021,
     distanceKm: 344,
   },
   {
     journeyId: "aaaaaaaa-0000-4000-8000-000000000003",
-    origin: PARIS_PLACE,
-    destination: MOSCOW_PLACE,
+    origin: PARIS_CITY,
+    destination: MOSCOW_CITY,
     transportType: "air",
     traveledYear: 2019,
     distanceKm: 2480,
@@ -171,17 +171,17 @@ export const handlers = [
   http.post("/v1/auth/email/send-verification/", () => new HttpResponse(null, { status: 202 })),
   http.post("/v1/auth/email/verify/", () => new HttpResponse(null, { status: 204 })),
   // Geo autocomplete: prefix filtering of the fixture by searchText (mirrors the real search).
-  http.get("/v1/geo/places/search/", ({ request }) => {
+  http.get("/v1/geo/cities/search/", ({ request }) => {
     const query = (new URL(request.url).searchParams.get("searchText") ?? "").trim().toLowerCase();
-    const items = GEO_PLACES.filter((place) => place.name.toLowerCase().startsWith(query));
+    const items = GEO_CITIES.filter((city) => city.name.toLowerCase().startsWith(query));
     return HttpResponse.json({ items });
   }),
-  // Place names by id: knows only fixture places and omits unknown ids, like the backend.
-  http.post("/v1/geo/places/resolve/", async ({ request }) => {
-    const { placeIds } = (await request.json()) as { placeIds: string[] };
-    const items = GEO_PLACES.filter((place) => placeIds.includes(place.placeId)).map((place) => ({
-      placeId: place.placeId,
-      name: place.name,
+  // City names by id: knows only fixture cities and omits unknown ids, like the backend.
+  http.post("/v1/geo/cities/resolve/", async ({ request }) => {
+    const { cityIds } = (await request.json()) as { cityIds: string[] };
+    const items = GEO_CITIES.filter((city) => cityIds.includes(city.cityId)).map((city) => ({
+      cityId: city.cityId,
+      name: city.name,
     }));
     return HttpResponse.json({ items });
   }),
@@ -194,21 +194,21 @@ export const handlers = [
       countries: [
         {
           countryCode: "RU",
-          cities: [{ placeId: GEO_PLACES[0].placeId, latitude: 55.75, longitude: 37.62, years: [2020, 2022] }],
+          cities: [{ cityId: GEO_CITIES[0].cityId, latitude: 55.75, longitude: 37.62, years: [2020, 2022] }],
         },
         {
           countryCode: "GB",
-          cities: [{ placeId: GEO_PLACES[1].placeId, latitude: 51.5, longitude: -0.12, years: [2021] }],
+          cities: [{ cityId: GEO_CITIES[1].cityId, latitude: 51.5, longitude: -0.12, years: [2021] }],
         },
       ],
     }),
   ),
-  // Places for the globe: the same cities as the map, without countries and years.
+  // Cities for the globe: the same cities as the map, without countries and years.
   http.get("/v1/journeys/globe/", () =>
     HttpResponse.json({
-      places: [
-        { placeId: GEO_PLACES[0].placeId, latitude: 55.75, longitude: 37.62 },
-        { placeId: GEO_PLACES[1].placeId, latitude: 51.5, longitude: -0.12 },
+      cities: [
+        { cityId: GEO_CITIES[0].cityId, latitude: 55.75, longitude: 37.62 },
+        { cityId: GEO_CITIES[1].cityId, latitude: 51.5, longitude: -0.12 },
       ],
     }),
   ),

@@ -10,7 +10,7 @@ from app.journeys.application.ports.journey_repository import (
     JourneyOrderScope,
     JourneyRepositoryPort,
     MovementConnection,
-    VisitedPlace,
+    VisitedCity,
 )
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
@@ -88,53 +88,53 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
             Journey.deleted_at.is_(None),
         )
 
-    async def find_visited_places_by_user_id(self, *, user_id: UUID) -> tuple[VisitedPlace, ...]:
+    async def find_visited_cities_by_user_id(self, *, user_id: UUID) -> tuple[VisitedCity, ...]:
         """
-        Возвращает места, где пользователь побывал, — по одному на место.
+        Возвращает города, где пользователь побывал, — по одному на город.
 
-        Soft-deleted поездки не учитываются. Годы — всех поездок с местом, по возрастанию.
-        Порядок — по коду страны, затем по ``place_id``.
+        Soft-deleted поездки не учитываются. Годы — всех поездок с городом, по возрастанию.
+        Порядок — по коду страны, затем по ``city_id``.
 
         Args:
             user_id: Владелец поездок
 
         Returns:
-            Посещённые места (пустой список, если поездок нет)
+            Посещённые города (пустой список, если поездок нет)
         """
-        visits = self._place_visits(user_id=user_id)
+        visits = self._city_visits(user_id=user_id)
         visit_year = visits.c.traveled_year
-        # Поездки копируют страну и координаты места из справочника, копии одного места могут
+        # Поездки копируют страну и координаты города из справочника, копии одного города могут
         # слегка разойтись после его обновления — берём одну копию целиком, первую попавшуюся.
-        place_copies = (
-            select(visits.c.place_id, visits.c.country_code, visits.c.latitude, visits.c.longitude)
-            .ext(distinct_on(visits.c.place_id))
-            .order_by(visits.c.place_id, visits.c.latitude, visits.c.longitude)
-            .subquery("place_copies")
+        city_copies = (
+            select(visits.c.city_id, visits.c.country_code, visits.c.latitude, visits.c.longitude)
+            .ext(distinct_on(visits.c.city_id))
+            .order_by(visits.c.city_id, visits.c.latitude, visits.c.longitude)
+            .subquery("city_copies")
         )
-        place_years = (
+        city_years = (
             select(
-                visits.c.place_id,
+                visits.c.city_id,
                 func.array_agg(aggregate_order_by(visit_year.distinct(), visit_year)).label("years"),
             )
-            .group_by(visits.c.place_id)
-            .subquery("place_years")
+            .group_by(visits.c.city_id)
+            .subquery("city_years")
         )
         query = (
             select(
-                place_copies.c.place_id,
-                place_copies.c.country_code,
-                place_copies.c.latitude,
-                place_copies.c.longitude,
-                place_years.c.years,
+                city_copies.c.city_id,
+                city_copies.c.country_code,
+                city_copies.c.latitude,
+                city_copies.c.longitude,
+                city_years.c.years,
             )
-            .join(place_years, place_years.c.place_id == place_copies.c.place_id)
-            .order_by(place_copies.c.country_code, place_copies.c.place_id)
+            .join(city_years, city_years.c.city_id == city_copies.c.city_id)
+            .order_by(city_copies.c.country_code, city_copies.c.city_id)
         )
         result = await self._session.execute(query)
         return tuple(
-            VisitedPlace(
-                place=GeoPoint(
-                    place_id=row.place_id,
+            VisitedCity(
+                city=GeoPoint(
+                    city_id=row.city_id,
                     country_code=row.country_code,
                     latitude=row.latitude,
                     longitude=row.longitude,
@@ -154,9 +154,9 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
         Возвращает маршруты поездок пользователя — по одному на пару «откуда → куда».
 
         Учитываются неудалённые поездки на указанных видах транспорта (``None`` — на всех).
-        У маршрута — годы его поездок, по возрастанию. Страна, широта и долгота места берутся
+        У маршрута — годы его поездок, по возрастанию. Страна, широта и долгота города берутся
         независимо (``min``), поэтому при разошедшихся копиях точка может не совпасть ни с одной из них.
-        Порядок — по ``place_id`` отправления, затем назначения.
+        Порядок — по ``city_id`` отправления, затем назначения.
 
         Args:
             user_id: Владелец поездок
@@ -172,31 +172,31 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
 
         query = (
             select(
-                Journey.origin_place_id,
+                Journey.origin_city_id,
                 func.min(Journey.origin_country_code).label("origin_country_code"),
                 func.min(Journey.origin_latitude).label("origin_latitude"),
                 func.min(Journey.origin_longitude).label("origin_longitude"),
-                Journey.destination_place_id,
+                Journey.destination_city_id,
                 func.min(Journey.destination_country_code).label("destination_country_code"),
                 func.min(Journey.destination_latitude).label("destination_latitude"),
                 func.min(Journey.destination_longitude).label("destination_longitude"),
                 func.array_agg(aggregate_order_by(traveled_year.distinct(), traveled_year)).label("years"),
             )
             .where(*filters)
-            .group_by(Journey.origin_place_id, Journey.destination_place_id)
-            .order_by(Journey.origin_place_id, Journey.destination_place_id)
+            .group_by(Journey.origin_city_id, Journey.destination_city_id)
+            .order_by(Journey.origin_city_id, Journey.destination_city_id)
         )
         result = await self._session.execute(query)
         return tuple(
             MovementConnection(
                 origin=GeoPoint(
-                    place_id=row.origin_place_id,
+                    city_id=row.origin_city_id,
                     country_code=row.origin_country_code,
                     latitude=row.origin_latitude,
                     longitude=row.origin_longitude,
                 ),
                 destination=GeoPoint(
-                    place_id=row.destination_place_id,
+                    city_id=row.destination_city_id,
                     country_code=row.destination_country_code,
                     latitude=row.destination_latitude,
                     longitude=row.destination_longitude,
@@ -282,9 +282,9 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
         return tuple(result)
 
     @staticmethod
-    def _place_visits(*, user_id: UUID) -> Subquery:
+    def _city_visits(*, user_id: UUID) -> Subquery:
         """
-        Визиты мест: каждая неудалённая поездка пользователя даёт два — отправление и назначение.
+        Визиты городов: каждая неудалённая поездка пользователя даёт два — отправление и назначение.
 
         Scenarios:
             - «Карта путешествий»
@@ -292,14 +292,14 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
         """
         is_user_journey = (Journey.user_id == user_id, Journey.deleted_at.is_(None))
         origins = select(
-            Journey.origin_place_id.label("place_id"),
+            Journey.origin_city_id.label("city_id"),
             Journey.origin_country_code.label("country_code"),
             Journey.origin_latitude.label("latitude"),
             Journey.origin_longitude.label("longitude"),
             Journey.traveled_year,
         ).where(*is_user_journey)
         destinations = select(
-            Journey.destination_place_id,
+            Journey.destination_city_id,
             Journey.destination_country_code,
             Journey.destination_latitude,
             Journey.destination_longitude,
@@ -325,13 +325,13 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
             journey_id=journey_model.id,
             user_id=journey_model.user_id,
             origin=GeoPoint(
-                place_id=journey_model.origin_place_id,
+                city_id=journey_model.origin_city_id,
                 country_code=journey_model.origin_country_code,
                 latitude=journey_model.origin_latitude,
                 longitude=journey_model.origin_longitude,
             ),
             destination=GeoPoint(
-                place_id=journey_model.destination_place_id,
+                city_id=journey_model.destination_city_id,
                 country_code=journey_model.destination_country_code,
                 latitude=journey_model.destination_latitude,
                 longitude=journey_model.destination_longitude,
@@ -365,11 +365,11 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
         return {
             "id": journey_entity.journey_id,
             "user_id": journey_entity.user_id,
-            "origin_place_id": journey_entity.origin.place_id,
+            "origin_city_id": journey_entity.origin.city_id,
             "origin_country_code": journey_entity.origin.country_code,
             "origin_latitude": journey_entity.origin.latitude,
             "origin_longitude": journey_entity.origin.longitude,
-            "destination_place_id": journey_entity.destination.place_id,
+            "destination_city_id": journey_entity.destination.city_id,
             "destination_country_code": journey_entity.destination.country_code,
             "destination_latitude": journey_entity.destination.latitude,
             "destination_longitude": journey_entity.destination.longitude,

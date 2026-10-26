@@ -2,19 +2,21 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
 import { renderAddJourney, submitMoscowToLondon } from "../../test/addJourney";
-import { GEO_PLACES, server } from "../../test/handlers";
+import { GEO_CITIES, server } from "../../test/handlers";
 import { screen, waitFor } from "../../test/render";
 
-const [MOSCOW, LONDON] = GEO_PLACES;
+const [MOSCOW, LONDON] = GEO_CITIES;
 
-const UNKNOWN_PLACE_TEXT = "This place wasn't found. Pick it from the suggestions again";
-const PLACE_WITHOUT_COUNTRY_TEXT = "This place has no country — choose a city";
+const UNKNOWN_CITY_TEXT = "This city wasn't found. Pick it from the suggestions again";
 
-/** The backend rejects places with these ids under `code`; `journeys.unknown_place` by default. */
-function respondRejectedPlaces(placeIds: string[], code = "journeys.unknown_place"): void {
+/** The backend rejects cities with these ids as `journeys.unknown_city`. */
+function respondRejectedCities(cityIds: string[]): void {
   server.use(
     http.post("/v1/journeys/", () =>
-      HttpResponse.json({ code, message: "ru", details: { place_ids: placeIds } }, { status: 400 }),
+      HttpResponse.json(
+        { code: "journeys.unknown_city", message: "ru", details: { city_ids: cityIds } },
+        { status: 400 },
+      ),
     ),
   );
 }
@@ -50,47 +52,47 @@ describe("AddJourneyPage — ошибки бэка", () => {
     expect(screen.queryByText("journeys-landing")).not.toBeInTheDocument();
   });
 
-  it("место, которого бэк не нашёл, подсвечивается под своим полем", async () => {
-    respondRejectedPlaces([LONDON.placeId]);
+  it("город назначения, которого бэк не нашёл, подсвечивается под своим полем", async () => {
+    respondRejectedCities([LONDON.cityId]);
     const { user } = renderAddJourney();
 
     await submitMoscowToLondon(user);
 
-    const destinationError = await screen.findByText(UNKNOWN_PLACE_TEXT);
-    expect(screen.getAllByText(UNKNOWN_PLACE_TEXT)).toHaveLength(1);
+    const destinationError = await screen.findByText(UNKNOWN_CITY_TEXT);
+    expect(screen.getAllByText(UNKNOWN_CITY_TEXT)).toHaveLength(1);
     // The error sits at the "To" field: its description references the error text.
     expect(screen.getByLabelText("To")).toHaveAccessibleDescription(destinationError.textContent ?? "");
     expect(screen.queryByText("journeys-landing")).not.toBeInTheDocument();
   });
 
-  it("место без страны в справочнике подсвечивается под своим полем своим текстом", async () => {
-    respondRejectedPlaces([MOSCOW.placeId], "journeys.place_without_country");
+  it("город отправления, которого бэк не нашёл, подсвечивается только под полем «Откуда»", async () => {
+    respondRejectedCities([MOSCOW.cityId]);
     const { user } = renderAddJourney();
 
     await submitMoscowToLondon(user);
 
-    const originError = await screen.findByText(PLACE_WITHOUT_COUNTRY_TEXT);
+    const originError = await screen.findByText(UNKNOWN_CITY_TEXT);
     expect(screen.getByLabelText("From")).toHaveAccessibleDescription(originError.textContent ?? "");
     expect(screen.getByLabelText("To")).not.toHaveAccessibleDescription();
     expect(screen.queryByText("journeys-landing")).not.toBeInTheDocument();
   });
 
-  it("если бэк не нашёл оба места, подсвечиваются оба поля", async () => {
-    respondRejectedPlaces([MOSCOW.placeId, LONDON.placeId]);
+  it("если бэк не нашёл оба города, подсвечиваются оба поля", async () => {
+    respondRejectedCities([MOSCOW.cityId, LONDON.cityId]);
     const { user } = renderAddJourney();
 
     await submitMoscowToLondon(user);
 
-    await waitFor(() => expect(screen.getAllByText(UNKNOWN_PLACE_TEXT)).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByText(UNKNOWN_CITY_TEXT)).toHaveLength(2));
   });
 
   it("ненайденный id не из формы — ошибка уровня формы, а не тишина", async () => {
-    respondRejectedPlaces(["99999999-9999-4999-8999-999999999999"]);
+    respondRejectedCities(["99999999-9999-4999-8999-999999999999"]);
     const { user } = renderAddJourney();
 
     await submitMoscowToLondon(user);
 
-    expect(await screen.findByText(UNKNOWN_PLACE_TEXT)).toBeInTheDocument();
+    expect(await screen.findByText(UNKNOWN_CITY_TEXT)).toBeInTheDocument();
     expect(screen.getByLabelText("From")).not.toHaveAccessibleDescription();
     expect(screen.getByLabelText("To")).not.toHaveAccessibleDescription();
   });

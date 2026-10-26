@@ -8,8 +8,8 @@ import { createJourney, getCurrentUser } from "./sdk";
 const REFRESH_PATH = "/v1/auth/refresh/";
 
 const JOURNEY_BODY = {
-  originPlaceId: "11111111-1111-4111-8111-111111111111",
-  destinationPlaceId: "22222222-2222-4222-8222-222222222222",
+  originCityId: "11111111-1111-4111-8111-111111111111",
+  destinationCityId: "22222222-2222-4222-8222-222222222222",
   transportType: "air",
   traveledYear: 2020,
 } as const;

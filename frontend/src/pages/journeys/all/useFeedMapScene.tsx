@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
-import { placeLabel, usePlaceNames } from "../../../api/placeNames";
+import { cityLabel, useCityNames } from "../../../api/cityNames";
 import type { JourneyFeedEntry } from "../../../api/sdk";
 import type { MapCountry } from "../../../components/WorldMap";
 import { projectToScreen, WORLD_VIEW_BOX, type ViewBox } from "../../../components/worldProjection";
@@ -10,7 +10,7 @@ import type { JourneysMapScene } from "../map/journeysMapScene";
 import { usePublishMapScene } from "../map/usePublishMapScene";
 import { ArrowMarker } from "../movements/ArrowMarker";
 import { connectionBounds } from "../movements/connectionBounds";
-import { placeLabels } from "../movements/labelPlacement";
+import { layOutCityLabels } from "../movements/labelPlacement";
 import { piecePath, projectArc } from "../movements/movementGeometry";
 
 const NO_COUNTRIES: readonly MapCountry[] = [];
@@ -39,7 +39,7 @@ interface FeedMapSceneOptions {
 
 /**
  * Publishes the feed's scene on the shared map: muted land behind the column, visible through it,
- * and the arc of the journey the user is on (hovered, focused, edited or dragged) with place names
+ * and the arc of the journey the user is on (hovered, focused, edited or dragged) with city names
  * at the ends. The map is background and not clickable.
  *
  * The frame glides to the hovered journey and stays on it after the cursor leaves the feed, so the
@@ -53,9 +53,9 @@ export function useFeedMapScene({ journeys, activeJourney, occluderRef, isEnable
     setFramedJourney(activeJourney);
   }
 
-  // Same place set as the feed: names come from its request, no new one per hover.
-  const nameOf = usePlaceNames(journeys.flatMap((journey) => [journey.origin.placeId, journey.destination.placeId]));
-  const unknownLabel = t("map.unknownPlace");
+  // Same city set as the feed: names come from its request, no new one per hover.
+  const nameOf = useCityNames(journeys.flatMap((journey) => [journey.origin.cityId, journey.destination.cityId]));
+  const unknownLabel = t("map.unknownCity");
 
   const fitBounds = useMemo(() => {
     const framed = framedJourney ? [framedJourney] : journeys;
@@ -73,16 +73,16 @@ export function useFeedMapScene({ journeys, activeJourney, occluderRef, isEnable
       }
 
       const unitScale = view.width / WORLD_VIEW_BOX.width;
-      const ends = [activeJourney.origin, activeJourney.destination].map((place) => {
-        const [x, y] = projectToScreen(place.longitude, place.latitude);
-        return { placeId: place.placeId, x, y };
+      const ends = [activeJourney.origin, activeJourney.destination].map((city) => {
+        const [x, y] = projectToScreen(city.longitude, city.latitude);
+        return { cityId: city.cityId, x, y };
       });
-      // A journey from a place to itself is one dot and one label.
-      const places = ends[0].placeId === ends[1].placeId ? [ends[0]] : ends;
-      const labels = placeLabels(
-        places.flatMap((place) => {
-          const label = placeLabel(nameOf(place.placeId), unknownLabel);
-          return label ? [{ ...place, label, routeCount: 1 }] : [];
+      // A journey from a city to itself is one dot and one label.
+      const cities = ends[0].cityId === ends[1].cityId ? [ends[0]] : ends;
+      const labels = layOutCityLabels(
+        cities.flatMap((city) => {
+          const label = cityLabel(nameOf(city.cityId), unknownLabel);
+          return label ? [{ ...city, label, routeCount: 1 }] : [];
         }),
         [arc],
         {
@@ -109,12 +109,12 @@ export function useFeedMapScene({ journeys, activeJourney, occluderRef, isEnable
               markerEnd={pieceIndex === arc.length - 1 ? `url(#${ARROW_MARKER_ID})` : undefined}
             />
           ))}
-          {places.map((place) => (
-            <circle key={place.placeId} className="feed-arc__dot" cx={place.x} cy={place.y} r={DOT_RADIUS * unitScale} />
+          {cities.map((city) => (
+            <circle key={city.cityId} className="feed-arc__dot" cx={city.x} cy={city.y} r={DOT_RADIUS * unitScale} />
           ))}
           {labels.map((label) => (
             <text
-              key={label.placeId}
+              key={label.cityId}
               className="feed-arc__label"
               x={label.x}
               y={label.y}

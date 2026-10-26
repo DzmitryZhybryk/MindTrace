@@ -5,7 +5,7 @@ import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useParams } from "react-router";
 
-import { usePlaceNames } from "../../../api/placeNames";
+import { useCityNames } from "../../../api/cityNames";
 import { getJourneyYearsOptions, zTransportType, type JourneyFeedEntry, type TransportType } from "../../../api/sdk";
 import { YearRangeSlider } from "../movements/YearRangeSlider";
 import { JourneyCard } from "./JourneyCard";
@@ -75,13 +75,13 @@ export function AllJourneysView() {
   const isCardMissing = journeyId !== undefined && cardJourney === null && feedStatus === "loaded";
   useFeedReturn(feedRef, cardJourney?.journeyId ?? null, isDesktop);
 
-  // The card's journey may have left the filtered feed; the map still needs its places.
+  // The card's journey may have left the filtered feed; the map still needs its cities.
   const mapJourneys = useMemo(
     () => (cardJourney === null || loadedJourneys.includes(cardJourney) ? loadedJourneys : [...loadedJourneys, cardJourney]),
     [cardJourney, loadedJourneys],
   );
-  // The same place set as the feed and the map, so the card shares their names request.
-  const nameOf = usePlaceNames(mapJourneys.flatMap((journey) => [journey.origin.placeId, journey.destination.placeId]));
+  // The same city set as the feed and the map, so the card shares their names request.
+  const nameOf = useCityNames(mapJourneys.flatMap((journey) => [journey.origin.cityId, journey.destination.cityId]));
   // Narrow screens have no map: the column is full width.
   useFeedMapScene({
     journeys: hasTransport ? mapJourneys : NO_JOURNEYS,

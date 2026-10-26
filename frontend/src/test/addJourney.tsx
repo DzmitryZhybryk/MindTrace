@@ -24,7 +24,7 @@ export function renderAddJourney(queryClient?: QueryClient) {
  * Combobox keeps a neighbouring field's closed dropdown in the DOM (`keepMounted`), and a
  * same-named option from there would otherwise hijack the pick (From and To with the same city).
  */
-export async function pickPlace(options: {
+export async function pickCity(options: {
   user: UserEvent;
   label: string;
   query: string;
@@ -53,8 +53,8 @@ export async function pickOption(options: { user: UserEvent; trigger: HTMLElemen
 
 /** Fills the form Moscow -> London, plane, 2020, without submitting. */
 export async function fillMoscowToLondon(user: UserEvent): Promise<void> {
-  await pickPlace({ user, label: "From", query: "Mos", option: /Moscow/iu });
-  await pickPlace({ user, label: "To", query: "Lon", option: /London/iu });
+  await pickCity({ user, label: "From", query: "Mos", option: /Moscow/iu });
+  await pickCity({ user, label: "To", query: "Lon", option: /London/iu });
   await pickOption({ user, trigger: screen.getByPlaceholderText("Choose transport"), option: "Air" });
   await pickOption({ user, trigger: screen.getByPlaceholderText("Select year"), option: "2020" });
 }

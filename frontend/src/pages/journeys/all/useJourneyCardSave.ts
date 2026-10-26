@@ -6,8 +6,7 @@ import { ApiError, applyApiError, errorCodeToken } from "../../../api/errors";
 import { updateJourneyMutation } from "../../../api/sdk";
 import { invalidateJourneyAggregates, invalidateJourneyFeed } from "../journeyCache";
 import {
-  applyPlaceError,
-  hasCountry,
+  applyCityError,
   JOURNEY_FORM_VALIDATE,
   JOURNEY_NOT_FOUND_CODE,
   type JourneyFormValues,
@@ -34,8 +33,8 @@ export interface JourneyCardSave {
 
 function isSameJourney(left: JourneyFormValues, right: JourneyFormValues): boolean {
   return (
-    left.origin?.placeId === right.origin?.placeId &&
-    left.destination?.placeId === right.destination?.placeId &&
+    left.origin?.cityId === right.origin?.cityId &&
+    left.destination?.cityId === right.destination?.cityId &&
     left.transport === right.transport &&
     left.year === right.year
   );
@@ -100,7 +99,7 @@ export function useJourneyCardSave(journeyId: string, initialValues: JourneyForm
     form.setValues(next);
     const { hasErrors } = await form.validate();
     const { origin, destination, transport, year } = next;
-    if (hasErrors || !origin || !destination || !hasCountry(origin) || !hasCountry(destination) || !transport || !year) {
+    if (hasErrors || !origin || !destination || !transport || !year) {
       form.setValues(saved.current);
       return;
     }
@@ -111,8 +110,8 @@ export function useJourneyCardSave(journeyId: string, initialValues: JourneyForm
       await mutateAsync({
         path: { journey_id: journeyId },
         body: {
-          originPlaceId: origin.placeId,
-          destinationPlaceId: destination.placeId,
+          originCityId: origin.cityId,
+          destinationCityId: destination.cityId,
           transportType: transport,
           traveledYear: Number(year),
         },
@@ -126,7 +125,7 @@ export function useJourneyCardSave(journeyId: string, initialValues: JourneyForm
       if (err instanceof ApiError && err.code === JOURNEY_NOT_FOUND_CODE) {
         setErrorToken(errorCodeToken(JOURNEY_NOT_FOUND_CODE));
         void invalidateJourneyFeed(queryClient);
-      } else if (!applyPlaceError(err, next, form)) {
+      } else if (!applyCityError(err, next, form)) {
         setErrorToken(applyApiError(err, form));
       }
     } finally {

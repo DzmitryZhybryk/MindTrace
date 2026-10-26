@@ -14,4 +14,4 @@ Extends `common/security.md`.
   user both raise the domain's `*NotFoundError` (404), so the response does not reveal that the id exists.
 - **Every list query is scoped to the owner** (`*_by_user_id`).
 - **Cross-domain clients pass ids, not trust.** A domain receiving an id from another domain
-  (places, users) re-checks it in its own store before writing it (`journeys.unknown_place`).
+  (cities, users) re-checks it in its own store before writing it (`journeys.unknown_city`).

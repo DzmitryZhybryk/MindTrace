@@ -6,11 +6,11 @@ const MOSCOW_ID = "11111111-1111-4111-8111-111111111111";
 const LONDON_ID = "22222222-2222-4222-8222-222222222222";
 
 describe("citiesFromJourneysGlobe", () => {
-  it("переводит места глобуса в точки с id места и координатами", () => {
+  it("переводит города глобуса в точки с id города и координатами", () => {
     const response = {
-      places: [
-        { placeId: MOSCOW_ID, latitude: 55.75, longitude: 37.62 },
-        { placeId: LONDON_ID, latitude: 51.5, longitude: -0.12 },
+      cities: [
+        { cityId: MOSCOW_ID, latitude: 55.75, longitude: 37.62 },
+        { cityId: LONDON_ID, latitude: 51.5, longitude: -0.12 },
       ],
     };
 
@@ -21,6 +21,6 @@ describe("citiesFromJourneysGlobe", () => {
   });
 
   it("пустой ответ даёт пустой список", () => {
-    expect(citiesFromJourneysGlobe({ places: [] })).toEqual([]);
+    expect(citiesFromJourneysGlobe({ cities: [] })).toEqual([]);
   });
 });

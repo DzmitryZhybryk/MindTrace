@@ -20,8 +20,8 @@ __all__ = [
 class CreateJourneyCommand:
     """Данные для создания поездки."""
 
-    origin_place_id: UUID
-    destination_place_id: UUID
+    origin_city_id: UUID
+    destination_city_id: UUID
     transport_type: TransportType
     traveled_year: int
 
@@ -30,8 +30,8 @@ class CreateJourneyCommand:
 class UpdateJourneyCommand:
     """Новые значения всех полей поездки: правка заменяет поездку целиком."""
 
-    origin_place_id: UUID
-    destination_place_id: UUID
+    origin_city_id: UUID
+    destination_city_id: UUID
     transport_type: TransportType
     traveled_year: int
 
@@ -46,10 +46,10 @@ class MoveJourneyCommand:
 
 @dataclass(frozen=True, slots=True)
 class EstimateJourneyDistanceCommand:
-    """Места концов маршрута, расстояние между которыми нужно посчитать."""
+    """Города концов маршрута, расстояние между которыми нужно посчитать."""
 
-    origin_place_id: UUID
-    destination_place_id: UUID
+    origin_city_id: UUID
+    destination_city_id: UUID
 
 
 @dataclass(frozen=True, slots=True)

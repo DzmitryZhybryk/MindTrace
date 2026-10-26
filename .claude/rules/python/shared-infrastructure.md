@@ -42,8 +42,12 @@ background tasks, JWT, hashing, pagination, manual ordering, logging or an excep
 
 Raise a subclass of the `exceptions/base.py` class for the failure's `ErrorCategory` (one per
 category). An exception carries no HTTP status: category → status is decided only in
-`resolve_http_status` (`exceptions/mappings.py`). `code` is a stable identifier in the external API
-contract — the frontend maps it to text — so never rename one.
+`resolve_http_status` (`exceptions/mappings.py`). `code` is an identifier in the external API
+contract — the frontend maps it to text:
+
+- once production exists, a `code` is stable — never rename one;
+- while there is no production (the same condition that lets the init migration be edited in
+  place), a `code` may be renamed, in the same change as the frontend that maps it.
 
 ## Patterns
 

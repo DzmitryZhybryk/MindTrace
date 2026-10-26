@@ -4,7 +4,7 @@
 Покрывают то, что нельзя проверить на фейках: round-trip сущность→модель (денормализованный
 снапшот origin/destination, дата+точность, distance_km через REAL), вставку нескольких
 поездок одного пользователя (на ``user_id`` нет unique-констрейнта) и правила выборок для
-карт — они целиком живут в SQL: места и годы для карты и глобуса, маршруты и окно фильтров
+карт — они целиком живут в SQL: города и годы для карты и глобуса, маршруты и окно фильтров
 для карты перемещений, годы первой и последней поездки. Порядок ленты и курсор, фильтры,
 побайтное сравнение ключей (``COLLATE "C"``), частичный unique-индекс, advisory-блокировка
 области и запись правки/переноса/удаления.
@@ -27,16 +27,16 @@ from app.journeys.infra.repositories import JourneyRepository
 from app.shared.fractional_index import generate_key_between
 from app.shared.pagination import PageQuery
 from tests.builders import (
-    LONDON_PLACE_ID,
-    MOSCOW_PLACE_ID,
+    LONDON_CITY_ID,
+    MOSCOW_CITY_ID,
     make_geo_point,
     make_journey,
 )
 
-_PARIS_PLACE_ID = UUID("33333333-3333-4333-8333-333333333333")
-_MOSCOW = make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.75, longitude=37.62)
-_LONDON = make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12)
-_PARIS = make_geo_point(place_id=_PARIS_PLACE_ID, country_code="FR", latitude=48.85, longitude=2.35)
+_PARIS_CITY_ID = UUID("33333333-3333-4333-8333-333333333333")
+_MOSCOW = make_geo_point(city_id=MOSCOW_CITY_ID, country_code="RU", latitude=55.75, longitude=37.62)
+_LONDON = make_geo_point(city_id=LONDON_CITY_ID, country_code="GB", latitude=51.5, longitude=-0.12)
+_PARIS = make_geo_point(city_id=_PARIS_CITY_ID, country_code="FR", latitude=48.85, longitude=2.35)
 _DELETED_AT = dt.datetime(2024, 1, 1, tzinfo=dt.UTC)
 _NO_FILTERS = JourneyFilters(year_from=None, year_to=None, transport_types=None)
 # Есть ли сессия, ждущая advisory-блокировку, — условие, которого ждёт тест параллельных вставок.
@@ -55,7 +55,7 @@ async def _insert(db_session: AsyncSession, *journey_entities: JourneyEntity) ->
 
 
 async def test_insert_journey_persists_snapshot(db_session: AsyncSession) -> None:
-    """insert_journey: сущность ложится в плоский снапшот — места/страны/координаты, год, distance_km."""
+    """insert_journey: сущность ложится в плоский снапшот — города/страны/координаты, год, distance_km."""
     user_id = uuid4()
     journey_entity = make_journey(
         user_id=user_id,
@@ -69,9 +69,9 @@ async def test_insert_journey_persists_snapshot(db_session: AsyncSession) -> Non
     journey_model = (await db_session.execute(sa.select(Journey))).scalar_one()
     assert journey_model.id == journey_entity.journey_id
     assert journey_model.user_id == user_id
-    assert journey_model.origin_place_id == MOSCOW_PLACE_ID
+    assert journey_model.origin_city_id == MOSCOW_CITY_ID
     assert journey_model.origin_country_code == "RU"
-    assert journey_model.destination_place_id == LONDON_PLACE_ID
+    assert journey_model.destination_city_id == LONDON_CITY_ID
     assert journey_model.destination_country_code == "GB"
     assert journey_model.transport_type == "air"
     assert journey_model.traveled_year == 2020
@@ -92,11 +92,11 @@ async def test_insert_multiple_journeys_for_same_user(db_session: AsyncSession) 
     assert count == 2
 
 
-# --- find_visited_places_by_user_id ---------------------------------------------------------
+# --- find_visited_cities_by_user_id ---------------------------------------------------------
 
 
-async def test_find_visited_places_counts_both_ends_with_distinct_sorted_years(db_session: AsyncSession) -> None:
-    """Места — и отправления, и назначения, по одной строке; годы без повторов и по возрастанию."""
+async def test_find_visited_cities_counts_both_ends_with_distinct_sorted_years(db_session: AsyncSession) -> None:
+    """Города — и отправления, и назначения, по одной строке; годы без повторов и по возрастанию."""
     user_id = uuid4()
     repository = await _insert(
         db_session,
@@ -105,55 +105,55 @@ async def test_find_visited_places_counts_both_ends_with_distinct_sorted_years(d
         make_journey(user_id=user_id, origin=_MOSCOW, destination=_LONDON, traveled_year=2021),
     )
 
-    visited_places = await repository.find_visited_places_by_user_id(user_id=user_id)
+    visited_cities = await repository.find_visited_cities_by_user_id(user_id=user_id)
 
-    years_by_place = {visited_place.place.place_id: visited_place.years for visited_place in visited_places}
-    assert years_by_place == {MOSCOW_PLACE_ID: (2019, 2021), LONDON_PLACE_ID: (2019, 2021)}
+    years_by_city = {visited_city.city.city_id: visited_city.years for visited_city in visited_cities}
+    assert years_by_city == {MOSCOW_CITY_ID: (2019, 2021), LONDON_CITY_ID: (2019, 2021)}
 
 
-async def test_find_visited_places_orders_by_country_then_place_id(db_session: AsyncSession) -> None:
-    """Порядок — по коду страны, внутри страны по place_id: места одной страны идут подряд."""
+async def test_find_visited_cities_orders_by_country_then_city_id(db_session: AsyncSession) -> None:
+    """Порядок — по коду страны, внутри страны по city_id: города одной страны идут подряд."""
     user_id = uuid4()
     second_moscow_id = UUID("00000000-0000-4000-8000-000000000001")
-    second_russian_city = make_geo_point(place_id=second_moscow_id, country_code="RU", latitude=59.9, longitude=30.3)
+    second_russian_city = make_geo_point(city_id=second_moscow_id, country_code="RU", latitude=59.9, longitude=30.3)
     repository = await _insert(
         db_session,
         make_journey(user_id=user_id, origin=_MOSCOW, destination=_PARIS),
         make_journey(user_id=user_id, origin=_LONDON, destination=second_russian_city),
     )
 
-    visited_places = await repository.find_visited_places_by_user_id(user_id=user_id)
+    visited_cities = await repository.find_visited_cities_by_user_id(user_id=user_id)
 
-    assert [(visited_place.place.country_code, visited_place.place.place_id) for visited_place in visited_places] == [
-        ("FR", _PARIS_PLACE_ID),
-        ("GB", LONDON_PLACE_ID),
-        ("RU", min(MOSCOW_PLACE_ID, second_moscow_id)),
-        ("RU", max(MOSCOW_PLACE_ID, second_moscow_id)),
+    assert [(visited_city.city.country_code, visited_city.city.city_id) for visited_city in visited_cities] == [
+        ("FR", _PARIS_CITY_ID),
+        ("GB", LONDON_CITY_ID),
+        ("RU", min(MOSCOW_CITY_ID, second_moscow_id)),
+        ("RU", max(MOSCOW_CITY_ID, second_moscow_id)),
     ]
 
 
-async def test_find_visited_places_diverging_copies_of_place_give_one_row(db_session: AsyncSession) -> None:
-    """Копии места с разными координатами (справочник обновился) — одна строка, координаты одной копии целиком."""
+async def test_find_visited_cities_diverging_copies_of_city_give_one_row(db_session: AsyncSession) -> None:
+    """Копии города с разными координатами (справочник обновился) — одна строка, координаты одной копии целиком."""
     user_id = uuid4()
-    shifted_moscow = make_geo_point(place_id=MOSCOW_PLACE_ID, country_code="RU", latitude=55.7, longitude=37.7)
+    shifted_moscow = make_geo_point(city_id=MOSCOW_CITY_ID, country_code="RU", latitude=55.7, longitude=37.7)
     repository = await _insert(
         db_session,
         make_journey(user_id=user_id, origin=_MOSCOW, destination=_LONDON),
         make_journey(user_id=user_id, origin=shifted_moscow, destination=_PARIS),
     )
 
-    visited_places = await repository.find_visited_places_by_user_id(user_id=user_id)
+    visited_cities = await repository.find_visited_cities_by_user_id(user_id=user_id)
 
-    moscow_rows = [visited_place for visited_place in visited_places if visited_place.place.place_id == MOSCOW_PLACE_ID]
+    moscow_rows = [visited_city for visited_city in visited_cities if visited_city.city.city_id == MOSCOW_CITY_ID]
     assert len(moscow_rows) == 1
-    point = (moscow_rows[0].place.latitude, moscow_rows[0].place.longitude)
+    point = (moscow_rows[0].city.latitude, moscow_rows[0].city.longitude)
     assert point in [
         (pytest.approx(_MOSCOW.latitude, abs=0.001), pytest.approx(_MOSCOW.longitude, abs=0.001)),
         (pytest.approx(55.7, abs=0.001), pytest.approx(37.7, abs=0.001)),
     ]
 
 
-async def test_find_visited_places_skips_deleted_and_other_users_journeys(db_session: AsyncSession) -> None:
+async def test_find_visited_cities_skips_deleted_and_other_users_journeys(db_session: AsyncSession) -> None:
     """Удалённые поездки и поездки другого пользователя в выборку не попадают."""
     user_id = uuid4()
     repository = await _insert(
@@ -163,21 +163,21 @@ async def test_find_visited_places_skips_deleted_and_other_users_journeys(db_ses
         make_journey(user_id=uuid4(), origin=_PARIS, destination=_LONDON),
     )
 
-    visited_places = await repository.find_visited_places_by_user_id(user_id=user_id)
+    visited_cities = await repository.find_visited_cities_by_user_id(user_id=user_id)
 
-    assert {visited_place.place.place_id for visited_place in visited_places} == {MOSCOW_PLACE_ID, LONDON_PLACE_ID}
+    assert {visited_city.city.city_id for visited_city in visited_cities} == {MOSCOW_CITY_ID, LONDON_CITY_ID}
 
 
-async def test_find_visited_places_without_journeys_returns_empty(db_session: AsyncSession) -> None:
-    """У пользователя без поездок мест нет."""
-    assert await JourneyRepository(session=db_session).find_visited_places_by_user_id(user_id=uuid4()) == ()
+async def test_find_visited_cities_without_journeys_returns_empty(db_session: AsyncSession) -> None:
+    """У пользователя без поездок городов нет."""
+    assert await JourneyRepository(session=db_session).find_visited_cities_by_user_id(user_id=uuid4()) == ()
 
 
 # --- find_movement_connections_by_user_id ---------------------------------------------------
 
 
 async def test_find_movement_connections_one_row_per_directed_route(db_session: AsyncSession) -> None:
-    """Повторы маршрута — одна строка, обратный маршрут — отдельная; порядок по place_id концов."""
+    """Повторы маршрута — одна строка, обратный маршрут — отдельная; порядок по city_id концов."""
     user_id = uuid4()
     repository = await _insert(
         db_session,
@@ -189,11 +189,11 @@ async def test_find_movement_connections_one_row_per_directed_route(db_session: 
 
     connections = await repository.find_movement_connections_by_user_id(user_id=user_id, transport_types=None)
 
-    routes = [(connection.origin.place_id, connection.destination.place_id) for connection in connections]
+    routes = [(connection.origin.city_id, connection.destination.city_id) for connection in connections]
     assert routes == sorted(
-        [(MOSCOW_PLACE_ID, LONDON_PLACE_ID), (LONDON_PLACE_ID, MOSCOW_PLACE_ID), (LONDON_PLACE_ID, _PARIS_PLACE_ID)]
+        [(MOSCOW_CITY_ID, LONDON_CITY_ID), (LONDON_CITY_ID, MOSCOW_CITY_ID), (LONDON_CITY_ID, _PARIS_CITY_ID)]
     )
-    moscow_to_london = connections[routes.index((MOSCOW_PLACE_ID, LONDON_PLACE_ID))]
+    moscow_to_london = connections[routes.index((MOSCOW_CITY_ID, LONDON_CITY_ID))]
     assert moscow_to_london.origin.latitude == pytest.approx(55.75, abs=0.001)
     assert moscow_to_london.destination.country_code == "GB"
 
@@ -217,11 +217,11 @@ async def test_find_movement_connections_carry_distinct_sorted_years(db_session:
     connections = await repository.find_movement_connections_by_user_id(user_id=user_id, transport_types=None)
 
     years_by_route = {
-        (connection.origin.place_id, connection.destination.place_id): connection.years for connection in connections
+        (connection.origin.city_id, connection.destination.city_id): connection.years for connection in connections
     }
     assert years_by_route == {
-        (MOSCOW_PLACE_ID, LONDON_PLACE_ID): (2018, 2021),
-        (LONDON_PLACE_ID, MOSCOW_PLACE_ID): (2019,),
+        (MOSCOW_CITY_ID, LONDON_CITY_ID): (2018, 2021),
+        (LONDON_CITY_ID, MOSCOW_CITY_ID): (2019,),
     }
 
 
@@ -267,10 +267,10 @@ async def test_find_movement_connections_filters_by_transport(db_session: AsyncS
         connections = await repository.find_movement_connections_by_user_id(
             user_id=user_id, transport_types=transport_types
         )
-        return {connection.destination.place_id for connection in connections}
+        return {connection.destination.city_id for connection in connections}
 
-    assert await destinations(frozenset({TransportType.AIR, TransportType.WATER})) == {LONDON_PLACE_ID, MOSCOW_PLACE_ID}
-    assert await destinations(None) == {LONDON_PLACE_ID, _PARIS_PLACE_ID, MOSCOW_PLACE_ID}
+    assert await destinations(frozenset({TransportType.AIR, TransportType.WATER})) == {LONDON_CITY_ID, MOSCOW_CITY_ID}
+    assert await destinations(None) == {LONDON_CITY_ID, _PARIS_CITY_ID, MOSCOW_CITY_ID}
 
 
 async def test_find_movement_connections_skips_deleted_and_other_users_journeys(db_session: AsyncSession) -> None:
@@ -285,8 +285,8 @@ async def test_find_movement_connections_skips_deleted_and_other_users_journeys(
 
     connections = await repository.find_movement_connections_by_user_id(user_id=user_id, transport_types=None)
 
-    assert [(connection.origin.place_id, connection.destination.place_id) for connection in connections] == [
-        (MOSCOW_PLACE_ID, LONDON_PLACE_ID)
+    assert [(connection.origin.city_id, connection.destination.city_id) for connection in connections] == [
+        (MOSCOW_CITY_ID, LONDON_CITY_ID)
     ]
 
 
@@ -520,7 +520,7 @@ async def test_lock_sort_keys_serializes_concurrent_inserts_into_one_year(
 
 
 async def test_update_journey_by_id_persists_revise_and_move(db_session: AsyncSession) -> None:
-    """update_journey_by_id: новые места, транспорт, расстояние, год и ключ ложатся в строку."""
+    """update_journey_by_id: новые города, транспорт, расстояние, год и ключ ложатся в строку."""
     user_id = uuid4()
     journey_entity = make_journey(user_id=user_id, traveled_year=2020, sort_key="m", transport_type=TransportType.AIR)
     repository = await _insert(db_session, journey_entity)
@@ -532,8 +532,8 @@ async def test_update_journey_by_id_persists_revise_and_move(db_session: AsyncSe
 
     stored = await repository.find_journey_by_id_and_user_id(journey_id=journey_entity.journey_id, user_id=user_id)
     assert stored is not None
-    assert stored.origin.place_id == _PARIS_PLACE_ID
-    assert stored.destination.place_id == MOSCOW_PLACE_ID
+    assert stored.origin.city_id == _PARIS_CITY_ID
+    assert stored.destination.city_id == MOSCOW_CITY_ID
     assert stored.transport_type is TransportType.LAND
     assert stored.distance_km == 2480
     assert stored.traveled_year == 2018

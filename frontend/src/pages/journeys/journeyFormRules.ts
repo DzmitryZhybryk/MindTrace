@@ -1,12 +1,12 @@
 import type { FormValidateInput, UseFormReturnType } from "@mantine/form";
 
 import { ApiError, errorCodeToken } from "../../api/errors";
-import type { PlaceSearchItem, TransportType } from "../../api/sdk";
+import type { CitySearchItem, TransportType } from "../../api/sdk";
 
 /** Journey fields, shared by add and edit. */
 export type JourneyFormValues = {
-  origin: PlaceSearchItem | null;
-  destination: PlaceSearchItem | null;
+  origin: CitySearchItem | null;
+  destination: CitySearchItem | null;
   transport: TransportType | null;
   year: string | null;
 };
@@ -14,9 +14,7 @@ export type JourneyFormValues = {
 /** A journey deleted elsewhere: saving reports it, deleting treats it as already done. */
 export const JOURNEY_NOT_FOUND_CODE = "journeys.journey_not_found";
 
-const PLACE_ERROR_CODES: ReadonlySet<string> = new Set(["journeys.unknown_place", "journeys.place_without_country"]);
-
-type PlaceWithCountry = PlaceSearchItem & { countryCode: string };
+const UNKNOWN_CITY_CODE = "journeys.unknown_city";
 
 /**
  * Journey field validators.
@@ -25,22 +23,13 @@ type PlaceWithCountry = PlaceSearchItem & { countryCode: string };
  * render (`resolveErrorToken`) so the error follows a language switch.
  */
 export const JOURNEY_FORM_VALIDATE: FormValidateInput<JourneyFormValues> = {
-  origin: (value) => {
-    if (!value) {
-      return "journeys:addJourney.validation.originRequired";
-    }
-    // A journey stores the place's country; the gazetteer allows places without one (seas, oceans).
-    return value.countryCode ? null : "journeys:addJourney.validation.placeWithoutCountry";
-  },
+  origin: (value) => (value ? null : "journeys:addJourney.validation.originRequired"),
   destination: (value, values) => {
     if (!value) {
       return "journeys:addJourney.validation.destinationRequired";
     }
-    if (!value.countryCode) {
-      return "journeys:addJourney.validation.placeWithoutCountry";
-    }
-    // Reject the same city on the frontend too; the backend checks the same by placeId.
-    if (values.origin && values.origin.placeId === value.placeId) {
+    // Reject the same city on the frontend too; the backend checks the same by cityId.
+    if (values.origin && values.origin.cityId === value.cityId) {
       return "journeys:addJourney.validation.sameCity";
     }
     return null;
@@ -49,35 +38,29 @@ export const JOURNEY_FORM_VALIDATE: FormValidateInput<JourneyFormValues> = {
   year: (value) => (value ? null : "journeys:addJourney.validation.yearRequired"),
 };
 
-/** A journey needs the place's country; the form validator stops a place without one before submit. */
-export function hasCountry(place: PlaceSearchItem): place is PlaceWithCountry {
-  return Boolean(place.countryCode);
-}
-
 /**
- * Highlights fields whose places the backend rejected (`journeys.unknown_place`,
- * `journeys.place_without_country`).
+ * Highlights fields whose cities the backend rejected (`journeys.unknown_city`).
  *
- * The backend returns only the ids of the rejected places; the form decides which field to highlight
- * by comparing them with the picked places.
+ * The backend returns only the ids of the rejected cities; the form decides which field to highlight
+ * by comparing them with the picked cities.
  *
  * Returns `true` if the error was handled and shown at the fields.
  */
-export function applyPlaceError(
+export function applyCityError(
   err: unknown,
   values: JourneyFormValues,
   form: UseFormReturnType<JourneyFormValues>,
 ): boolean {
-  if (!(err instanceof ApiError) || !PLACE_ERROR_CODES.has(err.code)) {
+  if (!(err instanceof ApiError) || err.code !== UNKNOWN_CITY_CODE) {
     return false;
   }
 
-  const rawIds = err.details?.place_ids;
+  const rawIds = err.details?.city_ids;
   const rejected = new Set(Array.isArray(rawIds) ? rawIds.filter((id): id is string => typeof id === "string") : []);
   let isApplied = false;
   for (const field of ["origin", "destination"] as const) {
-    const place = values[field];
-    if (place && rejected.has(place.placeId)) {
+    const city = values[field];
+    if (city && rejected.has(city.cityId)) {
       form.setFieldError(field, errorCodeToken(err.code));
       isApplied = true;
     }

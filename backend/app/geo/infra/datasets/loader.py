@@ -9,25 +9,25 @@ from psycopg import sql
 
 from app.geo.infra.datasets.cache import ensure_cached
 from app.geo.infra.datasets.manifest import DatasetSpec
-from app.geo.infra.datasets.rows import PLACE_TABLE_COLUMNS, iter_place_rows
+from app.geo.infra.datasets.rows import CITY_TABLE_COLUMNS, iter_city_rows
 from app.shared.logging import get_logger
 
 logger = get_logger(__name__)
 
-_PLACE_COLUMNS: Final[sql.Composed] = sql.SQL(", ").join(map(sql.Identifier, PLACE_TABLE_COLUMNS))
+_CITY_COLUMNS: Final[sql.Composed] = sql.SQL(", ").join(map(sql.Identifier, CITY_TABLE_COLUMNS))
 
-_COPY_PLACES: Final[sql.Composed] = sql.SQL("COPY geo_places_staging ({columns}) FROM STDIN").format(
-    columns=_PLACE_COLUMNS,
+_COPY_CITIES: Final[sql.Composed] = sql.SQL("COPY geo_cities_staging ({columns}) FROM STDIN").format(
+    columns=_CITY_COLUMNS,
 )
 
-_UPSERT_PLACES: Final[sql.Composed] = sql.SQL(
-    "INSERT INTO geo_places ({columns}) SELECT {columns} FROM geo_places_staging "
+_UPSERT_CITIES: Final[sql.Composed] = sql.SQL(
+    "INSERT INTO geo_cities ({columns}) SELECT {columns} FROM geo_cities_staging "
     "ON CONFLICT (id) DO UPDATE SET {assignments}",
 ).format(
-    columns=_PLACE_COLUMNS,
+    columns=_CITY_COLUMNS,
     assignments=sql.SQL(", ").join(
         sql.SQL("{column} = EXCLUDED.{column}").format(column=sql.Identifier(column))
-        for column in PLACE_TABLE_COLUMNS
+        for column in CITY_TABLE_COLUMNS
         if column != "id"
     ),
 )
@@ -44,10 +44,10 @@ def load_datasets(
     Загружает датасеты, которых ещё нет в базе.
 
     Датасет с той же версией и sha256 в ``geo_dataset_loads`` пропускается. Остальные пишутся
-    upsert'ом в одной транзакции вместе с записью о загрузке. Места не удаляются.
+    upsert'ом в одной транзакции вместе с записью о загрузке. Города не удаляются.
 
     Scenarios:
-        - загрузка справочника мест в базу: при развёртывании до старта приложения и в дев-стеке
+        - загрузка газеттира в базу: при развёртывании до старта приложения и в дев-стеке
 
     Args:
         datasets: Датасеты из манифеста
@@ -63,10 +63,10 @@ def load_datasets(
 
             path = ensure_cached(spec=spec, cache_dir=cache_dir, http_client=http_client)
             with connection.transaction():
-                places_count = _load_file(connection=connection, path=path)
+                cities_count = _load_file(connection=connection, path=path)
                 _record_load(connection=connection, spec=spec)
 
-            logger.info("geo.dataset.loaded", dataset=spec.name, version=spec.version, places=places_count)
+            logger.info("geo.dataset.loaded", dataset=spec.name, version=spec.version, cities=cities_count)
 
 
 def _is_loaded(*, connection: psycopg.Connection, spec: DatasetSpec) -> bool:
@@ -74,7 +74,7 @@ def _is_loaded(*, connection: psycopg.Connection, spec: DatasetSpec) -> bool:
     Проверяет, загружена ли уже эта версия датасета.
 
     Scenarios:
-        - загрузка справочника мест в базу: уже загруженная версия пропускается
+        - загрузка газеттира в базу: уже загруженная версия пропускается
     """
     cursor = connection.execute(
         "SELECT 1 FROM geo_dataset_loads WHERE name = %s AND version = %s AND sha256 = %s",
@@ -85,32 +85,32 @@ def _is_loaded(*, connection: psycopg.Connection, spec: DatasetSpec) -> bool:
 
 def _load_file(*, connection: psycopg.Connection, path: Path) -> int:
     """
-    Копирует файл во временную staging-таблицу и переносит её upsert'ом в ``geo_places``.
+    Копирует файл во временную staging-таблицу и переносит её upsert'ом в ``geo_cities``.
 
     Scenarios:
-        - загрузка справочника мест в базу: при развёртывании до старта приложения и в дев-стеке
+        - загрузка газеттира в базу: при развёртывании до старта приложения и в дев-стеке
 
     Args:
         connection: Соединение с открытой транзакцией
         path: Проверенный файл датасета
 
     Returns:
-        Количество мест в файле
+        Количество городов в файле
     """
-    connection.execute("CREATE TEMP TABLE geo_places_staging (LIKE geo_places) ON COMMIT DROP")
+    connection.execute("CREATE TEMP TABLE geo_cities_staging (LIKE geo_cities) ON COMMIT DROP")
 
-    places_count = 0
+    cities_count = 0
     with (
         gzip.open(path, "rt", encoding="utf-8", newline="") as dataset_file,
         connection.cursor() as cursor,
-        cursor.copy(_COPY_PLACES) as copy,
+        cursor.copy(_COPY_CITIES) as copy,
     ):
-        for place_row in iter_place_rows(lines=dataset_file):
-            copy.write_row(place_row)
-            places_count += 1
+        for city_row in iter_city_rows(lines=dataset_file):
+            copy.write_row(city_row)
+            cities_count += 1
 
-    connection.execute(_UPSERT_PLACES)
-    return places_count
+    connection.execute(_UPSERT_CITIES)
+    return cities_count
 
 
 def _record_load(*, connection: psycopg.Connection, spec: DatasetSpec) -> None:
@@ -118,7 +118,7 @@ def _record_load(*, connection: psycopg.Connection, spec: DatasetSpec) -> None:
     Записывает загрузку датасета в журнал.
 
     Scenarios:
-        - загрузка справочника мест в базу: при развёртывании до старта приложения и в дев-стеке
+        - загрузка газеттира в базу: при развёртывании до старта приложения и в дев-стеке
     """
     connection.execute(
         """

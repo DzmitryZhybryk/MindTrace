@@ -14,7 +14,7 @@ __all__ = [
     "JourneyOrderScope",
     "JourneyRepositoryPort",
     "MovementConnection",
-    "VisitedPlace",
+    "VisitedCity",
 ]
 
 
@@ -41,14 +41,14 @@ class JourneyFilters:
 
 
 @dataclass(frozen=True, slots=True)
-class VisitedPlace:
+class VisitedCity:
     """
-    Место, где пользователь побывал, — строка выдачи репозитория.
+    Город, где пользователь побывал, — строка выдачи репозитория.
 
-    ``years`` — годы всех поездок с местом, по возрастанию.
+    ``years`` — годы всех поездок с городом, по возрастанию.
     """
 
-    place: GeoPoint
+    city: GeoPoint
     years: tuple[int, ...]
 
 
@@ -128,12 +128,12 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
         """
         ...
 
-    async def find_visited_places_by_user_id(self, *, user_id: UUID) -> tuple[VisitedPlace, ...]:
+    async def find_visited_cities_by_user_id(self, *, user_id: UUID) -> tuple[VisitedCity, ...]:
         """
-        Возвращает места, где пользователь побывал, — по одному на место.
+        Возвращает города, где пользователь побывал, — по одному на город.
 
-        Место — отправление или назначение любой неудалённой поездки пользователя. Порядок —
-        по коду страны, внутри страны по ``place_id``: места одной страны идут подряд.
+        Город — отправление или назначение любой неудалённой поездки пользователя. Порядок —
+        по коду страны, внутри страны по ``city_id``: города одной страны идут подряд.
 
         Scenarios:
             - «Карта путешествий»
@@ -143,7 +143,7 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
             user_id: Владелец поездок
 
         Returns:
-            Места со страной, координатами и годами визитов
+            Города со страной, координатами и годами визитов
         """
         ...
 
@@ -157,7 +157,7 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
         Возвращает маршруты поездок пользователя — по одному на пару «откуда → куда».
 
         Учитываются неудалённые поездки на указанных видах транспорта (``None`` — на всех).
-        У маршрута — годы его поездок, по возрастанию. Порядок — по ``place_id`` отправления,
+        У маршрута — годы его поездок, по возрастанию. Порядок — по ``city_id`` отправления,
         затем назначения.
 
         Scenarios:

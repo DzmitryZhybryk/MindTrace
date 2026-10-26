@@ -4,7 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
  * Whether the field's dropdown with options is shown.
  *
  * Mantine marks an open list with `data-expanded` (and `aria-expanded` not on every field), but
- * place suggestions "open" empty on focus too. So the list counts as shown only if it has options.
+ * city suggestions "open" empty on focus too. So the list counts as shown only if it has options.
  */
 function isListShown(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement) || target.dataset.expanded === undefined) {
@@ -26,7 +26,7 @@ interface InlineFieldProps {
 
 /**
  * A journey card value while it is edited in place: the input inside takes focus when it appears.
- * Esc closes the field's open list first (place suggestions, years) and only then the edit; leaving
+ * Esc closes the field's open list first (city suggestions, years) and only then the edit; leaving
  * the field ends the edit too. Picking from a list keeps focus in the input, so it is not a leave.
  */
 export function InlineField({ className, onCancel, onLeave, children }: InlineFieldProps) {

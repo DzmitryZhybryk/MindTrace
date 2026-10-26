@@ -1,8 +1,8 @@
 from itertools import groupby
 from uuid import UUID
 
+from app.journeys.application.ports.cities_client import CitiesClientPort
 from app.journeys.application.ports.journey_repository import JourneyOrderScope
-from app.journeys.application.ports.places_client import PlacesClientPort
 from app.journeys.application.ports.unit_of_work import JourneyUnitOfWorkPort
 from app.journeys.application.schemas.commands import (
     CreateJourneyCommand,
@@ -29,8 +29,7 @@ from app.journeys.domain.value_objects import GeoPoint
 from app.journeys.exceptions import (
     InvalidMoveTargetError,
     JourneyNotFoundError,
-    PlaceWithoutCountryError,
-    UnknownPlaceError,
+    UnknownCityError,
 )
 from app.shared.fractional_index import MovePlacement, generate_key_between
 
@@ -38,31 +37,30 @@ from app.shared.fractional_index import MovePlacement, generate_key_between
 class JourneyService:
     """Сервис для взаимодействия с путешествиями пользователя."""
 
-    def __init__(self, *, uow: JourneyUnitOfWorkPort, places_client: PlacesClientPort) -> None:
+    def __init__(self, *, uow: JourneyUnitOfWorkPort, cities_client: CitiesClientPort) -> None:
         self._uow = uow
-        self._places_client = places_client
+        self._cities_client = cities_client
 
     async def create_journey(self, *, user_id: UUID, command: CreateJourneyCommand) -> None:
         """
         Создаёт поездку в конце её года.
 
-        Страну и координаты мест отправления и назначения берёт у geo.
+        Страну и координаты городов отправления и назначения берёт у geo.
 
         Scenarios:
             - форма «+ Добавить путешествие»
 
         Args:
             user_id: Владелец поездки
-            command: Данные для создания поездки (места, транспорт, год)
+            command: Данные для создания поездки (города, транспорт, год)
 
         Raises:
-            UnknownPlaceError: какого-то из мест нет в справочнике geo; ненайденные id — в
-                ``details.place_ids``
-            PlaceWithoutCountryError: у какого-то из мест в справочнике нет страны
+            UnknownCityError: какого-то из городов нет в справочнике geo; ненайденные id — в
+                ``details.city_ids``
         """
         origin, destination = await self._find_route_points(
-            origin_place_id=command.origin_place_id,
-            destination_place_id=command.destination_place_id,
+            origin_city_id=command.origin_city_id,
+            destination_city_id=command.destination_city_id,
         )
         distance_km = origin.distance_km_to(destination=destination)
         async with self._uow.transaction():
@@ -91,16 +89,15 @@ class JourneyService:
         Args:
             user_id: Владелец поездки
             journey_id: Какая поездка
-            command: Новые места, транспорт и год
+            command: Новые города, транспорт и год
 
         Raises:
-            UnknownPlaceError: какого-то из мест нет в справочнике geo
-            PlaceWithoutCountryError: у какого-то из мест в справочнике нет страны
+            UnknownCityError: какого-то из городов нет в справочнике geo
             JourneyNotFoundError: у пользователя нет такой поездки или она удалена
         """
         origin, destination = await self._find_route_points(
-            origin_place_id=command.origin_place_id,
-            destination_place_id=command.destination_place_id,
+            origin_city_id=command.origin_city_id,
+            destination_city_id=command.destination_city_id,
         )
         distance_km = origin.distance_km_to(destination=destination)
         async with self._uow.transaction():
@@ -209,26 +206,23 @@ class JourneyService:
             - расстояние нового маршрута, пока поездку правят в ленте «Все путешествия»
 
         Args:
-            command: Места концов маршрута
+            command: Города концов маршрута
 
         Returns:
             Расстояние по большой окружности, км
 
         Raises:
-            UnknownPlaceError: какого-то из мест нет в справочнике geo
-            PlaceWithoutCountryError: у какого-то из мест в справочнике нет страны
+            UnknownCityError: какого-то из городов нет в справочнике geo
         """
         origin, destination = await self._find_route_points(
-            origin_place_id=command.origin_place_id,
-            destination_place_id=command.destination_place_id,
+            origin_city_id=command.origin_city_id,
+            destination_city_id=command.destination_city_id,
         )
         return JourneyDistanceResult(distance_km=origin.distance_km_to(destination=destination))
 
-    async def _find_route_points(
-        self, *, origin_place_id: UUID, destination_place_id: UUID
-    ) -> tuple[GeoPoint, GeoPoint]:
+    async def _find_route_points(self, *, origin_city_id: UUID, destination_city_id: UUID) -> tuple[GeoPoint, GeoPoint]:
         """
-        Берёт у geo страну и координаты мест отправления и назначения.
+        Берёт у geo страну и координаты городов отправления и назначения.
 
         Scenarios:
             - добавление поездки
@@ -236,49 +230,34 @@ class JourneyService:
             - расстояние нового маршрута при правке поездки
 
         Args:
-            origin_place_id: Место отправления
-            destination_place_id: Место назначения
+            origin_city_id: Город отправления
+            destination_city_id: Город назначения
 
         Returns:
             Точки отправления и назначения
 
         Raises:
-            UnknownPlaceError: какого-то из мест нет в справочнике geo; ненайденные id — в
-                ``details.place_ids``
-            PlaceWithoutCountryError: у какого-то из мест в справочнике нет страны; такие id — в
-                ``details.place_ids``
+            UnknownCityError: какого-то из городов нет в справочнике geo; ненайденные id — в
+                ``details.city_ids``
         """
-        place_ids = (origin_place_id, destination_place_id)
-        # geo отдаёт места в произвольном порядке, поэтому сопоставляем по id, а не по позиции.
+        city_ids = (origin_city_id, destination_city_id)
+        # geo отдаёт города в произвольном порядке, поэтому сопоставляем по id, а не по позиции.
         locations = {
-            location.place_id: location
-            for location in await self._places_client.find_place_locations(place_ids=place_ids)
+            location.city_id: location for location in await self._cities_client.find_city_locations(city_ids=city_ids)
         }
-        missing_place_ids = frozenset(place_ids) - locations.keys()
-        if missing_place_ids:
-            raise UnknownPlaceError(details={"place_ids": missing_place_ids})
+        missing_city_ids = frozenset(city_ids) - locations.keys()
+        if missing_city_ids:
+            raise UnknownCityError(details={"city_ids": missing_city_ids})
 
-        route_points: list[GeoPoint] = []
-        countryless_place_ids: set[UUID] = set()
-        for place_id in place_ids:
-            location = locations[place_id]
-            if location.country_code is None:
-                countryless_place_ids.add(place_id)
-                continue
-
-            route_points.append(
-                GeoPoint(
-                    place_id=place_id,
-                    country_code=location.country_code,
-                    latitude=location.latitude,
-                    longitude=location.longitude,
-                )
+        origin, destination = (
+            GeoPoint(
+                city_id=city_id,
+                country_code=locations[city_id].country_code,
+                latitude=locations[city_id].latitude,
+                longitude=locations[city_id].longitude,
             )
-
-        if countryless_place_ids:
-            raise PlaceWithoutCountryError(details={"place_ids": frozenset(countryless_place_ids)})
-
-        origin, destination = route_points
+            for city_id in city_ids
+        )
         return origin, destination
 
     async def _find_user_journey_for_update(self, *, user_id: UUID, journey_id: UUID) -> JourneyEntity:
@@ -410,31 +389,31 @@ class JourneyService:
             Посещённые страны (по коду) с городами и годами визитов
         """
         async with self._uow.transaction():
-            visited_places = await self._uow.journey_repository.find_visited_places_by_user_id(user_id=user_id)
+            visited_cities = await self._uow.journey_repository.find_visited_cities_by_user_id(user_id=user_id)
 
-        # Репозиторий отдаёт места упорядоченными по стране — groupby собирает каждую страну целиком.
+        # Репозиторий отдаёт города упорядоченными по стране — groupby собирает каждую страну целиком.
         countries = tuple(
             MapCountryVisits(
                 country_code=country_code,
                 cities=tuple(
                     MapCityVisit(
-                        place_id=visited_place.place.place_id,
-                        latitude=visited_place.place.latitude,
-                        longitude=visited_place.place.longitude,
-                        years=visited_place.years,
+                        city_id=visited_city.city.city_id,
+                        latitude=visited_city.city.latitude,
+                        longitude=visited_city.city.longitude,
+                        years=visited_city.years,
                     )
-                    for visited_place in country_places
+                    for visited_city in country_cities
                 ),
             )
-            for country_code, country_places in groupby(
-                visited_places, key=lambda visited_place: visited_place.place.country_code
+            for country_code, country_cities in groupby(
+                visited_cities, key=lambda visited_city: visited_city.city.country_code
             )
         )
         return JourneysMapResult(countries=countries)
 
     async def get_journeys_globe(self, *, user_id: UUID) -> JourneysGlobeResult:
         """
-        Собирает места для глобуса: где пользователь побывал, каждое место по одному разу.
+        Собирает города для глобуса: где пользователь побывал, каждый город по одному разу.
 
         Scenarios:
             - глобус на главной и в форме добавления поездки: города пользователя
@@ -443,12 +422,12 @@ class JourneyService:
             user_id: Владелец поездок
 
         Returns:
-            Посещённые места с координатами
+            Посещённые города с координатами
         """
         async with self._uow.transaction():
-            visited_places = await self._uow.journey_repository.find_visited_places_by_user_id(user_id=user_id)
+            visited_cities = await self._uow.journey_repository.find_visited_cities_by_user_id(user_id=user_id)
 
-        return JourneysGlobeResult(places=tuple(visited_place.place for visited_place in visited_places))
+        return JourneysGlobeResult(cities=tuple(visited_city.city for visited_city in visited_cities))
 
     async def get_movements_map(self, *, user_id: UUID, command: GetMovementsMapCommand) -> MovementsMapResult:
         """

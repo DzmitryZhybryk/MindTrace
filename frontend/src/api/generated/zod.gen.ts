@@ -3,6 +3,39 @@
 import * as z from 'zod/mini';
 
 /**
+ * CityName
+ *
+ * Название города на языке запроса.
+ */
+export const zCityName = z.object({
+  cityId: z.uuid(),
+  name: z.string()
+});
+
+/**
+ * CitySearchItem
+ *
+ * Один вариант в подсказках поиска; по ``cityId`` на город потом можно ссылаться.
+ */
+export const zCitySearchItem = z.object({
+  cityId: z.uuid(),
+  name: z.string(),
+  countryCode: z.string(),
+  latitude: z.number(),
+  longitude: z.number(),
+  population: z.nullable(z.int())
+});
+
+/**
+ * CitySearchResponse
+ *
+ * Ответ автокомплита — упорядоченная выдача кандидатов (по убыванию населения).
+ */
+export const zCitySearchResponse = z.object({
+  items: z.array(zCitySearchItem)
+});
+
+/**
  * CurrentAccountResponse
  */
 export const zCurrentAccountResponse = z.object({
@@ -19,24 +52,24 @@ export const zCurrentUserResponse = z.object({
 });
 
 /**
+ * JourneyCity
+ *
+ * Город поездки: его ``cityId``, страна и координаты, без названия.
+ */
+export const zJourneyCity = z.object({
+  cityId: z.uuid(),
+  countryCode: z.string(),
+  latitude: z.number(),
+  longitude: z.number()
+});
+
+/**
  * JourneyDistanceResponse
  *
  * Расстояние маршрута по большой окружности, км — то же, что поездка сохранит.
  */
 export const zJourneyDistanceResponse = z.object({
   distanceKm: z.int()
-});
-
-/**
- * JourneyPlace
- *
- * Место поездки: его ``placeId``, страна и координаты, без названия.
- */
-export const zJourneyPlace = z.object({
-  placeId: z.uuid(),
-  countryCode: z.string(),
-  latitude: z.number(),
-  longitude: z.number()
 });
 
 /**
@@ -51,11 +84,11 @@ export const zJourneyYearsResponse = z.object({
 /**
  * Language
  *
- * Язык отображаемого имени места в автокомплите.
+ * Язык отображаемого имени объекта газеттира.
  *
  * Закрытое множество поддерживаемых языков газеттира: имена импортируются только
  * для ``en``/``ru``. Используется как тип query-параметра ``language`` на границе HTTP
- * и как ключ резолва имени в ``PlaceEntity.display_name``.
+ * и как ключ резолва имени в ``LocalizedNames``.
  */
 export const zLanguage = z.enum(['en', 'ru']);
 
@@ -69,10 +102,10 @@ export const zLoginRequest = z.object({
 /**
  * MapCity
  *
- * Город на карте путешествий: его ``placeId``, координаты и годы визитов по возрастанию.
+ * Город на карте путешествий: его ``cityId``, координаты и годы визитов по возрастанию.
  */
 export const zMapCity = z.object({
-  placeId: z.uuid(),
+  cityId: z.uuid(),
   latitude: z.number(),
   longitude: z.number(),
   years: z.array(z.int())
@@ -97,7 +130,7 @@ export const zMapCountry = z.object({
  *
  * Ответ карты путешествий: посещённые страны с городами и годами визитов.
  *
- * Каждое место встречается ровно один раз, в одной стране.
+ * Каждый город встречается ровно один раз, в одной стране.
  */
 export const zJourneysMapResponse = z.object({
   countries: z.array(zMapCountry)
@@ -106,10 +139,10 @@ export const zJourneysMapResponse = z.object({
 /**
  * MapPoint
  *
- * Место на глобусе или карте перемещений: его ``placeId`` и координаты, без названия.
+ * Город на глобусе или карте перемещений: его ``cityId`` и координаты, без названия.
  */
 export const zMapPoint = z.object({
-  placeId: z.uuid(),
+  cityId: z.uuid(),
   latitude: z.number(),
   longitude: z.number()
 });
@@ -117,10 +150,10 @@ export const zMapPoint = z.object({
 /**
  * JourneysGlobeResponse
  *
- * Ответ глобуса: места, где пользователь побывал, каждое ровно один раз.
+ * Ответ глобуса: города, где пользователь побывал, каждый ровно один раз.
  */
 export const zJourneysGlobeResponse = z.object({
-  places: z.array(zMapPoint)
+  cities: z.array(zMapPoint)
 });
 
 /**
@@ -192,39 +225,6 @@ export const zErrorResponse = z.object({
 });
 
 /**
- * PlaceName
- *
- * Название места на языке запроса.
- */
-export const zPlaceName = z.object({
-  placeId: z.uuid(),
-  name: z.string()
-});
-
-/**
- * PlaceSearchItem
- *
- * Один вариант в подсказках поиска; по ``placeId`` на место потом можно ссылаться.
- */
-export const zPlaceSearchItem = z.object({
-  placeId: z.uuid(),
-  name: z.string(),
-  countryCode: z.nullable(z.string()),
-  latitude: z.number(),
-  longitude: z.number(),
-  population: z.nullable(z.int())
-});
-
-/**
- * PlaceSearchResponse
- *
- * Ответ автокомплита — упорядоченная выдача кандидатов (по убыванию населения).
- */
-export const zPlaceSearchResponse = z.object({
-  items: z.array(zPlaceSearchItem)
-});
-
-/**
  * RegisterRequest
  */
 export const zRegisterRequest = z.object({
@@ -235,22 +235,22 @@ export const zRegisterRequest = z.object({
 });
 
 /**
- * ResolvePlacesRequest
+ * ResolveCitiesRequest
  *
- * Запрос названий мест по их id на нужном языке.
+ * Запрос названий городов по их id на нужном языке.
  */
-export const zResolvePlacesRequest = z.object({
-  placeIds: z.array(z.uuid()).check(z.minLength(1), z.maxLength(1000)),
+export const zResolveCitiesRequest = z.object({
+  cityIds: z.array(z.uuid()).check(z.minLength(1), z.maxLength(1000)),
   language: zLanguage
 });
 
 /**
- * ResolvePlacesResponse
+ * ResolveCitiesResponse
  *
- * Названия найденных мест; id, которых нет в газеттире, в ответ не попадают.
+ * Названия найденных городов; id, которых нет в газеттире, в ответ не попадают.
  */
-export const zResolvePlacesResponse = z.object({
-  items: z.array(zPlaceName)
+export const zResolveCitiesResponse = z.object({
+  items: z.array(zCityName)
 });
 
 /**
@@ -281,8 +281,8 @@ export const zTransportType = z.enum([
  * Тело запроса создания поездки.
  */
 export const zCreateJourneyRequest = z.object({
-  originPlaceId: z.uuid(),
-  destinationPlaceId: z.uuid(),
+  originCityId: z.uuid(),
+  destinationCityId: z.uuid(),
   transportType: zTransportType,
   traveledYear: z.int().check(z.gte(1))
 });
@@ -294,8 +294,8 @@ export const zCreateJourneyRequest = z.object({
  */
 export const zJourneyFeedEntry = z.object({
   journeyId: z.uuid(),
-  origin: zJourneyPlace,
-  destination: zJourneyPlace,
+  origin: zJourneyCity,
+  destination: zJourneyCity,
   transportType: zTransportType,
   traveledYear: z.int(),
   distanceKm: z.int()
@@ -317,8 +317,8 @@ export const zJourneysFeedResponse = z.object({
  * Тело запроса правки поездки: новые значения всех полей.
  */
 export const zUpdateJourneyRequest = z.object({
-  originPlaceId: z.uuid(),
-  destinationPlaceId: z.uuid(),
+  originCityId: z.uuid(),
+  destinationCityId: z.uuid(),
   transportType: zTransportType,
   traveledYear: z.int().check(z.gte(1))
 });
@@ -385,7 +385,7 @@ export const zVerifyEmailBody = zVerifyEmailRequest;
  */
 export const zVerifyEmailResponse = z.void();
 
-export const zSearchPlacesQuery = z.object({
+export const zSearchCitiesQuery = z.object({
   searchText: z.string().check(z.minLength(2), z.maxLength(100)),
   language: zLanguage,
   limit: z._default(z.optional(z.int().check(z.gte(1), z.lte(50))), 10)
@@ -394,14 +394,14 @@ export const zSearchPlacesQuery = z.object({
 /**
  * Successful Response
  */
-export const zSearchPlacesResponse = zPlaceSearchResponse;
+export const zSearchCitiesResponse = zCitySearchResponse;
 
-export const zResolvePlacesBody = zResolvePlacesRequest;
+export const zResolveCitiesBody = zResolveCitiesRequest;
 
 /**
  * Successful Response
  */
-export const zResolvePlacesResponse2 = zResolvePlacesResponse;
+export const zResolveCitiesResponse2 = zResolveCitiesResponse;
 
 export const zListJourneysQuery = z.object({
   cursor: z.nullish(z.string().check(z.maxLength(512))),
@@ -450,8 +450,8 @@ export const zMoveJourneyPath = z.object({
 export const zMoveJourneyResponse2 = zMoveJourneyResponse;
 
 export const zEstimateJourneyDistanceQuery = z.object({
-  originPlaceId: z.uuid(),
-  destinationPlaceId: z.uuid()
+  originCityId: z.uuid(),
+  destinationCityId: z.uuid()
 });
 
 /**

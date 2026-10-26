@@ -7,11 +7,11 @@ import { useNavigate } from "react-router";
 
 import { applyApiError, resolveErrorToken } from "../../api/errors";
 import { createJourneyMutation, zTransportType, type TransportType } from "../../api/sdk";
-import { PlaceAutocomplete } from "../../components/PlaceAutocomplete";
+import { CityAutocomplete } from "../../components/CityAutocomplete";
 import { SwapVerticalIcon } from "../../components/SwapVerticalIcon";
 import { TRANSPORT_ICONS } from "../../components/transportIcons";
 import { invalidateJourneyAggregates, invalidateJourneyFeed } from "./journeyCache";
-import { applyPlaceError, hasCountry, type JourneyFormValues } from "./journeyFormRules";
+import { applyCityError, type JourneyFormValues } from "./journeyFormRules";
 import { JourneyYearField } from "./JourneyYearField";
 
 const TRANSPORT_ICON_SIZE = 22;
@@ -23,7 +23,7 @@ interface JourneyFormProps {
 /**
  * Add-journey form: from/to (autocomplete), transport and year. `form` is lifted into
  * AddJourneyPage so the hero globe reacts to input live. Submit builds the payload from the
- * picked places, transport and year, POSTs `/v1/journeys` (`createJourney`) and on success goes
+ * picked cities, transport and year, POSTs `/v1/journeys` (`createJourney`) and on success goes
  * to `/journeys`.
  */
 export function JourneyForm({ form }: JourneyFormProps) {
@@ -50,7 +50,7 @@ export function JourneyForm({ form }: JourneyFormProps) {
 
   const handleSubmit = async (values: JourneyFormValues) => {
     const { origin, destination } = values;
-    if (!origin || !destination || !hasCountry(origin) || !hasCountry(destination) || !values.transport || !values.year) {
+    if (!origin || !destination || !values.transport || !values.year) {
       return;
     }
 
@@ -58,15 +58,15 @@ export function JourneyForm({ form }: JourneyFormProps) {
     try {
       await submitJourney({
         body: {
-          originPlaceId: origin.placeId,
-          destinationPlaceId: destination.placeId,
+          originCityId: origin.cityId,
+          destinationCityId: destination.cityId,
           transportType: values.transport,
           traveledYear: Number(values.year),
         },
       });
       navigate("/journeys");
     } catch (err) {
-      if (applyPlaceError(err, values, form)) {
+      if (applyCityError(err, values, form)) {
         return;
       }
 
@@ -88,19 +88,19 @@ export function JourneyForm({ form }: JourneyFormProps) {
             Tab goes from -> to without catching the button. */}
         <div className="add-journey__route">
           <Stack gap="md">
-            <PlaceAutocomplete
+            <CityAutocomplete
               label={t("addJourney.origin.label")}
               placeholder={t("addJourney.origin.placeholder")}
               value={values.origin}
-              onChange={(place) => form.setFieldValue("origin", place)}
+              onChange={(city) => form.setFieldValue("origin", city)}
               error={resolveErrorToken(form.errors.origin)}
             />
 
-            <PlaceAutocomplete
+            <CityAutocomplete
               label={t("addJourney.destination.label")}
               placeholder={t("addJourney.destination.placeholder")}
               value={values.destination}
-              onChange={(place) => form.setFieldValue("destination", place)}
+              onChange={(city) => form.setFieldValue("destination", city)}
               error={resolveErrorToken(form.errors.destination)}
             />
           </Stack>

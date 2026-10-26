@@ -8,7 +8,7 @@ import pytest
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
 from app.journeys.exceptions import JourneyNotFoundError
-from tests.builders import LONDON_PLACE_ID, MOSCOW_PLACE_ID, make_geo_point, make_journey
+from tests.builders import LONDON_CITY_ID, MOSCOW_CITY_ID, make_geo_point, make_journey
 
 _DELETED_AT = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 
@@ -16,8 +16,8 @@ _DELETED_AT = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 def test_create_assigns_fields_and_mints_id() -> None:
     """create: чеканит собственный journey_id (uuid4) и прокидывает переданные поля."""
     user_id = uuid4()
-    origin = make_geo_point(place_id=MOSCOW_PLACE_ID, latitude=55.75, longitude=37.62)
-    destination = make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12)
+    origin = make_geo_point(city_id=MOSCOW_CITY_ID, latitude=55.75, longitude=37.62)
+    destination = make_geo_point(city_id=LONDON_CITY_ID, country_code="GB", latitude=51.5, longitude=-0.12)
 
     journey_entity = JourneyEntity.create(
         user_id=user_id,
@@ -43,8 +43,8 @@ def test_create_mints_distinct_ids_per_call() -> None:
     """create: каждый вызов чеканит новый идентификатор (id не переиспользуется)."""
     first = JourneyEntity.create(
         user_id=uuid4(),
-        origin=make_geo_point(place_id=MOSCOW_PLACE_ID, latitude=55.75, longitude=37.62),
-        destination=make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
+        origin=make_geo_point(city_id=MOSCOW_CITY_ID, latitude=55.75, longitude=37.62),
+        destination=make_geo_point(city_id=LONDON_CITY_ID, country_code="GB", latitude=51.5, longitude=-0.12),
         transport_type=TransportType.AIR,
         distance_km=2500,
         traveled_year=2020,
@@ -52,8 +52,8 @@ def test_create_mints_distinct_ids_per_call() -> None:
     )
     second = JourneyEntity.create(
         user_id=uuid4(),
-        origin=make_geo_point(place_id=MOSCOW_PLACE_ID, latitude=55.75, longitude=37.62),
-        destination=make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
+        origin=make_geo_point(city_id=MOSCOW_CITY_ID, latitude=55.75, longitude=37.62),
+        destination=make_geo_point(city_id=LONDON_CITY_ID, country_code="GB", latitude=51.5, longitude=-0.12),
         transport_type=TransportType.AIR,
         distance_km=2500,
         traveled_year=2020,
@@ -64,10 +64,10 @@ def test_create_mints_distinct_ids_per_call() -> None:
 
 
 def test_revise_replaces_route_transport_and_distance_and_marks_updated() -> None:
-    """revise: меняет места, транспорт и расстояние, ставит updated_at; год и ключ не трогает."""
+    """revise: меняет города, транспорт и расстояние, ставит updated_at; год и ключ не трогает."""
     journey_entity = make_journey(traveled_year=2019, sort_key="a1", transport_type=TransportType.AIR)
-    origin = make_geo_point(place_id=uuid4(), country_code="FR", latitude=48.85, longitude=2.35)
-    destination = make_geo_point(place_id=uuid4(), country_code="DE", latitude=52.52, longitude=13.4)
+    origin = make_geo_point(city_id=uuid4(), country_code="FR", latitude=48.85, longitude=2.35)
+    destination = make_geo_point(city_id=uuid4(), country_code="DE", latitude=52.52, longitude=13.4)
     started_at = dt.datetime.now(tz=dt.UTC)
 
     journey_entity.revise(origin=origin, destination=destination, transport_type=TransportType.LAND, distance_km=880)

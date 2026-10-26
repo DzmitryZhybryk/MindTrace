@@ -3,7 +3,7 @@ Geo-данные для generic api-проводки (``tests/api/conftest.py``)
 
 Три data-фикстуры, которыми generic-фикстура ``app`` собирает приложение: ``router``
 (geo-роутер), ``router_prefix`` (``/v1/geo``) и ``dependency_overrides``. Подменяем только
-**листовую** dependency — UoW; реальными остаются ``place_service`` и
+**листовую** dependency — UoW; реальными остаются ``city_service`` и
 ``current_user_id_dependency`` (Bearer проходит настоящий декод реальным settings-секретом
 через ``mint_access_token``). Сам механизм сборки ``app``/``client`` и ``mint_access_token``
 живут в родительском ``tests/api/conftest.py``, фейки UoW и репозитория — в корневом ``tests/conftest.py``.

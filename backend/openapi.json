@@ -3,7 +3,7 @@
   "info": {
     "title": "MindTrace",
     "description": "Service for managing mindtrace",
-    "version": "5.0.5"
+    "version": "6.0.0"
   },
   "paths": {
     "/healthz/": {
@@ -611,13 +611,13 @@
         ]
       }
     },
-    "/v1/geo/places/search/": {
+    "/v1/geo/cities/search/": {
       "get": {
         "tags": [
           "geo"
         ],
-        "summary": "Search Places",
-        "operationId": "search_places",
+        "summary": "Search Cities",
+        "operationId": "search_cities",
         "security": [
           {
             "HTTPBearer": []
@@ -668,7 +668,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlaceSearchResponse"
+                  "$ref": "#/components/schemas/CitySearchResponse"
                 }
               }
             }
@@ -716,18 +716,18 @@
         }
       }
     },
-    "/v1/geo/places/resolve/": {
+    "/v1/geo/cities/resolve/": {
       "post": {
         "tags": [
           "geo"
         ],
-        "summary": "Resolve Places",
-        "operationId": "resolve_places",
+        "summary": "Resolve Cities",
+        "operationId": "resolve_cities",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ResolvePlacesRequest"
+                "$ref": "#/components/schemas/ResolveCitiesRequest"
               }
             }
           },
@@ -739,7 +739,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResolvePlacesResponse"
+                  "$ref": "#/components/schemas/ResolveCitiesResponse"
                 }
               }
             }
@@ -847,19 +847,11 @@
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
                   },
-                  "journeys.unknown_place": {
-                    "summary": "Места нет в справочнике",
+                  "journeys.unknown_city": {
+                    "summary": "Города нет в справочнике",
                     "value": {
-                      "code": "journeys.unknown_place",
-                      "message": "Место не найдено",
-                      "timestamp": "2024-01-01T12:00:00Z"
-                    }
-                  },
-                  "journeys.place_without_country": {
-                    "summary": "У места в справочнике нет страны",
-                    "value": {
-                      "code": "journeys.place_without_country",
-                      "message": "У места не указана страна",
+                      "code": "journeys.unknown_city",
+                      "message": "Город не найден",
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
                   }
@@ -1152,19 +1144,11 @@
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
                   },
-                  "journeys.unknown_place": {
-                    "summary": "Места нет в справочнике",
+                  "journeys.unknown_city": {
+                    "summary": "Города нет в справочнике",
                     "value": {
-                      "code": "journeys.unknown_place",
-                      "message": "Место не найдено",
-                      "timestamp": "2024-01-01T12:00:00Z"
-                    }
-                  },
-                  "journeys.place_without_country": {
-                    "summary": "У места в справочнике нет страны",
-                    "value": {
-                      "code": "journeys.place_without_country",
-                      "message": "У места не указана страна",
+                      "code": "journeys.unknown_city",
+                      "message": "Город не найден",
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
                   }
@@ -1449,23 +1433,23 @@
         ],
         "parameters": [
           {
-            "name": "originPlaceId",
+            "name": "originCityId",
             "in": "query",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "Originplaceid"
+              "title": "Origincityid"
             }
           },
           {
-            "name": "destinationPlaceId",
+            "name": "destinationCityId",
             "in": "query",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "Destinationplaceid"
+              "title": "Destinationcityid"
             }
           }
         ],
@@ -1511,7 +1495,7 @@
             }
           },
           "400": {
-            "description": "Ошибка в местах маршрута",
+            "description": "Ошибка в городах маршрута",
             "content": {
               "application/json": {
                 "examples": {
@@ -1523,19 +1507,11 @@
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
                   },
-                  "journeys.unknown_place": {
-                    "summary": "Места нет в справочнике",
+                  "journeys.unknown_city": {
+                    "summary": "Города нет в справочнике",
                     "value": {
-                      "code": "journeys.unknown_place",
-                      "message": "Место не найдено",
-                      "timestamp": "2024-01-01T12:00:00Z"
-                    }
-                  },
-                  "journeys.place_without_country": {
-                    "summary": "У места в справочнике нет страны",
-                    "value": {
-                      "code": "journeys.place_without_country",
-                      "message": "У места не указана страна",
+                      "code": "journeys.unknown_city",
+                      "message": "Город не найден",
                       "timestamp": "2024-01-01T12:00:00Z"
                     }
                   }
@@ -1904,17 +1880,102 @@
   },
   "components": {
     "schemas": {
+      "CityName": {
+        "properties": {
+          "cityId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cityid"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cityId",
+          "name"
+        ],
+        "title": "CityName",
+        "description": "Название города на языке запроса."
+      },
+      "CitySearchItem": {
+        "properties": {
+          "cityId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cityid"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Имя города, резолвнутое под язык запроса (параметр language)."
+          },
+          "countryCode": {
+            "type": "string",
+            "title": "Countrycode"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "population": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Population"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cityId",
+          "name",
+          "countryCode",
+          "latitude",
+          "longitude",
+          "population"
+        ],
+        "title": "CitySearchItem",
+        "description": "Один вариант в подсказках поиска; по ``cityId`` на город потом можно ссылаться."
+      },
+      "CitySearchResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CitySearchItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "CitySearchResponse",
+        "description": "Ответ автокомплита — упорядоченная выдача кандидатов (по убыванию населения)."
+      },
       "CreateJourneyRequest": {
         "properties": {
-          "originPlaceId": {
+          "originCityId": {
             "type": "string",
             "format": "uuid",
-            "title": "Originplaceid"
+            "title": "Origincityid"
           },
-          "destinationPlaceId": {
+          "destinationCityId": {
             "type": "string",
             "format": "uuid",
-            "title": "Destinationplaceid"
+            "title": "Destinationcityid"
           },
           "transportType": {
             "$ref": "#/components/schemas/TransportType"
@@ -1927,8 +1988,8 @@
         },
         "type": "object",
         "required": [
-          "originPlaceId",
-          "destinationPlaceId",
+          "originCityId",
+          "destinationCityId",
           "transportType",
           "traveledYear"
         ],
@@ -2022,6 +2083,36 @@
           "timestamp": "2024-01-01T12:00:00Z"
         }
       },
+      "JourneyCity": {
+        "properties": {
+          "cityId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cityid"
+          },
+          "countryCode": {
+            "type": "string",
+            "title": "Countrycode"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cityId",
+          "countryCode",
+          "latitude",
+          "longitude"
+        ],
+        "title": "JourneyCity",
+        "description": "Город поездки: его ``cityId``, страна и координаты, без названия."
+      },
       "JourneyDistanceResponse": {
         "properties": {
           "distanceKm": {
@@ -2044,10 +2135,10 @@
             "title": "Journeyid"
           },
           "origin": {
-            "$ref": "#/components/schemas/JourneyPlace"
+            "$ref": "#/components/schemas/JourneyCity"
           },
           "destination": {
-            "$ref": "#/components/schemas/JourneyPlace"
+            "$ref": "#/components/schemas/JourneyCity"
           },
           "transportType": {
             "$ref": "#/components/schemas/TransportType"
@@ -2072,36 +2163,6 @@
         ],
         "title": "JourneyFeedEntry",
         "description": "Поездка в ленте."
-      },
-      "JourneyPlace": {
-        "properties": {
-          "placeId": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Placeid"
-          },
-          "countryCode": {
-            "type": "string",
-            "title": "Countrycode"
-          },
-          "latitude": {
-            "type": "number",
-            "title": "Latitude"
-          },
-          "longitude": {
-            "type": "number",
-            "title": "Longitude"
-          }
-        },
-        "type": "object",
-        "required": [
-          "placeId",
-          "countryCode",
-          "latitude",
-          "longitude"
-        ],
-        "title": "JourneyPlace",
-        "description": "Место поездки: его ``placeId``, страна и координаты, без названия."
       },
       "JourneyYearsResponse": {
         "properties": {
@@ -2151,20 +2212,20 @@
       },
       "JourneysGlobeResponse": {
         "properties": {
-          "places": {
+          "cities": {
             "items": {
               "$ref": "#/components/schemas/MapPoint"
             },
             "type": "array",
-            "title": "Places"
+            "title": "Cities"
           }
         },
         "type": "object",
         "required": [
-          "places"
+          "cities"
         ],
         "title": "JourneysGlobeResponse",
-        "description": "Ответ глобуса: места, где пользователь побывал, каждое ровно один раз."
+        "description": "Ответ глобуса: города, где пользователь побывал, каждый ровно один раз."
       },
       "JourneysMapResponse": {
         "properties": {
@@ -2181,7 +2242,7 @@
           "countries"
         ],
         "title": "JourneysMapResponse",
-        "description": "Ответ карты путешествий: посещённые страны с городами и годами визитов.\n\nКаждое место встречается ровно один раз, в одной стране."
+        "description": "Ответ карты путешествий: посещённые страны с городами и годами визитов.\n\nКаждый город встречается ровно один раз, в одной стране."
       },
       "Language": {
         "type": "string",
@@ -2190,7 +2251,7 @@
           "ru"
         ],
         "title": "Language",
-        "description": "Язык отображаемого имени места в автокомплите.\n\nЗакрытое множество поддерживаемых языков газеттира: имена импортируются только\nдля ``en``/``ru``. Используется как тип query-параметра ``language`` на границе HTTP\nи как ключ резолва имени в ``PlaceEntity.display_name``."
+        "description": "Язык отображаемого имени объекта газеттира.\n\nЗакрытое множество поддерживаемых языков газеттира: имена импортируются только\nдля ``en``/``ru``. Используется как тип query-параметра ``language`` на границе HTTP\nи как ключ резолва имени в ``LocalizedNames``."
       },
       "LoginRequest": {
         "properties": {
@@ -2218,10 +2279,10 @@
       },
       "MapCity": {
         "properties": {
-          "placeId": {
+          "cityId": {
             "type": "string",
             "format": "uuid",
-            "title": "Placeid"
+            "title": "Cityid"
           },
           "latitude": {
             "type": "number",
@@ -2241,13 +2302,13 @@
         },
         "type": "object",
         "required": [
-          "placeId",
+          "cityId",
           "latitude",
           "longitude",
           "years"
         ],
         "title": "MapCity",
-        "description": "Город на карте путешествий: его ``placeId``, координаты и годы визитов по возрастанию."
+        "description": "Город на карте путешествий: его ``cityId``, координаты и годы визитов по возрастанию."
       },
       "MapCountry": {
         "properties": {
@@ -2273,10 +2334,10 @@
       },
       "MapPoint": {
         "properties": {
-          "placeId": {
+          "cityId": {
             "type": "string",
             "format": "uuid",
-            "title": "Placeid"
+            "title": "Cityid"
           },
           "latitude": {
             "type": "number",
@@ -2289,12 +2350,12 @@
         },
         "type": "object",
         "required": [
-          "placeId",
+          "cityId",
           "latitude",
           "longitude"
         ],
         "title": "MapPoint",
-        "description": "Место на глобусе или карте перемещений: его ``placeId`` и координаты, без названия."
+        "description": "Город на глобусе или карте перемещений: его ``cityId`` и координаты, без названия."
       },
       "MoveJourneyRequest": {
         "properties": {
@@ -2415,98 +2476,6 @@
           }
         ]
       },
-      "PlaceName": {
-        "properties": {
-          "placeId": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Placeid"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          }
-        },
-        "type": "object",
-        "required": [
-          "placeId",
-          "name"
-        ],
-        "title": "PlaceName",
-        "description": "Название места на языке запроса."
-      },
-      "PlaceSearchItem": {
-        "properties": {
-          "placeId": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Placeid"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name",
-            "description": "Имя места, резолвнутое под язык запроса (параметр language)."
-          },
-          "countryCode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Countrycode"
-          },
-          "latitude": {
-            "type": "number",
-            "title": "Latitude"
-          },
-          "longitude": {
-            "type": "number",
-            "title": "Longitude"
-          },
-          "population": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Population"
-          }
-        },
-        "type": "object",
-        "required": [
-          "placeId",
-          "name",
-          "countryCode",
-          "latitude",
-          "longitude",
-          "population"
-        ],
-        "title": "PlaceSearchItem",
-        "description": "Один вариант в подсказках поиска; по ``placeId`` на место потом можно ссылаться."
-      },
-      "PlaceSearchResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/PlaceSearchItem"
-            },
-            "type": "array",
-            "title": "Items"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items"
-        ],
-        "title": "PlaceSearchResponse",
-        "description": "Ответ автокомплита — упорядоченная выдача кандидатов (по убыванию населения)."
-      },
       "RegisterRequest": {
         "properties": {
           "username": {
@@ -2548,9 +2517,9 @@
         ],
         "title": "RegisterRequest"
       },
-      "ResolvePlacesRequest": {
+      "ResolveCitiesRequest": {
         "properties": {
-          "placeIds": {
+          "cityIds": {
             "items": {
               "type": "string",
               "format": "uuid"
@@ -2558,7 +2527,7 @@
             "type": "array",
             "maxItems": 1000,
             "minItems": 1,
-            "title": "Placeids"
+            "title": "Cityids"
           },
           "language": {
             "$ref": "#/components/schemas/Language"
@@ -2566,17 +2535,17 @@
         },
         "type": "object",
         "required": [
-          "placeIds",
+          "cityIds",
           "language"
         ],
-        "title": "ResolvePlacesRequest",
-        "description": "Запрос названий мест по их id на нужном языке."
+        "title": "ResolveCitiesRequest",
+        "description": "Запрос названий городов по их id на нужном языке."
       },
-      "ResolvePlacesResponse": {
+      "ResolveCitiesResponse": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/PlaceName"
+              "$ref": "#/components/schemas/CityName"
             },
             "type": "array",
             "title": "Items"
@@ -2586,8 +2555,8 @@
         "required": [
           "items"
         ],
-        "title": "ResolvePlacesResponse",
-        "description": "Названия найденных мест; id, которых нет в газеттире, в ответ не попадают."
+        "title": "ResolveCitiesResponse",
+        "description": "Названия найденных городов; id, которых нет в газеттире, в ответ не попадают."
       },
       "TokenResponse": {
         "properties": {
@@ -2619,15 +2588,15 @@
       },
       "UpdateJourneyRequest": {
         "properties": {
-          "originPlaceId": {
+          "originCityId": {
             "type": "string",
             "format": "uuid",
-            "title": "Originplaceid"
+            "title": "Origincityid"
           },
-          "destinationPlaceId": {
+          "destinationCityId": {
             "type": "string",
             "format": "uuid",
-            "title": "Destinationplaceid"
+            "title": "Destinationcityid"
           },
           "transportType": {
             "$ref": "#/components/schemas/TransportType"
@@ -2640,8 +2609,8 @@
         },
         "type": "object",
         "required": [
-          "originPlaceId",
-          "destinationPlaceId",
+          "originCityId",
+          "destinationCityId",
           "transportType",
           "traveledYear"
         ],

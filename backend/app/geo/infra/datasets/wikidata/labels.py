@@ -37,7 +37,7 @@ _CYRILLIC: Final[re.Pattern[str]] = re.compile(r"[А-Яа-яЁё]")
 
 @dataclass(frozen=True, slots=True)
 class EnrichmentReport:
-    """Итог обогащения: сколько мест искали в Wikidata и чем кончился поиск."""
+    """Итог обогащения: сколько городов искали в Wikidata и чем кончился поиск."""
 
     candidates: int
     filled: int
@@ -48,16 +48,16 @@ class EnrichmentReport:
 
 def geonames_id_of(*, external_id: str) -> str | None:
     """
-    Достаёт id GeoNames из ключа места.
+    Достаёт id GeoNames из ключа города.
 
     Scenarios:
         - сборка новой версии датасета с русскими названиями из Wikidata
 
     Args:
-        external_id: Ключ места с префиксом источника (``GeoNames:524901``)
+        external_id: Ключ города с префиксом источника (``GeoNames:524901``)
 
     Returns:
-        Id GeoNames или ``None``, если место не из GeoNames
+        Id GeoNames или ``None``, если город не из GeoNames
     """
     if not external_id.startswith(_GEONAMES_PREFIX):
         return None
@@ -67,7 +67,7 @@ def geonames_id_of(*, external_id: str) -> str | None:
 
 def candidate_geonames_id(*, row: Mapping[str, str], min_population: int) -> str | None:
     """
-    Решает, искать ли месту русское имя: имени нет, место из GeoNames и не меньше порога.
+    Решает, искать ли городу русское имя: имени нет, город из GeoNames и не меньше порога.
 
     Scenarios:
         - сборка новой версии датасета с русскими названиями из Wikidata
@@ -88,7 +88,7 @@ def candidate_geonames_id(*, row: Mapping[str, str], min_population: int) -> str
 
 def acceptable_ru_names(*, labels: Iterable[str]) -> frozenset[str]:
     """
-    Отбирает из меток Wikidata те, что годятся в русское имя места.
+    Отбирает из меток Wikidata те, что годятся в русское имя города.
 
     Уточнение в скобках в конце срезается. Отбрасываются метки без кириллицы (латиница, оставленная
     в поле ``ru``) и с запятой (имя с регионом: «Айвенго, штат Виктория, Австралия»).
@@ -174,7 +174,7 @@ def enrich_rows(
     min_population: int,
 ) -> tuple[tuple[dict[str, str], ...], EnrichmentReport]:
     """
-    Дописывает русские имена местам без них; уже заполненные имена не меняются.
+    Дописывает русские имена городам без них; уже заполненные имена не меняются.
 
     Scenarios:
         - сборка новой версии датасета с русскими названиями из Wikidata

@@ -1,5 +1,5 @@
 """
-Migration name: initial schema — users, user_credentials, refresh_tokens, challenges, geo_places,
+Migration name: initial schema — users, user_credentials, refresh_tokens, challenges, geo_cities,
 geo_dataset_loads, journeys
 
 Revision ID: e00067cc5c0e
@@ -101,31 +101,30 @@ def upgrade() -> None:
         postgresql_where=sa.text("used_at IS NULL"),
     )
 
-    # Газеттир мест: id выводит из external_id загрузчик датасетов (uuid5), база его не генерирует.
+    # Газеттир городов: id выводит из external_id загрузчик датасетов (uuid5), база его не генерирует.
     op.create_table(
-        "geo_places",
+        "geo_cities",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("external_id", sa.String(length=255), nullable=False),
-        sa.Column("kind", sa.String(length=20), nullable=False),
         sa.Column("name_en", sa.String(length=200), nullable=False),
         sa.Column("name_ru", sa.String(length=200), nullable=True),
-        sa.Column("country_code", sa.String(length=2), nullable=True),
+        sa.Column("country_code", sa.String(length=2), nullable=False),
         sa.Column("latitude", sa.REAL(), nullable=False),
         sa.Column("longitude", sa.REAL(), nullable=False),
         sa.Column("population", sa.Integer(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("external_id", name="uq_geo_places_external_id"),
+        sa.UniqueConstraint("external_id", name="uq_geo_cities_external_id"),
     )
     # Префиксный автокомплит lower(name) LIKE 'q%' — btree text_pattern_ops по lower(name_*)
     # берётся range-scan'ом для запроса любой длины (даже 1 символ).
     op.create_index(
-        "ix_geo_places_name_en_prefix",
-        "geo_places",
+        "ix_geo_cities_name_en_prefix",
+        "geo_cities",
         [sa.text("lower(name_en) text_pattern_ops")],
     )
     op.create_index(
-        "ix_geo_places_name_ru_prefix",
-        "geo_places",
+        "ix_geo_cities_name_ru_prefix",
+        "geo_cities",
         [sa.text("lower(name_ru) text_pattern_ops")],
     )
 
@@ -139,7 +138,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("name"),
     )
 
-    # Поездки пользователей. Места — ссылки на справочник geo, без внешних ключей на geo и users:
+    # Поездки пользователей. Города — ссылки на справочник geo, без внешних ключей на geo и users:
     # это другие домены.
     op.create_table(
         "journeys",
@@ -148,11 +147,11 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("user_id", sa.Uuid(), nullable=False),
-        sa.Column("origin_place_id", sa.Uuid(), nullable=False),
+        sa.Column("origin_city_id", sa.Uuid(), nullable=False),
         sa.Column("origin_country_code", sa.String(length=2), nullable=False),
         sa.Column("origin_latitude", sa.REAL(), nullable=False),
         sa.Column("origin_longitude", sa.REAL(), nullable=False),
-        sa.Column("destination_place_id", sa.Uuid(), nullable=False),
+        sa.Column("destination_city_id", sa.Uuid(), nullable=False),
         sa.Column("destination_country_code", sa.String(length=2), nullable=False),
         sa.Column("destination_latitude", sa.REAL(), nullable=False),
         sa.Column("destination_longitude", sa.REAL(), nullable=False),
@@ -177,9 +176,9 @@ def downgrade() -> None:
     op.drop_index("ix_journeys_active_user_id_year_sort_key", table_name="journeys")
     op.drop_table("journeys")
     op.drop_table("geo_dataset_loads")
-    op.drop_index("ix_geo_places_name_ru_prefix", table_name="geo_places")
-    op.drop_index("ix_geo_places_name_en_prefix", table_name="geo_places")
-    op.drop_table("geo_places")
+    op.drop_index("ix_geo_cities_name_ru_prefix", table_name="geo_cities")
+    op.drop_index("ix_geo_cities_name_en_prefix", table_name="geo_cities")
+    op.drop_table("geo_cities")
     op.drop_index(
         "ix_challenges_active_user_id_type",
         table_name="challenges",

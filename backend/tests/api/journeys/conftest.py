@@ -15,9 +15,9 @@ from typing import Any
 import pytest
 from fastapi import APIRouter
 
-from app.journeys.presentation.dependencies import journey_uow_dependency, places_client_dependency
+from app.journeys.presentation.dependencies import cities_client_dependency, journey_uow_dependency
 from app.journeys.presentation.routes import journey_router
-from tests.fakes import FakeJourneyUnitOfWork, FakePlacesClient
+from tests.fakes import FakeCitiesClient, FakeJourneyUnitOfWork
 
 _JOURNEYS_ROUTER_PREFIX = "/v1/journeys"
 
@@ -35,9 +35,9 @@ def router_prefix() -> str:
 @pytest.fixture
 def dependency_overrides(
     fake_journey_uow: FakeJourneyUnitOfWork,
-    fake_places_client: FakePlacesClient,
+    fake_cities_client: FakeCitiesClient,
 ) -> dict[Callable[..., Any], Callable[..., Any]]:
     return {
         journey_uow_dependency: lambda: fake_journey_uow,
-        places_client_dependency: lambda: fake_places_client,
+        cities_client_dependency: lambda: fake_cities_client,
     }

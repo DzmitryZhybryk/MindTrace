@@ -11,7 +11,7 @@ import {
   arcAltitude,
   buildTrail,
   greatCirclePoint,
-  isRealPlace,
+  isRealCity,
   ROUTE_FADE_MS,
   type GlobeRoute,
   type TrailPoint,
@@ -150,7 +150,7 @@ interface RouteSceneOptions {
 }
 
 interface RouteScene {
-  /** Pins and vehicle for the html layer; empty if there are no real places. */
+  /** Pins and vehicle for the html layer; empty if there are no real cities. */
   htmlData: readonly RouteHtmlDatum[];
   /** Vehicle trail for `pathsData`; empty until the route is complete. */
   trails: readonly RouteTrail[];
@@ -160,7 +160,7 @@ const NO_ROUTE_HTML: readonly RouteHtmlDatum[] = [];
 const NO_TRAILS: readonly RouteTrail[] = [];
 
 /**
- * Route scene: pins only for really picked places; the arc and vehicle appear once both places
+ * Route scene: pins only for really picked cities; the arc and vehicle appear once both cities
  * and a transport type are picked. The vehicle moves along a great-circle path leaving a growing
  * dashed trail, with its icon rotated to the heading.
  *
@@ -185,8 +185,8 @@ export function useRouteScene({
   const originLabel = route?.originLabel ?? "";
   const destinationLabel = route?.destinationLabel ?? "";
 
-  const originReal = isRealPlace(origin);
-  const destinationReal = isRealPlace(destination);
+  const originReal = isRealCity(origin);
+  const destinationReal = isRealCity(destination);
   const showRoute = originReal && destinationReal && transportType !== null;
 
   const startLat = origin?.latitude ?? 0;

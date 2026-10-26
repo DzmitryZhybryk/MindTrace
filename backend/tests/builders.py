@@ -13,10 +13,10 @@ from uuid import UUID, uuid4
 from app.auth.domain.entities import ChallengeEntity, RefreshTokenEntity, UserCredentialsEntity
 from app.auth.domain.enums import ChallengeType, UserRole
 from app.auth.domain.value_objects import Password
-from app.geo.domain.entities import PlaceEntity
-from app.geo.domain.value_objects import PlaceNames
+from app.geo.domain.entities import CityEntity
+from app.geo.domain.value_objects import LocalizedNames
 from app.geo.infra.datasets.manifest import DatasetSpec
-from app.journeys.application.ports.places_client import PlaceLocationResponse
+from app.journeys.application.ports.cities_client import CityLocationResponse
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
 from app.journeys.domain.value_objects import GeoPoint
@@ -25,8 +25,8 @@ from app.users.domain.entities import UserEntity
 # Опорные координаты для детерминированных journeys/geo тестов (Москва→Лондон ≈ 2500 км).
 _MOSCOW_LAT, _MOSCOW_LNG = 55.75, 37.62
 _LONDON_LAT, _LONDON_LNG = 51.5, -0.12
-MOSCOW_PLACE_ID = UUID("00000000-0000-0000-0000-000000000001")
-LONDON_PLACE_ID = UUID("00000000-0000-0000-0000-000000000002")
+MOSCOW_CITY_ID = UUID("00000000-0000-0000-0000-000000000001")
+LONDON_CITY_ID = UUID("00000000-0000-0000-0000-000000000002")
 
 
 def make_password(*, hash: str = "argon2-hash") -> Password:
@@ -129,22 +129,22 @@ def make_challenge(
 
 def make_geo_point(
     *,
-    place_id: UUID = MOSCOW_PLACE_ID,
+    city_id: UUID = MOSCOW_CITY_ID,
     country_code: str = "RU",
     latitude: float = _MOSCOW_LAT,
     longitude: float = _MOSCOW_LNG,
 ) -> GeoPoint:
-    return GeoPoint(place_id=place_id, country_code=country_code, latitude=latitude, longitude=longitude)
+    return GeoPoint(city_id=city_id, country_code=country_code, latitude=latitude, longitude=longitude)
 
 
-def make_place_location_response(
+def make_city_location_response(
     *,
-    place_id: UUID = MOSCOW_PLACE_ID,
-    country_code: str | None = "RU",
+    city_id: UUID = MOSCOW_CITY_ID,
+    country_code: str = "RU",
     latitude: float = _MOSCOW_LAT,
     longitude: float = _MOSCOW_LNG,
-) -> PlaceLocationResponse:
-    return PlaceLocationResponse(place_id=place_id, country_code=country_code, latitude=latitude, longitude=longitude)
+) -> CityLocationResponse:
+    return CityLocationResponse(city_id=city_id, country_code=country_code, latitude=latitude, longitude=longitude)
 
 
 def make_journey(
@@ -166,7 +166,7 @@ def make_journey(
         user_id=user_id or uuid4(),
         origin=origin or make_geo_point(country_code="RU"),
         destination=destination
-        or make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=_LONDON_LAT, longitude=_LONDON_LNG),
+        or make_geo_point(city_id=LONDON_CITY_ID, country_code="GB", latitude=_LONDON_LAT, longitude=_LONDON_LNG),
         transport_type=transport_type,
         distance_km=distance_km,
         traveled_year=traveled_year,
@@ -177,19 +177,19 @@ def make_journey(
     )
 
 
-def make_place(
+def make_city(
     *,
-    place_id: UUID | None = None,
+    city_id: UUID | None = None,
     en: str = "Moscow",
     ru: str | None = "Москва",
-    country_code: str | None = "RU",
+    country_code: str = "RU",
     latitude: float = _MOSCOW_LAT,
     longitude: float = _MOSCOW_LNG,
     population: int | None = 10_000_000,
-) -> PlaceEntity:
-    return PlaceEntity(
-        place_id=place_id or uuid4(),
-        names=PlaceNames(en=en, ru=ru),
+) -> CityEntity:
+    return CityEntity(
+        city_id=city_id or uuid4(),
+        names=LocalizedNames(en=en, ru=ru),
         country_code=country_code,
         latitude=latitude,
         longitude=longitude,

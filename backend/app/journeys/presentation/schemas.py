@@ -13,26 +13,26 @@ from app.shared.schemas.base import CamelModel
 
 class OriginAndDestination(CamelModel):
     """
-    Места отправления и назначения — ``placeId`` из выдачи поиска geo.
+    Города отправления и назначения — ``cityId`` из выдачи поиска geo.
 
     Отправление не может совпадать с назначением: ошибка с кодом ``journeys.same_origin_destination``,
     а не 422.
     """
 
-    origin_place_id: UUID
-    destination_place_id: UUID
+    origin_city_id: UUID
+    destination_city_id: UUID
 
     @model_validator(mode="after")
     def validate_distinct_endpoints(self) -> Self:
         """
-        Отклоняет маршрут в то же место.
+        Отклоняет маршрут в тот же город.
 
         Scenarios:
             - добавление поездки
             - правка поездки в ленте «Все путешествия»
             - расстояние нового маршрута при правке поездки
         """
-        if self.origin_place_id == self.destination_place_id:
+        if self.origin_city_id == self.destination_city_id:
             raise SameOriginAndDestinationError()
 
         return self
@@ -92,7 +92,7 @@ class MoveJourneyResponse(CamelModel):
 
 
 class JourneyDistanceRequest(OriginAndDestination):
-    """Места концов маршрута (query-параметры)."""
+    """Города концов маршрута (query-параметры)."""
 
 
 class JourneyDistanceResponse(CamelModel):
@@ -129,12 +129,12 @@ class JourneysFeedRequest(CursorPaginationFields):
         return self
 
 
-class JourneyPlace(CamelModel):
-    """Место поездки: его ``placeId``, страна и координаты, без названия."""
+class JourneyCity(CamelModel):
+    """Город поездки: его ``cityId``, страна и координаты, без названия."""
 
     model_config = ConfigDict(frozen=True)
 
-    place_id: UUID
+    city_id: UUID
     country_code: str
     latitude: float
     longitude: float
@@ -146,8 +146,8 @@ class JourneyFeedEntry(CamelModel):
     model_config = ConfigDict(frozen=True)
 
     journey_id: UUID
-    origin: JourneyPlace
-    destination: JourneyPlace
+    origin: JourneyCity
+    destination: JourneyCity
     transport_type: TransportType
     traveled_year: int
     distance_km: int
@@ -166,11 +166,11 @@ class JourneyYearsResponse(CamelModel):
 
 
 class MapCity(CamelModel):
-    """Город на карте путешествий: его ``placeId``, координаты и годы визитов по возрастанию."""
+    """Город на карте путешествий: его ``cityId``, координаты и годы визитов по возрастанию."""
 
     model_config = ConfigDict(frozen=True)
 
-    place_id: UUID
+    city_id: UUID
     latitude: float
     longitude: float
     years: tuple[int, ...]
@@ -195,7 +195,7 @@ class JourneysMapResponse(CamelModel):
     """
     Ответ карты путешествий: посещённые страны с городами и годами визитов.
 
-    Каждое место встречается ровно один раз, в одной стране.
+    Каждый город встречается ровно один раз, в одной стране.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -204,21 +204,21 @@ class JourneysMapResponse(CamelModel):
 
 
 class MapPoint(CamelModel):
-    """Место на глобусе или карте перемещений: его ``placeId`` и координаты, без названия."""
+    """Город на глобусе или карте перемещений: его ``cityId`` и координаты, без названия."""
 
     model_config = ConfigDict(frozen=True)
 
-    place_id: UUID
+    city_id: UUID
     latitude: float
     longitude: float
 
 
 class JourneysGlobeResponse(CamelModel):
-    """Ответ глобуса: места, где пользователь побывал, каждое ровно один раз."""
+    """Ответ глобуса: города, где пользователь побывал, каждый ровно один раз."""
 
     model_config = ConfigDict(frozen=True)
 
-    places: tuple[MapPoint, ...]
+    cities: tuple[MapPoint, ...]
 
 
 class MovementsMapFilterRequest(CamelModel):

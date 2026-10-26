@@ -17,8 +17,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
+import { cityLabel, useCityNames } from "../../../api/cityNames";
 import { resolveErrorToken } from "../../../api/errors";
-import { placeLabel, usePlaceNames } from "../../../api/placeNames";
 import type { JourneyFeedEntry, JourneysFeedResponse, TransportType } from "../../../api/sdk";
 import {
   feedSortingStrategy,
@@ -112,7 +112,7 @@ export function JourneyFeed({
   const groups = useMemo(() => groupFeedByYear(shownPages), [shownPages]);
   const journeys = useMemo(() => groups.flatMap((group) => group.journeys), [groups]);
   const journeyIds = useMemo(() => journeys.map((journey) => journey.journeyId), [journeys]);
-  const nameOf = usePlaceNames(journeys.flatMap((journey) => [journey.origin.placeId, journey.destination.placeId]));
+  const nameOf = useCityNames(journeys.flatMap((journey) => [journey.origin.cityId, journey.destination.cityId]));
   const distanceFormat = useDistanceFormat();
 
   const [dropYear, setDropYear] = useState<number | null>(null);
@@ -185,15 +185,15 @@ export function JourneyFeed({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const unknownLabel = tCommon("map.unknownPlace");
+  const unknownLabel = tCommon("map.unknownCity");
   const routeOf = (journeyId: string | number) => {
     const journey = journeys.find((item) => item.journeyId === journeyId);
     if (!journey) {
       return "";
     }
 
-    const origin = placeLabel(nameOf(journey.origin.placeId), unknownLabel) ?? "…";
-    const destination = placeLabel(nameOf(journey.destination.placeId), unknownLabel) ?? "…";
+    const origin = cityLabel(nameOf(journey.origin.cityId), unknownLabel) ?? "…";
+    const destination = cityLabel(nameOf(journey.destination.cityId), unknownLabel) ?? "…";
     return `${origin} → ${destination}`;
   };
   const targetYearOf = (activeId: string | number, overId: string | number) =>

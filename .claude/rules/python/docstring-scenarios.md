@@ -27,7 +27,7 @@ def move(self, *, traveled_year: int, sort_key: str) -> None:
   feed, the background send of a verification code — never the name of a calling function: grep
   finds callers, and a name goes stale on the first rename.
 - Across a domain boundary and in shared code, a scenario is named by role, because a supplier never
-  names its consumers: "a domain that stores place ids and shows their names", "any list with a
+  names its consumers: "a domain that stores city ids and shows their names", "any list with a
   manual order".
 - A change that gives a function a new scenario adds its line in the same change; nothing else
   will.
