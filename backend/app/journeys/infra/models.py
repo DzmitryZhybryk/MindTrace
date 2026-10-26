@@ -11,7 +11,7 @@ class Journey(DateTimeMixin, SortKeyModel):
     """
     Поездка пользователя: откуда, куда, на чём и когда.
 
-    Места — ссылки на справочник geo плюс страна и координаты, названий здесь нет. Внешних
+    Города — ссылки на справочник geo плюс страна и координаты, названий здесь нет. Внешних
     ключей на geo и users нет: это другие домены. Когда — только год.
 
     ``sort_key`` — ручной порядок внутри года: уникален среди неудалённых поездок пользователя
@@ -34,12 +34,12 @@ class Journey(DateTimeMixin, SortKeyModel):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column()
 
-    origin_place_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    origin_city_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     origin_country_code: Mapped[str] = mapped_column(String(2))
     origin_latitude: Mapped[float] = mapped_column(REAL)
     origin_longitude: Mapped[float] = mapped_column(REAL)
 
-    destination_place_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    destination_city_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     destination_country_code: Mapped[str] = mapped_column(String(2))
     destination_latitude: Mapped[float] = mapped_column(REAL)
     destination_longitude: Mapped[float] = mapped_column(REAL)

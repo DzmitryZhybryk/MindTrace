@@ -63,8 +63,8 @@ class JourneyEntity(TimestampedEntityMixin):
 
         Args:
             user_id: Владелец поездки
-            origin: Место отправления
-            destination: Место назначения
+            origin: Город отправления
+            destination: Город назначения
             transport_type: Среда передвижения
             distance_km: Расстояние маршрута, км
             traveled_year: Год поездки
@@ -112,8 +112,8 @@ class JourneyEntity(TimestampedEntityMixin):
             - правка поездки в ленте «Все путешествия»
 
         Args:
-            origin: Место отправления
-            destination: Место назначения
+            origin: Город отправления
+            destination: Город назначения
             transport_type: Среда передвижения
             distance_km: Расстояние нового маршрута, км
         """

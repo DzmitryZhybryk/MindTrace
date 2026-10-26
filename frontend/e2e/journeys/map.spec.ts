@@ -1,12 +1,12 @@
 import { expect, test } from "../fixtures";
-import { createJourney, findPlaceId } from "../helpers/journeys";
+import { createJourney, findCityId } from "../helpers/journeys";
 import { getStoredAccessToken } from "../helpers/session";
 
 /**
  * E2E: the journey map on the user's real data.
  *
- * End-to-end path: find places via geo search, create a journey via the API by their ids (the
- * backend checks the places exist), open the index tab /journeys; the map fetches the aggregate
+ * End-to-end path: find cities via geo search, create a journey via the API by their ids (the
+ * backend checks the cities exist), open the index tab /journeys; the map fetches the aggregate
  * from the backend, draws visited cities as dots and labels them with names from geo. Covers the
  * chain search -> create -> DB -> GET /map -> resolve -> render that unit/component tests cannot reach.
  *
@@ -22,8 +22,8 @@ test.describe("Journeys map", () => {
     const bearer = token ?? "";
 
     await createJourney(request, bearer, {
-      originPlaceId: await findPlaceId(request, bearer, "Moscow"),
-      destinationPlaceId: await findPlaceId(request, bearer, "London"),
+      originCityId: await findCityId(request, bearer, "Moscow"),
+      destinationCityId: await findCityId(request, bearer, "London"),
       transportType: "air",
       traveledYear: 2020,
     });

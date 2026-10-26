@@ -14,8 +14,8 @@ from tests.fakes.auth import (
 from tests.fakes.crypto import FakeSaltedHasher
 from tests.fakes.di import FakeComponent
 from tests.fakes.email import FakeEmailTransport
-from tests.fakes.geo import FakeGeoUnitOfWork, FakePlaceRepository
-from tests.fakes.journeys import FakeJourneyRepository, FakeJourneyUnitOfWork, FakePlacesClient, MovementConnectionQuery
+from tests.fakes.geo import FakeCityRepository, FakeGeoUnitOfWork
+from tests.fakes.journeys import FakeCitiesClient, FakeJourneyRepository, FakeJourneyUnitOfWork, MovementConnectionQuery
 from tests.fakes.procrastinate import DeferredTask, FakeSessionBoundTaskBus, FakeTaskBus
 from tests.fakes.users import FakeUserRepository, FakeUserUnitOfWork
 
@@ -23,14 +23,14 @@ __all__ = [
     "DeferredTask",
     "FakeAuthUnitOfWork",
     "FakeChallengeRepository",
+    "FakeCitiesClient",
+    "FakeCityRepository",
     "FakeComponent",
     "FakeEmailTransport",
     "FakeEmailVerificationService",
     "FakeGeoUnitOfWork",
     "FakeJourneyRepository",
     "FakeJourneyUnitOfWork",
-    "FakePlaceRepository",
-    "FakePlacesClient",
     "FakeRefreshTokenRepository",
     "FakeSaltedHasher",
     "FakeSessionBoundTaskBus",

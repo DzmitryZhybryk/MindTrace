@@ -40,10 +40,10 @@ class MapCityVisit:
     Посещённый город на карте путешествий.
 
     ``years`` — годы поездок, в которых город был отправлением или назначением, по возрастанию.
-    Названия нет: фронт запрашивает его у geo по ``place_id``.
+    Названия нет: фронт запрашивает его у geo по ``city_id``.
     """
 
-    place_id: UUID
+    city_id: UUID
     latitude: float
     longitude: float
     years: tuple[int, ...]
@@ -72,9 +72,9 @@ class JourneysMapResult:
 
 @dataclass(frozen=True, slots=True)
 class JourneysGlobeResult:
-    """Посещённые места для глобуса, каждое по одному разу."""
+    """Посещённые города для глобуса, каждый по одному разу."""
 
-    places: tuple[GeoPoint, ...]
+    cities: tuple[GeoPoint, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,7 +93,7 @@ class MovementsMapResult:
 
 @dataclass(frozen=True, slots=True)
 class JourneyFeedItem:
-    """Поездка в ленте. Названий мест нет: фронт запрашивает их у geo по ``place_id``."""
+    """Поездка в ленте. Названий городов нет: фронт запрашивает их у geo по ``city_id``."""
 
     journey_id: UUID
     origin: GeoPoint

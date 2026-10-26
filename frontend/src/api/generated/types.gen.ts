@@ -5,19 +5,81 @@ export type ClientOptions = {
 };
 
 /**
+ * CityName
+ *
+ * Название города на языке запроса.
+ */
+export type CityName = {
+  /**
+   * Cityid
+   */
+  cityId: string;
+  /**
+   * Name
+   */
+  name: string;
+};
+
+/**
+ * CitySearchItem
+ *
+ * Один вариант в подсказках поиска; по ``cityId`` на город потом можно ссылаться.
+ */
+export type CitySearchItem = {
+  /**
+   * Cityid
+   */
+  cityId: string;
+  /**
+   * Name
+   *
+   * Имя города, резолвнутое под язык запроса (параметр language).
+   */
+  name: string;
+  /**
+   * Countrycode
+   */
+  countryCode: string;
+  /**
+   * Latitude
+   */
+  latitude: number;
+  /**
+   * Longitude
+   */
+  longitude: number;
+  /**
+   * Population
+   */
+  population: number | null;
+};
+
+/**
+ * CitySearchResponse
+ *
+ * Ответ автокомплита — упорядоченная выдача кандидатов (по убыванию населения).
+ */
+export type CitySearchResponse = {
+  /**
+   * Items
+   */
+  items: Array<CitySearchItem>;
+};
+
+/**
  * CreateJourneyRequest
  *
  * Тело запроса создания поездки.
  */
 export type CreateJourneyRequest = {
   /**
-   * Originplaceid
+   * Origincityid
    */
-  originPlaceId: string;
+  originCityId: string;
   /**
-   * Destinationplaceid
+   * Destinationcityid
    */
-  destinationPlaceId: string;
+  destinationCityId: string;
   transportType: TransportType;
   /**
    * Traveledyear
@@ -86,6 +148,30 @@ export type ErrorResponse = {
 };
 
 /**
+ * JourneyCity
+ *
+ * Город поездки: его ``cityId``, страна и координаты, без названия.
+ */
+export type JourneyCity = {
+  /**
+   * Cityid
+   */
+  cityId: string;
+  /**
+   * Countrycode
+   */
+  countryCode: string;
+  /**
+   * Latitude
+   */
+  latitude: number;
+  /**
+   * Longitude
+   */
+  longitude: number;
+};
+
+/**
  * JourneyDistanceResponse
  *
  * Расстояние маршрута по большой окружности, км — то же, что поездка сохранит.
@@ -107,8 +193,8 @@ export type JourneyFeedEntry = {
    * Journeyid
    */
   journeyId: string;
-  origin: JourneyPlace;
-  destination: JourneyPlace;
+  origin: JourneyCity;
+  destination: JourneyCity;
   transportType: TransportType;
   /**
    * Traveledyear
@@ -118,30 +204,6 @@ export type JourneyFeedEntry = {
    * Distancekm
    */
   distanceKm: number;
-};
-
-/**
- * JourneyPlace
- *
- * Место поездки: его ``placeId``, страна и координаты, без названия.
- */
-export type JourneyPlace = {
-  /**
-   * Placeid
-   */
-  placeId: string;
-  /**
-   * Countrycode
-   */
-  countryCode: string;
-  /**
-   * Latitude
-   */
-  latitude: number;
-  /**
-   * Longitude
-   */
-  longitude: number;
 };
 
 /**
@@ -175,13 +237,13 @@ export type JourneysFeedResponse = {
 /**
  * JourneysGlobeResponse
  *
- * Ответ глобуса: места, где пользователь побывал, каждое ровно один раз.
+ * Ответ глобуса: города, где пользователь побывал, каждый ровно один раз.
  */
 export type JourneysGlobeResponse = {
   /**
-   * Places
+   * Cities
    */
-  places: Array<MapPoint>;
+  cities: Array<MapPoint>;
 };
 
 /**
@@ -189,7 +251,7 @@ export type JourneysGlobeResponse = {
  *
  * Ответ карты путешествий: посещённые страны с городами и годами визитов.
  *
- * Каждое место встречается ровно один раз, в одной стране.
+ * Каждый город встречается ровно один раз, в одной стране.
  */
 export type JourneysMapResponse = {
   /**
@@ -201,11 +263,11 @@ export type JourneysMapResponse = {
 /**
  * Language
  *
- * Язык отображаемого имени места в автокомплите.
+ * Язык отображаемого имени объекта газеттира.
  *
  * Закрытое множество поддерживаемых языков газеттира: имена импортируются только
  * для ``en``/``ru``. Используется как тип query-параметра ``language`` на границе HTTP
- * и как ключ резолва имени в ``PlaceEntity.display_name``.
+ * и как ключ резолва имени в ``LocalizedNames``.
  */
 export type Language = 'en' | 'ru';
 
@@ -222,13 +284,13 @@ export type LoginRequest = {
 /**
  * MapCity
  *
- * Город на карте путешествий: его ``placeId``, координаты и годы визитов по возрастанию.
+ * Город на карте путешествий: его ``cityId``, координаты и годы визитов по возрастанию.
  */
 export type MapCity = {
   /**
-   * Placeid
+   * Cityid
    */
-  placeId: string;
+  cityId: string;
   /**
    * Latitude
    */
@@ -266,13 +328,13 @@ export type MapCountry = {
 /**
  * MapPoint
  *
- * Место на глобусе или карте перемещений: его ``placeId`` и координаты, без названия.
+ * Город на глобусе или карте перемещений: его ``cityId`` и координаты, без названия.
  */
 export type MapPoint = {
   /**
-   * Placeid
+   * Cityid
    */
-  placeId: string;
+  cityId: string;
   /**
    * Latitude
    */
@@ -358,68 +420,6 @@ export type OptionalDict = {
 } | null;
 
 /**
- * PlaceName
- *
- * Название места на языке запроса.
- */
-export type PlaceName = {
-  /**
-   * Placeid
-   */
-  placeId: string;
-  /**
-   * Name
-   */
-  name: string;
-};
-
-/**
- * PlaceSearchItem
- *
- * Один вариант в подсказках поиска; по ``placeId`` на место потом можно ссылаться.
- */
-export type PlaceSearchItem = {
-  /**
-   * Placeid
-   */
-  placeId: string;
-  /**
-   * Name
-   *
-   * Имя места, резолвнутое под язык запроса (параметр language).
-   */
-  name: string;
-  /**
-   * Countrycode
-   */
-  countryCode: string | null;
-  /**
-   * Latitude
-   */
-  latitude: number;
-  /**
-   * Longitude
-   */
-  longitude: number;
-  /**
-   * Population
-   */
-  population: number | null;
-};
-
-/**
- * PlaceSearchResponse
- *
- * Ответ автокомплита — упорядоченная выдача кандидатов (по убыванию населения).
- */
-export type PlaceSearchResponse = {
-  /**
-   * Items
-   */
-  items: Array<PlaceSearchItem>;
-};
-
-/**
  * RegisterRequest
  */
 export type RegisterRequest = {
@@ -442,28 +442,28 @@ export type RegisterRequest = {
 };
 
 /**
- * ResolvePlacesRequest
+ * ResolveCitiesRequest
  *
- * Запрос названий мест по их id на нужном языке.
+ * Запрос названий городов по их id на нужном языке.
  */
-export type ResolvePlacesRequest = {
+export type ResolveCitiesRequest = {
   /**
-   * Placeids
+   * Cityids
    */
-  placeIds: Array<string>;
+  cityIds: Array<string>;
   language: Language;
 };
 
 /**
- * ResolvePlacesResponse
+ * ResolveCitiesResponse
  *
- * Названия найденных мест; id, которых нет в газеттире, в ответ не попадают.
+ * Названия найденных городов; id, которых нет в газеттире, в ответ не попадают.
  */
-export type ResolvePlacesResponse = {
+export type ResolveCitiesResponse = {
   /**
    * Items
    */
-  items: Array<PlaceName>;
+  items: Array<CityName>;
 };
 
 /**
@@ -497,13 +497,13 @@ export type TransportType = 'land' | 'air' | 'water';
  */
 export type UpdateJourneyRequest = {
   /**
-   * Originplaceid
+   * Origincityid
    */
-  originPlaceId: string;
+  originCityId: string;
   /**
-   * Destinationplaceid
+   * Destinationcityid
    */
-  destinationPlaceId: string;
+  destinationCityId: string;
   transportType: TransportType;
   /**
    * Traveledyear
@@ -816,7 +816,7 @@ export type VerifyEmailResponses = {
 
 export type VerifyEmailResponse = VerifyEmailResponses[keyof VerifyEmailResponses];
 
-export type SearchPlacesData = {
+export type SearchCitiesData = {
   body?: never;
   path?: never;
   query: {
@@ -837,10 +837,10 @@ export type SearchPlacesData = {
      */
     limit?: number;
   };
-  url: '/v1/geo/places/search/';
+  url: '/v1/geo/cities/search/';
 };
 
-export type SearchPlacesErrors = {
+export type SearchCitiesErrors = {
   /**
    * Невалидный или истёкший access-токен
    */
@@ -855,25 +855,25 @@ export type SearchPlacesErrors = {
   500: ErrorResponse;
 };
 
-export type SearchPlacesError = SearchPlacesErrors[keyof SearchPlacesErrors];
+export type SearchCitiesError = SearchCitiesErrors[keyof SearchCitiesErrors];
 
-export type SearchPlacesResponses = {
+export type SearchCitiesResponses = {
   /**
    * Successful Response
    */
-  200: PlaceSearchResponse;
+  200: CitySearchResponse;
 };
 
-export type SearchPlacesResponse = SearchPlacesResponses[keyof SearchPlacesResponses];
+export type SearchCitiesResponse = SearchCitiesResponses[keyof SearchCitiesResponses];
 
-export type ResolvePlacesData = {
-  body: ResolvePlacesRequest;
+export type ResolveCitiesData = {
+  body: ResolveCitiesRequest;
   path?: never;
   query?: never;
-  url: '/v1/geo/places/resolve/';
+  url: '/v1/geo/cities/resolve/';
 };
 
-export type ResolvePlacesErrors = {
+export type ResolveCitiesErrors = {
   /**
    * Невалидный или истёкший access-токен
    */
@@ -888,16 +888,16 @@ export type ResolvePlacesErrors = {
   500: ErrorResponse;
 };
 
-export type ResolvePlacesError = ResolvePlacesErrors[keyof ResolvePlacesErrors];
+export type ResolveCitiesError = ResolveCitiesErrors[keyof ResolveCitiesErrors];
 
-export type ResolvePlacesResponses = {
+export type ResolveCitiesResponses = {
   /**
    * Successful Response
    */
-  200: ResolvePlacesResponse;
+  200: ResolveCitiesResponse;
 };
 
-export type ResolvePlacesResponse2 = ResolvePlacesResponses[keyof ResolvePlacesResponses];
+export type ResolveCitiesResponse2 = ResolveCitiesResponses[keyof ResolveCitiesResponses];
 
 export type ListJourneysData = {
   body?: never;
@@ -1131,20 +1131,20 @@ export type EstimateJourneyDistanceData = {
   path?: never;
   query: {
     /**
-     * Originplaceid
+     * Origincityid
      */
-    originPlaceId: string;
+    originCityId: string;
     /**
-     * Destinationplaceid
+     * Destinationcityid
      */
-    destinationPlaceId: string;
+    destinationCityId: string;
   };
   url: '/v1/journeys/distance/';
 };
 
 export type EstimateJourneyDistanceErrors = {
   /**
-   * Ошибка в местах маршрута
+   * Ошибка в городах маршрута
    */
   400: ErrorResponse;
   /**

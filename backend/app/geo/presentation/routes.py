@@ -3,17 +3,17 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from pydantic import StringConstraints
 
-from app.geo.application.schemas.commands import ResolvePlacesCommand, SearchPlacesCommand
-from app.geo.application.services.place import PlaceService
+from app.geo.application.schemas.commands import ResolveCitiesCommand, SearchCitiesCommand
+from app.geo.application.services.city import CityService
 from app.geo.domain.enums import Language
-from app.geo.presentation.dependencies import place_service_dependency
-from app.geo.presentation.responses import RESOLVE_PLACES_RESPONSES, SEARCH_PLACES_RESPONSES
+from app.geo.presentation.dependencies import city_service_dependency
+from app.geo.presentation.responses import RESOLVE_CITIES_RESPONSES, SEARCH_CITIES_RESPONSES
 from app.geo.presentation.schemas import (
-    PlaceName,
-    PlaceSearchItem,
-    PlaceSearchResponse,
-    ResolvePlacesRequest,
-    ResolvePlacesResponse,
+    CityName,
+    CitySearchItem,
+    CitySearchResponse,
+    ResolveCitiesRequest,
+    ResolveCitiesResponse,
 )
 from app.shared.infra.jwt.dependency import current_user_id_dependency
 
@@ -21,14 +21,14 @@ geo_router = APIRouter()
 
 
 @geo_router.get(
-    "/places/search/",
-    response_model=PlaceSearchResponse,
-    responses=SEARCH_PLACES_RESPONSES,
+    "/cities/search/",
+    response_model=CitySearchResponse,
+    responses=SEARCH_CITIES_RESPONSES,
     dependencies=[Depends(current_user_id_dependency)],
 )
-async def search_places(
+async def search_cities(
     *,
-    place_service: Annotated[PlaceService, Depends(place_service_dependency)],
+    city_service: Annotated[CityService, Depends(city_service_dependency)],
     # Пробелы по краям срезаются до проверки длины: « M » — это поиск по одной букве, а не по трём символам.
     search_text: Annotated[
         str,
@@ -37,25 +37,25 @@ async def search_places(
     ],
     language: Annotated[Language, Query(description="Язык отображаемых имён.")],
     limit: Annotated[int, Query(ge=1, le=50, description="Максимум кандидатов в выдаче.")] = 10,
-) -> PlaceSearchResponse:
-    command = SearchPlacesCommand(search_text=search_text, language=language, limit=limit)
-    result = await place_service.search_places(command=command)
-    items = tuple(PlaceSearchItem.model_validate(item, from_attributes=True) for item in result.items)
-    return PlaceSearchResponse(items=items)
+) -> CitySearchResponse:
+    command = SearchCitiesCommand(search_text=search_text, language=language, limit=limit)
+    result = await city_service.search_cities(command=command)
+    items = tuple(CitySearchItem.model_validate(item, from_attributes=True) for item in result.items)
+    return CitySearchResponse(items=items)
 
 
 @geo_router.post(
-    "/places/resolve/",
-    response_model=ResolvePlacesResponse,
-    responses=RESOLVE_PLACES_RESPONSES,
+    "/cities/resolve/",
+    response_model=ResolveCitiesResponse,
+    responses=RESOLVE_CITIES_RESPONSES,
     dependencies=[Depends(current_user_id_dependency)],
 )
-async def resolve_places(
+async def resolve_cities(
     *,
-    body: ResolvePlacesRequest,
-    place_service: Annotated[PlaceService, Depends(place_service_dependency)],
-) -> ResolvePlacesResponse:
-    command = ResolvePlacesCommand(place_ids=tuple(body.place_ids), language=body.language)
-    result = await place_service.resolve_places(command=command)
-    items = tuple(PlaceName.model_validate(item, from_attributes=True) for item in result.items)
-    return ResolvePlacesResponse(items=items)
+    body: ResolveCitiesRequest,
+    city_service: Annotated[CityService, Depends(city_service_dependency)],
+) -> ResolveCitiesResponse:
+    command = ResolveCitiesCommand(city_ids=tuple(body.city_ids), language=body.language)
+    result = await city_service.resolve_cities(command=command)
+    items = tuple(CityName.model_validate(item, from_attributes=True) for item in result.items)
+    return ResolveCitiesResponse(items=items)

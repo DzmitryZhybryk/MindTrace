@@ -23,15 +23,15 @@ class DatasetColumnsError(DatasetFormatError):
         super().__init__(f"Unexpected dataset columns: {sorted(columns)}")
 
 
-class UnknownVerdictPlaceError(Exception):
-    """Вердикт арбитра ссылается на место, которого нет в датасете."""
+class UnknownVerdictCityError(Exception):
+    """Вердикт арбитра ссылается на город, которого нет в датасете."""
 
     def __init__(self, *, external_id: str) -> None:
-        super().__init__(f"Arbiter verdict references a place missing from the dataset: {external_id}")
+        super().__init__(f"Arbiter verdict references a city missing from the dataset: {external_id}")
 
 
 class InvalidRuNameDecisionError(Exception):
-    """Вердикт арбитра или строка файла решений не годится: пустое имя, неизвестный автор, повтор места."""
+    """Вердикт арбитра или строка файла решений не годится: пустое имя, неизвестный автор, повтор города."""
 
     def __init__(self, *, external_id: str, problem: str) -> None:
         super().__init__(f"Invalid ru name decision for {external_id}: {problem}")
@@ -45,7 +45,14 @@ class HumanDecisionOverrideError(Exception):
 
 
 class MissingEnglishNameError(DatasetFormatError):
-    """У места нет имени на ``en`` — фолбэка отображения для любого языка."""
+    """У строки датасета нет имени на ``en`` — фолбэка отображения для любого языка."""
 
     def __init__(self, *, external_id: str) -> None:
-        super().__init__(f"Place {external_id} has no English name")
+        super().__init__(f"Dataset row {external_id} has no English name")
+
+
+class MissingCountryCodeError(DatasetFormatError):
+    """У города в датасете нет страны."""
+
+    def __init__(self, *, external_id: str) -> None:
+        super().__init__(f"City {external_id} has no country code")

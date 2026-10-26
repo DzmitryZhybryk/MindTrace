@@ -5,15 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import carIcon from "../../assets/emoji/car.svg";
 import planeIcon from "../../assets/emoji/plane.svg";
 import shipIcon from "../../assets/emoji/ship.svg";
-import { GEO_PLACES } from "../../test/handlers";
+import { GEO_CITIES } from "../../test/handlers";
 import { act } from "../../test/render";
 import { ROUTE_FADE_MS, type GlobeRoute } from "./route";
 import { createRouteElement, useRouteScene } from "./routeScene";
 
 // On the equator the path midpoint is known without repeating the production great-circle math.
 const EASTBOUND_ROUTE: GlobeRoute = {
-  origin: { ...GEO_PLACES[0], latitude: 0, longitude: 10 },
-  destination: { ...GEO_PLACES[1], latitude: 0, longitude: 70 },
+  origin: { ...GEO_CITIES[0], latitude: 0, longitude: 10 },
+  destination: { ...GEO_CITIES[1], latitude: 0, longitude: 70 },
   originLabel: "Запад",
   destinationLabel: "Восток",
   transportType: "air",

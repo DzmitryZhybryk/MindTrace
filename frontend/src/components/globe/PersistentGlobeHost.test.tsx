@@ -7,7 +7,7 @@ import { getJourneysGlobeQueryKey } from "../../api/sdk";
 import { i18n } from "../../i18n";
 import enCommon from "../../locales/en/common.json";
 import ruCommon from "../../locales/ru/common.json";
-import { GEO_PLACES, server } from "../../test/handlers";
+import { GEO_CITIES, server } from "../../test/handlers";
 import { act, createTestQueryClient, makeAuthValue, renderWithProviders, screen, waitFor } from "../../test/render";
 import type { AuthContextValue } from "../../auth/useAuth";
 import type { GlobePov } from "./GlobeCanvas";
@@ -187,13 +187,13 @@ describe("PersistentGlobeHost — источник данных глобуса",
     await waitFor(() => expect(globe).toHaveAttribute("data-city-names", "Moscow|London"));
   });
 
-  it("место, которого geo не знает, подписано как неизвестное, а не пропадает", async () => {
+  it("город, которого geo не знает, подписан как неизвестный, а не пропадает", async () => {
     server.use(
       http.get("/v1/journeys/globe/", () =>
         HttpResponse.json({
-          places: [
-            { placeId: GEO_PLACES[0].placeId, latitude: 55.75, longitude: 37.62 },
-            { placeId: "99999999-9999-4999-8999-999999999999", latitude: 1, longitude: 2 },
+          cities: [
+            { cityId: GEO_CITIES[0].cityId, latitude: 55.75, longitude: 37.62 },
+            { cityId: "99999999-9999-4999-8999-999999999999", latitude: 1, longitude: 2 },
           ],
         }),
       ),
@@ -202,12 +202,12 @@ describe("PersistentGlobeHost — источник данных глобуса",
 
     const globe = await screen.findByTestId("globe-canvas");
 
-    await waitFor(() => expect(globe).toHaveAttribute("data-city-names", "Moscow|Unknown place"));
+    await waitFor(() => expect(globe).toHaveAttribute("data-city-names", "Moscow|Unknown city"));
   });
 
   it("пока названия грузятся, города видны точками без подписи", async () => {
     server.use(
-      http.post("/v1/geo/places/resolve/", async () => {
+      http.post("/v1/geo/cities/resolve/", async () => {
         await delay("infinite");
         return HttpResponse.json({ items: [] });
       }),
@@ -215,7 +215,7 @@ describe("PersistentGlobeHost — источник данных глобуса",
     // The names request goes out only once the globe points are received; wait for exactly that.
     let resolveRequests = 0;
     server.events.on("request:start", ({ request }) => {
-      if (new URL(request.url).pathname === "/v1/geo/places/resolve/") {
+      if (new URL(request.url).pathname === "/v1/geo/cities/resolve/") {
         resolveRequests += 1;
       }
     });
@@ -229,7 +229,7 @@ describe("PersistentGlobeHost — источник данных глобуса",
   });
 
   it("сбой загрузки названий не стирает точки городов", async () => {
-    server.use(http.post("/v1/geo/places/resolve/", () => new HttpResponse(null, { status: 500 })));
+    server.use(http.post("/v1/geo/cities/resolve/", () => new HttpResponse(null, { status: 500 })));
 
     renderWithProviders(<PersistentGlobeHost />, { route: "/home", authValue: authedValue("user-1") });
 
@@ -259,20 +259,20 @@ describe("PersistentGlobeHost — источник данных глобуса",
 
 describe("PersistentGlobeHost — свежесть данных фона", () => {
   /**
-   * Counts globe requests and returns cities with the given names. Places come from the gazetteer
+   * Counts globe requests and returns cities with the given names. Cities come from the gazetteer
    * fixture, whose ids the fake `resolve` knows, so the points get names.
    */
   function countGlobeRequests(cityNames: string[]): () => number {
     let requests = 0;
-    const places = cityNames.map((name) => GEO_PLACES.find((place) => place.name === name));
+    const cities = cityNames.map((name) => GEO_CITIES.find((city) => city.name === name));
     server.use(
       http.get("/v1/journeys/globe/", () => {
         requests += 1;
         return HttpResponse.json({
-          places: places.map((place) => ({
-            placeId: place?.placeId,
-            latitude: place?.latitude,
-            longitude: place?.longitude,
+          cities: cities.map((city) => ({
+            cityId: city?.cityId,
+            latitude: city?.latitude,
+            longitude: city?.longitude,
           })),
         });
       }),
@@ -281,7 +281,7 @@ describe("PersistentGlobeHost — свежесть данных фона", () =>
     return () => requests;
   }
 
-  it("возврат на грань не перезапрашивает места — фон живёт со снимка (staleTime: Infinity)", async () => {
+  it("возврат на грань не перезапрашивает города — фон живёт со снимка (staleTime: Infinity)", async () => {
     const requestCount = countGlobeRequests(["Moscow", "Paris"]);
     const queryClient = createTestQueryClient();
     const options = { route: "/home", authValue: authedValue("user-1"), queryClient };
@@ -339,7 +339,7 @@ describe("PersistentGlobeHost — каркас без WebGL", () => {
 });
 
 describe("PersistentGlobeHost — грань формы поездки", () => {
-  const [MOSCOW, LONDON] = GEO_PLACES;
+  const [MOSCOW, LONDON] = GEO_CITIES;
   const ROUTE: GlobeRoute = {
     origin: MOSCOW,
     destination: LONDON,
@@ -421,7 +421,7 @@ describe("PersistentGlobeHost — грань формы поездки", () => {
   it("на грани формы — только маршрут: посещённые города не рисуются", async () => {
     const queryClient = createTestQueryClient();
     queryClient.setQueryData(getJourneysGlobeQueryKey(), {
-      places: [{ placeId: GEO_PLACES[2].placeId, latitude: 48.85, longitude: 2.35 }],
+      cities: [{ cityId: GEO_CITIES[2].cityId, latitude: 48.85, longitude: 2.35 }],
     });
     renderJourneyAdd({ queryClient });
 

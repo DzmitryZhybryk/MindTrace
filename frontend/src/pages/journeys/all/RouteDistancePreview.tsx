@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { estimateJourneyDistanceOptions, type JourneyFeedEntry, type PlaceSearchItem } from "../../../api/sdk";
-import { hasCountry } from "../journeyFormRules";
+import { estimateJourneyDistanceOptions, type CitySearchItem, type JourneyFeedEntry } from "../../../api/sdk";
 
 interface RouteDistancePreviewProps {
   /** The journey as the feed has it: its pair needs no request, its distance is already known. */
   journey: JourneyFeedEntry;
-  origin: PlaceSearchItem | null;
-  destination: PlaceSearchItem | null;
+  origin: CitySearchItem | null;
+  destination: CitySearchItem | null;
   distanceFormat: Intl.NumberFormat;
 }
 
@@ -17,17 +16,15 @@ interface RouteDistancePreviewProps {
  * The pair of the feed's journey shows its distance without a request; another pair asks the
  * backend for an estimate. An incomplete or invalid pair, or a failed request, shows a dash; while a
  * new pair is being calculated the dash is dimmed and `aria-busy`. No previous number is kept:
- * editing a place field already clears the pick (`PlaceAutocomplete` emits `null` on typing), so
+ * editing a city field already clears the pick (`CityAutocomplete` emits `null` on typing), so
  * every new pair starts from the dash anyway.
  */
 export function RouteDistancePreview({ journey, origin, destination, distanceFormat }: RouteDistancePreviewProps) {
-  const isSavedPair = origin?.placeId === journey.origin.placeId && destination?.placeId === journey.destination.placeId;
-  const isPairValid = Boolean(
-    origin && destination && hasCountry(origin) && hasCountry(destination) && origin.placeId !== destination.placeId,
-  );
+  const isSavedPair = origin?.cityId === journey.origin.cityId && destination?.cityId === journey.destination.cityId;
+  const isPairValid = Boolean(origin && destination && origin.cityId !== destination.cityId);
   const distanceQuery = useQuery({
     ...estimateJourneyDistanceOptions({
-      query: { originPlaceId: origin?.placeId ?? "", destinationPlaceId: destination?.placeId ?? "" },
+      query: { originCityId: origin?.cityId ?? "", destinationCityId: destination?.cityId ?? "" },
     }),
     enabled: isPairValid && !isSavedPair,
     // The distance of a pair never changes.

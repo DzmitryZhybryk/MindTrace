@@ -7,7 +7,7 @@ In-memory фейки journeys: репозиторий поверх ``list``/``di
 ``AsyncMock`` (``commit_mock``) для проверки факта фиксации. Те же фейки переиспользуются на
 api-уровне через ``app.dependency_overrides``.
 
-Выборки мест фейк не вычисляет из поездок, а отдаёт то, что задал тест: их правила (годы,
+Выборки городов фейк не вычисляет из поездок, а отдаёт то, что задал тест: их правила (годы,
 фильтры, порядок) живут в SQL и проверяются integration-тестами репозитория — пересчёт в
 Python продублировал бы их.
 """
@@ -19,14 +19,14 @@ from typing import cast
 from unittest.mock import AsyncMock
 from uuid import UUID
 
+from app.journeys.application.ports.cities_client import CitiesClientPort, CityLocationResponse
 from app.journeys.application.ports.journey_repository import (
     JourneyFilters,
     JourneyOrderScope,
     JourneyRepositoryPort,
     MovementConnection,
-    VisitedPlace,
+    VisitedCity,
 )
-from app.journeys.application.ports.places_client import PlaceLocationResponse, PlacesClientPort
 from app.journeys.application.ports.unit_of_work import JourneyUnitOfWorkPort
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
@@ -42,11 +42,11 @@ class MovementConnectionQuery:
 
 
 class FakeJourneyRepository(JourneyRepositoryPort):
-    """Фейк хранилища поездок: собирает вставки, выборки мест отдаёт заданными тестом."""
+    """Фейк хранилища поездок: собирает вставки, выборки городов отдаёт заданными тестом."""
 
     def __init__(self) -> None:
         self.journeys: list[JourneyEntity] = []
-        self.visited_places_by_user_id: dict[UUID, list[VisitedPlace]] = {}
+        self.visited_cities_by_user_id: dict[UUID, list[VisitedCity]] = {}
         self.movement_connections_by_user_id: dict[UUID, list[MovementConnection]] = {}
         # С каким фильтром спрашивали маршруты: сам фильтр фейк не применяет (его правило — в SQL).
         self.movement_connection_queries: list[MovementConnectionQuery] = []
@@ -161,8 +161,8 @@ class FakeJourneyRepository(JourneyRepositoryPort):
             )
         )
 
-    async def find_visited_places_by_user_id(self, *, user_id: UUID) -> tuple[VisitedPlace, ...]:
-        return tuple(self.visited_places_by_user_id.get(user_id, ()))
+    async def find_visited_cities_by_user_id(self, *, user_id: UUID) -> tuple[VisitedCity, ...]:
+        return tuple(self.visited_cities_by_user_id.get(user_id, ()))
 
     async def find_movement_connections_by_user_id(
         self,
@@ -196,18 +196,18 @@ class FakeJourneyUnitOfWork(JourneyUnitOfWorkPort):
         await self.commit_mock()
 
 
-class FakePlacesClient(PlacesClientPort):
+class FakeCitiesClient(CitiesClientPort):
     """
-    Фейк клиента journeys → geo: хранит места справочника и записывает вызовы.
+    Фейк клиента journeys → geo: хранит города справочника и записывает вызовы.
 
-    Найденные места отдаёт в порядке хранения, а не запроса — как geo, у которого порядок
+    Найденные города отдаёт в порядке хранения, а не запроса — как geo, у которого порядок
     произвольный; тест может переставить ``locations``, чтобы проверить сопоставление по id.
     """
 
-    def __init__(self, *, locations: Collection[PlaceLocationResponse] = ()) -> None:
-        self.locations = {location.place_id: location for location in locations}
+    def __init__(self, *, locations: Collection[CityLocationResponse] = ()) -> None:
+        self.locations = {location.city_id: location for location in locations}
         self.calls: list[tuple[UUID, ...]] = []
 
-    async def find_place_locations(self, *, place_ids: Collection[UUID]) -> tuple[PlaceLocationResponse, ...]:
-        self.calls.append(tuple(place_ids))
-        return tuple(location for place_id, location in self.locations.items() if place_id in place_ids)
+    async def find_city_locations(self, *, city_ids: Collection[UUID]) -> tuple[CityLocationResponse, ...]:
+        self.calls.append(tuple(city_ids))
+        return tuple(location for city_id, location in self.locations.items() if city_id in city_ids)

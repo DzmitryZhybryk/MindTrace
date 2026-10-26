@@ -35,7 +35,7 @@ i18n.addResourceBundle("en", "journeys", enJourneys, true, true);
 
 void i18n.changeLanguage("en");
 
-// findBy*/waitFor wait 1 s by default. The first place pick in a file (a cold form render, the 250 ms
+// findBy*/waitFor wait 1 s by default. The first city pick in a file (a cold form render, the 250 ms
 // autocomplete debounce and the MSW response) takes up to ~0.8 s under coverage and full core
 // load, and the default occasionally gave up. A satisfied wait returns at once, so the margin only
 // slows a failing test.

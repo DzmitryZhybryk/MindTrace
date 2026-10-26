@@ -1,13 +1,13 @@
 import { boxesIntersect, type LabelBox } from "../../../components/globe/labelDeclutter";
 import type { ArcPieces } from "./movementGeometry";
 
-/** A place on the canvas that needs a label. */
-export interface LabelledPlace {
-  placeId: string;
+/** A city on the canvas that needs a label. */
+export interface LabelledCity {
+  cityId: string;
   x: number;
   y: number;
   label: string;
-  /** How many routes pass through the place: labels of busy places are laid out first. */
+  /** How many routes pass through the city: labels of busy cities are laid out first. */
   routeCount: number;
 }
 
@@ -23,7 +23,7 @@ export interface LabelMetrics {
 
 /** A label that got a position: `anchor` is the text alignment relative to `x`. */
 export interface PlacedLabel {
-  placeId: string;
+  cityId: string;
   label: string;
   x: number;
   y: number;
@@ -92,15 +92,15 @@ function inflate(box: LabelBox, by: number): LabelBox {
 }
 
 /**
- * Lays out place labels so they overlap neither each other, nor place dots, nor arcs with arrows.
+ * Lays out city labels so they overlap neither each other, nor city dots, nor arcs with arrows.
  *
  * Greedy, in priority order (more routes first, ties by id so the layout does not jump): a label
  * takes the first position around its dot that touches nothing. If there is none, the first that
  * touches no other labels or dots (crossing a line is allowed). If there is none either, the label
  * is hidden: zooming in will make room for it.
  */
-export function placeLabels(
-  places: readonly LabelledPlace[],
+export function layOutCityLabels(
+  cities: readonly LabelledCity[],
   arcs: readonly ArcPieces[],
   metrics: LabelMetrics,
 ): readonly PlacedLabel[] {
@@ -113,36 +113,36 @@ export function placeLabels(
     }
   }
 
-  const dots: LabelBox[] = places.map((place) => ({
-    id: place.placeId,
-    left: place.x - metrics.dotRadius,
-    top: place.y - metrics.dotRadius,
+  const dots: LabelBox[] = cities.map((city) => ({
+    id: city.cityId,
+    left: city.x - metrics.dotRadius,
+    top: city.y - metrics.dotRadius,
     width: 2 * metrics.dotRadius,
     height: 2 * metrics.dotRadius,
   }));
 
-  const byPriority = [...places].sort(
-    (left, right) => right.routeCount - left.routeCount || (left.placeId < right.placeId ? -1 : 1),
+  const byPriority = [...cities].sort(
+    (left, right) => right.routeCount - left.routeCount || (left.cityId < right.cityId ? -1 : 1),
   );
 
   const acceptedBoxes: LabelBox[] = [];
   const placed: PlacedLabel[] = [];
-  for (const place of byPriority) {
-    const width = place.label.length * metrics.fontSize * CHAR_WIDTH_RATIO;
+  for (const city of byPriority) {
+    const width = city.label.length * metrics.fontSize * CHAR_WIDTH_RATIO;
     const height = metrics.fontSize * LINE_HEIGHT_RATIO;
     const candidates = CANDIDATE_DIRECTIONS.map(([dx, dy]) => {
       const gap = dx !== 0 && dy !== 0 ? metrics.gap * DIAGONAL_GAP_RATIO : metrics.gap;
-      const left = dx > 0 ? place.x + gap : dx < 0 ? place.x - gap - width : place.x - width / 2;
-      const top = dy > 0 ? place.y + gap : dy < 0 ? place.y - gap - height : place.y - height / 2;
-      const box: LabelBox = { id: place.placeId, left, top, width, height };
+      const left = dx > 0 ? city.x + gap : dx < 0 ? city.x - gap - width : city.x - width / 2;
+      const top = dy > 0 ? city.y + gap : dy < 0 ? city.y - gap - height : city.y - height / 2;
+      const box: LabelBox = { id: city.cityId, left, top, width, height };
       const anchor: PlacedLabel["anchor"] = dx > 0 ? "start" : dx < 0 ? "end" : "middle";
       const x = dx > 0 ? left : dx < 0 ? left + width : left + width / 2;
-      return { box, label: { placeId: place.placeId, label: place.label, x, y: top + height / 2, anchor } };
+      return { box, label: { cityId: city.cityId, label: city.label, x, y: top + height / 2, anchor } };
     });
 
     const touchesLabelsOrDots = (box: LabelBox) =>
       acceptedBoxes.some((other) => boxesIntersect(box, other, metrics.clearance)) ||
-      dots.some((dot) => dot.id !== place.placeId && boxesIntersect(box, dot, 0));
+      dots.some((dot) => dot.id !== city.cityId && boxesIntersect(box, dot, 0));
     const touchesLines = (box: LabelBox) => {
       const padded = inflate(box, metrics.clearance);
       return segments.some(([start, end]) => segmentHitsBox(start, end, padded));

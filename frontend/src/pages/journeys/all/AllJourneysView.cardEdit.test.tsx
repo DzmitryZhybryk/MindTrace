@@ -2,12 +2,12 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
 import type { JourneyFeedEntry } from "../../../api/sdk";
-import { pickPlace } from "../../../test/addJourney";
-import { FEED_JOURNEYS, GEO_PLACES, server } from "../../../test/handlers";
+import { pickCity } from "../../../test/addJourney";
+import { FEED_JOURNEYS, GEO_CITIES, server } from "../../../test/handlers";
 import { openMoscowToLondonCard, renderAllJourneys, serveFeedByYears } from "../../../test/journeysMap";
 import { findMenuItem, screen, waitFor, within } from "../../../test/render";
 
-const [MOSCOW, LONDON, PARIS] = GEO_PLACES;
+const [MOSCOW, LONDON, PARIS] = GEO_CITIES;
 const [MOSCOW_TO_LONDON] = FEED_JOURNEYS;
 
 /** Records the bodies of journey saves (PUT) and answers 204, as the backend does. */
@@ -25,8 +25,8 @@ function recordSaves(): unknown[] {
 /** The whole Moscow -> London journey as a save sends it, with the changed fields. */
 function savedMoscowToLondon(changes: Record<string, unknown>): Record<string, unknown> {
   return {
-    originPlaceId: MOSCOW.placeId,
-    destinationPlaceId: LONDON.placeId,
+    originCityId: MOSCOW.cityId,
+    destinationCityId: LONDON.cityId,
     transportType: "air",
     traveledYear: 2021,
     ...changes,
@@ -131,9 +131,9 @@ describe("AllJourneysView — правка в карточке поездки", 
     await user.click(within(card()).getByRole("button", { name: "London" }));
     expect(screen.getByLabelText("To")).toHaveFocus();
     await user.clear(screen.getByLabelText("To"));
-    await pickPlace({ user, label: "To", query: "Par", option: /Paris/iu });
+    await pickCity({ user, label: "To", query: "Par", option: /Paris/iu });
 
-    await waitFor(() => expect(saves).toEqual([savedMoscowToLondon({ destinationPlaceId: PARIS.placeId })]));
+    await waitFor(() => expect(saves).toEqual([savedMoscowToLondon({ destinationCityId: PARIS.cityId })]));
     expect(await screen.findByRole("heading", { level: 1, name: "Moscow to Paris" })).toBeInTheDocument();
     expect(await within(card()).findByText("1,234 km")).toBeInTheDocument();
   });
@@ -152,7 +152,7 @@ describe("AllJourneysView — правка в карточке поездки", 
 
     await user.click(within(card()).getByRole("button", { name: "London" }));
     await user.clear(screen.getByLabelText("To"));
-    await pickPlace({ user, label: "To", query: "Mos", option: /Moscow/iu });
+    await pickCity({ user, label: "To", query: "Mos", option: /Moscow/iu });
 
     expect(await screen.findByText("Departure and destination must differ")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Moscow to London" })).toBeInTheDocument();
@@ -196,7 +196,7 @@ describe("AllJourneysView — правка в карточке поездки", 
     await user.click(screen.getByRole("button", { name: "Swap origin and destination" }));
 
     await waitFor(() =>
-      expect(saves).toEqual([savedMoscowToLondon({ originPlaceId: LONDON.placeId, destinationPlaceId: MOSCOW.placeId })]),
+      expect(saves).toEqual([savedMoscowToLondon({ originCityId: LONDON.cityId, destinationCityId: MOSCOW.cityId })]),
     );
     expect(await screen.findByRole("heading", { level: 1, name: "London to Moscow" })).toBeInTheDocument();
   });
@@ -259,11 +259,11 @@ describe("AllJourneysView — правка в карточке поездки", 
     expect(screen.queryByText("Saved")).not.toBeInTheDocument();
   });
 
-  it("место отклонено сервером — ошибка под маршрутом, маршрут прежний", async () => {
+  it("город отклонён сервером — ошибка под маршрутом, маршрут прежний", async () => {
     server.use(
       http.put("/v1/journeys/:journeyId/", () =>
         HttpResponse.json(
-          { code: "journeys.unknown_place", message: "нет", details: { place_ids: [PARIS.placeId] } },
+          { code: "journeys.unknown_city", message: "нет", details: { city_ids: [PARIS.cityId] } },
           { status: 400 },
         ),
       ),
@@ -272,9 +272,9 @@ describe("AllJourneysView — правка в карточке поездки", 
 
     await user.click(within(card()).getByRole("button", { name: "London" }));
     await user.clear(screen.getByLabelText("To"));
-    await pickPlace({ user, label: "To", query: "Par", option: /Paris/iu });
+    await pickCity({ user, label: "To", query: "Par", option: /Paris/iu });
 
-    expect(await screen.findByText("This place wasn't found. Pick it from the suggestions again")).toBeInTheDocument();
+    expect(await screen.findByText("This city wasn't found. Pick it from the suggestions again")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Moscow to London" })).toBeInTheDocument();
   });
 
@@ -301,14 +301,14 @@ describe("AllJourneysView — правка в карточке поездки", 
     server.use(
       http.get("/v1/journeys/distance/", async () => {
         await responded;
-        return HttpResponse.json({ code: "journeys.unknown_place", message: "нет", details: null }, { status: 400 });
+        return HttpResponse.json({ code: "journeys.unknown_city", message: "нет", details: null }, { status: 400 });
       }),
     );
     const { user } = await openMoscowToLondonCard();
 
     await user.click(within(card()).getByRole("button", { name: "London" }));
     await user.clear(screen.getByLabelText("To"));
-    await pickPlace({ user, label: "To", query: "Par", option: /Paris/iu });
+    await pickCity({ user, label: "To", query: "Par", option: /Paris/iu });
 
     const distance = await within(card()).findByText("—");
     expect(distance).toHaveAttribute("aria-busy", "true");

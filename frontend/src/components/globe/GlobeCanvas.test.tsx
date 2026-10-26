@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EventDispatcher } from "three";
 import type { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-import { GEO_PLACES } from "../../test/handlers";
+import { GEO_CITIES } from "../../test/handlers";
 import { act, renderWithProviders } from "../../test/render";
 import { stubResizeObserver } from "../../test/resizeObserver";
 import { GlobeCanvas } from "./GlobeCanvas";
@@ -490,7 +490,7 @@ describe("GlobeCanvas", () => {
 });
 
 describe("GlobeCanvas — маршрут формы поездки", () => {
-  const [MOSCOW, LONDON] = GEO_PLACES;
+  const [MOSCOW, LONDON] = GEO_CITIES;
   const CITIES: GlobeCity[] = [{ name: "Minsk", lat: 53.9, lng: 27.56 }];
 
   function makeRoute(overrides: Partial<GlobeRoute> = {}): GlobeRoute {

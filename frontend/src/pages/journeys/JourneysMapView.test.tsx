@@ -1,7 +1,7 @@
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
-import { GEO_PLACES, server } from "../../test/handlers";
+import { GEO_CITIES, server } from "../../test/handlers";
 import { renderJourneysTabs } from "../../test/journeysMap";
 import { screen, waitFor } from "../../test/render";
 import { countriesWithFill } from "../../test/worldMap";
@@ -12,17 +12,17 @@ import { JourneysMapView } from "./JourneysMapView";
 // reaching the map is observed via the marker class.
 const CITY_DOT = ".world-map__city-dot";
 
-const UNKNOWN_PLACE_ID = "99999999-9999-4999-8999-999999999999";
+const UNKNOWN_CITY_ID = "99999999-9999-4999-8999-999999999999";
 
 /** A map with one visited country (RU) and the given cities. */
-function respondWithRussianCities(placeIds: string[]): void {
+function respondWithRussianCities(cityIds: string[]): void {
   server.use(
     http.get("/v1/journeys/map/", () =>
       HttpResponse.json({
         countries: [
           {
             countryCode: "RU",
-            cities: placeIds.map((placeId, index) => ({ placeId, latitude: 55 + index, longitude: 37, years: [2020] })),
+            cities: cityIds.map((cityId, index) => ({ cityId, latitude: 55 + index, longitude: 37, years: [2020] })),
           },
         ],
       }),
@@ -85,7 +85,7 @@ describe("JourneysMapView", () => {
           countries: [
             {
               countryCode: "RU",
-              cities: [{ placeId: GEO_PLACES[0].placeId, latitude: 55.75, longitude: 37.62, years: [2020] }],
+              cities: [{ cityId: GEO_CITIES[0].cityId, latitude: 55.75, longitude: 37.62, years: [2020] }],
             },
           ],
         }),
@@ -100,7 +100,7 @@ describe("JourneysMapView", () => {
   });
 
   it("в тултипе страны — названия городов, полученные у geo", async () => {
-    respondWithRussianCities([GEO_PLACES[0].placeId]);
+    respondWithRussianCities([GEO_CITIES[0].cityId]);
     const { user, container } = renderJourneysMap();
     await waitFor(() => expect(container.querySelectorAll(CITY_DOT)).toHaveLength(1));
 
@@ -110,14 +110,14 @@ describe("JourneysMapView", () => {
   });
 
   it("город, которого geo не знает, подписан как неизвестный, а не пропадает", async () => {
-    respondWithRussianCities([GEO_PLACES[0].placeId, UNKNOWN_PLACE_ID]);
+    respondWithRussianCities([GEO_CITIES[0].cityId, UNKNOWN_CITY_ID]);
     const { user, container } = renderJourneysMap();
     await waitFor(() => expect(container.querySelectorAll(CITY_DOT)).toHaveLength(2));
 
     await user.hover(visitedCountry(container));
 
     expect(await screen.findByText("Moscow")).toBeInTheDocument();
-    expect(await screen.findByText("Unknown place")).toBeInTheDocument();
+    expect(await screen.findByText("Unknown city")).toBeInTheDocument();
   });
 
   it("под картой — атрибуция GeoNames со ссылками на источник и лицензию", () => {

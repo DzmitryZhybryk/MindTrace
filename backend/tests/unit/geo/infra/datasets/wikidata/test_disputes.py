@@ -7,7 +7,7 @@ import pytest
 from app.geo.infra.datasets.exceptions import (
     HumanDecisionOverrideError,
     InvalidRuNameDecisionError,
-    UnknownVerdictPlaceError,
+    UnknownVerdictCityError,
 )
 from app.geo.infra.datasets.wikidata.disputes import (
     ArbiterVerdict,
@@ -152,7 +152,7 @@ def test_apply_decisions_without_decision_keeps_geonames_name() -> None:
 
 
 def test_apply_decisions_corrects_broken_name_without_dispute() -> None:
-    """apply_decisions: решение без меток Wikidata правит сломанное имя GeoNames, спора по месту нет."""
+    """apply_decisions: решение без меток Wikidata правит сломанное имя GeoNames, спора по городу нет."""
     row = {**_HUANGSHAN_ROW, "external_id": "GeoNames:2112297", "name_en": "Kamogawa", "name_ru": "Камогаwа"}
     decision = RuNameDecision(
         external_id="GeoNames:2112297",
@@ -176,7 +176,7 @@ def test_apply_decisions_corrects_broken_name_without_dispute() -> None:
     ids=["geonames-changed", "now-disputed"],
 )
 def test_apply_decisions_skips_correction_that_no_longer_fits(name_ru: str, disputes: list[RuNameDispute]) -> None:
-    """apply_decisions: правка без спора не действует, если имя GeoNames сменилось или по месту появился спор."""
+    """apply_decisions: правка без спора не действует, если имя GeoNames сменилось или по городу появился спор."""
     row = {**_HUANGSHAN_ROW, "name_ru": name_ru}
     decision = RuNameDecision(
         external_id="GeoNames:1792359",
@@ -199,7 +199,7 @@ def test_apply_decisions_skips_correction_that_no_longer_fits(name_ru: str, disp
     ids=["label-gone", "geonames-changed", "geonames-name-gone"],
 )
 def test_apply_decisions_sends_stale_decision_without_dispute_to_arbitration(name_ru: str) -> None:
-    """apply_decisions: спора по месту решения больше нет, а имени из решения в строке нет → решение устарело."""
+    """apply_decisions: спора по городу решения больше нет, а имени из решения в строке нет → решение устарело."""
     row = {**_HUANGSHAN_ROW, "name_ru": name_ru}
 
     rows, unresolved, report = apply_decisions(
@@ -308,7 +308,7 @@ def test_record_verdicts_captures_disputed_names() -> None:
 
 
 def test_record_verdicts_without_dispute_is_correction() -> None:
-    """record_verdicts: вердикт по месту без спора — правка имени GeoNames с пустыми метками Wikidata."""
+    """record_verdicts: вердикт по городу без спора — правка имени GeoNames с пустыми метками Wikidata."""
     row = {**_HUANGSHAN_ROW, "external_id": "GeoNames:2112297", "name_ru": "Камогаwа"}
     verdict = ArbiterVerdict(external_id="GeoNames:2112297", name_ru="Камогава", decided_by="human", reason="typo")
 
@@ -318,11 +318,11 @@ def test_record_verdicts_without_dispute_is_correction() -> None:
     assert decision.wikidata_ru == frozenset()
 
 
-def test_record_verdicts_unknown_place_raises() -> None:
-    """record_verdicts: вердикт по месту, которого нет в датасете, — ошибка, а не молчаливый пропуск."""
+def test_record_verdicts_unknown_city_raises() -> None:
+    """record_verdicts: вердикт по городу, которого нет в датасете, — ошибка, а не молчаливый пропуск."""
     verdict = ArbiterVerdict(external_id="GeoNames:404", name_ru="Нигде", decided_by="llm", reason="-")
 
-    with pytest.raises(UnknownVerdictPlaceError, match="GeoNames:404"):
+    with pytest.raises(UnknownVerdictCityError, match="GeoNames:404"):
         record_verdicts(verdicts=[verdict], rows=[_HUANGSHAN_ROW], disputes=[])
 
 
@@ -378,7 +378,7 @@ def test_decisions_file_roundtrip(tmp_path: Path) -> None:
     ids=["empty-name", "null-name", "blank-name", "padded-name", "unknown-decider"],
 )
 def test_record_verdicts_rejects_invalid_verdict(entry: DictStrAny, match: str) -> None:
-    """record_verdicts: вердикт без имени или с неизвестным автором — ошибка, а не стёртое имя места."""
+    """record_verdicts: вердикт без имени или с неизвестным автором — ошибка, а не стёртое имя города."""
     verdict_entry: DictStrAny = {
         "external_id": "GeoNames:1792359",
         "name_ru": "Хуаншань",
@@ -391,8 +391,8 @@ def test_record_verdicts_rejects_invalid_verdict(entry: DictStrAny, match: str) 
         record_verdicts(verdicts=[verdict], rows=[_HUANGSHAN_ROW], disputes=[_HUANGSHAN_DISPUTE])
 
 
-def test_record_verdicts_rejects_duplicate_place() -> None:
-    """record_verdicts: два вердикта по одному месту — ошибка, а не молчаливая победа второго."""
+def test_record_verdicts_rejects_duplicate_city() -> None:
+    """record_verdicts: два вердикта по одному городу — ошибка, а не молчаливая победа второго."""
     verdict = ArbiterVerdict(external_id="GeoNames:1792359", name_ru="Хуаншань", decided_by="llm", reason="-")
 
     with pytest.raises(InvalidRuNameDecisionError, match="duplicate"):
@@ -412,10 +412,10 @@ def test_record_verdicts_rejects_duplicate_place() -> None:
         (["GeoNames:1,Туньси,Хуаншань,,llm,unsure"], "name_ru ''"),
         (["GeoNames:1,Туньси,Хуаншань,Хуаншань,editor,-"], "decided_by 'editor'"),
     ],
-    ids=["duplicate-place", "empty-name", "unknown-decider"],
+    ids=["duplicate-city", "empty-name", "unknown-decider"],
 )
 def test_read_decisions_rejects_invalid_file(tmp_path: Path, lines: list[str], match: str) -> None:
-    """read_decisions: файл правится руками, поэтому повтор места, пустое имя и чужой автор — ошибка чтения."""
+    """read_decisions: файл правится руками, поэтому повтор города, пустое имя и чужой автор — ошибка чтения."""
     path = tmp_path / "decisions.csv"
     path.write_text("\n".join(["external_id,geonames_ru,wikidata_ru,name_ru,decided_by,reason", *lines]) + "\n")
 
@@ -423,8 +423,8 @@ def test_read_decisions_rejects_invalid_file(tmp_path: Path, lines: list[str], m
         read_decisions(path=path)
 
 
-def test_merge_decisions_replaces_decision_by_place() -> None:
-    """merge_decisions: новое решение по месту заменяет прежнее, остальные решения остаются."""
+def test_merge_decisions_replaces_decision_by_city() -> None:
+    """merge_decisions: новое решение по городу заменяет прежнее, остальные решения остаются."""
     other = RuNameDecision(
         external_id="GeoNames:2",
         geonames_ru="Камогаwа",
@@ -451,7 +451,7 @@ def test_merge_decisions_replaces_decision_by_place() -> None:
 
 
 def test_merge_decisions_llm_cannot_override_human_decision() -> None:
-    """merge_decisions: вердикт LLM по месту с решением человека — ошибка, решение человека не затирается."""
+    """merge_decisions: вердикт LLM по городу с решением человека — ошибка, решение человека не затирается."""
     human_decision = RuNameDecision(
         external_id="GeoNames:611403",
         geonames_ru="Цхинвал",

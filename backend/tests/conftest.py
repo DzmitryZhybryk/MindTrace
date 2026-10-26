@@ -39,15 +39,15 @@ for _key, _value in _TEST_ENV_DEFAULTS.items():
 # синглтон ``settings``, которому нужны заполненные env-поля (E402 осознанно).
 from app.auth.application.config import EmailVerificationConfig  # noqa: E402
 from app.shared.infra.crypto.sha256 import Sha256DeterministicHasher  # noqa: E402
-from tests.builders import LONDON_PLACE_ID, make_place_location_response  # noqa: E402
+from tests.builders import LONDON_CITY_ID, make_city_location_response  # noqa: E402
 from tests.fakes import (  # noqa: E402
     FakeAuthUnitOfWork,
     FakeChallengeRepository,
+    FakeCitiesClient,
+    FakeCityRepository,
     FakeGeoUnitOfWork,
     FakeJourneyRepository,
     FakeJourneyUnitOfWork,
-    FakePlaceRepository,
-    FakePlacesClient,
     FakeRefreshTokenRepository,
     FakeSaltedHasher,
     FakeTaskBus,
@@ -184,22 +184,22 @@ def deterministic_hasher() -> Sha256DeterministicHasher:
 
 
 @pytest.fixture
-def fake_place_repository() -> FakePlaceRepository:
-    return FakePlaceRepository()
+def fake_city_repository() -> FakeCityRepository:
+    return FakeCityRepository()
 
 
 @pytest.fixture
-def fake_geo_uow(fake_place_repository: FakePlaceRepository) -> FakeGeoUnitOfWork:
-    return FakeGeoUnitOfWork(place_repository=fake_place_repository)
+def fake_geo_uow(fake_city_repository: FakeCityRepository) -> FakeGeoUnitOfWork:
+    return FakeGeoUnitOfWork(city_repository=fake_city_repository)
 
 
 @pytest.fixture
-def fake_places_client() -> FakePlacesClient:
+def fake_cities_client() -> FakeCitiesClient:
     """Справочник с Москвой и Лондоном — в порядке запроса поездки Москва → Лондон."""
-    return FakePlacesClient(
+    return FakeCitiesClient(
         locations=(
-            make_place_location_response(),
-            make_place_location_response(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12),
+            make_city_location_response(),
+            make_city_location_response(city_id=LONDON_CITY_ID, country_code="GB", latitude=51.5, longitude=-0.12),
         )
     )
 

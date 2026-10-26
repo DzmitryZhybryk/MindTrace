@@ -49,7 +49,7 @@ def test_enrich_rows_respects_population_threshold(population: str, expected_nam
     assert enriched[0]["name_ru"] == expected_name
 
 
-def test_enrich_rows_skips_places_not_from_geonames() -> None:
+def test_enrich_rows_skips_cities_not_from_geonames() -> None:
     """enrich_rows: ключ не GeoNames → искать имя не по чему, строка не трогается."""
     rows = [{"external_id": "OSM:1", "name_en": "Town", "name_ru": "", "population": "500000"}]
 

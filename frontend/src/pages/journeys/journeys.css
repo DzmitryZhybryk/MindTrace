@@ -91,7 +91,7 @@
     visibility 0s var(--journeys-fade);
 }
 
-/* ---- Movements map: route arcs and place dots over countries ---------- */
+/* ---- Movements map: route arcs and city dots over countries ----------- */
 .movement-line {
   fill: none;
   stroke: var(--movement-line);
@@ -131,7 +131,7 @@
   stroke-width: 1;
 }
 
-/* Place name: a background-coloured stroke under the text (paint-order) keeps it readable over
+/* City name: a background-coloured stroke under the text (paint-order) keeps it readable over
    lines and country borders. The component sets the size and stroke width: they depend on zoom. */
 .movement-label {
   fill: var(--text);
@@ -273,7 +273,7 @@
   opacity: 1;
 }
 
-/* ---- Place name attribution (CC BY 4.0): small, bottom-left corner ------- */
+/* ---- City name attribution (CC BY 4.0): small, bottom-left corner -------- */
 .journeys-map-attribution {
   position: absolute;
   bottom: 8px;

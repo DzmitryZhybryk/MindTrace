@@ -1,4 +1,4 @@
-import type { PlaceSearchItem, TransportType } from "../../api/sdk";
+import type { CitySearchItem, TransportType } from "../../api/sdk";
 import type { GlobePov } from "./GlobeCanvas";
 import { centralAngleRad } from "./geo";
 
@@ -39,8 +39,8 @@ export type TrailPoint = { lat: number; lng: number; alt: number };
 
 /** Trip route that the add-journey form hands to the globe. */
 export interface GlobeRoute {
-  origin: PlaceSearchItem | null;
-  destination: PlaceSearchItem | null;
+  origin: CitySearchItem | null;
+  destination: CitySearchItem | null;
   transportType: TransportType | null;
   originLabel: string;
   destinationLabel: string;
@@ -136,9 +136,9 @@ export function buildTrail(
   return points;
 }
 
-/** A place is "real" (picked from autocomplete) if it has coordinates. */
-export function isRealPlace(place: PlaceSearchItem | null): place is PlaceSearchItem {
-  return place !== null && (place.latitude !== 0 || place.longitude !== 0);
+/** A city is "real" (picked from autocomplete) if it has coordinates. */
+export function isRealCity(city: CitySearchItem | null): city is CitySearchItem {
+  return city !== null && (city.latitude !== 0 || city.longitude !== 0);
 }
 
 /**
@@ -151,14 +151,14 @@ export function routeCameraPov(route: GlobeRoute | null): GlobePov {
 
   let target = DEFAULT_ROUTE_VIEW;
   let altitude = CAMERA_MAX_ALTITUDE;
-  if (isRealPlace(origin) && isRealPlace(destination)) {
+  if (isRealCity(origin) && isRealCity(destination)) {
     target = greatCirclePoint(origin.latitude, origin.longitude, destination.latitude, destination.longitude, 0.5);
     altitude = altitudeForSeparation(
       centralAngleRad(origin.latitude, origin.longitude, destination.latitude, destination.longitude),
     );
-  } else if (isRealPlace(origin)) {
+  } else if (isRealCity(origin)) {
     target = { lat: origin.latitude, lng: origin.longitude };
-  } else if (isRealPlace(destination)) {
+  } else if (isRealCity(destination)) {
     target = { lat: destination.latitude, lng: destination.longitude };
   }
 

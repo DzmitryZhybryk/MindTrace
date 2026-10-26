@@ -3,10 +3,10 @@ import { lazy, Suspense, useEffect, useRef, useState, type MouseEvent } from "re
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
 
+import { cityLabel, type CityNameLookup } from "../../../api/cityNames";
 import { resolveErrorToken } from "../../../api/errors";
-import { placeLabel, type PlaceNameLookup } from "../../../api/placeNames";
-import { zTransportType, type JourneyFeedEntry, type JourneyPlace, type PlaceSearchItem } from "../../../api/sdk";
-import { PlaceAutocomplete } from "../../../components/PlaceAutocomplete";
+import { zTransportType, type CitySearchItem, type JourneyCity, type JourneyFeedEntry } from "../../../api/sdk";
+import { CityAutocomplete } from "../../../components/CityAutocomplete";
 import { SoonBadge } from "../../../components/SoonBadge";
 import { SwapVerticalIcon } from "../../../components/SwapVerticalIcon";
 import { TransportLabel } from "../../../components/TransportLabel";
@@ -25,15 +25,15 @@ const JourneyDeleteDialog = lazy(() =>
 );
 
 // Fields shown under their own control; any other field error is reported for the whole card.
-const PLACE_FIELDS: ReadonlySet<string> = new Set(["origin", "destination"]);
+const CITY_FIELDS: ReadonlySet<string> = new Set(["origin", "destination"]);
 
-type PlaceField = "origin" | "destination";
-type EditedField = PlaceField | "year";
+type CityField = "origin" | "destination";
+type EditedField = CityField | "year";
 
 interface JourneyCardProps {
   /** The journey as the feed has it; its distance is the server's for its own pair. */
   journey: JourneyFeedEntry;
-  nameOf: PlaceNameLookup;
+  nameOf: CityNameLookup;
 }
 
 /**
@@ -62,10 +62,10 @@ export function JourneyCard({ journey, nameOf }: JourneyCardProps) {
   // Undo leaves with its status line: the focus it held goes to the title, not the body.
   const focusTitleAfterUndo = useRef(false);
   const distanceFormat = useDistanceFormat();
-  const unknownLabel = tCommon("map.unknownPlace");
-  const toSearchItem = (place: JourneyPlace): PlaceSearchItem => ({
-    ...place,
-    name: placeLabel(nameOf(place.placeId), unknownLabel) ?? "",
+  const unknownLabel = tCommon("map.unknownCity");
+  const toSearchItem = (city: JourneyCity): CitySearchItem => ({
+    ...city,
+    name: cityLabel(nameOf(city.cityId), unknownLabel) ?? "",
     population: null,
   });
   // Read once: afterwards the card holds what it saved, while the feed catches up in the background.
@@ -80,16 +80,16 @@ export function JourneyCard({ journey, nameOf }: JourneyCardProps) {
   const { form, isSaving, status, errorToken, commit, undo } = useJourneyCardSave(journey.journeyId, initialValues);
   const values = form.getValues();
   const [edited, setEdited] = useState<EditedField | null>(null);
-  // The place field's own value while it is edited: `PlaceAutocomplete` empties it on typing.
-  const [placeDraft, setPlaceDraft] = useState<PlaceSearchItem | null>(null);
+  // The city field's own value while it is edited: `CityAutocomplete` empties it on typing.
+  const [cityDraft, setCityDraft] = useState<CitySearchItem | null>(null);
 
-  // A just picked place may not be in the names lookup yet; its picked name stands in.
-  const labelOf = (place: PlaceSearchItem | null) =>
-    place ? (placeLabel(nameOf(place.placeId), unknownLabel) ?? (place.name || "…")) : "…";
-  const placeErrorToken = form.errors.origin ?? form.errors.destination;
+  // A just picked city may not be in the names lookup yet; its picked name stands in.
+  const labelOf = (city: CitySearchItem | null) =>
+    city ? (cityLabel(nameOf(city.cityId), unknownLabel) ?? (city.name || "…")) : "…";
+  const cityErrorToken = form.errors.origin ?? form.errors.destination;
   const cardErrorToken =
-    errorToken ?? Object.entries(form.errors).find(([field, error]) => !PLACE_FIELDS.has(field) && error)?.[1];
-  const isEditingPlace = edited === "origin" || edited === "destination";
+    errorToken ?? Object.entries(form.errors).find(([field, error]) => !CITY_FIELDS.has(field) && error)?.[1];
+  const isEditingCity = edited === "origin" || edited === "destination";
 
   useEffect(() => {
     titleRef.current?.focus();
@@ -114,8 +114,8 @@ export function JourneyCard({ journey, nameOf }: JourneyCardProps) {
       return;
     }
     if (field !== "year") {
-      const place = values[field];
-      setPlaceDraft(place && { ...place, name: labelOf(place) });
+      const city = values[field];
+      setCityDraft(city && { ...city, name: labelOf(city) });
     }
     setEdited(field);
   };
@@ -127,11 +127,11 @@ export function JourneyCard({ journey, nameOf }: JourneyCardProps) {
     setEdited(null);
   };
 
-  const handlePlaceChange = (field: PlaceField) => (place: PlaceSearchItem | null) => {
-    setPlaceDraft(place);
-    if (place) {
+  const handleCityChange = (field: CityField) => (city: CitySearchItem | null) => {
+    setCityDraft(city);
+    if (city) {
       endEdit();
-      void commit({ [field]: place });
+      void commit({ [field]: city });
     }
   };
 
@@ -156,29 +156,29 @@ export function JourneyCard({ journey, nameOf }: JourneyCardProps) {
     </UnstyledButton>
   );
 
-  const placeValue = (field: PlaceField) =>
+  const cityValue = (field: CityField) =>
     edited === field ? (
-      <InlineField className="journey-card__editor journey-card__editor--place" onCancel={endEdit} onLeave={endEdit}>
-        <PlaceAutocomplete
+      <InlineField className="journey-card__editor journey-card__editor--city" onCancel={endEdit} onLeave={endEdit}>
+        <CityAutocomplete
           label={t(`addJourney.${field}.label`)}
           isLabelHidden
           placeholder={t(`addJourney.${field}.placeholder`)}
-          value={placeDraft}
-          onChange={handlePlaceChange(field)}
+          value={cityDraft}
+          onChange={handleCityChange(field)}
         />
       </InlineField>
     ) : (
-      valueButton(field, labelOf(values[field]), "journey-card__value journey-card__place")
+      valueButton(field, labelOf(values[field]), "journey-card__value journey-card__city")
     );
 
   const route = (
     <>
-      {placeValue("origin")}
+      {cityValue("origin")}
       <span className="journey-card__arrow" aria-hidden="true">
         →
       </span>
       <VisuallyHidden>{` ${t("all.routeTo")} `}</VisuallyHidden>
-      {placeValue("destination")}
+      {cityValue("destination")}
     </>
   );
 
@@ -235,7 +235,7 @@ export function JourneyCard({ journey, nameOf }: JourneyCardProps) {
       <div className="journey-card__route">
         {/* A heading holds phrasing content only, so a city field (a block with its list) is shown
             in a plain row while it is edited. */}
-        {isEditingPlace ? (
+        {isEditingCity ? (
           <div id="journey-card-title" className="journey-card__title">
             {route}
           </div>
@@ -244,7 +244,7 @@ export function JourneyCard({ journey, nameOf }: JourneyCardProps) {
             {route}
           </h1>
         )}
-        {!isEditingPlace && (
+        {!isEditingCity && (
           <UnstyledButton
             className="journey-card__swap"
             aria-label={t("addJourney.swap")}
@@ -256,9 +256,9 @@ export function JourneyCard({ journey, nameOf }: JourneyCardProps) {
           </UnstyledButton>
         )}
       </div>
-      {placeErrorToken && (
+      {cityErrorToken && (
         <Text size="sm" fw={500} c="var(--text-error)" role="alert" className="journey-card__route-error">
-          {resolveErrorToken(placeErrorToken)}
+          {resolveErrorToken(cityErrorToken)}
         </Text>
       )}
 

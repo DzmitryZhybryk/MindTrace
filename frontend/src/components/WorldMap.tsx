@@ -95,7 +95,7 @@ const COUNTRY_NAMES: ReadonlyMap<string, string> = new Map(
 export type CountryStatus = "visited" | "wishlist";
 
 export interface MapCity {
-  /** Place id in geo. */
+  /** City id in geo. */
   id: string;
   /** Name in the UI language; absent while names are loading. */
   name?: string;

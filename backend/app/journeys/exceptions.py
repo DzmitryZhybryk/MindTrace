@@ -9,14 +9,9 @@ class SameOriginAndDestinationError(InvalidInputError):
     message = "Город отправления и назначения не могут совпадать"
 
 
-class UnknownPlaceError(InvalidInputError):
-    code = "journeys.unknown_place"
-    message = "Место не найдено"
-
-
-class PlaceWithoutCountryError(InvalidInputError):
-    code = "journeys.place_without_country"
-    message = "У места не указана страна"
+class UnknownCityError(InvalidInputError):
+    code = "journeys.unknown_city"
+    message = "Город не найден"
 
 
 class JourneyDateInFutureError(InvalidInputError):

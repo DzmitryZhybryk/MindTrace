@@ -2,21 +2,21 @@ import type { APIRequestContext } from "@playwright/test";
 
 import { expect } from "../fixtures";
 
-/** Finds a city via geo search and returns its `placeId`, the only thing journey creation accepts. */
-export async function findPlaceId(request: APIRequestContext, token: string, searchText: string): Promise<string> {
-  const response = await request.get("/v1/geo/places/search/", {
+/** Finds a city via geo search and returns its `cityId`, the only thing journey creation accepts. */
+export async function findCityId(request: APIRequestContext, token: string, searchText: string): Promise<string> {
+  const response = await request.get("/v1/geo/cities/search/", {
     headers: { Authorization: `Bearer ${token}` },
     params: { searchText, language: "en", limit: 1 },
   });
-  expect(response.ok(), `place search failed: ${response.status()} ${await response.text()}`).toBeTruthy();
-  const { items } = (await response.json()) as { items: { placeId: string }[] };
+  expect(response.ok(), `city search failed: ${response.status()} ${await response.text()}`).toBeTruthy();
+  const { items } = (await response.json()) as { items: { cityId: string }[] };
   expect(items.length, `газеттир не нашёл «${searchText}»`).toBeGreaterThan(0);
-  return items[0].placeId;
+  return items[0].cityId;
 }
 
 interface JourneyInput {
-  originPlaceId: string;
-  destinationPlaceId: string;
+  originCityId: string;
+  destinationCityId: string;
   transportType: "land" | "air" | "water";
   traveledYear: number;
 }

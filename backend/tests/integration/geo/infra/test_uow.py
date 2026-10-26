@@ -9,21 +9,20 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.geo.infra.models import GeoPlace
+from app.geo.infra.models import GeoCity
 from app.geo.infra.uow import GeoUnitOfWork
 
 
-async def test_place_repository_read_works_inside_uow_transaction(
+async def test_city_repository_read_works_inside_uow_transaction(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
-    """Чтение через ``uow.place_repository`` внутри ``transaction()`` видит место, зафиксированное другой сессией."""
-    place_id = uuid4()
+    """Чтение через ``uow.city_repository`` внутри ``transaction()`` видит город, зафиксированный другой сессией."""
+    city_id = uuid4()
     async with session_factory() as writer:
         writer.add(
-            GeoPlace(
-                id=place_id,
+            GeoCity(
+                id=city_id,
                 external_id="GeoNames:524901",
-                kind="city",
                 name_en="Moscow",
                 name_ru="Москва",
                 country_code="RU",
@@ -37,6 +36,6 @@ async def test_place_repository_read_works_inside_uow_transaction(
     async with session_factory() as session:
         uow = GeoUnitOfWork(session=session)
         async with uow.transaction():
-            places = await uow.place_repository.find_places_by_ids(place_ids=(place_id,))
+            cities = await uow.city_repository.find_cities_by_ids(city_ids=(city_id,))
 
-    assert [place_entity.place_id for place_entity in places] == [place_id]
+    assert [city_entity.city_id for city_entity in cities] == [city_id]

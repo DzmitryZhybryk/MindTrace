@@ -2,61 +2,61 @@ from dataclasses import dataclass
 from uuid import UUID
 
 __all__ = [
-    "PlaceLocation",
-    "PlaceSearchItem",
-    "PlaceSearchResult",
-    "PlacesByIdsResult",
-    "ResolvePlacesResult",
-    "ResolvedPlace",
+    "CitiesByIdsResult",
+    "CityLocation",
+    "CitySearchItem",
+    "CitySearchResult",
+    "ResolveCitiesResult",
+    "ResolvedCity",
 ]
 
 
 @dataclass(frozen=True, slots=True)
-class PlaceSearchItem:
+class CitySearchItem:
     """Один вариант в подсказках поиска; имя — на языке запроса."""
 
-    place_id: UUID
+    city_id: UUID
     name: str
-    country_code: str | None
+    country_code: str
     latitude: float
     longitude: float
     population: int | None
 
 
 @dataclass(frozen=True, slots=True)
-class PlaceSearchResult:
+class CitySearchResult:
     """Результат поиска — упорядоченная выдача кандидатов."""
 
-    items: tuple[PlaceSearchItem, ...]
+    items: tuple[CitySearchItem, ...]
 
 
 @dataclass(frozen=True, slots=True)
-class ResolvedPlace:
-    """Название места на языке запроса."""
+class ResolvedCity:
+    """Название города на языке запроса."""
 
-    place_id: UUID
+    city_id: UUID
     name: str
 
 
 @dataclass(frozen=True, slots=True)
-class ResolvePlacesResult:
-    """Названия найденных мест."""
+class ResolveCitiesResult:
+    """Названия найденных городов."""
 
-    items: tuple[ResolvedPlace, ...]
+    items: tuple[ResolvedCity, ...]
 
 
 @dataclass(frozen=True, slots=True)
-class PlaceLocation:
-    """Где находится место: страна (у части мест её нет) и координаты."""
+class CityLocation:
+    """Где находится город: страна и координаты."""
 
-    place_id: UUID
-    country_code: str | None
+    city_id: UUID
+    country_code: str
     latitude: float
     longitude: float
 
 
 @dataclass(frozen=True, slots=True)
-class PlacesByIdsResult:
-    """Найденные места в произвольном порядке; несуществующих id здесь нет."""
+class CitiesByIdsResult:
+    """Найденные города в произвольном порядке; несуществующих id здесь нет."""
 
-    items: tuple[PlaceLocation, ...]
+    items: tuple[CityLocation, ...]

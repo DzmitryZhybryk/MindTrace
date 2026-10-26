@@ -5,9 +5,8 @@ from app.journeys.exceptions import (
     InvalidYearRangeError,
     JourneyDateInFutureError,
     JourneyNotFoundError,
-    PlaceWithoutCountryError,
     SameOriginAndDestinationError,
-    UnknownPlaceError,
+    UnknownCityError,
 )
 from app.shared.exceptions import InternalError
 from app.shared.exceptions.examples import error_response_example
@@ -31,13 +30,9 @@ CREATE_JOURNEY_RESPONSES: Final[dict[int | str, DictStrAny]] = {
                         "summary": "Год поездки в будущем",
                         "value": error_response_example(JourneyDateInFutureError),
                     },
-                    "journeys.unknown_place": {
-                        "summary": "Места нет в справочнике",
-                        "value": error_response_example(UnknownPlaceError),
-                    },
-                    "journeys.place_without_country": {
-                        "summary": "У места в справочнике нет страны",
-                        "value": error_response_example(PlaceWithoutCountryError),
+                    "journeys.unknown_city": {
+                        "summary": "Города нет в справочнике",
+                        "value": error_response_example(UnknownCityError),
                     },
                 },
             }
@@ -244,7 +239,7 @@ MOVE_JOURNEY_RESPONSES: Final[dict[int | str, DictStrAny]] = {
 JOURNEY_DISTANCE_RESPONSES: Final[dict[int | str, DictStrAny]] = {
     **_AUTHENTICATED_RESPONSES,
     400: {
-        "description": "Ошибка в местах маршрута",
+        "description": "Ошибка в городах маршрута",
         "model": ErrorResponse,
         "content": {
             "application/json": {
@@ -253,13 +248,9 @@ JOURNEY_DISTANCE_RESPONSES: Final[dict[int | str, DictStrAny]] = {
                         "summary": "Город отправления и назначения совпадают",
                         "value": error_response_example(SameOriginAndDestinationError),
                     },
-                    "journeys.unknown_place": {
-                        "summary": "Места нет в справочнике",
-                        "value": error_response_example(UnknownPlaceError),
-                    },
-                    "journeys.place_without_country": {
-                        "summary": "У места в справочнике нет страны",
-                        "value": error_response_example(PlaceWithoutCountryError),
+                    "journeys.unknown_city": {
+                        "summary": "Города нет в справочнике",
+                        "value": error_response_example(UnknownCityError),
                     },
                 },
             }

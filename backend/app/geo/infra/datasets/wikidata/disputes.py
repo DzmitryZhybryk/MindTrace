@@ -8,7 +8,7 @@ from typing import Final
 from app.geo.infra.datasets.exceptions import (
     HumanDecisionOverrideError,
     InvalidRuNameDecisionError,
-    UnknownVerdictPlaceError,
+    UnknownVerdictCityError,
 )
 from app.geo.infra.datasets.wikidata.labels import acceptable_ru_names, geonames_id_of
 
@@ -34,7 +34,7 @@ _DECIDERS: Final[frozenset[str]] = frozenset({"llm", _HUMAN})
 
 @dataclass(frozen=True, slots=True)
 class RuNameDispute:
-    """Место, у которого русское имя GeoNames расходится с меткой Wikidata."""
+    """Город, у которого русское имя GeoNames расходится с меткой Wikidata."""
 
     external_id: str
     name_en: str
@@ -62,7 +62,7 @@ class DisputesReport:
     Итог применения решений.
 
     Сколько споров нашлось и сколько из них решено, сколько имён исправлено без спора и сколько
-    решений устарело у мест, по которым спора больше нет.
+    решений устарело у городов, по которым спора больше нет.
     """
 
     disputes: int
@@ -78,7 +78,7 @@ def find_disputes(
     labels: Mapping[str, frozenset[str]],
 ) -> tuple[RuNameDispute, ...]:
     """
-    Находит места, где русское имя GeoNames и метка Wikidata расходятся по существу.
+    Находит города, где русское имя GeoNames и метка Wikidata расходятся по существу.
 
     Различия только в «ё»/«е», дефисах, пробелах и регистре спором не считаются.
 
@@ -129,11 +129,11 @@ def apply_decisions(
     Решение актуально, только если записано для тех же имён, что спорят сейчас: изменилось имя в
     GeoNames или метки Wikidata — решение устарело, и спор уходит на повторный арбитраж. Решение
     без меток Wikidata — ручная правка сломанного имени GeoNames, у которого спорить не с чем: оно
-    действует, пока в GeoNames то же имя и спора по месту нет.
+    действует, пока в GeoNames то же имя и спора по городу нет.
 
     На входе может быть и версия датасета, уже собранная с этими решениями: имя из решения в строке
-    значит, что решение применено. Решение по месту, где спора нет, а в строке другое имя, устарело —
-    место уходит на арбитраж без меток Wikidata.
+    значит, что решение применено. Решение по городу, где спора нет, а в строке другое имя, устарело —
+    город уходит на арбитраж без меток Wikidata.
 
     Scenarios:
         - сборка новой версии датасета с русскими названиями из Wikidata
@@ -145,7 +145,7 @@ def apply_decisions(
         decisions: Решения по ``external_id``
 
     Returns:
-        Строки в исходном порядке, места для повторного арбитража (споры без актуального решения,
+        Строки в исходном порядке, города для повторного арбитража (споры без актуального решения,
         затем устаревшие решения) и итог
     """
     names_by_id: dict[str, str] = {}
@@ -194,7 +194,7 @@ def merge_decisions(
     recorded: Iterable[RuNameDecision],
 ) -> dict[str, RuNameDecision]:
     """
-    Дописывает новые решения к файлу решений; решение по тому же месту заменяет прежнее.
+    Дописывает новые решения к файлу решений; решение по тому же городу заменяет прежнее.
 
     Scenarios:
         - запись вердиктов арбитра в файл решений
@@ -222,7 +222,7 @@ def merge_decisions(
 
 @dataclass(frozen=True, slots=True)
 class ArbiterVerdict:
-    """Вердикт арбитра по месту: какое русское имя показывать, кто решил и почему."""
+    """Вердикт арбитра по городу: какое русское имя показывать, кто решил и почему."""
 
     external_id: str
     name_ru: str
@@ -239,7 +239,7 @@ def record_verdicts(
     """
     Превращает вердикты арбитра в решения, фиксируя имена, о которых шла речь.
 
-    Для места в споре решение запоминает оба спорящих имени; для места без спора — правка
+    Для города в споре решение запоминает оба спорящих имени; для города без спора — правка
     сломанного имени GeoNames — только его, с пустыми метками Wikidata.
 
     Scenarios:
@@ -254,8 +254,8 @@ def record_verdicts(
         Решения в порядке вердиктов
 
     Raises:
-        UnknownVerdictPlaceError: вердикт ссылается на место, которого нет в датасете
-        InvalidRuNameDecisionError: вердикт без имени, с неизвестным автором или повторный по месту
+        UnknownVerdictCityError: вердикт ссылается на город, которого нет в датасете
+        InvalidRuNameDecisionError: вердикт без имени, с неизвестным автором или повторный по городу
     """
     disputes_by_id = {dispute.external_id: dispute for dispute in disputes}
     names_by_id = {row["external_id"]: row["name_ru"] for row in rows}
@@ -275,7 +275,7 @@ def record_verdicts(
         elif verdict.external_id in names_by_id:
             geonames_ru, wikidata_ru = names_by_id[verdict.external_id], frozenset[str]()
         else:
-            raise UnknownVerdictPlaceError(external_id=verdict.external_id)
+            raise UnknownVerdictCityError(external_id=verdict.external_id)
 
         decisions.append(
             RuNameDecision(
@@ -306,7 +306,7 @@ def read_decisions(*, path: Path = DECISIONS_PATH) -> dict[str, RuNameDecision]:
         Решения по ``external_id``
 
     Raises:
-        InvalidRuNameDecisionError: строка без имени, с неизвестным автором или повторное место
+        InvalidRuNameDecisionError: строка без имени, с неизвестным автором или повторный город
     """
     decisions: dict[str, RuNameDecision] = {}
     with path.open(encoding="utf-8", newline="") as decisions_file:
@@ -373,7 +373,7 @@ def _decides(*, decision: RuNameDecision, dispute: RuNameDispute) -> bool:
 
 def _stale_decision_dispute(*, row: Mapping[str, str]) -> RuNameDispute:
     """
-    Место устаревшего решения для повторного арбитража; метки Wikidata не передаются.
+    Город устаревшего решения для повторного арбитража; метки Wikidata не передаются.
 
     Scenarios:
         - выгрузка споров о русских названиях на арбитраж: устаревшие решения
@@ -393,8 +393,8 @@ def _check_decision(*, external_id: str, name_ru: str, decided_by: str, seen_ids
     Отсекает решение, которое нельзя применять.
 
     Пустое имя или ``null`` в вердикте — это «не знаю», а не имя: применённое, оно стёрло бы название
-    места. Пробелы по краям и неизвестный автор — признаки сломанной записи. Второе решение по тому же
-    месту молча затёрло бы первое.
+    города. Пробелы по краям и неизвестный автор — признаки сломанной записи. Второе решение по тому же
+    городу молча затёрло бы первое.
 
     Scenarios:
         - сборка новой версии датасета с русскими названиями из Wikidata: чтение файла решений

@@ -3,8 +3,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { createJourney, deleteJourney, estimateJourneyDistance, getCurrentAccount, getCurrentUser, getJourneysGlobe, getJourneysMap, getJourneyYears, getMovementsMap, healthz, listJourneys, login, logout, moveJourney, type Options, refresh, register, resolvePlaces, searchPlaces, sendEmailVerification, updateJourney, verifyEmail } from '../sdk.gen';
-import type { CreateJourneyData, CreateJourneyError, DeleteJourneyData, DeleteJourneyError, DeleteJourneyResponse, EstimateJourneyDistanceData, EstimateJourneyDistanceError, EstimateJourneyDistanceResponse, GetCurrentAccountData, GetCurrentAccountError, GetCurrentAccountResponse, GetCurrentUserData, GetCurrentUserError, GetCurrentUserResponse, GetJourneysGlobeData, GetJourneysGlobeError, GetJourneysGlobeResponse, GetJourneysMapData, GetJourneysMapError, GetJourneysMapResponse, GetJourneyYearsData, GetJourneyYearsError, GetJourneyYearsResponse, GetMovementsMapData, GetMovementsMapError, GetMovementsMapResponse, HealthzData, ListJourneysData, ListJourneysError, ListJourneysResponse, LoginData, LoginError, LoginResponse, LogoutData, LogoutError, LogoutResponse, MoveJourneyData, MoveJourneyError, MoveJourneyResponse2, RefreshData, RefreshError, RefreshResponse, RegisterData, RegisterError, RegisterResponse, ResolvePlacesData, ResolvePlacesError, ResolvePlacesResponse2, SearchPlacesData, SearchPlacesError, SearchPlacesResponse, SendEmailVerificationData, SendEmailVerificationError, UpdateJourneyData, UpdateJourneyError, UpdateJourneyResponse, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
+import { createJourney, deleteJourney, estimateJourneyDistance, getCurrentAccount, getCurrentUser, getJourneysGlobe, getJourneysMap, getJourneyYears, getMovementsMap, healthz, listJourneys, login, logout, moveJourney, type Options, refresh, register, resolveCities, searchCities, sendEmailVerification, updateJourney, verifyEmail } from '../sdk.gen';
+import type { CreateJourneyData, CreateJourneyError, DeleteJourneyData, DeleteJourneyError, DeleteJourneyResponse, EstimateJourneyDistanceData, EstimateJourneyDistanceError, EstimateJourneyDistanceResponse, GetCurrentAccountData, GetCurrentAccountError, GetCurrentAccountResponse, GetCurrentUserData, GetCurrentUserError, GetCurrentUserResponse, GetJourneysGlobeData, GetJourneysGlobeError, GetJourneysGlobeResponse, GetJourneysMapData, GetJourneysMapError, GetJourneysMapResponse, GetJourneyYearsData, GetJourneyYearsError, GetJourneyYearsResponse, GetMovementsMapData, GetMovementsMapError, GetMovementsMapResponse, HealthzData, ListJourneysData, ListJourneysError, ListJourneysResponse, LoginData, LoginError, LoginResponse, LogoutData, LogoutError, LogoutResponse, MoveJourneyData, MoveJourneyError, MoveJourneyResponse2, RefreshData, RefreshError, RefreshResponse, RegisterData, RegisterError, RegisterResponse, ResolveCitiesData, ResolveCitiesError, ResolveCitiesResponse2, SearchCitiesData, SearchCitiesError, SearchCitiesResponse, SendEmailVerificationData, SendEmailVerificationError, UpdateJourneyData, UpdateJourneyError, UpdateJourneyResponse, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
   Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -164,27 +164,27 @@ export const verifyEmailMutation = (options?: Partial<Options<VerifyEmailData>>)
   return mutationOptions;
 };
 
-export const searchPlacesQueryKey = (options: Options<SearchPlacesData>) => createQueryKey('searchPlaces', options);
+export const searchCitiesQueryKey = (options: Options<SearchCitiesData>) => createQueryKey('searchCities', options);
 
 /**
- * Search Places
+ * Search Cities
  */
-export const searchPlacesOptions = (options: Options<SearchPlacesData>) => queryOptions<SearchPlacesResponse, SearchPlacesError, SearchPlacesResponse, ReturnType<typeof searchPlacesQueryKey>>({
-  queryFn: async ({ queryKey, signal }) => await searchPlaces({
+export const searchCitiesOptions = (options: Options<SearchCitiesData>) => queryOptions<SearchCitiesResponse, SearchCitiesError, SearchCitiesResponse, ReturnType<typeof searchCitiesQueryKey>>({
+  queryFn: async ({ queryKey, signal }) => await searchCities({
     ...options,
     ...queryKey[0],
     signal,
     throwOnError: true
   }),
-  queryKey: searchPlacesQueryKey(options)
+  queryKey: searchCitiesQueryKey(options)
 });
 
 /**
- * Resolve Places
+ * Resolve Cities
  */
-export const resolvePlacesMutation = (options?: Partial<Options<ResolvePlacesData>>): UseMutationOptions<ResolvePlacesResponse2, ResolvePlacesError, Options<ResolvePlacesData>> => {
-  const mutationOptions: UseMutationOptions<ResolvePlacesResponse2, ResolvePlacesError, Options<ResolvePlacesData>> = {
-    mutationFn: async (fnOptions) => await resolvePlaces({
+export const resolveCitiesMutation = (options?: Partial<Options<ResolveCitiesData>>): UseMutationOptions<ResolveCitiesResponse2, ResolveCitiesError, Options<ResolveCitiesData>> => {
+  const mutationOptions: UseMutationOptions<ResolveCitiesResponse2, ResolveCitiesError, Options<ResolveCitiesData>> = {
+    mutationFn: async (fnOptions) => await resolveCities({
       ...options,
       ...fnOptions,
       throwOnError: true

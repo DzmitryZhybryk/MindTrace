@@ -4,7 +4,7 @@ import { VisuallyHidden } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
-import { placeLabel, type PlaceNameLookup } from "../../../api/placeNames";
+import { cityLabel, type CityNameLookup } from "../../../api/cityNames";
 import type { JourneyFeedEntry } from "../../../api/sdk";
 import { TRANSPORT_ICONS } from "../../../components/transportIcons";
 import { journeyCardPath } from "./journeyCardPath";
@@ -14,7 +14,7 @@ const TRANSPORT_ICON_SIZE = 22;
 
 interface JourneyFeedRowProps {
   journey: JourneyFeedEntry;
-  nameOf: PlaceNameLookup;
+  nameOf: CityNameLookup;
   distanceFormat: Intl.NumberFormat;
   isDragDisabled: boolean;
   /** Year the row lands in if dropped now; set only on the dragged row. */
@@ -44,9 +44,9 @@ export function JourneyFeedRow({ journey, nameOf, distanceFormat, isDragDisabled
     disabled: isDragDisabled,
   });
 
-  const unknownLabel = tCommon("map.unknownPlace");
-  const origin = placeLabel(nameOf(journey.origin.placeId), unknownLabel);
-  const destination = placeLabel(nameOf(journey.destination.placeId), unknownLabel);
+  const unknownLabel = tCommon("map.unknownCity");
+  const origin = cityLabel(nameOf(journey.origin.cityId), unknownLabel);
+  const destination = cityLabel(nameOf(journey.destination.cityId), unknownLabel);
   const transportLabel = t(`addJourney.transport.${journey.transportType}`);
   const isChangingYear = isDragging && dropYear !== null && dropYear !== journey.traveledYear;
   const distanceKm = useAnimatedNumber(journey.distanceKm);
@@ -79,12 +79,12 @@ export function JourneyFeedRow({ journey, nameOf, distanceFormat, isDragDisabled
           alt={transportLabel}
         />{" "}
         <span className="journey-row__route">
-          <span className="journey-row__place">{origin ?? "…"}</span>{" "}
+          <span className="journey-row__city">{origin ?? "…"}</span>{" "}
           <span className="journey-row__arrow" aria-hidden="true">
             →
           </span>
           <VisuallyHidden>{t("all.routeTo")}</VisuallyHidden>{" "}
-          <span className="journey-row__place">{destination ?? "…"}</span>
+          <span className="journey-row__city">{destination ?? "…"}</span>
         </span>{" "}
         {/* The key is the year: moving to the next year flips the hint again. */}
         {isChangingYear ? (

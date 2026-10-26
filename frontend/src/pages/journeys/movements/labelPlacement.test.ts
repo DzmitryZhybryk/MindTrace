@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { placeLabels, type LabelledPlace, type LabelMetrics, type PlacedLabel } from "./labelPlacement";
+import { layOutCityLabels, type LabelledCity, type LabelMetrics, type PlacedLabel } from "./labelPlacement";
 
 const METRICS: LabelMetrics = { fontSize: 10, gap: 4, dotRadius: 2, clearance: 1 };
 
@@ -8,8 +8,8 @@ const METRICS: LabelMetrics = { fontSize: 10, gap: 4, dotRadius: 2, clearance: 1
 const CHAR_WIDTH_RATIO = 0.62;
 const LINE_HEIGHT_RATIO = 1.25;
 
-function place(placeId: string, x: number, y: number, label: string, routeCount = 1): LabelledPlace {
-  return { placeId, x, y, label, routeCount };
+function city(cityId: string, x: number, y: number, label: string, routeCount = 1): LabelledCity {
+  return { cityId, x, y, label, routeCount };
 }
 
 /** A label rectangle on the canvas. */
@@ -26,17 +26,17 @@ function overlaps(a: PlacedLabel, b: PlacedLabel): boolean {
   return first.left < second.right && second.left < first.right && first.top < second.bottom && second.top < first.bottom;
 }
 
-describe("placeLabels", () => {
+describe("layOutCityLabels", () => {
   it("свободная точка подписана справа", () => {
-    const [label] = placeLabels([place("minsk", 100, 100, "Minsk")], [], METRICS);
+    const [label] = layOutCityLabels([city("minsk", 100, 100, "Minsk")], [], METRICS);
 
-    expect(label).toMatchObject({ placeId: "minsk", anchor: "start", y: 100 });
+    expect(label).toMatchObject({ cityId: "minsk", anchor: "start", y: 100 });
     expect(label.x).toBeGreaterThan(100);
   });
 
   it("соседние точки получают непересекающиеся подписи", () => {
-    const labels = placeLabels(
-      [place("minsk", 100, 100, "Minsk"), place("borisov", 108, 98, "Borisov")],
+    const labels = layOutCityLabels(
+      [city("minsk", 100, 100, "Minsk"), city("borisov", 108, 98, "Borisov")],
       [],
       METRICS,
     );
@@ -54,7 +54,7 @@ describe("placeLabels", () => {
       ],
     ] as const;
 
-    const [label] = placeLabels([place("minsk", 100, 100, "Minsk")], [arc], METRICS);
+    const [label] = layOutCityLabels([city("minsk", 100, 100, "Minsk")], [arc], METRICS);
 
     const box = boxOf(label);
     expect(box.top > 100 || box.bottom < 100 || box.right < 100).toBe(true);
@@ -101,13 +101,13 @@ describe("placeLabels", () => {
       ],
     ] as const;
 
-    const labels = placeLabels([place("minsk", 100, 100, "Minsk")], arcs, METRICS);
+    const labels = layOutCityLabels([city("minsk", 100, 100, "Minsk")], arcs, METRICS);
 
     expect(labels).toHaveLength(1);
   });
 
   it("точка, зажатая чужими точками со всех сторон, остаётся без подписи, а подписи соседей не пересекаются", () => {
-    const center = place("center", 100, 100, "Center");
+    const center = city("center", 100, 100, "Center");
     // Other dots in all eight directions: every position of the center label touches a dot, and
     // dots block the label at the fallback step too (only crossing lines is allowed there).
     const neighbours = [
@@ -119,11 +119,11 @@ describe("placeLabels", () => {
       [115, 110],
       [85, 90],
       [85, 110],
-    ].map(([x, y], index) => place(`n${index}`, x, y, "X"));
+    ].map(([x, y], index) => city(`n${index}`, x, y, "X"));
 
-    const labels = placeLabels([center, ...neighbours], [], METRICS);
+    const labels = layOutCityLabels([center, ...neighbours], [], METRICS);
 
-    expect(labels.map((label) => label.placeId)).not.toContain("center");
+    expect(labels.map((label) => label.cityId)).not.toContain("center");
     for (const [index, first] of labels.entries()) {
       for (const second of labels.slice(index + 1)) {
         expect(overlaps(first, second)).toBe(false);
@@ -131,26 +131,26 @@ describe("placeLabels", () => {
     }
   });
 
-  it("первыми раскладываются места, через которые проходит больше маршрутов", () => {
+  it("первыми раскладываются города, через которые проходит больше маршрутов", () => {
     // Dots one above another closer than a line height: labels on the right would overlap, while
     // the dots themselves do not block each other's right labels, so the right spot is shared by
-    // two and goes to the busy one. By id the quiet place would go first, which lets the test tell
+    // two and goes to the busy one. By id the quiet city would go first, which lets the test tell
     // route priority from key priority.
-    const quiet = place("a-quiet", 100, 100, "Quiet", 1);
-    const busy = place("z-busy", 100, 108, "Busy", 3);
+    const quiet = city("a-quiet", 100, 100, "Quiet", 1);
+    const busy = city("z-busy", 100, 108, "Busy", 3);
 
-    const labels = placeLabels([quiet, busy], [], METRICS);
-    const labelOf = (placeId: string) => labels.find((label) => label.placeId === placeId);
+    const labels = layOutCityLabels([quiet, busy], [], METRICS);
+    const labelOf = (cityId: string) => labels.find((label) => label.cityId === cityId);
 
     expect(labelOf("z-busy")).toMatchObject({ anchor: "start", y: busy.y });
     expect(labelOf("a-quiet")).not.toMatchObject({ anchor: "start", y: quiet.y });
   });
 
-  it("раскладка не зависит от порядка мест на входе", () => {
-    const places = [place("b", 108, 98, "Borisov"), place("a", 100, 100, "Minsk")];
+  it("раскладка не зависит от порядка городов на входе", () => {
+    const cities = [city("b", 108, 98, "Borisov"), city("a", 100, 100, "Minsk")];
 
-    const straight = placeLabels(places, [], METRICS);
-    const reversed = placeLabels([...places].reverse(), [], METRICS);
+    const straight = layOutCityLabels(cities, [], METRICS);
+    const reversed = layOutCityLabels([...cities].reverse(), [], METRICS);
 
     expect(reversed).toEqual(straight);
   });

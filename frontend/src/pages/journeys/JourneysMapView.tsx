@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Loader, Text } from "@mantine/core";
 
-import { placeLabel, usePlaceNames } from "../../api/placeNames";
+import { cityLabel, useCityNames } from "../../api/cityNames";
 import { getJourneysMapOptions, type JourneysMapResponse } from "../../api/sdk";
 import type { MapCountry } from "../../components/WorldMap";
 import { GeoNamesAttribution } from "./GeoNamesAttribution";
@@ -31,7 +31,7 @@ function toMapCountries(response: JourneysMapResponse): readonly MapCountry[] {
     id: country.countryCode,
     status: "visited",
     cities: country.cities.map((city) => ({
-      id: city.placeId,
+      id: city.cityId,
       lat: city.latitude,
       lng: city.longitude,
       years: city.years,
@@ -56,13 +56,13 @@ export function JourneysMapView() {
   });
 
   const countries = data ?? NO_COUNTRIES;
-  const nameOf = usePlaceNames(countries.flatMap((country) => country.cities.map((city) => city.id)));
-  const unknownLabel = tCommon("map.unknownPlace");
+  const nameOf = useCityNames(countries.flatMap((country) => country.cities.map((city) => city.id)));
+  const unknownLabel = tCommon("map.unknownCity");
   const namedCountries = useMemo(
     () =>
       countries.map((country) => ({
         ...country,
-        cities: country.cities.map((city) => ({ ...city, name: placeLabel(nameOf(city.id), unknownLabel) })),
+        cities: country.cities.map((city) => ({ ...city, name: cityLabel(nameOf(city.id), unknownLabel) })),
       })),
     [countries, nameOf, unknownLabel],
   );

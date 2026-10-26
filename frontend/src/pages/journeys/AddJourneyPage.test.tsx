@@ -2,18 +2,18 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
 import { getJourneysGlobeQueryKey, getJourneysMapQueryKey } from "../../api/sdk";
-import { pickOption, pickPlace, renderAddJourney, submitMoscowToLondon } from "../../test/addJourney";
-import { GEO_PLACES, server } from "../../test/handlers";
+import { pickCity, pickOption, renderAddJourney, submitMoscowToLondon } from "../../test/addJourney";
+import { GEO_CITIES, server } from "../../test/handlers";
 import { createTestQueryClient, screen } from "../../test/render";
 import { movementsQueryOptions } from "./movements/movementsQuery";
 
 // Form scenarios are split across files (*.errors / *.validation / *.fields / *.scene): every
-// place pick waits for the autocomplete debounce, and in one file they would run strictly in sequence.
+// city pick waits for the autocomplete debounce, and in one file they would run strictly in sequence.
 
-const [MOSCOW, LONDON] = GEO_PLACES;
+const [MOSCOW, LONDON] = GEO_CITIES;
 
 describe("AddJourneyPage — отправка", () => {
-  it("создаёт поездку с id выбранных мест и ведёт в список поездок", async () => {
+  it("создаёт поездку с id выбранных городов и ведёт в список поездок", async () => {
     let body: unknown = null;
     server.use(
       http.post("/v1/journeys/", async ({ request }) => {
@@ -27,8 +27,8 @@ describe("AddJourneyPage — отправка", () => {
 
     expect(await screen.findByText("journeys-landing")).toBeInTheDocument();
     expect(body).toEqual({
-      originPlaceId: MOSCOW.placeId,
-      destinationPlaceId: LONDON.placeId,
+      originCityId: MOSCOW.cityId,
+      destinationCityId: LONDON.cityId,
       transportType: "air",
       traveledYear: 2020,
     });
@@ -42,7 +42,7 @@ describe("AddJourneyPage — отправка", () => {
     const filteredMovementsKey = movementsQueryOptions(["air"]).queryKey;
     const noMovements = { firstYear: null, lastYear: null, connections: [] };
     queryClient.setQueryData(getJourneysMapQueryKey(), { countries: [] });
-    queryClient.setQueryData(getJourneysGlobeQueryKey(), { places: [] });
+    queryClient.setQueryData(getJourneysGlobeQueryKey(), { cities: [] });
     queryClient.setQueryData(movementsQueryOptions().queryKey, noMovements);
     queryClient.setQueryData(filteredMovementsKey, noMovements);
     const { user } = renderAddJourney(queryClient);
@@ -78,8 +78,8 @@ describe("AddJourneyPage — отправка", () => {
     );
     const { user } = renderAddJourney();
 
-    await pickPlace({ user, label: "From", query: "Mos", option: /Moscow/iu });
-    await pickPlace({ user, label: "To", query: "Lon", option: /London/iu });
+    await pickCity({ user, label: "From", query: "Mos", option: /Moscow/iu });
+    await pickCity({ user, label: "To", query: "Lon", option: /London/iu });
 
     await user.click(screen.getByRole("button", { name: "Swap origin and destination" }));
 
@@ -92,6 +92,6 @@ describe("AddJourneyPage — отправка", () => {
     await user.click(screen.getByRole("button", { name: "Add journey" }));
 
     expect(await screen.findByText("journeys-landing")).toBeInTheDocument();
-    expect(body).toMatchObject({ originPlaceId: LONDON.placeId, destinationPlaceId: MOSCOW.placeId });
+    expect(body).toMatchObject({ originCityId: LONDON.cityId, destinationCityId: MOSCOW.cityId });
   });
 });

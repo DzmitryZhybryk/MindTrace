@@ -1,10 +1,10 @@
 # Domains: keeping them separable
 
 ## No foreign keys between domains
-- A column that points into another domain (`journeys.user_id`, the place ids from geo) is a plain
+- A column that points into another domain (`journeys.user_id`, the city ids from geo) is a plain
   uuid. Foreign keys stay inside one domain (auth → `user_credentials`).
 - The receiving domain checks a foreign id through the other domain's client before writing it
-  (`journeys.unknown_place`).
+  (`journeys.unknown_city`).
 - Why: every domain must be extractable into its own service and database without a redesign.
 - Rejected: foreign keys across domains — they tie two domains' tables to one database.
 - Source: journeys design; auth and users already followed it

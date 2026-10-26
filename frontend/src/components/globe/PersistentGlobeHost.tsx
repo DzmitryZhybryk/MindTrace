@@ -3,14 +3,14 @@ import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties } from
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router";
 
-import { placeLabel, usePlaceNames } from "../../api/placeNames";
+import { cityLabel, useCityNames } from "../../api/cityNames";
 import { getJourneysGlobeOptions } from "../../api/sdk";
 import { useAuth } from "../../auth/useAuth";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { prefersReducedMotion } from "../reducedMotion";
 import type { GlobePov } from "./GlobeCanvas";
 import { useGlobeScene, type GlobeSlot } from "./globeScene";
-import { CAMERA_MAX_ALTITUDE, isRealPlace, ROUTE_FADE_MS, routeCameraPov, type GlobeRoute } from "./route";
+import { CAMERA_MAX_ALTITUDE, isRealCity, ROUTE_FADE_MS, routeCameraPov, type GlobeRoute } from "./route";
 import { ROUTE_ARCS, ROUTE_CITIES, type GlobeCity } from "./routes";
 import { citiesFromJourneysGlobe, type UserCityPoint } from "./userCities";
 import "./persistent-globe.css";
@@ -60,19 +60,19 @@ interface GlobeView {
  * Picks the face, rotation mode, interactivity and visibility for the current path.
  *
  * `/journeys/add` with a published slot is the `journeyAdd` face (planet in the form column,
- * hand-rotatable). While no place is picked in the form it spins as on the dashboard; with the
+ * hand-rotatable). While no city is picked in the form it spins as on the dashboard; with the
  * first city it stops: the camera frames the route and spinning would carry it out of frame.
  * Without a slot (narrow screen: column hidden) and on other `/journeys*` routes (2D `WorldMap`)
  * the globe is hidden. On auth forms (login/signup) the planet rests as a calm background;
  * landing and dashboard spin. Drag rotation is on the dashboard and journey form: on other faces
  * the globe is purely decorative and the layer keeps `pointer-events: none` (see persistent-globe.css).
  */
-function viewForPath(pathname: string, hasSlot: boolean, hasRoutePlace: boolean): GlobeView {
+function viewForPath(pathname: string, hasSlot: boolean, hasRouteCity: boolean): GlobeView {
   if (pathname.startsWith("/journeys/add") && hasSlot) {
     return {
       screen: "journeyAdd",
       pov: SCREEN_POV.journeyAdd,
-      autoRotate: !hasRoutePlace,
+      autoRotate: !hasRouteCity,
       interactive: true,
       visible: true,
     };
@@ -133,8 +133,8 @@ export function PersistentGlobeHost() {
   const { pathname } = useLocation();
   const { isAuthenticated } = useAuth();
   const { route, slot } = useGlobeScene();
-  const hasRoutePlace = isRealPlace(route?.origin ?? null) || isRealPlace(route?.destination ?? null);
-  const view = viewForPath(pathname, slot !== null, hasRoutePlace);
+  const hasRouteCity = isRealCity(route?.origin ?? null) || isRealCity(route?.destination ?? null);
+  const view = viewForPath(pathname, slot !== null, hasRouteCity);
   const isJourneyAdd = view.screen === "journeyAdd";
   // On the form face the camera frames the route; GlobeCanvas compares pov by fields, not by reference.
   const pov = isJourneyAdd ? routeCameraPov(route) : view.pov;
@@ -182,11 +182,11 @@ export function PersistentGlobeHost() {
   // City names use the same request and cache as the 2D map. A city whose name is still loading
   // or failed to arrive is a dot without a label; a city geo does not know is labelled as unknown.
   const { t } = useTranslation("common");
-  const unknownLabel = t("map.unknownPlace");
-  const nameOf = usePlaceNames(userCityPoints.map((city) => city.id));
+  const unknownLabel = t("map.unknownCity");
+  const nameOf = useCityNames(userCityPoints.map((city) => city.id));
   const userCities = useMemo(() => {
     const cities: readonly GlobeCity[] = userCityPoints.map((city) => ({
-      name: placeLabel(nameOf(city.id), unknownLabel),
+      name: cityLabel(nameOf(city.id), unknownLabel),
       lat: city.lat,
       lng: city.lng,
     }));

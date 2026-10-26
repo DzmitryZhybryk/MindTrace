@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { MapPoint } from "../../../api/sdk";
 import { projectToScreen } from "../../../components/worldProjection";
 import { ArrowMarker } from "./ArrowMarker";
-import { placeLabels } from "./labelPlacement";
+import { layOutCityLabels } from "./labelPlacement";
 import { piecePath, splitEdgeFade, type ArcPieces } from "./movementGeometry";
 
 /** A from -> to route with its arc already projected. */
@@ -23,8 +23,8 @@ interface MovementConnectionsProps {
    * without this correction they would grow with the map when zoomed in.
    */
   unitScale: number;
-  /** Place label by id; `undefined` means the name is still loading, no label. */
-  labelOf: (placeId: string) => string | undefined;
+  /** City label by id; `undefined` means the name is still loading, no label. */
+  labelOf: (cityId: string) => string | undefined;
 }
 
 // Sizes in canvas units when the whole map is visible.
@@ -41,33 +41,33 @@ const EDGE_FADE_LENGTH = 40;
 const ARROW_MARKER_ID = "movement-arrow";
 
 /**
- * Movements map layer over `WorldMap`: a dot with a name for each place and an arc with an arrow
+ * Movements map layer over `WorldMap`: a dot with a name for each city and an arc with an arrow
  * for each route. Trips there and back share one arc, so arrows appear at both ends.
  */
 export function MovementConnections({ connections, unitScale, labelOf }: MovementConnectionsProps) {
-  const placeDots = useMemo(() => {
-    const places = new Map<string, { place: MapPoint; routeCount: number }>();
+  const cityDots = useMemo(() => {
+    const cities = new Map<string, { city: MapPoint; routeCount: number }>();
     for (const connection of connections) {
-      for (const place of [connection.origin, connection.destination]) {
-        const seen = places.get(place.placeId);
-        places.set(place.placeId, { place, routeCount: (seen?.routeCount ?? 0) + 1 });
+      for (const city of [connection.origin, connection.destination]) {
+        const seen = cities.get(city.cityId);
+        cities.set(city.cityId, { city, routeCount: (seen?.routeCount ?? 0) + 1 });
       }
     }
 
-    return [...places.values()].map(({ place, routeCount }) => {
-      const [cx, cy] = projectToScreen(place.longitude, place.latitude);
-      return { key: place.placeId, cx, cy, routeCount };
+    return [...cities.values()].map(({ city, routeCount }) => {
+      const [cx, cy] = projectToScreen(city.longitude, city.latitude);
+      return { key: city.cityId, cx, cy, routeCount };
     });
   }, [connections]);
 
   // Labels keep a constant on-screen size, so the layout is recomputed with the zoom.
   const labels = useMemo(() => {
-    const labelledPlaces = placeDots.flatMap((dot) => {
+    const labelledCities = cityDots.flatMap((dot) => {
       const label = labelOf(dot.key);
-      return label ? [{ placeId: dot.key, x: dot.cx, y: dot.cy, label, routeCount: dot.routeCount }] : [];
+      return label ? [{ cityId: dot.key, x: dot.cx, y: dot.cy, label, routeCount: dot.routeCount }] : [];
     });
-    return placeLabels(
-      labelledPlaces,
+    return layOutCityLabels(
+      labelledCities,
       connections.map((connection) => connection.arc),
       {
         fontSize: LABEL_FONT_SIZE * unitScale,
@@ -76,7 +76,7 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
         clearance: LABEL_CLEARANCE * unitScale,
       },
     );
-  }, [placeDots, connections, labelOf, unitScale]);
+  }, [cityDots, connections, labelOf, unitScale]);
 
   const arrowSize = ARROW_SIZE * unitScale;
 
@@ -87,7 +87,7 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
       </defs>
       {/* Dots under the lines: the arrow tip lands on the destination dot instead of hiding under it. */}
       <g>
-        {placeDots.map((dot) => (
+        {cityDots.map((dot) => (
           <circle
             key={dot.key}
             className="movement-dot"
@@ -183,7 +183,7 @@ export function MovementConnections({ connections, unitScale, labelOf }: Movemen
       <g>
         {labels.map((label) => (
           <text
-            key={label.placeId}
+            key={label.cityId}
             className="movement-label"
             x={label.x}
             y={label.y}

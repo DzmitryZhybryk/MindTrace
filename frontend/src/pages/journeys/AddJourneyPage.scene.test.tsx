@@ -3,7 +3,7 @@ import { Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useGlobeScene } from "../../components/globe/globeScene";
-import { pickOption, pickPlace, submitMoscowToLondon } from "../../test/addJourney";
+import { pickCity, pickOption, submitMoscowToLondon } from "../../test/addJourney";
 import { server } from "../../test/handlers";
 import { renderWithProviders, screen } from "../../test/render";
 import { AddJourneyPage } from "./AddJourneyPage";
@@ -51,8 +51,8 @@ describe("AddJourneyPage — сцена глобуса", () => {
 
     expect(scene).toHaveAttribute("data-origin", "none");
 
-    await pickPlace({ user, label: "From", query: "Mos", option: /Moscow/iu });
-    await pickPlace({ user, label: "To", query: "Lon", option: /London/iu });
+    await pickCity({ user, label: "From", query: "Mos", option: /Moscow/iu });
+    await pickCity({ user, label: "To", query: "Lon", option: /London/iu });
     await pickOption({ user, trigger: screen.getByPlaceholderText("Choose transport"), option: "Air" });
 
     expect(scene).toHaveAttribute("data-origin", "Moscow");

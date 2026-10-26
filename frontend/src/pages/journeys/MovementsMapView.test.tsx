@@ -3,7 +3,7 @@ import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { WORLD_VIEW_BOX } from "../../components/worldProjection";
-import { GEO_PLACES, MOVEMENTS_RESPONSE, server } from "../../test/handlers";
+import { GEO_CITIES, MOVEMENTS_RESPONSE, server } from "../../test/handlers";
 import { stubScreenLayout } from "../../test/layout";
 import { renderJourneysTabs } from "../../test/journeysMap";
 import { act, screen, waitFor } from "../../test/render";
@@ -15,7 +15,7 @@ const DOT = ".movement-dot";
 const ROUTE = ".movement-route";
 const HIT_ZONE = ".movement-route__hit";
 
-const UNKNOWN_PLACE_ID = "99999999-9999-4999-8999-999999999999";
+const UNKNOWN_CITY_ID = "99999999-9999-4999-8999-999999999999";
 
 /** A tab under the section's shared map, which also hands it the panel ref. */
 function renderMovements() {
@@ -47,8 +47,8 @@ function stubTokyoToLosAngeles(): void {
         lastYear: 2020,
         connections: [
           {
-            origin: { placeId: GEO_PLACES[0].placeId, latitude: 35.69, longitude: 139.69 },
-            destination: { placeId: GEO_PLACES[1].placeId, latitude: 34.05, longitude: -118.24 },
+            origin: { cityId: GEO_CITIES[0].cityId, latitude: 35.69, longitude: 139.69 },
+            destination: { cityId: GEO_CITIES[1].cityId, latitude: 34.05, longitude: -118.24 },
             years: [2020],
           },
         ],
@@ -69,7 +69,7 @@ describe("MovementsMapView", () => {
     vi.restoreAllMocks();
   });
 
-  it("рисует дугу со стрелкой на каждый маршрут и точку на каждое место", async () => {
+  it("рисует дугу со стрелкой на каждый маршрут и точку на каждый город", async () => {
     const { container } = renderMovements();
 
     expect(screen.getByText("Loading your map…")).toBeInTheDocument();
@@ -127,18 +127,18 @@ describe("MovementsMapView", () => {
     expect(route.querySelectorAll(ARC)).toHaveLength(4);
   });
 
-  it("подписывает места их названиями и указывает источник названий", async () => {
+  it("подписывает города их названиями и указывает источник названий", async () => {
     renderMovements();
 
-    for (const { name } of GEO_PLACES) {
+    for (const { name } of GEO_CITIES) {
       expect(await screen.findByText(name)).toBeInTheDocument();
     }
 
     expect(screen.getByRole("link", { name: "GeoNames" })).toHaveAttribute("href", "https://www.geonames.org");
   });
 
-  it("место, которого нет в справочнике, подписано «Unknown place»", async () => {
-    const [moscow] = GEO_PLACES;
+  it("город, которого нет в справочнике, подписан «Unknown city»", async () => {
+    const [moscow] = GEO_CITIES;
     server.use(
       http.get("/v1/journeys/movements/", () =>
         HttpResponse.json({
@@ -146,8 +146,8 @@ describe("MovementsMapView", () => {
           lastYear: 2020,
           connections: [
             {
-              origin: { placeId: moscow.placeId, latitude: moscow.latitude, longitude: moscow.longitude },
-              destination: { placeId: UNKNOWN_PLACE_ID, latitude: 40, longitude: 20 },
+              origin: { cityId: moscow.cityId, latitude: moscow.latitude, longitude: moscow.longitude },
+              destination: { cityId: UNKNOWN_CITY_ID, latitude: 40, longitude: 20 },
               years: [2020],
             },
           ],
@@ -157,7 +157,7 @@ describe("MovementsMapView", () => {
 
     renderMovements();
 
-    expect(await screen.findByText("Unknown place")).toBeInTheDocument();
+    expect(await screen.findByText("Unknown city")).toBeInTheDocument();
     expect(screen.getByText("Moscow")).toBeInTheDocument();
   });
 

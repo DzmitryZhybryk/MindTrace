@@ -7,46 +7,46 @@ from app.geo.domain.enums import Language
 from app.shared.schemas.base import CamelModel
 
 
-class PlaceSearchItem(CamelModel):
-    """Один вариант в подсказках поиска; по ``placeId`` на место потом можно ссылаться."""
+class CitySearchItem(CamelModel):
+    """Один вариант в подсказках поиска; по ``cityId`` на город потом можно ссылаться."""
 
     model_config = ConfigDict(frozen=True)
 
-    place_id: UUID
-    name: Annotated[str, Field(description="Имя места, резолвнутое под язык запроса (параметр language).")]
-    country_code: str | None
+    city_id: UUID
+    name: Annotated[str, Field(description="Имя города, резолвнутое под язык запроса (параметр language).")]
+    country_code: str
     latitude: float
     longitude: float
     population: int | None
 
 
-class PlaceSearchResponse(CamelModel):
+class CitySearchResponse(CamelModel):
     """Ответ автокомплита — упорядоченная выдача кандидатов (по убыванию населения)."""
 
     model_config = ConfigDict(frozen=True)
 
-    items: tuple[PlaceSearchItem, ...]
+    items: tuple[CitySearchItem, ...]
 
 
-class ResolvePlacesRequest(CamelModel):
-    """Запрос названий мест по их id на нужном языке."""
+class ResolveCitiesRequest(CamelModel):
+    """Запрос названий городов по их id на нужном языке."""
 
-    place_ids: Annotated[list[UUID], Field(min_length=1, max_length=1000)]
+    city_ids: Annotated[list[UUID], Field(min_length=1, max_length=1000)]
     language: Language
 
 
-class PlaceName(CamelModel):
-    """Название места на языке запроса."""
+class CityName(CamelModel):
+    """Название города на языке запроса."""
 
     model_config = ConfigDict(frozen=True)
 
-    place_id: UUID
+    city_id: UUID
     name: str
 
 
-class ResolvePlacesResponse(CamelModel):
-    """Названия найденных мест; id, которых нет в газеттире, в ответ не попадают."""
+class ResolveCitiesResponse(CamelModel):
+    """Названия найденных городов; id, которых нет в газеттире, в ответ не попадают."""
 
     model_config = ConfigDict(frozen=True)
 
-    items: tuple[PlaceName, ...]
+    items: tuple[CityName, ...]

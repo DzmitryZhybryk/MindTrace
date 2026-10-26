@@ -3,30 +3,30 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
-__all__ = ["PlaceLocationResponse", "PlacesClientPort"]
+__all__ = ["CitiesClientPort", "CityLocationResponse"]
 
 
 @dataclass(frozen=True, slots=True)
-class PlaceLocationResponse:
+class CityLocationResponse:
     """
-    Что journeys получает от geo о месте: страну и координаты.
+    Что journeys получает от geo о городе: страну и координаты.
 
     Свой тип даже при совпадении полей с результатом geo: фиксирует набор полей, который нужен
     journeys, и не пускает изменения схемы geo в код journeys.
     """
 
-    place_id: UUID
-    country_code: str | None
+    city_id: UUID
+    country_code: str
     latitude: float
     longitude: float
 
 
-class PlacesClientPort(Protocol):
-    """Исходящий вызов в geo, справочник мест."""
+class CitiesClientPort(Protocol):
+    """Исходящий вызов в geo, справочник городов."""
 
-    async def find_place_locations(self, *, place_ids: Collection[UUID]) -> tuple[PlaceLocationResponse, ...]:
+    async def find_city_locations(self, *, city_ids: Collection[UUID]) -> tuple[CityLocationResponse, ...]:
         """
-        Находит страну и координаты мест по id: поездка хранит их из справочника, а не те, что
+        Находит страну и координаты городов по id: поездка хранит их из справочника, а не те, что
         прислал клиент.
 
         Scenarios:
@@ -35,9 +35,9 @@ class PlacesClientPort(Protocol):
             - расстояние нового маршрута при правке поездки
 
         Args:
-            place_ids: Id мест
+            city_ids: Id городов
 
         Returns:
-            Найденные места в произвольном порядке; несуществующих id в ответе нет
+            Найденные города в произвольном порядке; несуществующих id в ответе нет
         """
         ...

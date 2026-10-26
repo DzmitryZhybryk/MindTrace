@@ -1,8 +1,8 @@
 /*
- * Adapter from the user's places to app-global globe points.
+ * Adapter from the user's cities to app-global globe points.
  *
  * The public (anonymous) zone feeds the globe curated `ROUTE_CITIES`; the authorized one feeds
- * real visited places from journeys. TanStack Query owns the cache, request dedup and reset on
+ * real visited cities from journeys. TanStack Query owns the cache, request dedup and reset on
  * logout (`getJourneysGlobeOptions` + cache clearing in `AuthProvider`); only the pure
  * transformation stays here.
  */
@@ -16,13 +16,13 @@ export interface UserCityPoint {
 }
 
 /**
- * Converts places from the globe response into city points (id and coordinates). The backend
- * returns each place once.
+ * Converts cities from the globe response into city points (id and coordinates). The backend
+ * returns each city once.
  *
  * Query uses the function reference as the memoization key of `select`, so it is module-level:
  * an inline arrow would return a new array every render, and `react-globe.gl` compares
  * `htmlElementsData` by identity and would rebuild the whole label layer.
  */
 export function citiesFromJourneysGlobe(response: JourneysGlobeResponse): readonly UserCityPoint[] {
-  return response.places.map((place) => ({ id: place.placeId, lat: place.latitude, lng: place.longitude }));
+  return response.cities.map((city) => ({ id: city.cityId, lat: city.latitude, lng: city.longitude }));
 }

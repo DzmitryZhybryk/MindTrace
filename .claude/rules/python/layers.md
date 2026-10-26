@@ -106,7 +106,7 @@ leaving that block rolls back whatever the caller's block still has pending.
 A query that returns a projection for a screen rather than an entity (aggregated or grouped
 rows the database computed) returns a **read model**: a frozen dataclass in the port's own
 module under `application/ports/`, declared next to the Protocol that returns it and built by
-`infra`. Name it for what it is, with no suffix (`VisitedPlace`), and compose it from domain
+`infra`. Name it for what it is, with no suffix (`VisitedCity`), and compose it from domain
 value objects where one fits.
 
 If a row would equal an item of the use case's `*Result` field for field, the repository

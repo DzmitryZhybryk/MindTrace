@@ -5,27 +5,27 @@ from app.shared.utils.great_circle import great_circle_km
 
 class GeoPoint:
     """
-    Точка маршрута поездки — место из справочника geo.
+    Точка маршрута поездки — город из справочника geo.
 
-    Название места здесь не хранится: фронт запрашивает его у geo на нужном языке.
+    Название города здесь не хранится: фронт запрашивает его у geo на нужном языке.
     """
 
     def __init__(
         self,
         *,
-        place_id: UUID,
+        city_id: UUID,
         country_code: str,
         latitude: float,
         longitude: float,
     ) -> None:
-        self._place_id = place_id
+        self._city_id = city_id
         self._country_code = country_code
         self._latitude = latitude
         self._longitude = longitude
 
     @property
-    def place_id(self) -> UUID:
-        return self._place_id
+    def city_id(self) -> UUID:
+        return self._city_id
 
     @property
     def country_code(self) -> str:

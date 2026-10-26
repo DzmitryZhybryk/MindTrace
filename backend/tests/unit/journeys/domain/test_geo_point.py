@@ -2,13 +2,13 @@
 
 import pytest
 
-from tests.builders import LONDON_PLACE_ID, make_geo_point
+from tests.builders import LONDON_CITY_ID, make_geo_point
 
 
 def test_distance_km_to_moscow_to_london_is_great_circle_distance() -> None:
     """distance_km_to: Москва → Лондон по большой окружности ≈ 2500 км."""
     moscow = make_geo_point()
-    london = make_geo_point(place_id=LONDON_PLACE_ID, country_code="GB", latitude=51.5, longitude=-0.12)
+    london = make_geo_point(city_id=LONDON_CITY_ID, country_code="GB", latitude=51.5, longitude=-0.12)
 
     assert moscow.distance_km_to(destination=london) == pytest.approx(2500, abs=60)
 

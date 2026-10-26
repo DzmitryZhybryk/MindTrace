@@ -59,8 +59,8 @@ async def create_journey(
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> Response:
     command = CreateJourneyCommand(
-        origin_place_id=body.origin_place_id,
-        destination_place_id=body.destination_place_id,
+        origin_city_id=body.origin_city_id,
+        destination_city_id=body.destination_city_id,
         transport_type=body.transport_type,
         traveled_year=body.traveled_year,
     )
@@ -81,8 +81,8 @@ async def update_journey(
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> Response:
     command = UpdateJourneyCommand(
-        origin_place_id=body.origin_place_id,
-        destination_place_id=body.destination_place_id,
+        origin_city_id=body.origin_city_id,
+        destination_city_id=body.destination_city_id,
         transport_type=body.transport_type,
         traveled_year=body.traveled_year,
     )
@@ -134,8 +134,8 @@ async def estimate_journey_distance(
     journey_service: Annotated[JourneyService, Depends(journey_service_dependency)],
 ) -> JourneyDistanceResponse:
     command = EstimateJourneyDistanceCommand(
-        origin_place_id=query.origin_place_id,
-        destination_place_id=query.destination_place_id,
+        origin_city_id=query.origin_city_id,
+        destination_city_id=query.destination_city_id,
     )
     result = await journey_service.estimate_journey_distance(command=command)
     return JourneyDistanceResponse.model_validate(result, from_attributes=True)

@@ -6,7 +6,7 @@ from app.shared.exceptions.schemas import ErrorResponse
 from app.shared.infra.jwt import InvalidAccessTokenError
 from app.shared.types import DictStrAny
 
-SEARCH_PLACES_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+SEARCH_CITIES_RESPONSES: Final[dict[int | str, DictStrAny]] = {
     401: {
         "description": "Невалидный или истёкший access-токен",
         "model": ErrorResponse,
@@ -27,7 +27,7 @@ SEARCH_PLACES_RESPONSES: Final[dict[int | str, DictStrAny]] = {
     },
 }
 
-RESOLVE_PLACES_RESPONSES: Final[dict[int | str, DictStrAny]] = {
+RESOLVE_CITIES_RESPONSES: Final[dict[int | str, DictStrAny]] = {
     401: {
         "description": "Невалидный или истёкший access-токен",
         "model": ErrorResponse,

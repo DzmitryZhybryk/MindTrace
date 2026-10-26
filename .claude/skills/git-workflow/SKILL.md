@@ -33,7 +33,7 @@ Frontend and backend are versioned **separately**; never bump one artifact for a
 |---|---|---|---|
 | Backend | `backend/pyproject.toml` (+ `backend/uv.lock` when dependencies changed) | `backend-vX.Y.Z` | real SemVer over the HTTP API contract and error `code`s |
 | Frontend | `frontend/package.json` | `frontend-vX.Y.Z` | SPA release marker, SemVer is formal |
-| Place datasets | `backend/app/geo/infra/datasets/manifest.toml` | release asset `geo-data-vN` | data, not code: new dataset = new tag + manifest edit |
+| Gazetteer datasets | `backend/app/geo/infra/datasets/manifest.toml` | release asset `geo-data-vN` | data, not code: new dataset = new tag + manifest edit |
 
 - A release tag goes on the merge commit of the `dev → main` PR: `git tag <tag> origin/main` from
   any branch, then push the tags. Tags do not trigger CD — only a push to `main` does.

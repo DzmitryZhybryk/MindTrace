@@ -1,6 +1,6 @@
 ---
 name: dev-database
-description: Use when working with the MindTrace dev database - applying, creating or rolling back Alembic migrations, loading the places dataset, recreating the dev DB from scratch, inspecting schema or running EXPLAIN against it, or previewing migration SQL for locks.
+description: Use when working with the MindTrace dev database - applying, creating or rolling back Alembic migrations, loading the gazetteer datasets, recreating the dev DB from scratch, inspecting schema or running EXPLAIN against it, or previewing migration SQL for locks.
 ---
 
 # Dev database operations
@@ -45,7 +45,7 @@ The command only checks that `procrastinate_jobs` exists, not which version of t
 there. After bumping procrastinate, look in the installed package's `procrastinate/sql/migrations/`
 for files newer than the previous version: apply them by hand, or recreate the dev DB.
 
-## Places dataset
+## Gazetteer datasets
 
 `make geo-load` (from `backend/`) loads the datasets listed in `manifest.toml` into the dev DB and
 skips what is already loaded. The dataset file is taken from `backend/.geo-cache` when already
