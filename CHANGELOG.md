@@ -22,6 +22,11 @@ CHANGELOG остаётся один. Новые записи группирую�
 - Init-миграция изменена на месте — дев-базу нужно пересоздать (`make stop`, удалить volume `mindtrace_pg_data`, `make run`, затем `make migrate-upgrade` и `make geo-load`); без этого `geo-load` падает на отсутствующей таблице `geo_places`
 - `dnspython` 2.8.0 → 2.9.0 (транзитивно через `email-validator`): закрыт GHSA-45c3-73f7-pv4m — разбор DNS-ответа мог съедать CPU
 
+### Project
+
+- `docs/tech-radar.md` удалён: кандидаты на переход и реестр отвергнутых скиллов Claude Code больше не ведутся в репозитории
+- `CLAUDE.md`: раскладка `.plan/` больше не перечисляется — вместо неё ссылка на skill `backlog`, который её описывает; skill добавлен в список глобальных
+
 ## 2026-10-26
 
 ### Backend 6.0.0
