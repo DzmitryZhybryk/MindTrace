@@ -2,7 +2,7 @@ from typing import Protocol
 from uuid import UUID
 
 from app.auth.domain.entities import ChallengeEntity
-from app.auth.domain.enums import ChallengeType
+from app.auth.domain.enums import ChallengeTypeEnum
 
 __all__ = ["ChallengeRepositoryPort"]
 
@@ -26,7 +26,7 @@ class ChallengeRepositoryPort(Protocol):
         self,
         *,
         user_id: UUID,
-        challenge_type: ChallengeType,
+        challenge_type: ChallengeTypeEnum,
     ) -> ChallengeEntity | None:
         """
         Находит активный challenge пользователя заданного типа и блокирует строку до конца транзакции.

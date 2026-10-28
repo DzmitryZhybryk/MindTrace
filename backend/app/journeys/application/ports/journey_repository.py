@@ -4,7 +4,7 @@ from typing import Protocol
 from uuid import UUID
 
 from app.journeys.domain.entities import JourneyEntity
-from app.journeys.domain.enums import TransportType
+from app.journeys.domain.enums import TransportTypeEnum
 from app.journeys.domain.value_objects import GeoPoint
 from app.shared.fractional_index import SortKeyRepositoryPort
 from app.shared.pagination import CursorPage, PageQuery
@@ -37,7 +37,7 @@ class JourneyFilters:
 
     year_from: int | None
     year_to: int | None
-    transport_types: frozenset[TransportType] | None
+    transport_types: frozenset[TransportTypeEnum] | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,7 +151,7 @@ class JourneyRepositoryPort(SortKeyRepositoryPort[JourneyOrderScope], Protocol):
         self,
         *,
         user_id: UUID,
-        transport_types: Collection[TransportType] | None,
+        transport_types: Collection[TransportTypeEnum] | None,
     ) -> tuple[MovementConnection, ...]:
         """
         Возвращает маршруты поездок пользователя — по одному на пару «откуда → куда».

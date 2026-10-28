@@ -31,7 +31,7 @@ from app.journeys.exceptions import (
     JourneyNotFoundError,
     UnknownCityError,
 )
-from app.shared.fractional_index import MovePlacement, generate_key_between
+from app.shared.fractional_index import MovePlacementEnum, generate_key_between
 
 
 class JourneyService:
@@ -288,7 +288,7 @@ class JourneyService:
         return journey_entity
 
     async def _find_move_bounds(
-        self, *, scope: JourneyOrderScope, neighbor_sort_key: str, placement: MovePlacement
+        self, *, scope: JourneyOrderScope, neighbor_sort_key: str, placement: MovePlacementEnum
     ) -> tuple[str | None, str | None]:
         """
         Находит ключи, между которыми встаёт переносимая поездка: ключ соседа и ближайший к нему с нужной стороны.
@@ -304,7 +304,7 @@ class JourneyService:
         Returns:
             Ключи до и после нового места; ``None`` — с этой стороны в году поездок нет
         """
-        if placement is MovePlacement.AFTER:
+        if placement is MovePlacementEnum.AFTER:
             next_sort_key = await self._uow.journey_repository.find_next_sort_key(
                 scope=scope,
                 after_sort_key=neighbor_sort_key,

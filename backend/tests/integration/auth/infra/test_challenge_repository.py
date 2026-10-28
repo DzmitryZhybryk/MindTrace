@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.auth.domain.enums import ChallengeType
+from app.auth.domain.enums import ChallengeTypeEnum
 from app.auth.infra.models import Challenge
 from app.auth.infra.repositories import ChallengeRepository
 from tests.builders import make_challenge
@@ -33,7 +33,7 @@ async def test_insert_then_find_active_for_update_roundtrip(
     await seed_user_credentials(user_id=user_id, email="ch-roundtrip@example.com", username="ch_roundtrip")
     challenge_entity = make_challenge(
         user_id=user_id,
-        challenge_type=ChallengeType.EMAIL_VERIFICATION,
+        challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
         code_hash="roundtrip-code",
         expires_at=_EXPIRES_AT,
     )
@@ -44,13 +44,13 @@ async def test_insert_then_find_active_for_update_roundtrip(
     async with session_factory() as reader:
         found = await ChallengeRepository(session=reader).find_active_challenge_for_update(
             user_id=user_id,
-            challenge_type=ChallengeType.EMAIL_VERIFICATION,
+            challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
         )
 
     assert found is not None
     assert found.challenge_id == challenge_entity.challenge_id
     assert found.user_id == user_id
-    assert found.challenge_type is ChallengeType.EMAIL_VERIFICATION
+    assert found.challenge_type is ChallengeTypeEnum.EMAIL_VERIFICATION
     assert found.code_hash == "roundtrip-code"
     assert found.attempts == 0
 
@@ -64,7 +64,7 @@ async def test_find_active_excludes_used_challenge(
     await seed_user_credentials(user_id=user_id, email="ch-used@example.com", username="ch_used")
     used_challenge = make_challenge(
         user_id=user_id,
-        challenge_type=ChallengeType.EMAIL_VERIFICATION,
+        challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
         expires_at=_EXPIRES_AT,
         used_at=_USED_AT,
     )
@@ -75,7 +75,7 @@ async def test_find_active_excludes_used_challenge(
     async with session_factory() as reader:
         found = await ChallengeRepository(session=reader).find_active_challenge_for_update(
             user_id=user_id,
-            challenge_type=ChallengeType.EMAIL_VERIFICATION,
+            challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
         )
 
     assert found is None
@@ -92,7 +92,7 @@ async def test_update_challenge_persists_attempts(
     challenge_entity = make_challenge(
         challenge_id=challenge_id,
         user_id=user_id,
-        challenge_type=ChallengeType.EMAIL_VERIFICATION,
+        challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
         expires_at=_EXPIRES_AT,
         attempts=0,
     )
@@ -103,7 +103,7 @@ async def test_update_challenge_persists_attempts(
     incremented = make_challenge(
         challenge_id=challenge_id,
         user_id=user_id,
-        challenge_type=ChallengeType.EMAIL_VERIFICATION,
+        challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
         expires_at=_EXPIRES_AT,
         attempts=3,
     )
@@ -114,7 +114,7 @@ async def test_update_challenge_persists_attempts(
     async with session_factory() as reader:
         found = await ChallengeRepository(session=reader).find_active_challenge_for_update(
             user_id=user_id,
-            challenge_type=ChallengeType.EMAIL_VERIFICATION,
+            challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
         )
 
     assert found is not None
@@ -128,12 +128,14 @@ async def test_second_active_same_type_raises_integrity_error(
     """Партиальный unique-индекс не даёт двух активных challenge'ей одного типа на пользователя."""
     user_id = uuid4()
     await seed_user_credentials(user_id=user_id, email="ch-unique@example.com", username="ch_unique")
-    first = make_challenge(user_id=user_id, challenge_type=ChallengeType.EMAIL_VERIFICATION, expires_at=_EXPIRES_AT)
+    first = make_challenge(user_id=user_id, challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION, expires_at=_EXPIRES_AT)
     async with session_factory() as writer:
         await ChallengeRepository(session=writer).insert_challenge(challenge_entity=first)
         await writer.commit()
 
-    second = make_challenge(user_id=user_id, challenge_type=ChallengeType.EMAIL_VERIFICATION, expires_at=_EXPIRES_AT)
+    second = make_challenge(
+        user_id=user_id, challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION, expires_at=_EXPIRES_AT
+    )
     async with session_factory() as writer:
         await ChallengeRepository(session=writer).insert_challenge(challenge_entity=second)
         with pytest.raises(IntegrityError):
@@ -149,7 +151,7 @@ async def test_find_active_for_update_locks_row(
     await seed_user_credentials(user_id=user_id, email="ch-lock@example.com", username="ch_lock")
     challenge_entity = make_challenge(
         user_id=user_id,
-        challenge_type=ChallengeType.EMAIL_VERIFICATION,
+        challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
         expires_at=_EXPIRES_AT,
     )
     async with session_factory() as writer:
@@ -160,7 +162,7 @@ async def test_find_active_for_update_locks_row(
         # holder берёт row-лок через FOR UPDATE и держит транзакцию открытой
         locked = await ChallengeRepository(session=holder).find_active_challenge_for_update(
             user_id=user_id,
-            challenge_type=ChallengeType.EMAIL_VERIFICATION,
+            challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
         )
         assert locked is not None
 
@@ -169,7 +171,7 @@ async def test_find_active_for_update_locks_row(
             sa.select(Challenge)
             .where(
                 Challenge.user_id == user_id,
-                Challenge.challenge_type == ChallengeType.EMAIL_VERIFICATION.value,
+                Challenge.challenge_type == ChallengeTypeEnum.EMAIL_VERIFICATION.value,
                 Challenge.used_at.is_(None),
             )
             .with_for_update(nowait=True)

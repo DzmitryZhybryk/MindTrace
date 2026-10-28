@@ -1,13 +1,13 @@
 import type { FormValidateInput, UseFormReturnType } from "@mantine/form";
 
 import { ApiError, errorCodeToken } from "../../api/errors";
-import type { CitySearchItem, TransportType } from "../../api/sdk";
+import type { CitySearchItem, TransportTypeEnum } from "../../api/sdk";
 
 /** Journey fields, shared by add and edit. */
 export type JourneyFormValues = {
   origin: CitySearchItem | null;
   destination: CitySearchItem | null;
-  transport: TransportType | null;
+  transport: TransportTypeEnum | null;
   year: string | null;
 };
 

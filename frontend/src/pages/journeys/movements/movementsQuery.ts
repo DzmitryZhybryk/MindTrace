@@ -1,4 +1,4 @@
-import { getMovementsMapOptions, zTransportType, type GetMovementsMapData, type TransportType } from "../../../api/sdk";
+import { getMovementsMapOptions, zTransportTypeEnum, type GetMovementsMapData, type TransportTypeEnum } from "../../../api/sdk";
 
 /**
  * Movements map query options: the only place where the transport filter becomes a key. There is
@@ -8,9 +8,9 @@ import { getMovementsMapOptions, zTransportType, type GetMovementsMapData, type 
  * selected" (or no set) equals "no filter". The response never goes stale by itself; adding a
  * journey invalidates it.
  */
-export function movementsQueryOptions(transportTypes?: readonly TransportType[]) {
+export function movementsQueryOptions(transportTypes?: readonly TransportTypeEnum[]) {
   const query: NonNullable<GetMovementsMapData["query"]> = {};
-  if (transportTypes && transportTypes.length < zTransportType.options.length) {
+  if (transportTypes && transportTypes.length < zTransportTypeEnum.options.length) {
     query.transportType = [...transportTypes].sort();
   }
 

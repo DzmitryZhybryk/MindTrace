@@ -40,7 +40,7 @@ background tasks, JWT, hashing, pagination, manual ordering, logging or an excep
 
 ## Exceptions
 
-Raise a subclass of the `exceptions/base.py` class for the failure's `ErrorCategory` (one per
+Raise a subclass of the `exceptions/base.py` class for the failure's `ErrorCategoryEnum` (one per
 category). An exception carries no HTTP status: category → status is decided only in
 `resolve_http_status` (`exceptions/mappings.py`). `code` is an identifier in the external API
 contract — the frontend maps it to text:

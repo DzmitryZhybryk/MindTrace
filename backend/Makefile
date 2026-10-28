@@ -122,27 +122,27 @@ migrate-create: ## Create a new migration (usage: make migrate-create msg="descr
 		exit 1; \
 	fi; \
 	echo "${GREEN}INFO :  ${AZURE}Creating migration: ${PURPLE}$$msg${RESET}"; \
-	docker exec -it mindtrace_app uv run alembic revision --autogenerate -m "$$msg"
+	docker exec mindtrace_app alembic revision --autogenerate -m "$$msg"
 
 migrate-upgrade: ## Apply all pending migrations and the procrastinate schema
 	@echo "${GREEN}INFO :  ${AZURE}Applying migrations${RESET}"
-	@docker exec -it mindtrace_app uv run alembic upgrade head
+	@docker exec mindtrace_app alembic upgrade head
 	@echo "${GREEN}INFO :  ${AZURE}Applying procrastinate schema${RESET}"
-	@docker exec -it mindtrace_app uv run python -m app.shared.infra.procrastinate
+	@docker exec mindtrace_app python -m app.shared.infra.procrastinate
 
 migrate-downgrade: ## Downgrade one migration, or to a revision (usage: make migrate-downgrade [rev=<revision>])
 	@REVISION="$${rev:--1}"; \
 	echo "${GREEN}INFO :  ${AZURE}Downgrading migration: ${PURPLE}$$REVISION${RESET}"; \
-	docker exec -it mindtrace_app uv run alembic downgrade "$$REVISION"
+	docker exec mindtrace_app alembic downgrade "$$REVISION"
 
 migrate-history: ## Show migration history
 	@echo "${GREEN}INFO :  ${AZURE}Migration history${RESET}"
-	@docker exec -it mindtrace_app uv run alembic history
+	@docker exec mindtrace_app alembic history
 
 migrate-current: ## Show current migration version
 	@echo "${GREEN}INFO :  ${AZURE}Current migration version${RESET}"
-	@docker exec -it mindtrace_app uv run alembic current
+	@docker exec mindtrace_app alembic current
 
 geo-load: ## Load missing gazetteer datasets (manifest.toml) into the dev DB; no-op when already loaded
 	@echo "${GREEN}INFO :  ${AZURE}Loading gazetteer datasets${RESET}"
-	@docker exec mindtrace_app uv run python -m app.geo.infra.datasets
+	@docker exec mindtrace_app python -m app.geo.infra.datasets

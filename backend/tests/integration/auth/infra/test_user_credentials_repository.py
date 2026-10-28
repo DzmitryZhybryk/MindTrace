@@ -12,7 +12,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.auth.domain.enums import UserRole
+from app.auth.domain.enums import UserRoleEnum
 from app.auth.infra.repositories import UserCredentialsRepository
 from tests.builders import make_user_credentials
 
@@ -41,7 +41,7 @@ async def test_insert_then_find_by_user_id_roundtrip(
     assert found.email == "uc-roundtrip@example.com"
     assert found.username == "uc_roundtrip"
     assert found.password.hash == user_credentials_entity.password.hash
-    assert found.role is UserRole.FREE
+    assert found.role is UserRoleEnum.FREE
     assert found.email_verified_at is None
 
 

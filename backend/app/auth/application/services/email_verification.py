@@ -5,7 +5,7 @@ from app.auth.application.ports.tasks import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.application.ports.unit_of_work import AuthUnitOfWorkPort
 from app.auth.application.schemas.commands import VerifyEmailCommand
 from app.auth.domain.entities import ChallengeEntity
-from app.auth.domain.enums import ChallengeType
+from app.auth.domain.enums import ChallengeTypeEnum
 from app.auth.exceptions import (
     AccountNotFoundError,
     ChallengeNotFoundError,
@@ -66,7 +66,7 @@ class EmailVerificationService:
 
             existing_challenge_entity = await self._uow.challenge_repository.find_active_challenge_for_update(
                 user_id=user_id,
-                challenge_type=ChallengeType.EMAIL_VERIFICATION,
+                challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
             )
             if existing_challenge_entity is not None:
                 existing_challenge_entity.ensure_resend_cooldown_passed(
@@ -78,7 +78,7 @@ class EmailVerificationService:
             code = ChallengeEntity.generate_code()
             new_challenge_entity = ChallengeEntity.create(
                 user_id=user_id,
-                challenge_type=ChallengeType.EMAIL_VERIFICATION,
+                challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
                 code_hash=self._salted_hasher.hash(secret=code),
                 ttl_minutes=self._config.ttl_minutes,
             )
@@ -128,7 +128,7 @@ class EmailVerificationService:
 
             challenge_entity = await self._uow.challenge_repository.find_active_challenge_for_update(
                 user_id=user_id,
-                challenge_type=ChallengeType.EMAIL_VERIFICATION,
+                challenge_type=ChallengeTypeEnum.EMAIL_VERIFICATION,
             )
             if challenge_entity is None:
                 raise ChallengeNotFoundError()

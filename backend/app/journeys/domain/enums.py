@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class TransportType(StrEnum):
+class TransportTypeEnum(StrEnum):
     """
     Среда передвижения в поездке (а не конкретный вид транспорта).
 

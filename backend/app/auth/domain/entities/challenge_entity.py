@@ -4,7 +4,7 @@ import string
 from typing import Final, Self
 from uuid import UUID, uuid4
 
-from app.auth.domain.enums import ChallengeType
+from app.auth.domain.enums import ChallengeTypeEnum
 from app.auth.exceptions import (
     ChallengeAttemptsExceededError,
     ChallengeExpiredError,
@@ -18,7 +18,7 @@ _VERIFICATION_CODE_LENGTH: Final[int] = 6
 class ChallengeEntity(TimestampedEntityMixin):
     """
     Challenge — одноразовый код, выдаваемый под конкретный сценарий
-    (см. ``ChallengeType``): подтверждение email, восстановление пароля и т.п.
+    (см. ``ChallengeTypeEnum``): подтверждение email, восстановление пароля и т.п.
 
     Термин ``challenge`` выбран сознательно, чтобы не путать с access/refresh
     токенами авторизации. Здесь речь о challenge-response верификации:
@@ -40,7 +40,7 @@ class ChallengeEntity(TimestampedEntityMixin):
         *,
         challenge_id: UUID,
         user_id: UUID,
-        challenge_type: ChallengeType,
+        challenge_type: ChallengeTypeEnum,
         code_hash: str,
         expires_at: dt.datetime,
         attempts: int = 0,
@@ -74,7 +74,7 @@ class ChallengeEntity(TimestampedEntityMixin):
         cls,
         *,
         user_id: UUID,
-        challenge_type: ChallengeType,
+        challenge_type: ChallengeTypeEnum,
         code_hash: str,
         ttl_minutes: int,
     ) -> Self:

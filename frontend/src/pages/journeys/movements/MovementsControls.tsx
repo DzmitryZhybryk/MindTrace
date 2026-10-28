@@ -2,7 +2,7 @@ import { Chip, Group, Text, UnstyledButton, VisuallyHidden } from "@mantine/core
 import { useRef, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
-import { zTransportType, type TransportType } from "../../../api/sdk";
+import { zTransportTypeEnum, type TransportTypeEnum } from "../../../api/sdk";
 import { TRANSPORT_ICONS } from "../../../components/transportIcons";
 import { useDraggableCard } from "./useDraggableCard";
 import { YearRangeSlider } from "./YearRangeSlider";
@@ -18,8 +18,8 @@ interface MovementsControlsProps {
   window: YearWindow;
   /** A window bound moved to another year; the map changes live while dragging. */
   onWindowChange: (window: YearWindow) => void;
-  transportTypes: readonly TransportType[];
-  onTransportTypesChange: (transportTypes: readonly TransportType[]) => void;
+  transportTypes: readonly TransportTypeEnum[];
+  onTransportTypesChange: (transportTypes: readonly TransportTypeEnum[]) => void;
   /** Navigation panel: the card does not overlap it and aligns to its edges. */
   panelRef: RefObject<HTMLElement | null>;
 }
@@ -81,13 +81,13 @@ export function MovementsControls({
         />
       )}
 
-      <Chip.Group multiple value={[...transportTypes]} onChange={(value) => onTransportTypesChange(value as TransportType[])}>
+      <Chip.Group multiple value={[...transportTypes]} onChange={(value) => onTransportTypesChange(value as TransportTypeEnum[])}>
         <fieldset className="movements-controls__transport">
           <VisuallyHidden component="legend">{t("movements.transport")}</VisuallyHidden>
           {/* Icons only, in a row, evenly spaced; the label is for screen readers and the tooltip.
               Selection shows by fill, no tick. */}
           <Group gap={6} grow wrap="nowrap">
-            {zTransportType.options.map((type) => (
+            {zTransportTypeEnum.options.map((type) => (
               <Chip
                 key={type}
                 value={type}

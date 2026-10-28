@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.application.ports.challenge_repository import ChallengeRepositoryPort
 from app.auth.domain.entities import ChallengeEntity
-from app.auth.domain.enums import ChallengeType
+from app.auth.domain.enums import ChallengeTypeEnum
 from app.auth.infra.models import Challenge
 from app.shared.repositories.base_repository import BaseDBRepository
 from app.shared.types import DictStrAny
@@ -41,7 +41,7 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
         self,
         *,
         user_id: UUID,
-        challenge_type: ChallengeType,
+        challenge_type: ChallengeTypeEnum,
     ) -> ChallengeEntity | None:
         """
         Находит активный challenge заданного типа и блокирует строку до конца транзакции.
@@ -130,7 +130,7 @@ class ChallengeRepository(BaseDBRepository[Challenge], ChallengeRepositoryPort):
         return ChallengeEntity(
             challenge_id=challenge_model.id,
             user_id=challenge_model.user_id,
-            challenge_type=ChallengeType(challenge_model.challenge_type),
+            challenge_type=ChallengeTypeEnum(challenge_model.challenge_type),
             code_hash=challenge_model.code_hash,
             expires_at=challenge_model.expires_at,
             attempts=challenge_model.attempts,

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { GlobeMethods } from "react-globe.gl";
 
-import type { TransportType } from "../../api/sdk";
+import type { TransportTypeEnum } from "../../api/sdk";
 import carIcon from "../../assets/emoji/car.svg";
 import planeIcon from "../../assets/emoji/plane.svg";
 import shipIcon from "../../assets/emoji/ship.svg";
@@ -40,7 +40,7 @@ type TransportVisual = {
 // Arc apex height: noticeable for the plane, half as much for car/ship (a flatter track).
 const ARC_ALTITUDE_AIR = 0.14;
 const ARC_ALTITUDE_GROUND = ARC_ALTITUDE_AIR / 2;
-const TRANSPORT_VISUAL: Record<TransportType, TransportVisual> = {
+const TRANSPORT_VISUAL: Record<TransportTypeEnum, TransportVisual> = {
   land: { icon: carIcon, altitude: ARC_ALTITUDE_GROUND, durationMs: 5200, orient: "flip", nativeFacesRight: false },
   air: { icon: planeIcon, altitude: ARC_ALTITUDE_AIR, durationMs: 3600, orient: "rotate", nativeFacesRight: true },
   water: { icon: shipIcon, altitude: ARC_ALTITUDE_GROUND, durationMs: 6000, orient: "flip", nativeFacesRight: false },

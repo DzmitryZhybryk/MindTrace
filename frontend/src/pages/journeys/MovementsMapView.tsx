@@ -5,7 +5,7 @@ import { useOutletContext } from "react-router";
 import { Button, Loader, Text } from "@mantine/core";
 
 import { cityLabel, useCityNames } from "../../api/cityNames";
-import { zTransportType, type MovementsMapResponse, type TransportType } from "../../api/sdk";
+import { zTransportTypeEnum, type MovementsMapResponse, type TransportTypeEnum } from "../../api/sdk";
 import type { MapCountry } from "../../components/WorldMap";
 import { WORLD_VIEW_BOX, type ViewBox } from "../../components/worldProjection";
 import { GeoNamesAttribution } from "./GeoNamesAttribution";
@@ -71,7 +71,7 @@ export function MovementsMapView() {
 
   // The year window is unset until the user touches the slider; then it means all years.
   const [selectedWindow, setSelectedWindow] = useState<YearWindow | null>(null);
-  const [transportTypes, setTransportTypes] = useState<readonly TransportType[]>(zTransportType.options);
+  const [transportTypes, setTransportTypes] = useState<readonly TransportTypeEnum[]>(zTransportTypeEnum.options);
   const hasTransport = transportTypes.length > 0;
   const window = useMemo<YearWindow | null>(
     () => selectedWindow ?? (firstYear !== null && lastYear !== null ? [firstYear, lastYear] : null),

@@ -4,7 +4,7 @@ from uuid import UUID
 import pytest
 
 from app.auth.domain.entities import UserCredentialsEntity
-from app.auth.domain.enums import UserRole
+from app.auth.domain.enums import UserRoleEnum
 from app.auth.exceptions import EmailAlreadyVerifiedError
 from tests.builders import make_password, make_user_credentials
 
@@ -17,7 +17,7 @@ def test_create_defaults_to_free_role_and_unverified() -> None:
         password=make_password(),
     )
 
-    assert creds.role is UserRole.FREE
+    assert creds.role is UserRoleEnum.FREE
     assert not creds.is_email_verified
     assert creds.email == "user@example.com"
     assert creds.username == "user"

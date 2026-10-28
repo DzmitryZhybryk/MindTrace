@@ -2,7 +2,7 @@ import datetime as dt
 from typing import Self
 from uuid import UUID, uuid4
 
-from app.auth.domain.enums import UserRole
+from app.auth.domain.enums import UserRoleEnum
 from app.auth.domain.value_objects import Password
 from app.auth.exceptions import EmailAlreadyVerifiedError
 from app.shared.domain.domain_mixins import TimestampedEntityMixin
@@ -16,7 +16,7 @@ class UserCredentialsEntity(TimestampedEntityMixin):
         email: str,
         username: str,
         password: Password,
-        role: UserRole,
+        role: UserRoleEnum,
         email_verified_at: dt.datetime | None = None,
         **timestamp_kwargs: dt.datetime | None,
     ) -> None:
@@ -35,7 +35,7 @@ class UserCredentialsEntity(TimestampedEntityMixin):
         email: str,
         username: str,
         password: Password,
-        role: UserRole = UserRole.FREE,
+        role: UserRoleEnum = UserRoleEnum.FREE,
     ) -> Self:
         return cls(
             user_id=uuid4(),

@@ -1,4 +1,4 @@
-from app.geo.domain.enums import Language
+from app.geo.domain.enums import LanguageEnum
 
 
 class LocalizedNames:
@@ -14,11 +14,11 @@ class LocalizedNames:
     """
 
     def __init__(self, *, en: str, ru: str | None = None) -> None:
-        self._by_language: dict[Language, str] = {Language.EN: en}
+        self._by_language: dict[LanguageEnum, str] = {LanguageEnum.EN: en}
         if ru is not None:
-            self._by_language[Language.RU] = ru
+            self._by_language[LanguageEnum.RU] = ru
 
-    def get(self, *, language: Language) -> str | None:
+    def get(self, *, language: LanguageEnum) -> str | None:
         """
         Возвращает собственное имя на языке ``language`` без фоллбэка.
 
@@ -33,9 +33,9 @@ class LocalizedNames:
         """
         return self._by_language.get(language)
 
-    def display(self, *, language: Language) -> str:
+    def display(self, *, language: LanguageEnum) -> str:
         """
-        Возвращает имя под ``language`` с фоллбэком на канонический ``Language.EN``.
+        Возвращает имя под ``language`` с фоллбэком на канонический ``LanguageEnum.EN``.
 
         Scenarios:
             - автокомплит города в полях маршрута
@@ -47,4 +47,4 @@ class LocalizedNames:
         Returns:
             Имя на ``language``, иначе ``en``
         """
-        return self._by_language.get(language) or self._by_language[Language.EN]
+        return self._by_language.get(language) or self._by_language[LanguageEnum.EN]

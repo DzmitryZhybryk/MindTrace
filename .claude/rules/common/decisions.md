@@ -11,4 +11,4 @@ may already have been rejected. Writing or changing an entry: skill `decision-re
 | `geo.md` | how a city differs from a place and why they are separate; what a journey stores about a city and where names come from; how gazetteer names are stored per language; where gazetteer data comes from and what a provider must allow |
 | `journeys.md` | what one journey record represents; what date a journey carries |
 | `frontend.md` | where icons come from |
-| `backend.md` | how the process reads its settings; whether anything but the settings module may build `Settings` |
+| `backend.md` | how the process reads its settings; whether anything but the settings module may build `Settings`; which changes to `openapi.json` count as a contract change for the backend version |

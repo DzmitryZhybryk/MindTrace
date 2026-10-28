@@ -19,7 +19,7 @@ from httpx import AsyncClient
 
 from app.geo.presentation.dependencies import geo_uow_dependency
 from app.journeys.application.ports.journey_repository import MovementConnection, VisitedCity
-from app.journeys.domain.enums import TransportType
+from app.journeys.domain.enums import TransportTypeEnum
 from app.journeys.presentation.dependencies import cities_client_dependency
 from app.shared.schemas.base import BFastAPI
 from tests.builders import (
@@ -78,7 +78,7 @@ async def test_create_journey_returns_201_and_persists(
     assert journey_entity.destination.city_id == LONDON_CITY_ID
     assert journey_entity.destination.country_code == "GB"
     assert journey_entity.destination.latitude == pytest.approx(51.5)
-    assert journey_entity.transport_type is TransportType.AIR
+    assert journey_entity.transport_type is TransportTypeEnum.AIR
     assert journey_entity.traveled_year == 2020
     fake_journey_uow.commit_mock.assert_awaited_once()
 
@@ -385,7 +385,9 @@ async def test_get_movements_map_passes_transport_from_query(
     assert filtered.status_code == 200
     assert unfiltered.status_code == 200
     assert fake_journey_repository.movement_connection_queries == [
-        MovementConnectionQuery(user_id=user_id, transport_types=frozenset({TransportType.AIR, TransportType.WATER})),
+        MovementConnectionQuery(
+            user_id=user_id, transport_types=frozenset({TransportTypeEnum.AIR, TransportTypeEnum.WATER})
+        ),
         MovementConnectionQuery(user_id=user_id, transport_types=None),
     ]
 
@@ -471,11 +473,11 @@ async def test_list_journeys_passes_year_and_transport_filters(
 ) -> None:
     """200: yearFrom/yearTo и повторяемый transportType из query фильтруют ленту."""
     user_id = uuid4()
-    matching = make_journey(user_id=user_id, traveled_year=2020, transport_type=TransportType.WATER)
+    matching = make_journey(user_id=user_id, traveled_year=2020, transport_type=TransportTypeEnum.WATER)
     fake_journey_repository.journeys = [
         matching,
-        make_journey(user_id=user_id, traveled_year=2020, transport_type=TransportType.LAND),
-        make_journey(user_id=user_id, traveled_year=2022, transport_type=TransportType.WATER),
+        make_journey(user_id=user_id, traveled_year=2020, transport_type=TransportTypeEnum.LAND),
+        make_journey(user_id=user_id, traveled_year=2022, transport_type=TransportTypeEnum.WATER),
     ]
 
     response = await client.get(
@@ -587,7 +589,7 @@ async def test_update_journey_returns_204_and_replaces_fields(
         user_id=user_id,
         origin=make_geo_point(city_id=uuid4(), country_code="FR", latitude=48.85, longitude=2.35),
         destination=make_geo_point(city_id=uuid4(), country_code="DE", latitude=52.52, longitude=13.4),
-        transport_type=TransportType.WATER,
+        transport_type=TransportTypeEnum.WATER,
         traveled_year=2018,
     )
     fake_journey_repository.journeys = [journey_entity]
@@ -606,7 +608,7 @@ async def test_update_journey_returns_204_and_replaces_fields(
     assert updated.destination.city_id == LONDON_CITY_ID
     assert updated.destination.country_code == "GB"
     assert updated.destination.latitude == pytest.approx(51.5)
-    assert updated.transport_type is TransportType.AIR
+    assert updated.transport_type is TransportTypeEnum.AIR
     assert updated.traveled_year == 2020
     fake_journey_uow.commit_mock.assert_awaited_once()
 

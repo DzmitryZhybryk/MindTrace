@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class Language(StrEnum):
+class LanguageEnum(StrEnum):
     """
     Язык отображаемого имени объекта газеттира.
 

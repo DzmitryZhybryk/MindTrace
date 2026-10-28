@@ -6,7 +6,7 @@ import pytest
 from app.auth.application.ports.tasks import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.application.schemas.commands import VerifyEmailCommand
 from app.auth.application.services.email_verification import EmailVerificationService
-from app.auth.domain.enums import ChallengeType
+from app.auth.domain.enums import ChallengeTypeEnum
 from app.auth.exceptions import (
     AccountNotFoundError,
     ChallengeAttemptsExceededError,
@@ -48,7 +48,7 @@ async def test_request_creates_challenge_and_defers_email_atomically(
     assert len(fake_challenge_repository.challenges) == 1
     challenge_entity = fake_challenge_repository.challenges[0]
     assert challenge_entity.user_id == user_credentials_entity.user_id
-    assert challenge_entity.challenge_type is ChallengeType.EMAIL_VERIFICATION
+    assert challenge_entity.challenge_type is ChallengeTypeEnum.EMAIL_VERIFICATION
 
     assert len(fake_task_bus.bound.deferred) == 1
     deferred = fake_task_bus.bound.deferred[0]

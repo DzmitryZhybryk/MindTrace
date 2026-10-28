@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { toApiLanguage } from "../i18n/apiLanguage";
-import { resolveCities, type Language } from "./sdk";
+import { resolveCities, type LanguageEnum } from "./sdk";
 
 // The backend accepts at most 1000 ids per request, so larger lists are split into chunks.
 const RESOLVE_CHUNK_SIZE = 1000;
@@ -33,7 +33,7 @@ interface ResolvedNames {
 
 const NOTHING_LOADED: CityNameLookup = () => undefined;
 
-async function fetchCityNames(cityIds: readonly string[], language: Language, signal: AbortSignal): Promise<ResolvedNames> {
+async function fetchCityNames(cityIds: readonly string[], language: LanguageEnum, signal: AbortSignal): Promise<ResolvedNames> {
   const chunks: string[][] = [];
   for (let start = 0; start < cityIds.length; start += RESOLVE_CHUNK_SIZE) {
     chunks.push(cityIds.slice(start, start + RESOLVE_CHUNK_SIZE));

@@ -2,7 +2,7 @@ import datetime as dt
 from typing import Self
 from uuid import UUID, uuid4
 
-from app.journeys.domain.enums import TransportType
+from app.journeys.domain.enums import TransportTypeEnum
 from app.journeys.domain.value_objects import GeoPoint
 from app.journeys.exceptions import JourneyNotFoundError
 from app.shared.domain.domain_mixins import TimestampedEntityMixin
@@ -24,7 +24,7 @@ class JourneyEntity(TimestampedEntityMixin):
         user_id: UUID,
         origin: GeoPoint,
         destination: GeoPoint,
-        transport_type: TransportType,
+        transport_type: TransportTypeEnum,
         distance_km: int,
         traveled_year: int,
         sort_key: str,
@@ -47,7 +47,7 @@ class JourneyEntity(TimestampedEntityMixin):
         user_id: UUID,
         origin: GeoPoint,
         destination: GeoPoint,
-        transport_type: TransportType,
+        transport_type: TransportTypeEnum,
         distance_km: int,
         traveled_year: int,
         sort_key: str,
@@ -102,7 +102,7 @@ class JourneyEntity(TimestampedEntityMixin):
         *,
         origin: GeoPoint,
         destination: GeoPoint,
-        transport_type: TransportType,
+        transport_type: TransportTypeEnum,
         distance_km: int,
     ) -> None:
         """

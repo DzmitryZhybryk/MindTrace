@@ -4,9 +4,9 @@ from uuid import UUID
 
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
-from app.journeys.domain.enums import TransportType
+from app.journeys.domain.enums import TransportTypeEnum
 from app.journeys.exceptions import InvalidYearRangeError, JourneyDateInFutureError, SameOriginAndDestinationError
-from app.shared.fractional_index import MovePlacement
+from app.shared.fractional_index import MovePlacementEnum
 from app.shared.pagination.schemas import CursorPageFields, CursorPaginationFields
 from app.shared.schemas.base import CamelModel
 
@@ -45,7 +45,7 @@ class JourneyFields(OriginAndDestination):
     Год не может быть в будущем (по UTC) — ошибка с кодом ``journeys.date_in_future``, а не 422.
     """
 
-    transport_type: TransportType
+    transport_type: TransportTypeEnum
     traveled_year: Annotated[int, Field(ge=1)]
 
     @field_validator("traveled_year")
@@ -80,7 +80,7 @@ class MoveJourneyRequest(CamelModel):
     """Куда перенести поездку: после или перед поездкой-соседом."""
 
     neighbor_journey_id: UUID
-    placement: MovePlacement
+    placement: MovePlacementEnum
 
 
 class MoveJourneyResponse(CamelModel):
@@ -113,7 +113,7 @@ class JourneysFeedRequest(CursorPaginationFields):
 
     year_from: Annotated[int | None, Field(ge=1)] = None
     year_to: Annotated[int | None, Field(ge=1)] = None
-    transport_type: frozenset[TransportType] | None = None
+    transport_type: frozenset[TransportTypeEnum] | None = None
 
     @model_validator(mode="after")
     def validate_year_range(self) -> Self:
@@ -148,7 +148,7 @@ class JourneyFeedEntry(CamelModel):
     journey_id: UUID
     origin: JourneyCity
     destination: JourneyCity
-    transport_type: TransportType
+    transport_type: TransportTypeEnum
     traveled_year: int
     distance_km: int
 
@@ -229,7 +229,7 @@ class MovementsMapFilterRequest(CamelModel):
     Окна лет нет: годы приходят в каждом маршруте, окно применяет фронт.
     """
 
-    transport_type: frozenset[TransportType] | None = None
+    transport_type: frozenset[TransportTypeEnum] | None = None
 
 
 class MovementConnection(CamelModel):

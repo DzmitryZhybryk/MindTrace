@@ -13,7 +13,7 @@ from app.journeys.application.ports.journey_repository import (
     VisitedCity,
 )
 from app.journeys.domain.entities import JourneyEntity
-from app.journeys.domain.enums import TransportType
+from app.journeys.domain.enums import TransportTypeEnum
 from app.journeys.domain.value_objects import GeoPoint
 from app.journeys.infra.models import Journey
 from app.shared.fractional_index.repository import BaseSortKeyRepository
@@ -148,7 +148,7 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
         self,
         *,
         user_id: UUID,
-        transport_types: Collection[TransportType] | None,
+        transport_types: Collection[TransportTypeEnum] | None,
     ) -> tuple[MovementConnection, ...]:
         """
         Возвращает маршруты поездок пользователя — по одному на пару «откуда → куда».
@@ -336,7 +336,7 @@ class JourneyRepository(BaseSortKeyRepository[Journey, JourneyOrderScope], Journ
                 latitude=journey_model.destination_latitude,
                 longitude=journey_model.destination_longitude,
             ),
-            transport_type=TransportType(journey_model.transport_type),
+            transport_type=TransportTypeEnum(journey_model.transport_type),
             distance_km=journey_model.distance_km,
             traveled_year=journey_model.traveled_year,
             sort_key=journey_model.sort_key,

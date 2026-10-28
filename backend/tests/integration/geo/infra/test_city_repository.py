@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.geo.domain.enums import Language
+from app.geo.domain.enums import LanguageEnum
 from app.geo.infra.models import GeoCity
 from app.geo.infra.repositories import CityRepository
 
@@ -56,7 +56,7 @@ async def test_search_matches_en_prefix_ordered_by_population(db_session: AsyncS
 
     cities = await CityRepository(session=db_session).search_cities_by_name(search_text="Mos", limit=10)
 
-    assert [city_entity.display_name(language=Language.EN) for city_entity in cities] == ["Moscow", "Mostar"]
+    assert [city_entity.display_name(language=LanguageEnum.EN) for city_entity in cities] == ["Moscow", "Mostar"]
 
 
 async def test_search_matches_ru_prefix(db_session: AsyncSession) -> None:
@@ -237,4 +237,4 @@ async def test_find_cities_by_ids_returns_only_existing(db_session: AsyncSession
 
     [moscow] = cities
     assert moscow.city_id == moscow_id
-    assert moscow.display_name(language=Language.RU) == "Москва"
+    assert moscow.display_name(language=LanguageEnum.RU) == "Москва"

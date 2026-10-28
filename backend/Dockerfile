@@ -29,10 +29,16 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-editable
 
 # -----------------------------------------------------------------------------
-# dev: used by docker-compose; source tree is volume-mounted at runtime,
-# so we stop after deps and let uvicorn --reload pick up changes live.
+# dev: used by docker-compose; app/ and migrations/ are volume-mounted at runtime,
+# so uvicorn --reload picks up changes live. The two config files are copied in,
+# not mounted: a single-file bind mount keeps pointing at the old inode once an
+# editor replaces the file on the host, and the container then sees nothing.
+# Commands run from /opt/venv on PATH, never via `uv run`: the image holds no
+# uv.lock, so `uv run` would re-resolve and install unlocked versions.
 # -----------------------------------------------------------------------------
 FROM deps AS dev
+
+COPY pyproject.toml alembic.ini ./
 
 # -----------------------------------------------------------------------------
 # builder: install the project itself into /opt/venv

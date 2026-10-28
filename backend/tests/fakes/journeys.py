@@ -29,7 +29,7 @@ from app.journeys.application.ports.journey_repository import (
 )
 from app.journeys.application.ports.unit_of_work import JourneyUnitOfWorkPort
 from app.journeys.domain.entities import JourneyEntity
-from app.journeys.domain.enums import TransportType
+from app.journeys.domain.enums import TransportTypeEnum
 from app.shared.pagination import CursorPage, PageQuery, decode_cursor, split_page
 
 
@@ -38,7 +38,7 @@ class MovementConnectionQuery:
     """Фильтр одного запроса маршрутов к фейку — чтобы тест проверил, что сервис его передал."""
 
     user_id: UUID
-    transport_types: frozenset[TransportType] | None
+    transport_types: frozenset[TransportTypeEnum] | None
 
 
 class FakeJourneyRepository(JourneyRepositoryPort):
@@ -168,7 +168,7 @@ class FakeJourneyRepository(JourneyRepositoryPort):
         self,
         *,
         user_id: UUID,
-        transport_types: Collection[TransportType] | None,
+        transport_types: Collection[TransportTypeEnum] | None,
     ) -> tuple[MovementConnection, ...]:
         self.movement_connection_queries.append(
             MovementConnectionQuery(

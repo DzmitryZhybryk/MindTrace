@@ -64,7 +64,7 @@ dunder protocol methods (`__eq__`, `__aexit__`; `__init__` is **not** exempt), c
 - Leave a blank line after a closing `if` block or `for` loop before the next statement:
 
 ```python
-if exc.category is ErrorCategory.INTERNAL:
+if exc.category is ErrorCategoryEnum.INTERNAL:
     return logging.ERROR
 
 return default_handler

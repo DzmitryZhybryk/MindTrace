@@ -11,14 +11,14 @@ import hashlib
 from uuid import UUID, uuid4
 
 from app.auth.domain.entities import ChallengeEntity, RefreshTokenEntity, UserCredentialsEntity
-from app.auth.domain.enums import ChallengeType, UserRole
+from app.auth.domain.enums import ChallengeTypeEnum, UserRoleEnum
 from app.auth.domain.value_objects import Password
 from app.geo.domain.entities import CityEntity
 from app.geo.domain.value_objects import LocalizedNames
 from app.geo.infra.datasets.manifest import DatasetFormatEnum, DatasetSpec
 from app.journeys.application.ports.cities_client import CityLocationResponse
 from app.journeys.domain.entities import JourneyEntity
-from app.journeys.domain.enums import TransportType
+from app.journeys.domain.enums import TransportTypeEnum
 from app.journeys.domain.value_objects import GeoPoint
 from app.users.domain.entities import UserEntity
 
@@ -85,7 +85,7 @@ def make_user_credentials(
     email: str = "user@example.com",
     username: str = "user",
     password: Password | None = None,
-    role: UserRole = UserRole.FREE,
+    role: UserRoleEnum = UserRoleEnum.FREE,
     email_verified_at: dt.datetime | None = None,
     created_at: dt.datetime | None = None,
     updated_at: dt.datetime | None = None,
@@ -106,7 +106,7 @@ def make_challenge(
     *,
     challenge_id: UUID | None = None,
     user_id: UUID | None = None,
-    challenge_type: ChallengeType = ChallengeType.EMAIL_VERIFICATION,
+    challenge_type: ChallengeTypeEnum = ChallengeTypeEnum.EMAIL_VERIFICATION,
     code_hash: str = "code-hash",
     expires_at: dt.datetime | None = None,
     attempts: int = 0,
@@ -153,7 +153,7 @@ def make_journey(
     user_id: UUID | None = None,
     origin: GeoPoint | None = None,
     destination: GeoPoint | None = None,
-    transport_type: TransportType = TransportType.AIR,
+    transport_type: TransportTypeEnum = TransportTypeEnum.AIR,
     distance_km: int = 2500,
     traveled_year: int = 2020,
     sort_key: str | None = None,
