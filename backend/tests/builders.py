@@ -15,7 +15,7 @@ from app.auth.domain.enums import ChallengeType, UserRole
 from app.auth.domain.value_objects import Password
 from app.geo.domain.entities import CityEntity
 from app.geo.domain.value_objects import LocalizedNames
-from app.geo.infra.datasets.manifest import DatasetSpec
+from app.geo.infra.datasets.manifest import DatasetFormatEnum, DatasetSpec
 from app.journeys.application.ports.cities_client import CityLocationResponse
 from app.journeys.domain.entities import JourneyEntity
 from app.journeys.domain.enums import TransportType
@@ -201,8 +201,15 @@ def make_dataset_spec(
     *,
     content: bytes,
     name: str = "test-cities",
+    format: DatasetFormatEnum = DatasetFormatEnum.CITIES,
     version: str = "2026-01-01",
     url: str = "https://example.test/test-cities.csv.gz",
 ) -> DatasetSpec:
     """Датасет манифеста, чей sha256 совпадает с ``content`` — байтами «скачиваемого» файла."""
-    return DatasetSpec(name=name, version=version, url=url, sha256=hashlib.sha256(content).hexdigest())
+    return DatasetSpec(
+        name=name,
+        format=format,
+        version=version,
+        url=url,
+        sha256=hashlib.sha256(content).hexdigest(),
+    )

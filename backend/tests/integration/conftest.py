@@ -52,6 +52,7 @@ _ALL_TABLES = (
     "refresh_tokens",
     "challenges",
     "geo_cities",
+    "geo_places",
     "geo_dataset_loads",
     "journeys",
 )

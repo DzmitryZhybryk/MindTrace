@@ -52,7 +52,42 @@ class MissingEnglishNameError(DatasetFormatError):
 
 
 class MissingCountryCodeError(DatasetFormatError):
-    """У города в датасете нет страны."""
+    """У строки датасета нет страны."""
 
     def __init__(self, *, external_id: str) -> None:
-        super().__init__(f"City {external_id} has no country code")
+        super().__init__(f"Dataset row {external_id} has no country code")
+
+
+class UnknownPlaceKindError(DatasetFormatError):
+    """Тип места в датасете не из ``PlaceKindEnum``."""
+
+    def __init__(self, *, external_id: str, kind: str) -> None:
+        super().__init__(f"Dataset row {external_id} has unknown place kind {kind!r}")
+
+
+class InvalidExternalIdError(DatasetFormatError):
+    """Ключ строки датасета не вида ``<источник>:<ключ>``."""
+
+    def __init__(self, *, external_id: str) -> None:
+        super().__init__(f"Dataset row has invalid external_id {external_id!r}: expected <source>:<key>")
+
+
+class InvalidCountryCodeError(DatasetFormatError):
+    """Код страны в строке датасета — не ISO 3166-1 alpha-2."""
+
+    def __init__(self, *, external_id: str, country_code: str) -> None:
+        super().__init__(f"Dataset row {external_id} has invalid country code {country_code!r}")
+
+
+class DuplicateCountryCodeError(DatasetFormatError):
+    """Страна места в строке датасета указана дважды."""
+
+    def __init__(self, *, external_id: str, country_code: str) -> None:
+        super().__init__(f"Dataset row {external_id} lists country {country_code} twice")
+
+
+class InvalidNumberError(DatasetFormatError):
+    """Число в строке датасета не разбирается или вне допустимых пределов."""
+
+    def __init__(self, *, external_id: str, column: str, value: str) -> None:
+        super().__init__(f"Dataset row {external_id} has invalid {column} {value!r}")

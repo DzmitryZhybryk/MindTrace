@@ -1,9 +1,17 @@
 import tomllib
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Final
 
 MANIFEST_PATH: Final[Path] = Path(__file__).with_name("manifest.toml")
+
+
+class DatasetFormatEnum(StrEnum):
+    """Формат файла датасета (FORMAT.md): от него зависят колонки файла и таблица, куда он грузится."""
+
+    CITIES = "cities"
+    PLACES = "places"
 
 
 @dataclass(frozen=True, slots=True)
@@ -11,6 +19,7 @@ class DatasetSpec:
     """Датасет газеттира из манифеста: что загрузить, откуда и как проверить целостность файла."""
 
     name: str
+    format: DatasetFormatEnum
     version: str
     url: str
     sha256: str
@@ -29,6 +38,10 @@ def read_manifest(*, path: Path = MANIFEST_PATH) -> tuple[DatasetSpec, ...]:
 
     Returns:
         Датасеты в порядке объявления
+
+    Raises:
+        KeyError: у датасета нет обязательного поля, в том числе ``format``
+        ValueError: ``format`` датасета не из ``DatasetFormatEnum``
     """
     with path.open("rb") as manifest_file:
         manifest = tomllib.load(manifest_file)
@@ -36,6 +49,7 @@ def read_manifest(*, path: Path = MANIFEST_PATH) -> tuple[DatasetSpec, ...]:
     return tuple(
         DatasetSpec(
             name=dataset["name"],
+            format=DatasetFormatEnum(dataset["format"]),
             version=dataset["version"],
             url=dataset["url"],
             sha256=dataset["sha256"],

@@ -12,3 +12,23 @@ class Language(StrEnum):
 
     EN = "en"
     RU = "ru"
+
+
+class PlaceKindEnum(StrEnum):
+    """
+    Тип места газеттира: озеро, гора, хребет и т.п.
+
+    Закрытое множество: строка датасета с типом не из этого списка не загружается.
+    Новый тип — новый вариант здесь и новая версия датасета.
+    """
+
+    RESERVOIR = "reservoir"
+    LAKE = "lake"
+    VOLCANO = "volcano"
+    MOUNTAIN = "mountain"
+    MOUNTAIN_RANGE = "mountain_range"
+    WATERFALL = "waterfall"
+    GLACIER = "glacier"
+    MOUNTAIN_PASS = "mountain_pass"  # noqa: S105
+    NATIONAL_PARK = "national_park"
+    NATURE_RESERVE = "nature_reserve"

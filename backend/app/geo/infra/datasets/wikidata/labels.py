@@ -1,27 +1,20 @@
 import re
-import time
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Final
 
 import httpx
 
-from app.shared.types import DictStrAny
-
-WIKIDATA_SPARQL_URL: Final[str] = "https://query.wikidata.org/sparql"
-
-# Политика Wikidata Query Service требует User-Agent с контактом владельца клиента.
-USER_AGENT: Final[str] = "MindTrace-gazetteer/1.0 (https://github.com/DzmitryZhybryk/MindTrace)"
+from app.geo.infra.datasets.wikidata.sparql import fetch_sparql_bindings
 
 _GEONAMES_PREFIX: Final[str] = "GeoNames:"
 
+# Длина колонок имён в таблицах газеттира.
+MAX_NAME_LENGTH: Final[int] = 200
+
 # Столько id уходит в один SPARQL-запрос: длиннее — сервис начинает отвечать таймаутами.
 _BATCH_SIZE: Final[int] = 400
-
-# Сервис под нагрузкой отвечает этими кодами; запрос стоит повторить, а не ронять всю сборку.
-_TRANSIENT_STATUSES: Final[frozenset[int]] = frozenset({429, 502, 503, 504})
-_RETRY_DELAYS_SECONDS: Final[tuple[float, ...]] = (5.0, 15.0, 45.0)
 
 # P1566 — свойство Wikidata «идентификатор GeoNames».
 _QUERY_TEMPLATE: Final[str] = (
@@ -86,12 +79,51 @@ def candidate_geonames_id(*, row: Mapping[str, str], min_population: int) -> str
     return geonames_id_of(external_id=row["external_id"])
 
 
-def acceptable_ru_names(*, labels: Iterable[str]) -> frozenset[str]:
+def strip_qualifier(*, label: str) -> str:
     """
-    Отбирает из меток Wikidata те, что годятся в русское имя города.
+    Срезает уточнение в скобках в конце метки Wikidata и пробелы по краям: «Белуха (гора)» → «Белуха».
+
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata
+        - сборка новой версии датасета мест из Wikidata
+
+    Args:
+        label: Метка Wikidata
+
+    Returns:
+        Метка без уточнения
+    """
+    return _TRAILING_QUALIFIER.sub("", label).strip()
+
+
+def acceptable_ru_name(*, label: str) -> str | None:
+    """
+    Чистит метку ``ru`` для русского имени города или места.
 
     Уточнение в скобках в конце срезается. Отбрасываются метки без кириллицы (латиница, оставленная
-    в поле ``ru``) и с запятой (имя с регионом: «Айвенго, штат Виктория, Австралия»).
+    в поле ``ru``), с запятой (имя с регионом: «Айвенго, штат Виктория, Австралия») и не
+    помещающиеся в колонку имени.
+
+    Scenarios:
+        - сборка новой версии датасета с русскими названиями из Wikidata: дописывание имён и поиск споров
+        - сборка новой версии датасета мест из Wikidata
+
+    Args:
+        label: Метка ``ru`` объекта Wikidata
+
+    Returns:
+        Имя или ``None``, если метка не годится
+    """
+    name = strip_qualifier(label=label)
+    if not _CYRILLIC.search(name) or "," in name or len(name) > MAX_NAME_LENGTH:
+        return None
+
+    return name
+
+
+def acceptable_ru_names(*, labels: Iterable[str]) -> frozenset[str]:
+    """
+    Отбирает из меток Wikidata те, что годятся в русское имя города (правила — ``acceptable_ru_name``).
 
     Scenarios:
         - сборка новой версии датасета с русскими названиями из Wikidata: дописывание имён и поиск споров
@@ -102,16 +134,11 @@ def acceptable_ru_names(*, labels: Iterable[str]) -> frozenset[str]:
     Returns:
         Годные имена; больше одного — id привязан к разным объектам
     """
-    names = (_TRAILING_QUALIFIER.sub("", label) for label in labels)
-    return frozenset(name for name in names if _CYRILLIC.search(name) and "," not in name)
+    names = (acceptable_ru_name(label=label) for label in labels)
+    return frozenset(name for name in names if name is not None)
 
 
-def fetch_ru_labels(
-    *,
-    geonames_ids: Iterable[str],
-    http_client: httpx.Client,
-    retry_delays: Sequence[float] = _RETRY_DELAYS_SECONDS,
-) -> dict[str, frozenset[str]]:
+def fetch_ru_labels(*, geonames_ids: Iterable[str], http_client: httpx.Client) -> dict[str, frozenset[str]]:
     """
     Запрашивает у Wikidata метки ``ru`` объектов по их id GeoNames.
 
@@ -121,7 +148,6 @@ def fetch_ru_labels(
     Args:
         geonames_ids: Id GeoNames
         http_client: HTTP-клиент
-        retry_delays: Паузы перед повторами запроса, который сервис отклонил временно
 
     Returns:
         Метки по id GeoNames; id без единой метки в результат не попадают
@@ -134,37 +160,10 @@ def fetch_ru_labels(
     for start in range(0, len(ids), _BATCH_SIZE):
         batch = ids[start : start + _BATCH_SIZE]
         query = _QUERY_TEMPLATE.format(ids=" ".join(f'"{geonames_id}"' for geonames_id in batch))
-        response = _post_query(http_client=http_client, query=query, retry_delays=retry_delays)
-        bindings: list[DictStrAny] = response.json()["results"]["bindings"]
-        for binding in bindings:
+        for binding in fetch_sparql_bindings(query=query, http_client=http_client):
             labels[binding["gn"]["value"]].add(binding["label"]["value"])
 
     return {geonames_id: frozenset(values) for geonames_id, values in labels.items()}
-
-
-def _post_query(*, http_client: httpx.Client, query: str, retry_delays: Sequence[float]) -> httpx.Response:
-    """
-    Отправляет SPARQL-запрос, повторяя его после пауз, пока сервис отвечает временной ошибкой.
-
-    Scenarios:
-        - сборка новой версии датасета с русскими названиями из Wikidata
-    """
-    for delay in retry_delays:
-        response = _send_query(http_client=http_client, query=query)
-        if response.status_code not in _TRANSIENT_STATUSES:
-            return response.raise_for_status()
-
-        time.sleep(delay)
-
-    return _send_query(http_client=http_client, query=query).raise_for_status()
-
-
-def _send_query(*, http_client: httpx.Client, query: str) -> httpx.Response:
-    return http_client.post(
-        WIKIDATA_SPARQL_URL,
-        data={"query": query, "format": "json"},
-        headers={"User-Agent": USER_AGENT, "Accept": "application/sparql-results+json"},
-    )
 
 
 def enrich_rows(

@@ -1,6 +1,6 @@
 """
 Migration name: initial schema — users, user_credentials, refresh_tokens, challenges, geo_cities,
-geo_dataset_loads, journeys
+geo_places, geo_dataset_loads, journeys
 
 Revision ID: e00067cc5c0e
 Revises: None
@@ -128,6 +128,32 @@ def upgrade() -> None:
         [sa.text("lower(name_ru) text_pattern_ops")],
     )
 
+    op.create_table(
+        "geo_places",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("external_id", sa.String(length=255), nullable=False),
+        sa.Column("kind", sa.String(length=30), nullable=False),
+        sa.Column("name_en", sa.String(length=200), nullable=False),
+        sa.Column("name_ru", sa.String(length=200), nullable=True),
+        sa.Column("country_codes", sa.ARRAY(sa.String(length=2)), nullable=False),
+        sa.Column("latitude", sa.REAL(), nullable=False),
+        sa.Column("longitude", sa.REAL(), nullable=False),
+        sa.Column("notability", sa.Integer(), nullable=False),
+        sa.CheckConstraint("cardinality(country_codes) >= 1", name="ck_geo_places_country_codes_not_empty"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("external_id", name="uq_geo_places_external_id"),
+    )
+    op.create_index(
+        "ix_geo_places_name_en_prefix",
+        "geo_places",
+        [sa.text("lower(name_en) text_pattern_ops")],
+    )
+    op.create_index(
+        "ix_geo_places_name_ru_prefix",
+        "geo_places",
+        [sa.text("lower(name_ru) text_pattern_ops")],
+    )
+
     # Журнал загрузок датасетов газеттира.
     op.create_table(
         "geo_dataset_loads",
@@ -176,6 +202,9 @@ def downgrade() -> None:
     op.drop_index("ix_journeys_active_user_id_year_sort_key", table_name="journeys")
     op.drop_table("journeys")
     op.drop_table("geo_dataset_loads")
+    op.drop_index("ix_geo_places_name_ru_prefix", table_name="geo_places")
+    op.drop_index("ix_geo_places_name_en_prefix", table_name="geo_places")
+    op.drop_table("geo_places")
     op.drop_index("ix_geo_cities_name_ru_prefix", table_name="geo_cities")
     op.drop_index("ix_geo_cities_name_en_prefix", table_name="geo_cities")
     op.drop_table("geo_cities")

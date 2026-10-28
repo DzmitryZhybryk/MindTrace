@@ -1,6 +1,6 @@
 [project]
 name = "MindTrace"
-version = "6.0.0"
+version = "6.0.1"
 description = "Service for managing mindtrace"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
@@ -60,6 +60,7 @@ omit = [
     "app/__main__.py",
     "app/geo/infra/datasets/__main__.py",
     "app/geo/infra/datasets/wikidata/__main__.py",
+    "app/geo/infra/datasets/wikidata_places/__main__.py",
     "app/shared/infra/procrastinate/__main__.py",
 ]
 

@@ -57,9 +57,12 @@ _.ADMIN
 # (vulture не всегда отслеживает self.* через цепочку вызовов).
 _._model
 
-# geo_dataset_loads: загрузчик работает с таблицей сырым SQL, ORM-модель нужна только метадате.
+# geo_dataset_loads, geo_places: загрузчик работает с таблицами сырым SQL, ORM-модели нужны только метадате.
 _.GeoDatasetLoad
 _.loaded_at
+_.kind
+_.country_codes
+_.notability
 
 # TransportType: варианты выбираются из значений тела запроса/БД во время выполнения.
 _.LAND
