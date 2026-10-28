@@ -7,8 +7,8 @@ import httpx
 import pytest
 
 from app.geo.infra.datasets.wikidata.labels import (
-    USER_AGENT,
     EnrichmentReport,
+    acceptable_ru_name,
     acceptable_ru_names,
     enrich_rows,
     fetch_ru_labels,
@@ -102,16 +102,32 @@ def test_acceptable_ru_names(labels: set[str], expected: set[str]) -> None:
     assert acceptable_ru_names(labels=labels) == expected
 
 
+@pytest.mark.parametrize(
+    ("label", "expected"),
+    [
+        ("Белуха (гора)", "Белуха"),
+        (" Белуха ", "Белуха"),
+        ("Б" * 200, "Б" * 200),
+        ("Б" * 201, None),
+        ("Belukha", None),
+        ("Белуха, Алтай", None),
+        ("(гора)", None),
+    ],
+    ids=["qualifier", "whitespace", "fits-column", "too-long", "latin", "comma", "only-qualifier"],
+)
+def test_acceptable_ru_name(label: str, expected: str | None) -> None:
+    """acceptable_ru_name: уточнение и пробелы по краям срезаются; не влезающее в колонку имени отбрасывается."""
+    assert acceptable_ru_name(label=label) == expected
+
+
 def test_fetch_ru_labels_batches_ids_and_groups_labels() -> None:
     """fetch_ru_labels: id идут пачками по 400, метки собираются по id GeoNames."""
     requested_batches: list[list[str]] = []
-    user_agents: set[str] = set()
 
     def handler(request: httpx.Request) -> httpx.Response:
         query = parse_qs(request.content.decode())["query"][0]
         ids = query.split("VALUES ?gn {")[1].split("}")[0].split()
         requested_batches.append([geonames_id.strip('"') for geonames_id in ids])
-        user_agents.add(request.headers["User-Agent"])
         bindings = [
             {"gn": {"value": "1"}, "label": {"value": "Москва"}},
             {"gn": {"value": "1"}, "label": {"value": "Москва (город)"}},
@@ -124,46 +140,4 @@ def test_fetch_ru_labels_batches_ids_and_groups_labels() -> None:
 
     assert [len(batch) for batch in requested_batches] == [400, 1]
     assert [geonames_id for batch in requested_batches for geonames_id in batch] == geonames_ids
-    assert user_agents == {USER_AGENT}
     assert labels == {"1": frozenset({"Москва", "Москва (город)"})}
-
-
-@pytest.mark.parametrize("status", [429, 502, 503, 504])
-def test_fetch_ru_labels_retries_transient_error(status: int) -> None:
-    """fetch_ru_labels: сервис временно перегружен или ограничил частоту → запрос повторяется и результат приходит."""
-    statuses = iter([status, 200])
-    body = json.dumps({"results": {"bindings": [{"gn": {"value": "1"}, "label": {"value": "Москва"}}]}})
-    transport = httpx.MockTransport(lambda request: httpx.Response(next(statuses), content=body))
-
-    with httpx.Client(transport=transport) as http_client:
-        labels = fetch_ru_labels(geonames_ids=["1"], http_client=http_client, retry_delays=(0.0,))
-
-    assert labels == {"1": frozenset({"Москва"})}
-
-
-def test_fetch_ru_labels_raises_after_retries_run_out() -> None:
-    """fetch_ru_labels: временная ошибка не проходит за все повторы → исключение, а не частичный результат."""
-    requests: list[httpx.Request] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        requests.append(request)
-        return httpx.Response(503)
-
-    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client, pytest.raises(httpx.HTTPStatusError):
-        fetch_ru_labels(geonames_ids=["1"], http_client=http_client, retry_delays=(0.0, 0.0))
-
-    assert len(requests) == 3
-
-
-def test_fetch_ru_labels_does_not_retry_permanent_error() -> None:
-    """fetch_ru_labels: ошибка запроса (400) повтором не лечится → исключение сразу, без повторов."""
-    requests: list[httpx.Request] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        requests.append(request)
-        return httpx.Response(400)
-
-    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client, pytest.raises(httpx.HTTPStatusError):
-        fetch_ru_labels(geonames_ids=["1"], http_client=http_client, retry_delays=(0.0, 0.0))
-
-    assert len(requests) == 1

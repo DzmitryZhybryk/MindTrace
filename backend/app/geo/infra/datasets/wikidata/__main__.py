@@ -14,8 +14,6 @@ CLI: дописывает русские имена в файл датасета
 import argparse
 import csv
 import gzip
-import hashlib
-import io
 import json
 from pathlib import Path
 from typing import Final
@@ -23,7 +21,7 @@ from typing import Final
 import httpx
 
 from app.geo.infra.datasets.cache import ensure_cached
-from app.geo.infra.datasets.manifest import read_manifest
+from app.geo.infra.datasets.manifest import DatasetFormatEnum, read_manifest
 from app.geo.infra.datasets.wikidata.disputes import (
     ArbiterVerdict,
     RuNameDispute,
@@ -40,6 +38,7 @@ from app.geo.infra.datasets.wikidata.labels import (
     fetch_ru_labels,
     geonames_id_of,
 )
+from app.geo.infra.datasets.writer import write_dataset_file
 from app.shared.logging import configure_logging, get_logger
 from app.shared.settings import settings
 from app.shared.types import DictStrAny
@@ -77,7 +76,7 @@ def main() -> None:
     args = _parse_args()
     with httpx.Client(follow_redirects=True, timeout=_HTTP_TIMEOUT_SECONDS) as http_client:
         input_path: Path = args.input or ensure_cached(
-            spec=read_manifest()[0],
+            spec=next(dataset for dataset in read_manifest() if dataset.format is DatasetFormatEnum.CITIES),
             cache_dir=settings.GEO_DATASETS_CACHE_DIR,
             http_client=http_client,
         )
@@ -111,22 +110,12 @@ def main() -> None:
             encoding="utf-8",
         )
 
-    # Пустое имя и mtime=0 в gzip-заголовке: одинаковые строки дают побайтно одинаковый файл и тот же
-    # sha256, куда бы и когда его ни записали.
-    with (
-        args.output.open("wb") as raw_output,
-        gzip.GzipFile(filename="", fileobj=raw_output, mode="wb", mtime=0) as gzip_output,
-        io.TextIOWrapper(gzip_output, encoding="utf-8", newline="") as output_file,
-    ):
-        writer = csv.DictWriter(output_file, fieldnames=fieldnames, lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(enriched)
-
+    sha256 = write_dataset_file(path=args.output, fieldnames=fieldnames, rows=enriched)
     logger.info(
         "geo.wikidata.enriched",
         input=str(input_path),
         output=str(args.output),
-        sha256=hashlib.sha256(args.output.read_bytes()).hexdigest(),
+        sha256=sha256,
         candidates=report.candidates,
         filled=report.filled,
         not_found=report.not_found,

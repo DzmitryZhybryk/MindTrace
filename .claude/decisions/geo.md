@@ -5,6 +5,8 @@
   is NOT NULL, and a dataset row without one fails the load (`MissingCountryCodeError`).
 - A place (`geo_places`, natural objects first) is somewhere the user has been, with no "from" and no
   transport, and may span several countries; the user picks one of them.
+- A place has at least one country (`ck_geo_places_country_codes_not_empty`); an object without one
+  is left out of the dataset.
 - Why: the two answer different questions with different invariants (one country vs. a list), and the
   city search must not slow down under tens of thousands of lakes and mountains.
 - Rejected: one entity and table with `kind` and a country array — route endpoints would need a
@@ -37,8 +39,8 @@
 - Source: 2026-09-30
 
 ## The gazetteer is our own dataset loaded into Postgres
-- Cities come from our own datasets (GeoNames + Wikidata, published as `geo-data-vN` release
-  assets) loaded into Postgres; no geocoder at runtime.
+- Cities (GeoNames + Wikidata labels) and places (Wikidata) come from our own datasets, published as
+  `geo-data-vN` release assets and loaded into Postgres; no geocoder at runtime.
 - A geodata provider must allow storing coordinates and codes indefinitely — that is the criterion
   for choosing one.
 - Why: journeys keep city ids and coordinates forever.
@@ -48,4 +50,4 @@
   index means a full Nominatim import of the planet).
 - Revisit when: the Russian coverage of the dataset proves insufficient — a freemium geocoder is the
   fallback.
-- Source: 2026-06-16; provider criterion 2026-09-29
+- Source: 2026-06-16; provider criterion 2026-09-29; places from Wikidata 2026-10-27
