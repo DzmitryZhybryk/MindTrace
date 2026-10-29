@@ -14,6 +14,14 @@
   settings share one process.
 - Source: plan D review, 2026-10-24
 
+## The backend version is static in `[project].version`
+- The version is bumped by hand in the feature's commit (skill `git-workflow`); the app reads it from the installed
+  package's metadata (`importlib.metadata.version`).
+- Why: one source, visible in the diff of the change that earns it.
+- Rejected: `hatch-vcs` (version from the git tag) — the `backend-vX.Y.Z` tag goes on `main` after the merge, so a
+  feature branch would carry `X.Y.Z.devN+g…` and the bump rule would disappear.
+- Source: PR #175, 2026-10-28
+
 ## Schema names in `openapi.json` are not part of the versioned contract
 - Renaming a component (`LanguageEnum`, `TransportTypeEnum`, `MovePlacementEnum`) with the wire values unchanged is
   a patch bump; the regenerated `frontend/src/api/generated/` lands in the same commit (`codegen-contract.md`).

@@ -23,6 +23,10 @@ jobs:
     name: Backend gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Через env, а не флагом: иначе `uv run` внутри make молча перепишет устаревший uv.lock,
+    # и гейт останется зелёным, а `uv sync --locked` в Dockerfile упадёт уже по пути в прод.
+    env:
+      UV_LOCKED: "true"
     defaults:
       run:
         working-directory: backend
@@ -35,8 +39,8 @@ jobs:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
 
-      - name: Sync deps (frozen; Python по requires-python из pyproject.toml)
-        run: uv sync --frozen
+      - name: Sync deps (locked; Python по requires-python из pyproject.toml)
+        run: uv sync
 
       - name: Quality gate (format-check, lint, typecheck, arch, dead-code, audit, unit+api)
         run: make check-ci

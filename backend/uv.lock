@@ -665,8 +665,8 @@ wheels = [
 
 [[package]]
 name = "myjourney"
-version = "6.0.3"
-source = { virtual = "." }
+version = "6.0.4"
+source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "argon2-cffi" },

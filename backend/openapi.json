@@ -3,7 +3,7 @@
   "info": {
     "title": "MyJourney",
     "description": "Personal travel atlas: journeys, cities and routes on a globe",
-    "version": "6.0.3"
+    "version": "6.0.4"
   },
   "paths": {
     "/healthz/": {

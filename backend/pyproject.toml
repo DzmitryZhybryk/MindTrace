@@ -1,6 +1,6 @@
 [project]
 name = "MyJourney"
-version = "6.0.3"
+version = "6.0.4"
 description = "Personal travel atlas: journeys, cities and routes on a globe"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
@@ -36,6 +36,14 @@ dev = [
     "ty>=0.0.90",
     "vulture>=2.16",
 ]
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "app"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

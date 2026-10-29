@@ -1,13 +1,12 @@
 name: myjourney
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ПРОД-стек. Отличия от docker-compose.yaml (dev):
+# ПРОД-стек, override поверх docker-compose.base.yaml. Отличия от dev:
 #   • образы pull'ятся из GHCR (build оставлен для локальной сборки/отладки);
 #   • НЕТ проброса портов у внутренних сервисов (postgres/loki/grafana/app/frontend) —
 #     наружу торчит только Caddy (80/443). ВАЖНО: docker `ports:` обходит ufw, поэтому
 #     единственная публичная точка входа — Caddy;
-#   • app/worker/frontend на prod-таргете `final` (без volume-mount и --reload);
-#   • one-shot `myjourney_migrate` (alembic upgrade head + схема procrastinate) — gate для app/worker.
+#   • app/worker/frontend на prod-таргете `final` (без volume-mount и --reload).
 #
 # Пути внутри резолвятся от КОРНЯ репо (запуск через `make prod-*` с --project-directory .),
 # поэтому build-context ./backend и конфиги ./ops/... указаны относительно корня, не ops/.
@@ -21,12 +20,13 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "3"
 
-x-backend-image: &backend-image
+x-prod-backend: &prod-backend
   image: ghcr.io/dzmitryzhybryk/myjourney-backend:${IMAGE_TAG:-latest}
   build:
-    context: ./backend
-    dockerfile: Dockerfile
     target: final
+  networks:
+    - default
+  logging: *default-logging
 
 networks:
   default:
@@ -57,54 +57,25 @@ services:
       - default
     logging: *default-logging
 
-  # Одноразовый прогон миграций перед стартом app/worker: таблицы приложения (alembic) и схема
-  # procrastinate (её ждёт и worker, и app — register кладёт письмо в procrastinate_jobs). Гейт
-  # service_completed_successfully гарантирует, что обе схемы накатаны до старта приложения.
   myjourney_migrate:
-    <<: *backend-image
+    <<: *prod-backend
     container_name: myjourney_migrate
-    command: sh -c "alembic upgrade head && python -m app.shared.infra.procrastinate"
-    env_file: .env
-    depends_on:
-      myjourney_pg:
-        condition: service_healthy
-    restart: "no"
-    networks:
-      - default
-    logging: *default-logging
 
-  # One-shot: грузит газеттир после миграций. Кеш во /tmp (образ работает под nonroot).
+  # Кеш во /tmp: образ работает под nonroot.
   myjourney_geo_load:
-    <<: *backend-image
+    <<: *prod-backend
     container_name: myjourney_geo_load
-    command: python -m app.geo.infra.datasets
-    env_file: .env
     environment:
       GEO_DATASETS_CACHE_DIR: /tmp/geo-datasets
-    depends_on:
-      myjourney_migrate:
-        condition: service_completed_successfully
-    restart: "no"
-    networks:
-      - default
-    logging: *default-logging
 
   app:
-    <<: *backend-image
+    <<: *prod-backend
     container_name: myjourney_app
     # --forwarded-allow-ips: доверять X-Forwarded-For только от прокси из docker-подсети
     # (172.16.0.0/12 покрывает bridge-сеть myjourney-network) → request.client.host = реальный
     # IP клиента, а не внутренний адрес Caddy. НЕ ставить '*': Caddy аппендит XFF, и с '*'
     # uvicorn берёт leftmost-значение → клиент подделает свой IP в аудите/rate-limit.
     command: uvicorn app.main:create_app --factory --no-use-colors --host 0.0.0.0 --port 8000 --log-level error --forwarded-allow-ips=172.16.0.0/12
-    env_file: .env
-    depends_on:
-      myjourney_pg:
-        condition: service_healthy
-      myjourney_migrate:
-        condition: service_completed_successfully
-      myjourney_geo_load:
-        condition: service_completed_successfully
     healthcheck:
       # slim-образ без curl — пробуем /healthz/ через python; не-200 бросает исключение -> unhealthy.
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz/').read()"]
@@ -113,30 +84,15 @@ services:
       retries: 5
       start_period: 20s
     restart: unless-stopped
-    networks:
-      - default
-    logging: *default-logging
 
   myjourney_worker:
-    <<: *backend-image
+    <<: *prod-backend
     container_name: myjourney_worker
-    command: python -m app.worker
-    env_file: .env
-    depends_on:
-      myjourney_pg:
-        condition: service_healthy
-      myjourney_migrate:
-        condition: service_completed_successfully
     restart: unless-stopped
-    networks:
-      - default
-    logging: *default-logging
 
   frontend:
     image: ghcr.io/dzmitryzhybryk/myjourney-frontend:${IMAGE_TAG:-latest}
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
       target: final
     container_name: myjourney_frontend
     restart: unless-stopped
@@ -145,22 +101,9 @@ services:
     logging: *default-logging
 
   myjourney_pg:
-    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     container_name: myjourney_pg
-    env_file: .env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    command: postgres -c log_min_messages=warning
     volumes:
       - pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
     restart: unless-stopped
     networks:
       - default

@@ -22,7 +22,7 @@ MyJourney — FastAPI-сервис (Python 3.14+, async), Domain-Driven Design. 
 
 - **`backend/`** — FastAPI-сервис: `app`, `migrations`, `tests`, `pyproject.toml`, `uv.lock`, `Dockerfile`, `Makefile`. Самодостаточный uv-проект: backend-команды (`uv`, `make`, `pytest`) запускаются **из `backend/`**, venv — `backend/.venv`. Домены — каталоги в `backend/app/` (каждый: `domain/` `application/` `infra/` `presentation/`), общая инфраструктура — `backend/app/shared/`.
 - **`frontend/`** — Vite/React SPA (свой `Dockerfile`, build context `./frontend`).
-- **`ops/`** — оркестрация и инфра-конфиги: compose-файлы (dev, prod, e2e), `Caddyfile`, конфиги логирования. Compose запускается через `make`-таргеты (`--project-directory .`), поэтому пути внутри относятся к **корню** репо, а не к `ops/`.
+- **`ops/`** — оркестрация и инфра-конфиги: compose-файлы (общий `base` плюс override dev, prod, e2e), `Caddyfile`, конфиги логирования. Compose запускается через `make`-таргеты (`--project-directory .`), поэтому пути внутри относятся к **корню** репо, а не к `ops/`.
 - **Корень** — `.env` / `.env.example`, `Makefile`-оркестратор, `CHANGELOG.md`, `docs/`.
 
 ## Commands
@@ -31,7 +31,8 @@ MyJourney — FastAPI-сервис (Python 3.14+, async), Domain-Driven Design. 
 
 ```bash
 docker network create myjourney-network   # один раз, перед первым up
-make run                                  # dev-стек: app + worker + postgres + frontend + logging
+make run                                  # dev-стек: сборка + миграции и газеттир one-shot'ами + app, worker, frontend, logging
+make migrate-upgrade | migrate-create msg="…" | geo-load   # дев-база; подробности — skill dev-database
 make be-<target>                          # любой backend-таргет (make be-lint, be-format)
 make fe-<target>                          # любой frontend-таргет (make fe-lint, fe-check)
 make check                                # полный гейт обеих сторон (lint + typecheck + тесты + бюджет и дрейф правил Claude)
@@ -44,7 +45,7 @@ make test-e2e-dev                         # e2e по поднятому дев-�
 Backend — из `backend/`:
 
 ```bash
-uv sync                          # зависимости в backend/.venv
+uv sync                          # зависимости и сам проект (editable) в backend/.venv
 uv run python -m app             # запуск приложения локально
 make format | lint | typecheck   # ruff fix+format, ruff lint, ty
 make test                        # unit + api, без Docker

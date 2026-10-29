@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 from typing import Any
 
 from fastapi.routing import APIRoute
@@ -108,9 +109,9 @@ def create_app() -> BFastAPI:
         docs_kwargs = {"docs_url": None, "redoc_url": None, "openapi_url": None}
 
     app = create_default_app(
-        title=settings.SERVICE_NAME,
-        version=settings.SERVICE_VERSION,
-        description=settings.SERVICE_DESCRIPTION,
+        title="MyJourney",
+        version=version("MyJourney"),
+        description="Personal travel atlas: journeys, cities and routes on a globe",
         generate_unique_id_function=route_operation_id,
         components=[
             SqlAlchemyComponent(settings=settings),
