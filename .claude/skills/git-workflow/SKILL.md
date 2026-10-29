@@ -16,6 +16,11 @@ Global rules (no authorship footers, one feature = one commit, no `--no-verify`)
   hint that says "PR into main".
 - Merge a feature PR into `dev` with a merge commit and delete its branch:
   `gh pr merge <n> --merge --delete-branch`. The `dev → main` release PR keeps `dev`.
+- If an open PR's base is another PR's branch (a stacked PR), run `gh pr edit <child> --base dev`
+  **before** merging the parent. Deleting the parent's branch via `--delete-branch` closes the
+  child instead of retargeting it, and changing the base afterwards starts no CI run. Repo-level
+  auto-delete of head branches is not the fix: `dev` is unprotected and would be deleted after a
+  release PR.
 
 ## Commit message
 

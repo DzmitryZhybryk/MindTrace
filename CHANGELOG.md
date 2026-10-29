@@ -26,6 +26,7 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 - Репозиторий переименован в MyJourney: compose-проекты (`myjourney`, `myjourney_e2e`), имена сервисов и контейнеров (`myjourney_app`, `myjourney_pg` и остальные), сеть `myjourney-network`, образы `myjourney-backend` / `myjourney-frontend` в GHCR, метка `app` в Promtail, значения `POSTGRES_*` в `.env.example` и `ops/.env.e2e`, документация и skills Claude
 - После обновления дев-стек поднимается на новых volume'ах, старые `mindtrace_*` не используются. Нужно: в `.env` поставить `POSTGRES_HOST=myjourney_pg` (и при желании `POSTGRES_USER` / `POSTGRES_DB`), выполнить `docker network create myjourney-network`, `make run`, затем из `backend/` — `make migrate-upgrade && make geo-load`. Старые volume'ы и сеть `mindtrace-network` можно удалить
+- Skill `git-workflow`: PR, стоящий поверх ветки другого PR, переводится на `dev` до мержа родителя. Иначе удаление ветки родителя через `gh pr merge --delete-branch` закрывает дочерний PR вместо перенацеливания, а смена базы после этого не запускает CI
 
 ## 2026-10-28
 
