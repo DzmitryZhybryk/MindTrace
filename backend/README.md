@@ -20,4 +20,4 @@ make typecheck          # ty: тайпчек
 uv run pytest           # тесты (asyncio_mode=auto)
 ```
 
-Полный стек (app + worker + postgres + frontend + логирование) поднимается из **корня** репозитория одной командой `docker compose up -d`.
+Полный стек (app + worker + postgres + frontend + логирование) поднимается из **корня** репозитория одной командой `make run`.

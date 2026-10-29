@@ -73,7 +73,7 @@ e2e/                # Playwright-спеки по флоу
 - **`node_modules` в дев-контейнере — отдельный docker-том**, он затеняет то, что лежит в образе.
   Контейнер на старте сам делает `npm install`, поэтому после правки `package.json` достаточно
   перезапустить фронт (из корня):
-  `docker compose --project-directory . -f ops/docker-compose.yaml restart frontend`.
+  `docker compose --project-directory . -f ops/docker-compose.base.yaml -f ops/docker-compose.yaml restart frontend`.
   Тот же перезапуск лечит «Что-то пошло не так» после `PARSE_ERROR` посреди правок — Vite продолжает
   отдавать сломанный модуль, и перезагрузка вкладки не помогает. Полный сброс тома —
   `... rm -sf frontend && docker volume rm myjourney_frontend_node_modules && make run`; не

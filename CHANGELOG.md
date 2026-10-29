@@ -13,6 +13,21 @@ CHANGELOG остаётся один. Новые записи группирую�
 
 ## 2026-10-29
 
+### Backend 6.0.4
+
+- Бэкенд — устанавливаемый пакет (build backend `uv_build`): `uv sync` ставит проект в venv в editable-режиме. Версия в `openapi.json` и в стартовом логе берётся из метаданных пакета (`importlib.metadata`), а не из `pyproject.toml` на рантайме; собственный ридер файлов удалён
+- В прод-образ больше не попадают dev-зависимости (pytest, ruff, ty, testcontainers и остальные): 651 → 506 MB. Стадии `Dockerfile` ставят зависимости с `--locked`, а не `--frozen`: расхождение `uv.lock` с `pyproject.toml` валит сборку
+- Образ собирается на uv 0.13.6 (был 0.9.9): проект ставится встроенным build backend uv, без скачивания `uv_build` из PyPI. Dev-стадия ставит dev-группу до копирования кода, поэтому правка кода больше не переустанавливает dev-зависимости при каждом `make run`
+
+### Project
+
+- Compose: общий `ops/docker-compose.base.yaml` и override'ы dev, e2e и prod вместо трёх полных описаний. Прод раскрывается в прежний конфиг
+- Дев-стек идёт тем же путём, что прод: `make run` собирает образы (`up -d --build`), гоняет one-shot'ы `myjourney_migrate` и `myjourney_geo_load`, app и worker ждут их. `backend/` монтируется целиком, uvicorn перезапускается только на правках в `app/`. `make watch` пересобирает backend при правке `pyproject.toml` или `uv.lock`
+- `make migrate-create`, `migrate-upgrade`, `migrate-downgrade`, `migrate-history`, `migrate-current` и `make geo-load` — в корневом Makefile (раньше `make be-…` или из `backend/`): одноразовый контейнер сервиса `myjourney_migrate` / `myjourney_geo_load` вместо `docker exec` в поднятый app
+- Таргеты `backend/Makefile` вызывают `uv run` без `--no-sync`: окружение само синхронизируется с lock'ом, в том числе версия проекта после бампа
+- CI (`Backend gate`, `Backend integration`) и pre-commit хук запускают uv с `UV_LOCKED`: устаревший `uv.lock` валит гейт, а не перезаписывается молча первым `uv run`. Раньше хук в таком случае коммитил старый lock, оставляя новый в рабочей копии
+- e2e-стек берёт код backend из образа, без монтирования. Postgres в деве и e2e закреплён по тому же digest, что в проде
+
 ### Backend 6.0.3
 
 - Проект называется MyJourney: имя и описание в `pyproject.toml` и в заголовке `openapi.json`, User-Agent сборки датасетов из Wikidata, ссылки на датасеты газеттира в `manifest.toml` ведут на релизы репозитория `MyJourney`

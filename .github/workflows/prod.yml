@@ -32,6 +32,9 @@ jobs:
     name: Backend integration
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Через env, а не флагом: иначе `uv run` внутри make молча перепишет устаревший uv.lock.
+    env:
+      UV_LOCKED: "true"
     defaults:
       run:
         working-directory: backend
@@ -44,8 +47,8 @@ jobs:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
 
-      - name: Sync deps (frozen; Python по requires-python из pyproject.toml)
-        run: uv sync --frozen
+      - name: Sync deps (locked; Python по requires-python из pyproject.toml)
+        run: uv sync
 
       # testcontainers поднимает одноразовый Postgres через Docker-демон ubuntu-runner.
       - name: Integration tests (testcontainers)
@@ -73,7 +76,7 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps
 
-      # e2e-стек ждёт корневой .env (env_file: .env в ops/docker-compose.e2e.yaml). В репозитории
+      # e2e-стек ждёт корневой .env (env_file: .env в ops/docker-compose.base.yaml). В репозитории
       # .env нет (в .gitignore) — кладём тестовые значения из ops/.env.e2e (не секреты, tmpfs-БД).
       - name: Provide .env for ephemeral e2e stack (test-only values)
         run: cp ops/.env.e2e .env

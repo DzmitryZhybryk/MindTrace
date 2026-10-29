@@ -13,5 +13,7 @@
 set -e
 
 echo "pre-commit: coverage gate (backend + frontend, >= 90%)…"
-make be-coverage
+# Без UV_LOCKED `uv run` перепишет устаревший uv.lock уже после `git add`: в коммит уйдёт
+# старый lock, а новый останется в рабочей копии.
+UV_LOCKED=true make be-coverage
 make fe-coverage

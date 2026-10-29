@@ -7,13 +7,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.shared.enums import AppEnvEnum
 from app.shared.types import DictStrAny
-from app.shared.utils.file_reader import read_file
 
 _APP_DIR: Final[Path] = Path(__file__).resolve().parent
 _ROOT_DIR: Final[Path] = _APP_DIR.parent.parent
-
-
-_PYPROJECT_DATA: Final[DictStrAny] = read_file(_ROOT_DIR / "pyproject.toml")
 
 
 class PostgresSettings(BaseModel):
@@ -137,10 +133,6 @@ class Settings(
     GeoDatasetsSettings,
     ProcrastinateSettings,
 ):
-    SERVICE_NAME: str = _PYPROJECT_DATA["project"]["name"]
-    SERVICE_VERSION: str = _PYPROJECT_DATA["project"]["version"]
-    SERVICE_DESCRIPTION: str = _PYPROJECT_DATA["project"]["description"]
-
     model_config = SettingsConfigDict(frozen=True, env_file=".env", extra="ignore")
 
 

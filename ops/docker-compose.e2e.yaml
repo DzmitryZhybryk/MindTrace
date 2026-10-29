@@ -1,83 +1,52 @@
-# Одноразовый стек для фронтовых Playwright-e2e.
+# Одноразовый стек для фронтовых Playwright-e2e, override поверх docker-compose.base.yaml.
 #
-# Зачем отдельный файл, а не дев-стек: e2e сеют пользователей через POST /v1/auth/register/,
-# и при прогоне против дев-стека (docker-compose.yaml) они копятся в персистентной myjourney_pg
-# (том pg_data) навсегда. Здесь Postgres живёт в tmpfs (RAM) без named-тома → БД исчезает на
-# `down`, дев-база не трогается. Это перенос подхода backend-testcontainers (одноразовая БД на
-# прогон) на уровень стека — e2e нужно всё приложение, а не голый Postgres.
+# Зачем отдельный стек, а не дев: e2e сеют пользователей через POST /v1/auth/register/,
+# и при прогоне против дев-стека они копятся в персистентной myjourney_pg (том pg_data) навсегда.
+# Здесь Postgres живёт в tmpfs (RAM) без named-тома → БД исчезает на `down`, дев-база не трогается.
+# Это перенос подхода backend-testcontainers (одноразовая БД на прогон) на уровень стека — e2e
+# нужно всё приложение, а не голый Postgres.
 #
-# Запуск — корневым `make test-e2e` (up --wait frontend → playwright → down -v). Свой проект
-# (`name`) изолирует контейнеры/тома/сеть от дев-стека: можно держать оба разом. `container_name`
-# нигде не задаём (compose сам префиксует проектом → нет клеша с дев), сеть — дефолтная проектная
+# Запуск — корневым `make test-e2e` (up --wait → playwright → down -v). Свой проект (`name`)
+# изолирует контейнеры/тома/сеть от дев-стека: можно держать оба разом. `container_name` нигде не
+# задаём (compose сам префиксует проектом → нет клеша с дев), сеть — дефолтная проектная
 # (`docker network create` не нужен). Имена сервисов myjourney_pg/app совпадают с хостами в .env и
 # vite.config (API_PROXY_TARGET) → .env переиспользуется как есть, без env-оверрайдов кроме Resend.
 name: myjourney_e2e
 
+x-e2e-backend: &e2e-backend
+  build:
+    target: dev
+
 services:
 
-  # Имя сервиса = POSTGRES_HOST из .env. tmpfs → данные в RAM, без named-тома: умирают на `down`.
   myjourney_pg:
-    image: postgres:17-alpine
-    env_file: .env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    command: postgres -c log_min_messages=warning
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 3s
-      timeout: 5s
       retries: 15
       start_period: 5s
 
-  # One-shot: накатывает app-схему (alembic) и схему procrastinate, затем выходит. Те же команды, что
-  # у прод-migrate и дев-`make migrate-upgrade`. app и worker ждут его завершения.
-  migrate:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: dev
-    command: sh -c "alembic upgrade head && python -m app.shared.infra.procrastinate"
-    env_file: .env
-    # dev-образ код внутрь не копирует (см. backend/Dockerfile, target dev) — монтируем как базовый compose.
-    volumes: &backend_mounts
-      - ./backend/app:/src/app
-      - ./backend/migrations:/src/migrations
-    depends_on:
-      myjourney_pg:
-        condition: service_healthy
-    restart: "no"
+  myjourney_migrate:
+    <<: *e2e-backend
 
-  # Штатный worker, исполняет письма-джобы. Схему procrastinate применяет migrate, поэтому app от
-  # worker'а не зависит. RESEND_BASE_URL → мёртвый адрес: письма-джобы упрутся в connection refused
-  # (упадут в throwaway-БД), реальный Resend не дёргается.
-  worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: dev
-    command: python -m app.worker
-    env_file: .env
+  # Кеш датасетов общий с дев-стеком и с кешем CI (хостовый backend/.geo-cache).
+  myjourney_geo_load:
+    <<: *e2e-backend
+    volumes:
+      - ./backend/.geo-cache:/src/.geo-cache
+
+  # RESEND_BASE_URL → мёртвый адрес: письма-джобы упрутся в connection refused (упадут в
+  # throwaway-БД), реальный Resend не дёргается.
+  myjourney_worker:
+    <<: *e2e-backend
     environment:
       RESEND_BASE_URL: "http://localhost:9"
-    volumes: *backend_mounts
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
 
-  # Имя сервиса = API_PROXY_TARGET host из vite.config. Ждёт migrate: после него в БД обе схемы,
-  # app-таблицы и procrastinate. Без хост-порта — фронт ходит к нему по внутренней сети проекта.
+  # Без хост-порта — фронт ходит к нему по внутренней сети проекта.
   app:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: dev
+    <<: *e2e-backend
     command: sh -c "uvicorn app.main:create_app --factory --no-use-colors --host 0.0.0.0 --port 8000 --log-level error"
-    env_file: .env
-    volumes: *backend_mounts
     # 127.0.0.1, а не localhost: uvicorn слушает IPv4 (--host 0.0.0.0), а localhost в alpine/musl
     # резолвится в IPv6 ::1 первым → connection refused (та же ловушка, что у frontend ниже).
     healthcheck:
@@ -86,35 +55,12 @@ services:
       timeout: 5s
       retries: 20
       start_period: 3s
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      geo-load:
-        condition: service_completed_successfully
-
-  # One-shot: грузит газеттир после миграций. Кеш общий с дев-стеком (хост).
-  geo-load:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: dev
-    command: python -m app.geo.infra.datasets
-    env_file: .env
-    volumes:
-      - ./backend/app:/src/app
-      - ./backend/.geo-cache:/src/.geo-cache
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-    restart: "no"
 
   # Единственный проброшенный наружу порт (5273 ≠ дев-5173). Playwright бьёт сюда (E2E_BASE_URL),
   # /v1 проксируется на app внутри сети проекта. dev-CMD сам делает npm install (named-volume
   # node_modules на первом старте пуст — см. frontend/Dockerfile).
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
       # target: dev — Vite dev-сервер (:5173). Без target собралась бы последняя стадия
       # `final` (nginx :80): фронт вставал nginx'ом, healthcheck на :5173 не проходил → unhealthy.
       target: dev

@@ -189,7 +189,7 @@ make prod-up      # поднять стек (миграции прогонятс
 
 ```bash
 make prod-config                              # раскрытый прод-конфиг
-docker compose --project-directory . -f ops/docker-compose.prod.yaml ps
+docker compose --project-directory . -f ops/docker-compose.base.yaml -f ops/docker-compose.prod.yaml ps
 curl -I https://<домен>/                      # должен ответить 200/301 через Caddy
 ```
 
