@@ -1,4 +1,4 @@
-name: mindtrace
+name: myjourney
 
 # Единый лимит на docker json-file логи для ВСЕХ сервисов: max-size x max-file = кап 30 MB
 # на контейнер. Без него дефолт Docker — без лимита, и при краш-лупе лог за ночь может
@@ -11,7 +11,7 @@ x-logging: &default-logging
 
 networks:
   default:
-    name: mindtrace-network
+    name: myjourney-network
     external: true
 
 services:
@@ -21,7 +21,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: dev
-    container_name: mindtrace_app
+    container_name: myjourney_app
     command: >
       sh -c "uvicorn app.main:create_app --factory --no-use-colors
       --host ${HOST} --port ${PORT}
@@ -38,25 +38,25 @@ services:
       # Кеш датасетов газеттира (make be-geo-load), общий с e2e-стеком.
       - ./backend/.geo-cache:/src/.geo-cache
     depends_on:
-      mindtrace_pg:
+      myjourney_pg:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - default
     logging: *default-logging
 
-  mindtrace_worker:
+  myjourney_worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
       target: dev
-    container_name: mindtrace_worker
+    container_name: myjourney_worker
     command: python -m app.worker
     env_file: .env
     volumes:
       - ./backend/app:/src/app
     depends_on:
-      mindtrace_pg:
+      myjourney_pg:
         condition: service_healthy
     restart: unless-stopped
     networks:
@@ -68,7 +68,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: dev
-    container_name: mindtrace_frontend
+    container_name: myjourney_frontend
     ports:
       - "5173:5173"
     volumes:
@@ -81,9 +81,9 @@ services:
       - default
     logging: *default-logging
 
-  mindtrace_pg:
+  myjourney_pg:
     image: postgres:17-alpine
-    container_name: mindtrace_pg
+    container_name: myjourney_pg
     env_file: .env
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -107,7 +107,7 @@ services:
 
   loki:
     image: grafana/loki:3.6.3
-    container_name: mindtrace_loki
+    container_name: myjourney_loki
     command: -config.file=/etc/loki/loki.yaml -log.level=error -target=all
     ports:
       - "3100:3100"
@@ -121,7 +121,7 @@ services:
 
   promtail:
     image: grafana/promtail:3.6.3
-    container_name: mindtrace_promtail
+    container_name: myjourney_promtail
     command:
       - -config.file=/etc/promtail/config.yml
       - -log.level=error
@@ -138,7 +138,7 @@ services:
 
   grafana:
     image: grafana/grafana:12.3.1
-    container_name: mindtrace_grafana
+    container_name: myjourney_grafana
     env_file: .env
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}

@@ -1,6 +1,6 @@
 ---
 name: dev-database
-description: Use when working with the MindTrace dev database - applying, creating or rolling back Alembic migrations, loading the gazetteer datasets, recreating the dev DB from scratch, inspecting schema or running EXPLAIN against it, or previewing migration SQL for locks.
+description: Use when working with the MyJourney dev database - applying, creating or rolling back Alembic migrations, loading the gazetteer datasets, recreating the dev DB from scratch, inspecting schema or running EXPLAIN against it, or previewing migration SQL for locks.
 ---
 
 # Dev database operations
@@ -11,11 +11,11 @@ database on this host.
 
 ## Access
 
-`POSTGRES_HOST=mindtrace_pg` resolves only inside the docker network; from the host the port is
+`POSTGRES_HOST=myjourney_pg` resolves only inside the docker network; from the host the port is
 published as `5439`.
 
 ```bash
-docker exec -it mindtrace_pg sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'   # inside the container, simplest
+docker exec -it myjourney_pg sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'   # inside the container, simplest
 (set -a; . ./.env; set +a; psql "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5439/$POSTGRES_DB")   # from the host, repo root
 ```
 
@@ -56,11 +56,11 @@ downloaded.
 From the repo root:
 
 ```bash
-make stop && docker volume rm mindtrace_pg_data && make run
+make stop && docker volume rm myjourney_pg_data && make run
 ```
 
 Then from `backend/`: `make migrate-upgrade && make geo-load`.
 
 Until `make migrate-upgrade` has run, the worker has no procrastinate schema and keeps restarting
 (`restart: unless-stopped`). It recovers on its own within a minute;
-`docker restart mindtrace_worker` brings it up immediately.
+`docker restart myjourney_worker` brings it up immediately.

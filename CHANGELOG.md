@@ -11,6 +11,22 @@
 
 CHANGELOG остаётся один. Новые записи группируются по дате, внутри — под-секции `### Backend X.Y.Z` / `### Frontend X.Y.Z` (а для repo-уровневых изменений — `### Project` без номера версии). Исторические записи ниже — общая продуктовая нумерация до разделения, помеченная областью (`· Backend` / `· Frontend` / `· Project`).
 
+## 2026-10-29
+
+### Backend 6.0.3
+
+- Проект называется MyJourney: имя и описание в `pyproject.toml` и в заголовке `openapi.json`, User-Agent сборки датасетов из Wikidata, ссылки на датасеты газеттира в `manifest.toml` ведут на релизы репозитория `MyJourney`
+- Namespace id газеттира теперь `urn:myjourney:geo-place`: у всех городов и мест другие id. Прода нет, поэтому данные не мигрируются — дев-базу нужно пересоздать (ниже, в Project)
+
+### Frontend 2.16.2
+
+- Выбранный язык хранится в localStorage под ключом `myjourney.language`: сохранённый ранее выбор сбросится один раз
+
+### Project
+
+- Репозиторий переименован в MyJourney: compose-проекты (`myjourney`, `myjourney_e2e`), имена сервисов и контейнеров (`myjourney_app`, `myjourney_pg` и остальные), сеть `myjourney-network`, образы `myjourney-backend` / `myjourney-frontend` в GHCR, метка `app` в Promtail, значения `POSTGRES_*` в `.env.example` и `ops/.env.e2e`, документация и skills Claude
+- После обновления дев-стек поднимается на новых volume'ах, старые `mindtrace_*` не используются. Нужно: в `.env` поставить `POSTGRES_HOST=myjourney_pg` (и при желании `POSTGRES_USER` / `POSTGRES_DB`), выполнить `docker network create myjourney-network`, `make run`, затем из `backend/` — `make migrate-upgrade && make geo-load`. Старые volume'ы и сеть `mindtrace-network` можно удалить
+
 ## 2026-10-28
 
 ### Backend 6.0.2

@@ -1,6 +1,6 @@
 ---
 name: style-audit
-description: Audit MindTrace frontend files (.tsx, .css, index.html) against the project's design-token policy and report (or fix) deviations. Use when the user asks to check style consistency, audit colors/fonts/sizes, verify design-token compliance, or align stray literal values to tokens.
+description: Audit MyJourney frontend files (.tsx, .css, index.html) against the project's design-token policy and report (or fix) deviations. Use when the user asks to check style consistency, audit colors/fonts/sizes, verify design-token compliance, or align stray literal values to tokens.
 ---
 
 # Style audit

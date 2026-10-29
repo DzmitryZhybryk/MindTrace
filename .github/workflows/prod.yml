@@ -112,10 +112,10 @@ jobs:
         include:
           - name: backend
             context: ./backend
-            image: mindtrace-backend
+            image: myjourney-backend
           - name: frontend
             context: ./frontend
-            image: mindtrace-frontend
+            image: myjourney-frontend
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -173,7 +173,7 @@ jobs:
           envs: GIT_SHA,DEPLOY_PATH
           # DEPLOY_PATH — путь к склонированному репо на сервере (там же лежит прод .env, не в git).
           # git pull подтягивает свежие ops/*.yaml и Caddyfile; образы приходят из GHCR по :sha.
-          # Миграции прогоняет one-shot mindtrace_migrate (gate внутри make prod-up).
+          # Миграции прогоняет one-shot myjourney_migrate (gate внутри make prod-up).
           script: |
             set -e
             cd "$DEPLOY_PATH"
