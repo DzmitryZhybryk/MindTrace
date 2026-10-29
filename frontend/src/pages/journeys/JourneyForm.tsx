@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
 import { applyApiError, resolveErrorToken } from "../../api/errors";
-import { createJourneyMutation, zTransportType, type TransportType } from "../../api/sdk";
+import { createJourneyMutation, zTransportTypeEnum, type TransportTypeEnum } from "../../api/sdk";
 import { CityAutocomplete } from "../../components/CityAutocomplete";
 import { SwapVerticalIcon } from "../../components/SwapVerticalIcon";
 import { TRANSPORT_ICONS } from "../../components/transportIcons";
@@ -121,10 +121,10 @@ export function JourneyForm({ form }: JourneyFormProps) {
           placeholder={t("addJourney.transport.placeholder")}
           size="md"
           radius="md"
-          data={zTransportType.options.map((type) => ({ value: type, label: t(`addJourney.transport.${type}`) }))}
+          data={zTransportTypeEnum.options.map((type) => ({ value: type, label: t(`addJourney.transport.${type}`) }))}
           value={values.transport}
           onChange={(value) => {
-            form.setFieldValue("transport", value as TransportType | null);
+            form.setFieldValue("transport", value as TransportTypeEnum | null);
             form.clearFieldError("transport");
           }}
           leftSection={
@@ -135,7 +135,7 @@ export function JourneyForm({ form }: JourneyFormProps) {
           renderOption={({ option }) => (
             <Group gap="xs" wrap="nowrap">
               <img
-                src={TRANSPORT_ICONS[option.value as TransportType]}
+                src={TRANSPORT_ICONS[option.value as TransportTypeEnum]}
                 width={TRANSPORT_ICON_SIZE}
                 height={TRANSPORT_ICON_SIZE}
                 alt=""

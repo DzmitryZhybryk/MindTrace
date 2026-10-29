@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from app.geo.domain.enums import Language
+from app.geo.domain.enums import LanguageEnum
 from app.geo.domain.value_objects import LocalizedNames
 
 
@@ -29,7 +29,7 @@ class CityEntity:
         self.longitude = longitude
         self.population = population
 
-    def localized_name(self, *, language: Language) -> str | None:
+    def localized_name(self, *, language: LanguageEnum) -> str | None:
         """
         Возвращает собственное имя города на языке ``language`` (без фоллбэка).
 
@@ -47,7 +47,7 @@ class CityEntity:
         """
         return self.names.get(language=language)
 
-    def display_name(self, *, language: Language) -> str:
+    def display_name(self, *, language: LanguageEnum) -> str:
         """
         Возвращает отображаемое имя города под ``language`` с фоллбэком на ``name_en``.
 

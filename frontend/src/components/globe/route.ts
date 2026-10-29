@@ -1,4 +1,4 @@
-import type { CitySearchItem, TransportType } from "../../api/sdk";
+import type { CitySearchItem, TransportTypeEnum } from "../../api/sdk";
 import type { GlobePov } from "./GlobeCanvas";
 import { centralAngleRad } from "./geo";
 
@@ -41,7 +41,7 @@ export type TrailPoint = { lat: number; lng: number; alt: number };
 export interface GlobeRoute {
   origin: CitySearchItem | null;
   destination: CitySearchItem | null;
-  transportType: TransportType | null;
+  transportType: TransportTypeEnum | null;
   originLabel: string;
   destinationLabel: string;
 }

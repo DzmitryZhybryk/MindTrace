@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import ConfigDict, Field
 
-from app.geo.domain.enums import Language
+from app.geo.domain.enums import LanguageEnum
 from app.shared.schemas.base import CamelModel
 
 
@@ -32,7 +32,7 @@ class ResolveCitiesRequest(CamelModel):
     """Запрос названий городов по их id на нужном языке."""
 
     city_ids: Annotated[list[UUID], Field(min_length=1, max_length=1000)]
-    language: Language
+    language: LanguageEnum
 
 
 class CityName(CamelModel):

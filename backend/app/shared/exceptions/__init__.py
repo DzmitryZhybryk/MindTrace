@@ -1,7 +1,7 @@
 from app.shared.exceptions.base import (
     BaseDomainError,
     ConflictError,
-    ErrorCategory,
+    ErrorCategoryEnum,
     GoneError,
     InternalError,
     InvalidInputError,
@@ -17,7 +17,7 @@ __all__ = [
     "BaseDomainError",
     "ConflictError",
     # Категории
-    "ErrorCategory",
+    "ErrorCategoryEnum",
     "GoneError",
     "InternalError",
     "InvalidInputError",

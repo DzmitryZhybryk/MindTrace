@@ -19,7 +19,7 @@ import { Link } from "react-router";
 
 import { cityLabel, useCityNames } from "../../../api/cityNames";
 import { resolveErrorToken } from "../../../api/errors";
-import type { JourneyFeedEntry, JourneysFeedResponse, TransportType } from "../../../api/sdk";
+import type { JourneyFeedEntry, JourneysFeedResponse, TransportTypeEnum } from "../../../api/sdk";
 import {
   feedSortingStrategy,
   moveJourneyInPages,
@@ -43,7 +43,7 @@ export type FeedStatus = "pending" | "loaded" | "error";
 
 interface JourneyFeedProps {
   yearRange: YearRange | null;
-  transportTypes: readonly TransportType[];
+  transportTypes: readonly TransportTypeEnum[];
   /** Whether the user has any journeys at all: tells "empty so far" from "the filter found nothing". */
   hasJourneys: boolean;
   /** The feed sits under `display: none` behind the journey card. */

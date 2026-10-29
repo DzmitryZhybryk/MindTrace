@@ -32,13 +32,13 @@ from app.journeys.application.schemas.results import (
     MovementsMapResult,
 )
 from app.journeys.application.services.journey import JourneyService
-from app.journeys.domain.enums import TransportType
+from app.journeys.domain.enums import TransportTypeEnum
 from app.journeys.exceptions import (
     InvalidMoveTargetError,
     JourneyNotFoundError,
     UnknownCityError,
 )
-from app.shared.fractional_index import MovePlacement
+from app.shared.fractional_index import MovePlacementEnum
 from app.shared.pagination import PageQuery
 from tests.builders import LONDON_CITY_ID, MOSCOW_CITY_ID, make_geo_point, make_journey
 from tests.fakes import FakeCitiesClient, FakeJourneyRepository, FakeJourneyUnitOfWork, MovementConnectionQuery
@@ -59,7 +59,7 @@ async def test_create_journey_snapshots_cities_and_commits(
     command = CreateJourneyCommand(
         origin_city_id=MOSCOW_CITY_ID,
         destination_city_id=LONDON_CITY_ID,
-        transport_type=TransportType.AIR,
+        transport_type=TransportTypeEnum.AIR,
         traveled_year=2020,
     )
 
@@ -72,7 +72,7 @@ async def test_create_journey_snapshots_cities_and_commits(
     assert journey.origin.country_code == "RU"
     assert journey.destination.city_id == LONDON_CITY_ID
     assert journey.destination.latitude == pytest.approx(51.5)
-    assert journey.transport_type is TransportType.AIR
+    assert journey.transport_type is TransportTypeEnum.AIR
     assert journey.traveled_year == 2020
     assert journey.distance_km == pytest.approx(2500, abs=60)
     fake_journey_uow.commit_mock.assert_awaited_once()
@@ -94,7 +94,7 @@ async def test_create_journey_unknown_cities_rejected_before_transaction(
     command = CreateJourneyCommand(
         origin_city_id=MOSCOW_CITY_ID,
         destination_city_id=LONDON_CITY_ID,
-        transport_type=TransportType.AIR,
+        transport_type=TransportTypeEnum.AIR,
         traveled_year=2020,
     )
 
@@ -118,7 +118,7 @@ async def test_create_journey_matches_geo_cities_by_id_not_by_order(
     command = CreateJourneyCommand(
         origin_city_id=MOSCOW_CITY_ID,
         destination_city_id=LONDON_CITY_ID,
-        transport_type=TransportType.AIR,
+        transport_type=TransportTypeEnum.AIR,
         traveled_year=2020,
     )
 
@@ -227,13 +227,13 @@ async def test_get_movements_map_returns_connections_and_year_bounds(
         make_journey(user_id=user_id, traveled_year=2017),
     ]
     fake_journey_repository.movement_connections_by_user_id[user_id] = [connection]
-    command = GetMovementsMapCommand(transport_types=frozenset({TransportType.AIR}))
+    command = GetMovementsMapCommand(transport_types=frozenset({TransportTypeEnum.AIR}))
 
     result = await journey_service.get_movements_map(user_id=user_id, command=command)
 
     assert result == MovementsMapResult(first_year=2017, last_year=2022, connections=(connection,))
     assert fake_journey_repository.movement_connection_queries == [
-        MovementConnectionQuery(user_id=user_id, transport_types=frozenset({TransportType.AIR}))
+        MovementConnectionQuery(user_id=user_id, transport_types=frozenset({TransportTypeEnum.AIR}))
     ]
     assert fake_journey_uow.transactions_started == 1
 
@@ -268,7 +268,7 @@ async def test_create_journey_goes_to_end_of_its_year(
     command = CreateJourneyCommand(
         origin_city_id=MOSCOW_CITY_ID,
         destination_city_id=LONDON_CITY_ID,
-        transport_type=TransportType.AIR,
+        transport_type=TransportTypeEnum.AIR,
         traveled_year=2020,
     )
 
@@ -289,7 +289,7 @@ async def test_update_journey_same_year_replaces_fields_and_keeps_position(
         user_id=user_id,
         origin=_LONDON,
         destination=_MOSCOW,
-        transport_type=TransportType.WATER,
+        transport_type=TransportTypeEnum.WATER,
         distance_km=1,
         traveled_year=2020,
         sort_key="m",
@@ -302,7 +302,7 @@ async def test_update_journey_same_year_replaces_fields_and_keeps_position(
         command=UpdateJourneyCommand(
             origin_city_id=MOSCOW_CITY_ID,
             destination_city_id=LONDON_CITY_ID,
-            transport_type=TransportType.AIR,
+            transport_type=TransportTypeEnum.AIR,
             traveled_year=2020,
         ),
     )
@@ -310,7 +310,7 @@ async def test_update_journey_same_year_replaces_fields_and_keeps_position(
     updated = fake_journey_repository.journeys[0]
     assert updated.origin.city_id == MOSCOW_CITY_ID
     assert updated.destination.city_id == LONDON_CITY_ID
-    assert updated.transport_type is TransportType.AIR
+    assert updated.transport_type is TransportTypeEnum.AIR
     assert updated.distance_km == pytest.approx(2500, abs=60)
     assert updated.traveled_year == 2020
     assert updated.sort_key == "m"
@@ -335,7 +335,7 @@ async def test_update_journey_new_year_goes_to_end_of_that_year(
         command=UpdateJourneyCommand(
             origin_city_id=MOSCOW_CITY_ID,
             destination_city_id=LONDON_CITY_ID,
-            transport_type=TransportType.AIR,
+            transport_type=TransportTypeEnum.AIR,
             traveled_year=2018,
         ),
     )
@@ -368,7 +368,7 @@ async def test_update_journey_unavailable_journey_raises_not_found(
             command=UpdateJourneyCommand(
                 origin_city_id=MOSCOW_CITY_ID,
                 destination_city_id=LONDON_CITY_ID,
-                transport_type=TransportType.AIR,
+                transport_type=TransportTypeEnum.AIR,
                 traveled_year=2020,
             ),
         )
@@ -395,7 +395,7 @@ async def test_update_journey_unknown_cities_rejected_before_transaction(
             command=UpdateJourneyCommand(
                 origin_city_id=MOSCOW_CITY_ID,
                 destination_city_id=LONDON_CITY_ID,
-                transport_type=TransportType.AIR,
+                transport_type=TransportTypeEnum.AIR,
                 traveled_year=2020,
             ),
         )
@@ -445,10 +445,10 @@ async def test_delete_journey_unavailable_journey_raises_not_found(
 @pytest.mark.parametrize(
     ("neighbor_key", "placement", "lower", "upper"),
     [
-        ("m", MovePlacement.AFTER, "m", "t"),
-        ("m", MovePlacement.BEFORE, "c", "m"),
-        ("t", MovePlacement.AFTER, "t", None),
-        ("c", MovePlacement.BEFORE, None, "c"),
+        ("m", MovePlacementEnum.AFTER, "m", "t"),
+        ("m", MovePlacementEnum.BEFORE, "c", "m"),
+        ("t", MovePlacementEnum.AFTER, "t", None),
+        ("c", MovePlacementEnum.BEFORE, None, "c"),
     ],
 )
 async def test_move_journey_places_key_between_neighbor_and_next_in_year(
@@ -456,7 +456,7 @@ async def test_move_journey_places_key_between_neighbor_and_next_in_year(
     fake_journey_uow: FakeJourneyUnitOfWork,
     fake_journey_repository: FakeJourneyRepository,
     neighbor_key: str,
-    placement: MovePlacement,
+    placement: MovePlacementEnum,
     lower: str | None,
     upper: str | None,
 ) -> None:
@@ -491,7 +491,7 @@ async def test_move_journey_into_another_year_takes_neighbor_year(
     result = await journey_service.move_journey(
         user_id=user_id,
         journey_id=moved_entity.journey_id,
-        command=MoveJourneyCommand(neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacement.AFTER),
+        command=MoveJourneyCommand(neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacementEnum.AFTER),
     )
 
     assert result == MoveJourneyResult(traveled_year=2018)
@@ -520,7 +520,7 @@ async def test_move_journey_invalid_neighbor_raises_invalid_move_target(
         await journey_service.move_journey(
             user_id=user_id,
             journey_id=moved_entity.journey_id,
-            command=MoveJourneyCommand(neighbor_journey_id=neighbor_journey_id, placement=MovePlacement.AFTER),
+            command=MoveJourneyCommand(neighbor_journey_id=neighbor_journey_id, placement=MovePlacementEnum.AFTER),
         )
 
     assert moved_entity.sort_key == "m"
@@ -546,7 +546,7 @@ async def test_move_journey_neighbor_repositioned_while_waiting_for_lock_uses_it
     await journey_service.move_journey(
         user_id=user_id,
         journey_id=moved_entity.journey_id,
-        command=MoveJourneyCommand(neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacement.AFTER),
+        command=MoveJourneyCommand(neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacementEnum.AFTER),
     )
 
     assert moved_entity.traveled_year == 2020
@@ -580,7 +580,9 @@ async def test_move_journey_neighbor_gone_while_waiting_for_lock_raises_invalid_
         await journey_service.move_journey(
             user_id=user_id,
             journey_id=moved_entity.journey_id,
-            command=MoveJourneyCommand(neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacement.AFTER),
+            command=MoveJourneyCommand(
+                neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacementEnum.AFTER
+            ),
         )
 
     assert (moved_entity.traveled_year, moved_entity.sort_key) == (2019, "m")
@@ -604,7 +606,9 @@ async def test_move_journey_unavailable_journey_raises_not_found(
         await journey_service.move_journey(
             user_id=user_id,
             journey_id=moved_entity.journey_id,
-            command=MoveJourneyCommand(neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacement.BEFORE),
+            command=MoveJourneyCommand(
+                neighbor_journey_id=neighbor_entity.journey_id, placement=MovePlacementEnum.BEFORE
+            ),
         )
 
     fake_journey_uow.commit_mock.assert_not_awaited()

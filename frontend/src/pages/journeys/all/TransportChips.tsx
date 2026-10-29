@@ -1,12 +1,12 @@
 import { Chip } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 
-import { zTransportType, type TransportType } from "../../../api/sdk";
+import { zTransportTypeEnum, type TransportTypeEnum } from "../../../api/sdk";
 import { TransportLabel } from "../../../components/TransportLabel";
 
 interface TransportChipsProps {
-  transportTypes: readonly TransportType[];
-  onTransportTypesChange: (transportTypes: readonly TransportType[]) => void;
+  transportTypes: readonly TransportTypeEnum[];
+  onTransportTypesChange: (transportTypes: readonly TransportTypeEnum[]) => void;
 }
 
 /** Multi-select of feed transport types: icon and label, selection shown by fill. */
@@ -14,11 +14,11 @@ export function TransportChips({ transportTypes, onTransportTypesChange }: Trans
   const { t } = useTranslation("journeys");
 
   return (
-    <Chip.Group multiple value={[...transportTypes]} onChange={(value) => onTransportTypesChange(value as TransportType[])}>
+    <Chip.Group multiple value={[...transportTypes]} onChange={(value) => onTransportTypesChange(value as TransportTypeEnum[])}>
       <fieldset className="transport-chips">
         <legend className="all-journeys__filter-label">{t("all.transport")}</legend>
         <div className="transport-chips__row">
-          {zTransportType.options.map((type) => (
+          {zTransportTypeEnum.options.map((type) => (
             <Chip key={type} value={type} variant="outline" size="md" className="transport-chips__chip">
               <TransportLabel type={type} />
             </Chip>

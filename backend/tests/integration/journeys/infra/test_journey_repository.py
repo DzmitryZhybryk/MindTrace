@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.journeys.application.ports.journey_repository import JourneyFilters, JourneyOrderScope
 from app.journeys.domain.entities import JourneyEntity
-from app.journeys.domain.enums import TransportType
+from app.journeys.domain.enums import TransportTypeEnum
 from app.journeys.infra.models import Journey
 from app.journeys.infra.repositories import JourneyRepository
 from app.shared.fractional_index import generate_key_between
@@ -59,7 +59,7 @@ async def test_insert_journey_persists_snapshot(db_session: AsyncSession) -> Non
     user_id = uuid4()
     journey_entity = make_journey(
         user_id=user_id,
-        transport_type=TransportType.AIR,
+        transport_type=TransportTypeEnum.AIR,
         traveled_year=2020,
     )
 
@@ -234,20 +234,20 @@ async def test_find_movement_connections_years_only_from_selected_transport(db_s
             user_id=user_id,
             origin=_MOSCOW,
             destination=_LONDON,
-            transport_type=TransportType.AIR,
+            transport_type=TransportTypeEnum.AIR,
             traveled_year=2019,
         ),
         make_journey(
             user_id=user_id,
             origin=_MOSCOW,
             destination=_LONDON,
-            transport_type=TransportType.LAND,
+            transport_type=TransportTypeEnum.LAND,
             traveled_year=2022,
         ),
     )
 
     [connection] = await repository.find_movement_connections_by_user_id(
-        user_id=user_id, transport_types=frozenset({TransportType.AIR})
+        user_id=user_id, transport_types=frozenset({TransportTypeEnum.AIR})
     )
 
     assert connection.years == (2019,)
@@ -258,18 +258,21 @@ async def test_find_movement_connections_filters_by_transport(db_session: AsyncS
     user_id = uuid4()
     repository = await _insert(
         db_session,
-        make_journey(user_id=user_id, origin=_MOSCOW, destination=_LONDON, transport_type=TransportType.AIR),
-        make_journey(user_id=user_id, origin=_LONDON, destination=_PARIS, transport_type=TransportType.LAND),
-        make_journey(user_id=user_id, origin=_PARIS, destination=_MOSCOW, transport_type=TransportType.WATER),
+        make_journey(user_id=user_id, origin=_MOSCOW, destination=_LONDON, transport_type=TransportTypeEnum.AIR),
+        make_journey(user_id=user_id, origin=_LONDON, destination=_PARIS, transport_type=TransportTypeEnum.LAND),
+        make_journey(user_id=user_id, origin=_PARIS, destination=_MOSCOW, transport_type=TransportTypeEnum.WATER),
     )
 
-    async def destinations(transport_types: frozenset[TransportType] | None) -> set[UUID]:
+    async def destinations(transport_types: frozenset[TransportTypeEnum] | None) -> set[UUID]:
         connections = await repository.find_movement_connections_by_user_id(
             user_id=user_id, transport_types=transport_types
         )
         return {connection.destination.city_id for connection in connections}
 
-    assert await destinations(frozenset({TransportType.AIR, TransportType.WATER})) == {LONDON_CITY_ID, MOSCOW_CITY_ID}
+    assert await destinations(frozenset({TransportTypeEnum.AIR, TransportTypeEnum.WATER})) == {
+        LONDON_CITY_ID,
+        MOSCOW_CITY_ID,
+    }
     assert await destinations(None) == {LONDON_CITY_ID, _PARIS_CITY_ID, MOSCOW_CITY_ID}
 
 
@@ -388,15 +391,15 @@ async def test_find_journeys_page_cursor_walks_whole_feed_without_gaps(db_sessio
 async def test_find_journeys_page_filters_by_year_range_and_transport(db_session: AsyncSession) -> None:
     """Фильтр: годы включительно с обеих сторон и набор видов транспорта."""
     user_id = uuid4()
-    in_range_air = make_journey(user_id=user_id, traveled_year=2020, transport_type=TransportType.AIR)
-    edge_water = make_journey(user_id=user_id, traveled_year=2018, transport_type=TransportType.WATER)
+    in_range_air = make_journey(user_id=user_id, traveled_year=2020, transport_type=TransportTypeEnum.AIR)
+    edge_water = make_journey(user_id=user_id, traveled_year=2018, transport_type=TransportTypeEnum.WATER)
     repository = await _insert(
         db_session,
         in_range_air,
         edge_water,
-        make_journey(user_id=user_id, traveled_year=2019, transport_type=TransportType.LAND),
-        make_journey(user_id=user_id, traveled_year=2021, transport_type=TransportType.AIR),
-        make_journey(user_id=user_id, traveled_year=2017, transport_type=TransportType.WATER),
+        make_journey(user_id=user_id, traveled_year=2019, transport_type=TransportTypeEnum.LAND),
+        make_journey(user_id=user_id, traveled_year=2021, transport_type=TransportTypeEnum.AIR),
+        make_journey(user_id=user_id, traveled_year=2017, transport_type=TransportTypeEnum.WATER),
     )
 
     page = await repository.find_journeys_page_by_user_id(
@@ -405,7 +408,7 @@ async def test_find_journeys_page_filters_by_year_range_and_transport(db_session
         filters=JourneyFilters(
             year_from=2018,
             year_to=2020,
-            transport_types=frozenset({TransportType.AIR, TransportType.WATER}),
+            transport_types=frozenset({TransportTypeEnum.AIR, TransportTypeEnum.WATER}),
         ),
     )
 
@@ -522,10 +525,12 @@ async def test_lock_sort_keys_serializes_concurrent_inserts_into_one_year(
 async def test_update_journey_by_id_persists_revise_and_move(db_session: AsyncSession) -> None:
     """update_journey_by_id: новые города, транспорт, расстояние, год и ключ ложатся в строку."""
     user_id = uuid4()
-    journey_entity = make_journey(user_id=user_id, traveled_year=2020, sort_key="m", transport_type=TransportType.AIR)
+    journey_entity = make_journey(
+        user_id=user_id, traveled_year=2020, sort_key="m", transport_type=TransportTypeEnum.AIR
+    )
     repository = await _insert(db_session, journey_entity)
 
-    journey_entity.revise(origin=_PARIS, destination=_MOSCOW, transport_type=TransportType.LAND, distance_km=2480)
+    journey_entity.revise(origin=_PARIS, destination=_MOSCOW, transport_type=TransportTypeEnum.LAND, distance_km=2480)
     journey_entity.move(traveled_year=2018, sort_key="b")
     await repository.update_journey_by_id(journey_entity=journey_entity)
     await db_session.commit()
@@ -534,7 +539,7 @@ async def test_update_journey_by_id_persists_revise_and_move(db_session: AsyncSe
     assert stored is not None
     assert stored.origin.city_id == _PARIS_CITY_ID
     assert stored.destination.city_id == MOSCOW_CITY_ID
-    assert stored.transport_type is TransportType.LAND
+    assert stored.transport_type is TransportTypeEnum.LAND
     assert stored.distance_km == 2480
     assert stored.traveled_year == 2018
     assert stored.sort_key == "b"

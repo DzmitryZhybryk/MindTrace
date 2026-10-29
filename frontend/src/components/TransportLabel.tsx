@@ -1,12 +1,12 @@
 import { useTranslation } from "react-i18next";
 
-import type { TransportType } from "../api/sdk";
+import type { TransportTypeEnum } from "../api/sdk";
 import { TRANSPORT_ICONS } from "./transportIcons";
 
 const ICON_SIZE = 20;
 
 interface TransportLabelProps {
-  type: TransportType;
+  type: TransportTypeEnum;
 }
 
 /** Transport type as icon plus label, for chips and the journey card. */

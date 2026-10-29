@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from app.journeys.application.ports.journey_repository import MovementConnection
-from app.journeys.domain.enums import TransportType
+from app.journeys.domain.enums import TransportTypeEnum
 from app.journeys.domain.value_objects import GeoPoint
 from app.shared.pagination import CursorPage
 
@@ -98,7 +98,7 @@ class JourneyFeedItem:
     journey_id: UUID
     origin: GeoPoint
     destination: GeoPoint
-    transport_type: TransportType
+    transport_type: TransportTypeEnum
     traveled_year: int
     distance_km: int
 

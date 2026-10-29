@@ -6,7 +6,7 @@ from typing import ClassVar
 from app.shared.types import OptionalDict
 
 
-class ErrorCategory(Enum):
+class ErrorCategoryEnum(Enum):
     """
     Транспортно-нейтральная категория доменной ошибки.
 
@@ -34,7 +34,7 @@ class BaseDomainError(Exception):
     Дочерние классы могут задать атрибуты класса `category`, `code` и `message`
     для дефолтных значений.
 
-    Поле `category` несёт транспортно-нейтральный род ошибки (см. `ErrorCategory`):
+    Поле `category` несёт транспортно-нейтральный род ошибки (см. `ErrorCategoryEnum`):
     адаптер транспорта переводит его в свой код (HTTP-статус и т.п.).
     Поле `code` — стабильный машинно-читаемый идентификатор ошибки для клиента
     (часть API-контракта). Поле `details` несёт дополнительную метаинформацию
@@ -44,7 +44,7 @@ class BaseDomainError(Exception):
     инстанс-атрибут `details`.
     """
 
-    category: ErrorCategory = ErrorCategory.INTERNAL
+    category: ErrorCategoryEnum = ErrorCategoryEnum.INTERNAL
     code: str = "unknown_error"
     message: str = "Произошла ошибка"
     default_details: ClassVar[OptionalDict] = None
@@ -74,7 +74,7 @@ class BaseDomainError(Exception):
 class InvalidInputError(BaseDomainError):
     """Базовое исключение для ошибок валидации и некорректного ввода."""
 
-    category = ErrorCategory.INVALID_INPUT
+    category = ErrorCategoryEnum.INVALID_INPUT
     code = "invalid_input"
     message = "Некорректный запрос"
 
@@ -82,7 +82,7 @@ class InvalidInputError(BaseDomainError):
 class UnauthenticatedError(BaseDomainError):
     """Базовое исключение для ошибок аутентификации."""
 
-    category = ErrorCategory.UNAUTHENTICATED
+    category = ErrorCategoryEnum.UNAUTHENTICATED
     code = "unauthenticated"
     message = "Требуется авторизация"
 
@@ -90,7 +90,7 @@ class UnauthenticatedError(BaseDomainError):
 class PermissionDeniedError(BaseDomainError):
     """Базовое исключение для ошибок доступа."""
 
-    category = ErrorCategory.PERMISSION_DENIED
+    category = ErrorCategoryEnum.PERMISSION_DENIED
     code = "permission_denied"
     message = "Доступ запрещен"
 
@@ -98,7 +98,7 @@ class PermissionDeniedError(BaseDomainError):
 class NotFoundError(BaseDomainError):
     """Базовое исключение для ошибок "ресурс не найден"."""
 
-    category = ErrorCategory.NOT_FOUND
+    category = ErrorCategoryEnum.NOT_FOUND
     code = "not_found"
     message = "Ресурс не найден"
 
@@ -106,7 +106,7 @@ class NotFoundError(BaseDomainError):
 class ConflictError(BaseDomainError):
     """Базовое исключение для конфликтов данных."""
 
-    category = ErrorCategory.CONFLICT
+    category = ErrorCategoryEnum.CONFLICT
     code = "conflict"
     message = "Конфликт данных"
 
@@ -114,7 +114,7 @@ class ConflictError(BaseDomainError):
 class GoneError(BaseDomainError):
     """Базовое исключение для ресурсов, которые когда-то были и истекли."""
 
-    category = ErrorCategory.GONE
+    category = ErrorCategoryEnum.GONE
     code = "gone"
     message = "Ресурс больше недоступен"
 
@@ -122,7 +122,7 @@ class GoneError(BaseDomainError):
 class UnprocessableError(BaseDomainError):
     """Базовое исключение для ошибок обработки корректно сформированной сущности."""
 
-    category = ErrorCategory.UNPROCESSABLE
+    category = ErrorCategoryEnum.UNPROCESSABLE
     code = "unprocessable"
     message = "Невозможно обработать запрос"
 
@@ -130,7 +130,7 @@ class UnprocessableError(BaseDomainError):
 class RateLimitedError(BaseDomainError):
     """Базовое исключение для ошибок превышения лимита запросов."""
 
-    category = ErrorCategory.RATE_LIMITED
+    category = ErrorCategoryEnum.RATE_LIMITED
     code = "rate_limited"
     message = "Превышен лимит запросов"
 
@@ -138,6 +138,6 @@ class RateLimitedError(BaseDomainError):
 class InternalError(BaseDomainError):
     """Базовое исключение для внутренних ошибок сервера."""
 
-    category = ErrorCategory.INTERNAL
+    category = ErrorCategoryEnum.INTERNAL
     code = "internal"
     message = "Внутренняя ошибка сервера"

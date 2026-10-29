@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Navigate, useParams } from "react-router";
 
 import { useCityNames } from "../../../api/cityNames";
-import { getJourneyYearsOptions, zTransportType, type JourneyFeedEntry, type TransportType } from "../../../api/sdk";
+import { getJourneyYearsOptions, zTransportTypeEnum, type JourneyFeedEntry, type TransportTypeEnum } from "../../../api/sdk";
 import { YearRangeSlider } from "../movements/YearRangeSlider";
 import { JourneyCard } from "./JourneyCard";
 import { ALL_JOURNEYS_PATH } from "./journeyCardPath";
@@ -41,7 +41,7 @@ export function AllJourneysView() {
   const { journeyId } = useParams<{ journeyId?: string }>();
   const years = useQuery({ ...getJourneyYearsOptions(), staleTime: Infinity });
   const [yearRange, setYearRange] = useState<YearRange | null>(null);
-  const [transportTypes, setTransportTypes] = useState<readonly TransportType[]>(zTransportType.options);
+  const [transportTypes, setTransportTypes] = useState<readonly TransportTypeEnum[]>(zTransportTypeEnum.options);
   const yearList = years.data?.years ?? [];
   const firstYear = yearList.at(0);
   const lastYear = yearList.at(-1);

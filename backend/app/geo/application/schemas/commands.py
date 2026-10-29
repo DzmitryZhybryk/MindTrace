@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from app.geo.domain.enums import Language
+from app.geo.domain.enums import LanguageEnum
 
 __all__ = [
     "GetCitiesByIdsCommand",
@@ -20,7 +20,7 @@ class SearchCitiesCommand:
     """
 
     search_text: str
-    language: Language
+    language: LanguageEnum
     limit: int
 
 
@@ -29,7 +29,7 @@ class ResolveCitiesCommand:
     """Запрос названий городов по их id на нужном языке."""
 
     city_ids: tuple[UUID, ...]
-    language: Language
+    language: LanguageEnum
 
 
 @dataclass(frozen=True, slots=True)

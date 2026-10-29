@@ -80,7 +80,7 @@ export type CreateJourneyRequest = {
    * Destinationcityid
    */
   destinationCityId: string;
-  transportType: TransportType;
+  transportType: TransportTypeEnum;
   /**
    * Traveledyear
    */
@@ -195,7 +195,7 @@ export type JourneyFeedEntry = {
   journeyId: string;
   origin: JourneyCity;
   destination: JourneyCity;
-  transportType: TransportType;
+  transportType: TransportTypeEnum;
   /**
    * Traveledyear
    */
@@ -261,7 +261,7 @@ export type JourneysMapResponse = {
 };
 
 /**
- * Language
+ * LanguageEnum
  *
  * Язык отображаемого имени объекта газеттира.
  *
@@ -269,7 +269,7 @@ export type JourneysMapResponse = {
  * для ``en``/``ru``. Используется как тип query-параметра ``language`` на границе HTTP
  * и как ключ резолва имени в ``LocalizedNames``.
  */
-export type Language = 'en' | 'ru';
+export type LanguageEnum = 'en' | 'ru';
 
 /**
  * LoginRequest
@@ -355,7 +355,7 @@ export type MoveJourneyRequest = {
    * Neighborjourneyid
    */
   neighborJourneyId: string;
-  placement: MovePlacement;
+  placement: MovePlacementEnum;
 };
 
 /**
@@ -371,11 +371,11 @@ export type MoveJourneyResponse = {
 };
 
 /**
- * MovePlacement
+ * MovePlacementEnum
  *
  * С какой стороны от строки-соседа встаёт переносимая строка в ручном порядке.
  */
-export type MovePlacement = 'after' | 'before';
+export type MovePlacementEnum = 'after' | 'before';
 
 /**
  * MovementConnection
@@ -451,7 +451,7 @@ export type ResolveCitiesRequest = {
    * Cityids
    */
   cityIds: Array<string>;
-  language: Language;
+  language: LanguageEnum;
 };
 
 /**
@@ -481,14 +481,14 @@ export type TokenResponse = {
 };
 
 /**
- * TransportType
+ * TransportTypeEnum
  *
  * Среда передвижения в поездке (а не конкретный вид транспорта).
  *
  * Категория среды, не средство: пешком/машина/поезд = ``LAND``, самолёт = ``AIR``,
  * паром/корабль = ``WATER``. Зеркалит string-literal union на фронте.
  */
-export type TransportType = 'land' | 'air' | 'water';
+export type TransportTypeEnum = 'land' | 'air' | 'water';
 
 /**
  * UpdateJourneyRequest
@@ -504,7 +504,7 @@ export type UpdateJourneyRequest = {
    * Destinationcityid
    */
   destinationCityId: string;
-  transportType: TransportType;
+  transportType: TransportTypeEnum;
   /**
    * Traveledyear
    */
@@ -829,7 +829,7 @@ export type SearchCitiesData = {
     /**
      * Язык отображаемых имён.
      */
-    language: Language;
+    language: LanguageEnum;
     /**
      * Limit
      *
@@ -922,7 +922,7 @@ export type ListJourneysData = {
     /**
      * Transporttype
      */
-    transportType?: Array<TransportType> | null;
+    transportType?: Array<TransportTypeEnum> | null;
   };
   url: '/v1/journeys/';
 };
@@ -1266,7 +1266,7 @@ export type GetMovementsMapData = {
     /**
      * Transporttype
      */
-    transportType?: Array<TransportType> | null;
+    transportType?: Array<TransportTypeEnum> | null;
   };
   url: '/v1/journeys/movements/';
 };

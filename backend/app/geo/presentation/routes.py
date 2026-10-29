@@ -5,7 +5,7 @@ from pydantic import StringConstraints
 
 from app.geo.application.schemas.commands import ResolveCitiesCommand, SearchCitiesCommand
 from app.geo.application.services.city import CityService
-from app.geo.domain.enums import Language
+from app.geo.domain.enums import LanguageEnum
 from app.geo.presentation.dependencies import city_service_dependency
 from app.geo.presentation.responses import RESOLVE_CITIES_RESPONSES, SEARCH_CITIES_RESPONSES
 from app.geo.presentation.schemas import (
@@ -35,7 +35,7 @@ async def search_cities(
         StringConstraints(strip_whitespace=True, min_length=2, max_length=100),
         Query(alias="searchText", description="Поисковый запрос (начало имени)."),
     ],
-    language: Annotated[Language, Query(description="Язык отображаемых имён.")],
+    language: Annotated[LanguageEnum, Query(description="Язык отображаемых имён.")],
     limit: Annotated[int, Query(ge=1, le=50, description="Максимум кандидатов в выдаче.")] = 10,
 ) -> CitySearchResponse:
     command = SearchCitiesCommand(search_text=search_text, language=language, limit=limit)

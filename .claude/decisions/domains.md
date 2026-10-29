@@ -10,7 +10,7 @@
 - Source: journeys design; auth and users already followed it
 
 ## Domain errors know nothing about HTTP
-- A domain exception carries an `ErrorCategory`; the HTTP status is chosen only in the HTTP adapter
+- A domain exception carries an `ErrorCategoryEnum`; the HTTP status is chosen only in the HTTP adapter
   (`resolve_http_status`).
 - Why: the transport is HTTP today and may be a queue, gRPC or a CLI tomorrow; an HTTP status on a
   domain exception leaks HTTP into the domain. The owner wants maximum flexibility and clean layers.

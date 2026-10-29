@@ -7,7 +7,7 @@ from structlog.testing import capture_logs
 from app.geo.application.schemas.commands import GetCitiesByIdsCommand, ResolveCitiesCommand, SearchCitiesCommand
 from app.geo.application.schemas.results import CityLocation
 from app.geo.application.services.city import CityService
-from app.geo.domain.enums import Language
+from app.geo.domain.enums import LanguageEnum
 from tests.builders import make_city
 from tests.fakes import FakeCityRepository, FakeGeoUnitOfWork
 
@@ -26,7 +26,7 @@ async def test_search_cities_maps_candidate_fields(
     fake_city_repository.cities.append(moscow)
 
     result = await city_service.search_cities(
-        SearchCitiesCommand(search_text="Mos", language=Language.EN, limit=10),
+        SearchCitiesCommand(search_text="Mos", language=LanguageEnum.EN, limit=10),
     )
 
     [item] = result.items
@@ -50,13 +50,13 @@ async def test_search_cities_resolves_names_under_language_and_flags_missing(
 
     with capture_logs() as logs:
         result = await city_service.search_cities(
-            SearchCitiesCommand(search_text="Mos", language=Language.RU, limit=10),
+            SearchCitiesCommand(search_text="Mos", language=LanguageEnum.RU, limit=10),
         )
 
     assert [item.name for item in result.items] == ["Москва", "Mostar"]
     missing = [log for log in logs if log["event"] == "geo.city_name_missing"]
     assert len(missing) == 1
-    assert missing[0]["language"] is Language.RU
+    assert missing[0]["language"] is LanguageEnum.RU
     assert missing[0]["city_id"] == mostar.city_id
 
 
@@ -71,7 +71,7 @@ async def test_resolve_cities_returns_names_in_requested_language_with_en_fallba
     fake_city_repository.cities.extend([moscow, mostar])
 
     result = await city_service.resolve_cities(
-        ResolveCitiesCommand(city_ids=(moscow.city_id, mostar.city_id), language=Language.RU),
+        ResolveCitiesCommand(city_ids=(moscow.city_id, mostar.city_id), language=LanguageEnum.RU),
     )
 
     assert {item.city_id: item.name for item in result.items} == {moscow.city_id: "Москва", mostar.city_id: "Mostar"}
@@ -89,7 +89,7 @@ async def test_resolve_cities_omits_unknown_ids_and_warns(
 
     with capture_logs() as logs:
         result = await city_service.resolve_cities(
-            ResolveCitiesCommand(city_ids=(moscow.city_id, unknown_id), language=Language.EN),
+            ResolveCitiesCommand(city_ids=(moscow.city_id, unknown_id), language=LanguageEnum.EN),
         )
 
     assert [item.city_id for item in result.items] == [moscow.city_id]
@@ -104,7 +104,7 @@ async def test_resolve_cities_many_unknown_logs_count_and_sample(city_service: C
     unknown_ids = [uuid4() for _ in range(25)]
 
     with capture_logs() as logs:
-        await city_service.resolve_cities(ResolveCitiesCommand(city_ids=tuple(unknown_ids), language=Language.EN))
+        await city_service.resolve_cities(ResolveCitiesCommand(city_ids=tuple(unknown_ids), language=LanguageEnum.EN))
 
     [warning] = [log for log in logs if log["event"] == "geo.city_ids_unknown"]
     assert warning["count"] == 25
@@ -120,7 +120,7 @@ async def test_resolve_cities_all_known_does_not_warn(
     fake_city_repository.cities.append(moscow)
 
     with capture_logs() as logs:
-        await city_service.resolve_cities(ResolveCitiesCommand(city_ids=(moscow.city_id,), language=Language.EN))
+        await city_service.resolve_cities(ResolveCitiesCommand(city_ids=(moscow.city_id,), language=LanguageEnum.EN))
 
     assert [log for log in logs if log["event"] == "geo.city_ids_unknown"] == []
 

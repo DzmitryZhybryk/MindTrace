@@ -14,7 +14,7 @@ from uuid import UUID
 from app.geo.application.ports.city_repository import CityRepositoryPort
 from app.geo.application.ports.unit_of_work import GeoUnitOfWorkPort
 from app.geo.domain.entities import CityEntity
-from app.geo.domain.enums import Language
+from app.geo.domain.enums import LanguageEnum
 
 
 class FakeCityRepository(CityRepositoryPort):
@@ -37,7 +37,10 @@ class FakeCityRepository(CityRepositoryPort):
     @staticmethod
     def _matches_prefix(*, city_entity: CityEntity, prefix: str) -> bool:
         """Совпадение, если имя на en ИЛИ ru начинается с префикса (как ``LIKE 'q%'`` в боевом репо)."""
-        names = (city_entity.localized_name(language=Language.EN), city_entity.localized_name(language=Language.RU))
+        names = (
+            city_entity.localized_name(language=LanguageEnum.EN),
+            city_entity.localized_name(language=LanguageEnum.RU),
+        )
         return any(name is not None and name.lower().startswith(prefix) for name in names)
 
 

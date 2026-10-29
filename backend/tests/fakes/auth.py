@@ -25,7 +25,7 @@ from app.auth.application.ports.user_credentials_repository import UserCredentia
 from app.auth.application.ports.users_client import CreateUserRequest, UsersClientPort
 from app.auth.application.services.email_verification import EmailVerificationService
 from app.auth.domain.entities import ChallengeEntity, RefreshTokenEntity, UserCredentialsEntity
-from app.auth.domain.enums import ChallengeType
+from app.auth.domain.enums import ChallengeTypeEnum
 
 
 class FakeUserCredentialsRepository(UserCredentialsRepositoryPort):
@@ -90,7 +90,7 @@ class FakeChallengeRepository(ChallengeRepositoryPort):
         self,
         *,
         user_id: UUID,
-        challenge_type: ChallengeType,
+        challenge_type: ChallengeTypeEnum,
     ) -> ChallengeEntity | None:
         return next(
             (

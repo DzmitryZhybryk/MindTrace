@@ -3,7 +3,7 @@
   "info": {
     "title": "MindTrace",
     "description": "Service for managing mindtrace",
-    "version": "6.0.1"
+    "version": "6.0.2"
   },
   "paths": {
     "/healthz/": {
@@ -642,7 +642,7 @@
             "in": "query",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/Language",
+              "$ref": "#/components/schemas/LanguageEnum",
               "description": "Язык отображаемых имён."
             },
             "description": "Язык отображаемых имён."
@@ -989,7 +989,7 @@
                   "type": "array",
                   "uniqueItems": true,
                   "items": {
-                    "$ref": "#/components/schemas/TransportType"
+                    "$ref": "#/components/schemas/TransportTypeEnum"
                   }
                 },
                 {
@@ -1726,7 +1726,7 @@
                   "type": "array",
                   "uniqueItems": true,
                   "items": {
-                    "$ref": "#/components/schemas/TransportType"
+                    "$ref": "#/components/schemas/TransportTypeEnum"
                   }
                 },
                 {
@@ -1978,7 +1978,7 @@
             "title": "Destinationcityid"
           },
           "transportType": {
-            "$ref": "#/components/schemas/TransportType"
+            "$ref": "#/components/schemas/TransportTypeEnum"
           },
           "traveledYear": {
             "type": "integer",
@@ -2141,7 +2141,7 @@
             "$ref": "#/components/schemas/JourneyCity"
           },
           "transportType": {
-            "$ref": "#/components/schemas/TransportType"
+            "$ref": "#/components/schemas/TransportTypeEnum"
           },
           "traveledYear": {
             "type": "integer",
@@ -2244,13 +2244,13 @@
         "title": "JourneysMapResponse",
         "description": "Ответ карты путешествий: посещённые страны с городами и годами визитов.\n\nКаждый город встречается ровно один раз, в одной стране."
       },
-      "Language": {
+      "LanguageEnum": {
         "type": "string",
         "enum": [
           "en",
           "ru"
         ],
-        "title": "Language",
+        "title": "LanguageEnum",
         "description": "Язык отображаемого имени объекта газеттира.\n\nЗакрытое множество поддерживаемых языков газеттира: имена импортируются только\nдля ``en``/``ru``. Используется как тип query-параметра ``language`` на границе HTTP\nи как ключ резолва имени в ``LocalizedNames``."
       },
       "LoginRequest": {
@@ -2365,7 +2365,7 @@
             "title": "Neighborjourneyid"
           },
           "placement": {
-            "$ref": "#/components/schemas/MovePlacement"
+            "$ref": "#/components/schemas/MovePlacementEnum"
           }
         },
         "type": "object",
@@ -2390,13 +2390,13 @@
         "title": "MoveJourneyResponse",
         "description": "Год поездки после переноса: он берётся от соседа и может смениться."
       },
-      "MovePlacement": {
+      "MovePlacementEnum": {
         "type": "string",
         "enum": [
           "after",
           "before"
         ],
-        "title": "MovePlacement",
+        "title": "MovePlacementEnum",
         "description": "С какой стороны от строки-соседа встаёт переносимая строка в ручном порядке."
       },
       "MovementConnection": {
@@ -2530,7 +2530,7 @@
             "title": "Cityids"
           },
           "language": {
-            "$ref": "#/components/schemas/Language"
+            "$ref": "#/components/schemas/LanguageEnum"
           }
         },
         "type": "object",
@@ -2576,14 +2576,14 @@
         ],
         "title": "TokenResponse"
       },
-      "TransportType": {
+      "TransportTypeEnum": {
         "type": "string",
         "enum": [
           "land",
           "air",
           "water"
         ],
-        "title": "TransportType",
+        "title": "TransportTypeEnum",
         "description": "Среда передвижения в поездке (а не конкретный вид транспорта).\n\nКатегория среды, не средство: пешком/машина/поезд = ``LAND``, самолёт = ``AIR``,\nпаром/корабль = ``WATER``. Зеркалит string-literal union на фронте."
       },
       "UpdateJourneyRequest": {
@@ -2599,7 +2599,7 @@
             "title": "Destinationcityid"
           },
           "transportType": {
-            "$ref": "#/components/schemas/TransportType"
+            "$ref": "#/components/schemas/TransportTypeEnum"
           },
           "traveledYear": {
             "type": "integer",

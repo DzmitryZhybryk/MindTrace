@@ -1,20 +1,20 @@
 import {
   listJourneysInfiniteOptions,
-  zTransportType,
+  zTransportTypeEnum,
   type JourneyFeedEntry,
   type JourneysFeedResponse,
   type ListJourneysData,
-  type TransportType,
+  type TransportTypeEnum,
 } from "../../../api/sdk";
 import type { YearRange } from "./yearRange";
 
 export interface FeedFilters {
   yearRange: YearRange | null;
-  transportTypes: readonly TransportType[];
+  transportTypes: readonly TransportTypeEnum[];
 }
 
 /** Filters under which the feed is all journeys: its cache is the source for client-side selection. */
-export const NO_FEED_FILTERS: FeedFilters = { yearRange: null, transportTypes: zTransportType.options };
+export const NO_FEED_FILTERS: FeedFilters = { yearRange: null, transportTypes: zTransportTypeEnum.options };
 
 // The year slider changes the filter on every year passed. The filtered feed goes to the network
 // once the filter has stood this long: a request for a superseded filter is cancelled before sending.
@@ -58,7 +58,7 @@ export function feedQueryOptions({ yearRange, transportTypes }: FeedFilters) {
     [query.yearFrom, query.yearTo] = yearRange;
   }
 
-  if (transportTypes.length < zTransportType.options.length) {
+  if (transportTypes.length < zTransportTypeEnum.options.length) {
     query.transportType = [...transportTypes].sort();
   }
 

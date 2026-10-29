@@ -13,3 +13,14 @@
 - Revisit when: a test must vary a setting that no `*Settings`/`*Config` constructor reaches, or two apps with different
   settings share one process.
 - Source: plan D review, 2026-10-24
+
+## Schema names in `openapi.json` are not part of the versioned contract
+- Renaming a component (`LanguageEnum`, `TransportTypeEnum`, `MovePlacementEnum`) with the wire values unchanged is
+  a patch bump; the regenerated `frontend/src/api/generated/` lands in the same commit (`codegen-contract.md`).
+- Why: the backend version tracks what an HTTP client observes — routes, payload shapes, wire values, error `code`s.
+  A component name is a label inside the schema document; the only consumer that depends on it is the frontend SDK,
+  which is regenerated in the same commit.
+- Rejected: major bump — treats every generator-visible rename as breaking while no client outside this repo generates
+  code from `openapi.json`.
+- Revisit when: a client outside this repo generates code from `openapi.json`.
+- Source: PR #172, 2026-10-28

@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from app.journeys.application.ports.journey_repository import JourneyFilters
-from app.journeys.domain.enums import TransportType
-from app.shared.fractional_index import MovePlacement
+from app.journeys.domain.enums import TransportTypeEnum
+from app.shared.fractional_index import MovePlacementEnum
 from app.shared.pagination import PageQuery
 
 __all__ = [
@@ -22,7 +22,7 @@ class CreateJourneyCommand:
 
     origin_city_id: UUID
     destination_city_id: UUID
-    transport_type: TransportType
+    transport_type: TransportTypeEnum
     traveled_year: int
 
 
@@ -32,7 +32,7 @@ class UpdateJourneyCommand:
 
     origin_city_id: UUID
     destination_city_id: UUID
-    transport_type: TransportType
+    transport_type: TransportTypeEnum
     traveled_year: int
 
 
@@ -41,7 +41,7 @@ class MoveJourneyCommand:
     """Куда перенести поездку: после или перед поездкой-соседом."""
 
     neighbor_journey_id: UUID
-    placement: MovePlacement
+    placement: MovePlacementEnum
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,4 +69,4 @@ class GetMovementsMapCommand:
     Окна лет здесь нет: годы маршрутов уходят на фронт, и окно он применяет сам.
     """
 
-    transport_types: frozenset[TransportType] | None
+    transport_types: frozenset[TransportTypeEnum] | None

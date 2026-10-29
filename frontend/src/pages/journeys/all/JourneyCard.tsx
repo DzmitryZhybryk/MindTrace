@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router";
 
 import { cityLabel, type CityNameLookup } from "../../../api/cityNames";
 import { resolveErrorToken } from "../../../api/errors";
-import { zTransportType, type CitySearchItem, type JourneyCity, type JourneyFeedEntry } from "../../../api/sdk";
+import { zTransportTypeEnum, type CitySearchItem, type JourneyCity, type JourneyFeedEntry } from "../../../api/sdk";
 import { CityAutocomplete } from "../../../components/CityAutocomplete";
 import { SoonBadge } from "../../../components/SoonBadge";
 import { SwapVerticalIcon } from "../../../components/SwapVerticalIcon";
@@ -273,7 +273,7 @@ export function JourneyCard({ journey, nameOf }: JourneyCardProps) {
                 </UnstyledButton>
               </Menu.Target>
               <Menu.Dropdown>
-                {zTransportType.options.map((type) => (
+                {zTransportTypeEnum.options.map((type) => (
                   <Menu.Item
                     key={type}
                     onClick={() => void commit({ transport: type })}

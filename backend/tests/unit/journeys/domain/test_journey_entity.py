@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 
 from app.journeys.domain.entities import JourneyEntity
-from app.journeys.domain.enums import TransportType
+from app.journeys.domain.enums import TransportTypeEnum
 from app.journeys.exceptions import JourneyNotFoundError
 from tests.builders import LONDON_CITY_ID, MOSCOW_CITY_ID, make_geo_point, make_journey
 
@@ -23,7 +23,7 @@ def test_create_assigns_fields_and_mints_id() -> None:
         user_id=user_id,
         origin=origin,
         destination=destination,
-        transport_type=TransportType.WATER,
+        transport_type=TransportTypeEnum.WATER,
         distance_km=2500,
         traveled_year=2019,
         sort_key="a1",
@@ -33,7 +33,7 @@ def test_create_assigns_fields_and_mints_id() -> None:
     assert journey_entity.user_id == user_id
     assert journey_entity.origin is origin
     assert journey_entity.destination is destination
-    assert journey_entity.transport_type is TransportType.WATER
+    assert journey_entity.transport_type is TransportTypeEnum.WATER
     assert journey_entity.distance_km == 2500
     assert journey_entity.traveled_year == 2019
     assert journey_entity.sort_key == "a1"
@@ -45,7 +45,7 @@ def test_create_mints_distinct_ids_per_call() -> None:
         user_id=uuid4(),
         origin=make_geo_point(city_id=MOSCOW_CITY_ID, latitude=55.75, longitude=37.62),
         destination=make_geo_point(city_id=LONDON_CITY_ID, country_code="GB", latitude=51.5, longitude=-0.12),
-        transport_type=TransportType.AIR,
+        transport_type=TransportTypeEnum.AIR,
         distance_km=2500,
         traveled_year=2020,
         sort_key="a1",
@@ -54,7 +54,7 @@ def test_create_mints_distinct_ids_per_call() -> None:
         user_id=uuid4(),
         origin=make_geo_point(city_id=MOSCOW_CITY_ID, latitude=55.75, longitude=37.62),
         destination=make_geo_point(city_id=LONDON_CITY_ID, country_code="GB", latitude=51.5, longitude=-0.12),
-        transport_type=TransportType.AIR,
+        transport_type=TransportTypeEnum.AIR,
         distance_km=2500,
         traveled_year=2020,
         sort_key="a1",
@@ -65,16 +65,18 @@ def test_create_mints_distinct_ids_per_call() -> None:
 
 def test_revise_replaces_route_transport_and_distance_and_marks_updated() -> None:
     """revise: меняет города, транспорт и расстояние, ставит updated_at; год и ключ не трогает."""
-    journey_entity = make_journey(traveled_year=2019, sort_key="a1", transport_type=TransportType.AIR)
+    journey_entity = make_journey(traveled_year=2019, sort_key="a1", transport_type=TransportTypeEnum.AIR)
     origin = make_geo_point(city_id=uuid4(), country_code="FR", latitude=48.85, longitude=2.35)
     destination = make_geo_point(city_id=uuid4(), country_code="DE", latitude=52.52, longitude=13.4)
     started_at = dt.datetime.now(tz=dt.UTC)
 
-    journey_entity.revise(origin=origin, destination=destination, transport_type=TransportType.LAND, distance_km=880)
+    journey_entity.revise(
+        origin=origin, destination=destination, transport_type=TransportTypeEnum.LAND, distance_km=880
+    )
 
     assert journey_entity.origin is origin
     assert journey_entity.destination is destination
-    assert journey_entity.transport_type is TransportType.LAND
+    assert journey_entity.transport_type is TransportTypeEnum.LAND
     assert journey_entity.distance_km == 880
     assert journey_entity.traveled_year == 2019
     assert journey_entity.sort_key == "a1"

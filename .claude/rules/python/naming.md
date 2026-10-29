@@ -29,6 +29,12 @@ silently substituted.
 An external API client carries the `Client` suffix (`ResendClient`). In a client or port class
 name, `Transport` is reserved for `Protocol` roles (`EmailTransportPort`).
 
+## Enums
+
+**Every `Enum` subclass is named with an `Enum` suffix**, `StrEnum` and `IntEnum` included
+(`TransportTypeEnum`, `UserRoleEnum`). The name alone says the value is one of a closed set, and
+the bare noun stays free for an entity, value object or DTO of the same concept.
+
 ## Repository methods
 
 `<verb>_<entity>[_<qualifier>]` — **the entity always appears in the name**:

@@ -82,7 +82,7 @@ export const zJourneyYearsResponse = z.object({
 });
 
 /**
- * Language
+ * LanguageEnum
  *
  * Язык отображаемого имени объекта газеттира.
  *
@@ -90,7 +90,7 @@ export const zJourneyYearsResponse = z.object({
  * для ``en``/``ru``. Используется как тип query-параметра ``language`` на границе HTTP
  * и как ключ резолва имени в ``LocalizedNames``.
  */
-export const zLanguage = z.enum(['en', 'ru']);
+export const zLanguageEnum = z.enum(['en', 'ru']);
 
 /**
  * LoginRequest
@@ -166,11 +166,11 @@ export const zMoveJourneyResponse = z.object({
 });
 
 /**
- * MovePlacement
+ * MovePlacementEnum
  *
  * С какой стороны от строки-соседа встаёт переносимая строка в ручном порядке.
  */
-export const zMovePlacement = z.enum(['after', 'before']);
+export const zMovePlacementEnum = z.enum(['after', 'before']);
 
 /**
  * MoveJourneyRequest
@@ -179,7 +179,7 @@ export const zMovePlacement = z.enum(['after', 'before']);
  */
 export const zMoveJourneyRequest = z.object({
   neighborJourneyId: z.uuid(),
-  placement: zMovePlacement
+  placement: zMovePlacementEnum
 });
 
 /**
@@ -241,7 +241,7 @@ export const zRegisterRequest = z.object({
  */
 export const zResolveCitiesRequest = z.object({
   cityIds: z.array(z.uuid()).check(z.minLength(1), z.maxLength(1000)),
-  language: zLanguage
+  language: zLanguageEnum
 });
 
 /**
@@ -262,14 +262,14 @@ export const zTokenResponse = z.object({
 });
 
 /**
- * TransportType
+ * TransportTypeEnum
  *
  * Среда передвижения в поездке (а не конкретный вид транспорта).
  *
  * Категория среды, не средство: пешком/машина/поезд = ``LAND``, самолёт = ``AIR``,
  * паром/корабль = ``WATER``. Зеркалит string-literal union на фронте.
  */
-export const zTransportType = z.enum([
+export const zTransportTypeEnum = z.enum([
   'land',
   'air',
   'water'
@@ -283,7 +283,7 @@ export const zTransportType = z.enum([
 export const zCreateJourneyRequest = z.object({
   originCityId: z.uuid(),
   destinationCityId: z.uuid(),
-  transportType: zTransportType,
+  transportType: zTransportTypeEnum,
   traveledYear: z.int().check(z.gte(1))
 });
 
@@ -296,7 +296,7 @@ export const zJourneyFeedEntry = z.object({
   journeyId: z.uuid(),
   origin: zJourneyCity,
   destination: zJourneyCity,
-  transportType: zTransportType,
+  transportType: zTransportTypeEnum,
   traveledYear: z.int(),
   distanceKm: z.int()
 });
@@ -319,7 +319,7 @@ export const zJourneysFeedResponse = z.object({
 export const zUpdateJourneyRequest = z.object({
   originCityId: z.uuid(),
   destinationCityId: z.uuid(),
-  transportType: zTransportType,
+  transportType: zTransportTypeEnum,
   traveledYear: z.int().check(z.gte(1))
 });
 
@@ -387,7 +387,7 @@ export const zVerifyEmailResponse = z.void();
 
 export const zSearchCitiesQuery = z.object({
   searchText: z.string().check(z.minLength(2), z.maxLength(100)),
-  language: zLanguage,
+  language: zLanguageEnum,
   limit: z._default(z.optional(z.int().check(z.gte(1), z.lte(50))), 10)
 });
 
@@ -408,7 +408,7 @@ export const zListJourneysQuery = z.object({
   limit: z._default(z.optional(z.int().check(z.gte(1), z.lte(100))), 50),
   yearFrom: z.nullish(z.int().check(z.gte(1))),
   yearTo: z.nullish(z.int().check(z.gte(1))),
-  transportType: z.nullish(z.array(zTransportType))
+  transportType: z.nullish(z.array(zTransportTypeEnum))
 });
 
 /**
@@ -475,7 +475,7 @@ export const zGetJourneysMapResponse = zJourneysMapResponse;
 export const zGetJourneysGlobeResponse = zJourneysGlobeResponse;
 
 export const zGetMovementsMapQuery = z.object({
-  transportType: z.nullish(z.array(zTransportType))
+  transportType: z.nullish(z.array(zTransportTypeEnum))
 });
 
 /**

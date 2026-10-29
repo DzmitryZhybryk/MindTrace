@@ -30,11 +30,11 @@ services:
     env_file: .env
     ports:
       - "8050:8000"
+    # pyproject.toml и alembic.ini не монтируются, а лежат в образе (см. backend/Dockerfile, target dev):
+    # после их правки — пересборка образа.
     volumes:
       - ./backend/app:/src/app
       - ./backend/migrations:/src/migrations
-      - ./backend/alembic.ini:/src/alembic.ini:ro
-      - ./backend/pyproject.toml:/src/pyproject.toml:ro
       # Кеш датасетов газеттира (make be-geo-load), общий с e2e-стеком.
       - ./backend/.geo-cache:/src/.geo-cache
     depends_on:
@@ -55,7 +55,6 @@ services:
     env_file: .env
     volumes:
       - ./backend/app:/src/app
-      - ./backend/pyproject.toml:/src/pyproject.toml:ro
     depends_on:
       mindtrace_pg:
         condition: service_healthy

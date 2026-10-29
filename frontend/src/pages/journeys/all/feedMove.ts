@@ -1,11 +1,11 @@
 import type { SortingStrategy } from "@dnd-kit/sortable";
 
-import type { JourneyFeedEntry, JourneysFeedResponse, MovePlacement } from "../../../api/sdk";
+import type { JourneyFeedEntry, JourneysFeedResponse, MovePlacementEnum } from "../../../api/sdk";
 
 /** Where a journey moves: next to a neighbour, before or after it, and into its year. */
 export interface MoveTarget {
   neighborJourneyId: string;
-  placement: MovePlacement;
+  placement: MovePlacementEnum;
   traveledYear: number;
 }
 
