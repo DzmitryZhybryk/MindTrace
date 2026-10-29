@@ -1,6 +1,6 @@
-# MindTrace — backend
+# MyJourney — backend
 
-FastAPI-сервис (Python 3.14, async, Domain-Driven Design) — бэкенд монорепозитория MindTrace.
+FastAPI-сервис (Python 3.14, async, Domain-Driven Design) — бэкенд монорепозитория MyJourney.
 
 Общая документация лежит в корне репозитория:
 

@@ -1,6 +1,6 @@
 ---
 name: backend-tests
-description: Write or extend backend unit tests for the MindTrace FastAPI service (DDD, pytest, async). Use when the user asks to write/add/cover backend tests, test a domain/service/entity, or scaffold the test suite. Conventions are in .claude/rules/python/testing.md and testing-layout.md. Unit tests by default; integration and api only on explicit request.
+description: Write or extend backend unit tests for the MyJourney FastAPI service (DDD, pytest, async). Use when the user asks to write/add/cover backend tests, test a domain/service/entity, or scaffold the test suite. Conventions are in .claude/rules/python/testing.md and testing-layout.md. Unit tests by default; integration and api only on explicit request.
 ---
 
 # Backend tests

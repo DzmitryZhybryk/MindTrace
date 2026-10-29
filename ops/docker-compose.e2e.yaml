@@ -1,7 +1,7 @@
 # Одноразовый стек для фронтовых Playwright-e2e.
 #
 # Зачем отдельный файл, а не дев-стек: e2e сеют пользователей через POST /v1/auth/register/,
-# и при прогоне против дев-стека (docker-compose.yaml) они копятся в персистентной mindtrace_pg
+# и при прогоне против дев-стека (docker-compose.yaml) они копятся в персистентной myjourney_pg
 # (том pg_data) навсегда. Здесь Postgres живёт в tmpfs (RAM) без named-тома → БД исчезает на
 # `down`, дев-база не трогается. Это перенос подхода backend-testcontainers (одноразовая БД на
 # прогон) на уровень стека — e2e нужно всё приложение, а не голый Postgres.
@@ -9,14 +9,14 @@
 # Запуск — корневым `make test-e2e` (up --wait frontend → playwright → down -v). Свой проект
 # (`name`) изолирует контейнеры/тома/сеть от дев-стека: можно держать оба разом. `container_name`
 # нигде не задаём (compose сам префиксует проектом → нет клеша с дев), сеть — дефолтная проектная
-# (`docker network create` не нужен). Имена сервисов mindtrace_pg/app совпадают с хостами в .env и
+# (`docker network create` не нужен). Имена сервисов myjourney_pg/app совпадают с хостами в .env и
 # vite.config (API_PROXY_TARGET) → .env переиспользуется как есть, без env-оверрайдов кроме Resend.
-name: mindtrace_e2e
+name: myjourney_e2e
 
 services:
 
   # Имя сервиса = POSTGRES_HOST из .env. tmpfs → данные в RAM, без named-тома: умирают на `down`.
-  mindtrace_pg:
+  myjourney_pg:
     image: postgres:17-alpine
     env_file: .env
     environment:
@@ -47,7 +47,7 @@ services:
       - ./backend/app:/src/app
       - ./backend/migrations:/src/migrations
     depends_on:
-      mindtrace_pg:
+      myjourney_pg:
         condition: service_healthy
     restart: "no"
 

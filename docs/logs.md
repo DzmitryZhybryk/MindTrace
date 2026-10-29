@@ -51,7 +51,7 @@ curl -s "http://localhost:3100/loki/api/v1/label/container/values" | jq
 
 ```bash
 curl -G -s "http://localhost:3100/loki/api/v1/query_range" \
-  --data-urlencode 'query={container="mindtrace_app"}' \
+  --data-urlencode 'query={container="myjourney_app"}' \
   --data-urlencode "start=$(($(date +%s) - 3600))000000000" \
   --data-urlencode "end=$(date +%s)000000000" \
   --data-urlencode 'limit=100' | jq -r '.data.result[]?.values[]?[1]'
@@ -61,7 +61,7 @@ curl -G -s "http://localhost:3100/loki/api/v1/query_range" \
 
 ```bash
 curl -G -s "http://localhost:3100/loki/api/v1/query_range" \
-  --data-urlencode 'query={container="mindtrace_app"} |= "Получен запрос"' \
+  --data-urlencode 'query={container="myjourney_app"} |= "Получен запрос"' \
   --data-urlencode "start=$(($(date +%s) - 3600))000000000" \
   --data-urlencode "end=$(date +%s)000000000" \
   --data-urlencode 'limit=50' | jq -r '.data.result[]?.values[]?[1]'
@@ -71,7 +71,7 @@ curl -G -s "http://localhost:3100/loki/api/v1/query_range" \
 
 ```bash
 curl -G -s "http://localhost:3100/loki/api/v1/query_range" \
-  --data-urlencode 'query={container="mindtrace_app"} | json | endpoint="/v1/messages/"' \
+  --data-urlencode 'query={container="myjourney_app"} | json | endpoint="/v1/messages/"' \
   --data-urlencode "start=$(($(date +%s) - 3600))000000000" \
   --data-urlencode "end=$(date +%s)000000000" \
   --data-urlencode 'limit=50' | jq -r '.data.result[]?.values[]?[1]'
@@ -81,17 +81,17 @@ curl -G -s "http://localhost:3100/loki/api/v1/query_range" \
 
 ```bash
 curl -G -s "http://localhost:3100/loki/api/v1/query_range" \
-  --data-urlencode 'query={container="mindtrace_app"} | json | level="info"' \
+  --data-urlencode 'query={container="myjourney_app"} | json | level="info"' \
   --data-urlencode "start=$(($(date +%s) - 3600))000000000" \
   --data-urlencode "end=$(date +%s)000000000" \
   --data-urlencode 'limit=50' | jq -r '.data.result[]?.values[]?[1]'
 ```
 
-### Все логи всех контейнеров mindtrace
+### Все логи всех контейнеров myjourney
 
 ```bash
 curl -G -s "http://localhost:3100/loki/api/v1/query_range" \
-  --data-urlencode 'query={app="mindtrace"}' \
+  --data-urlencode 'query={app="myjourney"}' \
   --data-urlencode "start=$(($(date +%s) - 3600))000000000" \
   --data-urlencode "end=$(date +%s)000000000" \
   --data-urlencode 'limit=100' | jq -r '.data.result[]?.values[]?[1]'
@@ -126,9 +126,9 @@ Grafana предоставляет графический интерфейс д�
 1. Перейдите в **Explore** (иконка компаса слева)
 2. Выберите источник данных **Loki**
 3. Используйте LogQL запросы для фильтрации логов:
-   - `{container="mindtrace_app"}` - все логи приложения
-   - `{container="mindtrace_app"} | json | level="error"` - только ошибки
-   - `{container="mindtrace_app"} | json | endpoint="/v1/messages/"` - логи по endpoint
+   - `{container="myjourney_app"}` - все логи приложения
+   - `{container="myjourney_app"} | json | level="error"` - только ошибки
+   - `{container="myjourney_app"} | json | endpoint="/v1/messages/"` - логи по endpoint
 
 ### Создание Dashboard
 

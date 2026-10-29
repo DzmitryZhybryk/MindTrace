@@ -1,6 +1,6 @@
 # MyJourney — frontend
 
-SPA на Vite + React 19 + TypeScript 7 + Mantine 9. Часть монорепо MindTrace; оркестрация
+SPA на Vite + React 19 + TypeScript 7 + Mantine 9. Часть монорепо MyJourney; оркестрация
 всего стека — из корня (`make run`), см. корневой `CLAUDE.md`.
 
 ## Требования
@@ -76,6 +76,6 @@ e2e/                # Playwright-спеки по флоу
   `docker compose --project-directory . -f ops/docker-compose.yaml restart frontend`.
   Тот же перезапуск лечит «Что-то пошло не так» после `PARSE_ERROR` посреди правок — Vite продолжает
   отдавать сломанный модуль, и перезагрузка вкладки не помогает. Полный сброс тома —
-  `... rm -sf frontend && docker volume rm mindtrace_frontend_node_modules && make run`; не
+  `... rm -sf frontend && docker volume rm myjourney_frontend_node_modules && make run`; не
   `down -v`: он снесёт и данные Postgres/Loki/Grafana.
 - **`Cannot find module` из `node_modules/.bin/*`** — несвежая установка, лечится `npm ci`.

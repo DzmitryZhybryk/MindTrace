@@ -3,7 +3,7 @@ name: git-workflow
 description: Use before any git commit, push, branch creation, opening or merging a pull request, version bump, CHANGELOG entry or release tag in this repo, and when a pre-commit hook or the coverage gate blocks a commit.
 ---
 
-# Git workflow (MindTrace)
+# Git workflow (MyJourney)
 
 Global rules (no authorship footers, one feature = one commit, no `--no-verify`) come from
 `~/.claude/rules/common/vcs.md`. This file holds only what is specific to this repo.

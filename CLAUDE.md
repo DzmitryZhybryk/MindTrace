@@ -7,7 +7,7 @@ Claude читает или правит подходящие файлы (frontma
 
 ## Project Overview
 
-MindTrace — FastAPI-сервис (Python 3.14+, async), Domain-Driven Design. Менеджер пакетов — **uv**.
+MyJourney — FastAPI-сервис (Python 3.14+, async), Domain-Driven Design. Менеджер пакетов — **uv**.
 БД — PostgreSQL через SQLAlchemy 2.0 async (типизированный ORM: `DeclarativeBase` + `Mapped`/`mapped_column`).
 Работает в Docker со стеком логов Loki/Promtail/Grafana. Фронтенд — Vite/React SPA.
 
@@ -30,7 +30,7 @@ MindTrace — FastAPI-сервис (Python 3.14+, async), Domain-Driven Design. 
 Из корня репозитория:
 
 ```bash
-docker network create mindtrace-network   # один раз, перед первым up
+docker network create myjourney-network   # один раз, перед первым up
 make run                                  # dev-стек: app + worker + postgres + frontend + logging
 make be-<target>                          # любой backend-таргет (make be-lint, be-format)
 make fe-<target>                          # любой frontend-таргет (make fe-lint, fe-check)

@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "MindTrace",
-    "description": "Service for managing mindtrace",
-    "version": "6.0.2"
+    "title": "MyJourney",
+    "description": "Personal travel atlas: journeys, cities and routes on a globe",
+    "version": "6.0.3"
   },
   "paths": {
     "/healthz/": {

@@ -9,7 +9,7 @@ from app.shared.types import DictStrAny
 WIKIDATA_SPARQL_URL: Final[str] = "https://query.wikidata.org/sparql"
 
 # Политика Wikidata Query Service требует User-Agent с контактом владельца клиента.
-USER_AGENT: Final[str] = "MindTrace-gazetteer/1.0 (https://github.com/DzmitryZhybryk/MindTrace)"
+USER_AGENT: Final[str] = "MyJourney-gazetteer/1.0 (https://github.com/DzmitryZhybryk/MyJourney)"
 
 # Сервис под нагрузкой отвечает этими кодами; запрос стоит повторить, а не ронять всю сборку.
 _TRANSIENT_STATUSES: Final[frozenset[int]] = frozenset({429, 500, 502, 503, 504})
