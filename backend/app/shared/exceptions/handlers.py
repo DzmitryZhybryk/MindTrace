@@ -26,7 +26,12 @@ _INTERNAL_ERROR_CONTENT = {"code": "internal", "message": "Внутренняя 
 
 
 def _create_error_response(exc: BaseDomainError) -> JSONResponse:
-    """Создает HTTP ответ для доменного исключения используя типизированную схему."""
+    """
+    Создает HTTP ответ для доменного исключения используя типизированную схему.
+
+    Scenarios:
+        - любой запрос, завершившийся доменной ошибкой
+    """
     error_response = ErrorResponse(code=exc.code, message=exc.message, details=exc.details)
     return JSONResponse(
         status_code=resolve_http_status(exc),
@@ -35,7 +40,12 @@ def _create_error_response(exc: BaseDomainError) -> JSONResponse:
 
 
 def domain_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Обрабатывает доменные исключения, преобразуя их в HTTP ответы."""
+    """
+    Обрабатывает доменные исключения, преобразуя их в HTTP ответы.
+
+    Scenarios:
+        - любой запрос, завершившийся доменной ошибкой
+    """
     # Логирование выполняется в HTTPLoggingMiddleware. Handler зарегистрирован на
     # BaseDomainError, поэтому exc гарантированно доменный; HTTP-статус и тело берём
     # прямо из исключения через единый resolve_http_status.
@@ -55,6 +65,9 @@ def validation_exception_handler(request: Request, exc: RequestValidationError) 
     тот же envelope, что и доменные ошибки: ``code="validation_error"`` плюс
     ``details`` со списком проблемных полей (берём из ``loc``/``msg`` только
     строки, чтобы тело гарантированно сериализовалось в JSON).
+
+    Scenarios:
+        - любой запрос, не прошедший валидацию тела или параметров
 
     Args:
         request: HTTP-запрос (не используется, требуется сигнатурой handler'а)
@@ -84,7 +97,12 @@ def validation_exception_handler(request: Request, exc: RequestValidationError) 
 
 
 def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Обрабатывает необработанные исключения (не-доменные → 500)."""
+    """
+    Обрабатывает необработанные исключения (не-доменные → 500).
+
+    Scenarios:
+        - любой запрос, упавший с необработанным исключением
+    """
     # Страховка на случай прямого вызова с доменным исключением: через приложение
     # BaseDomainError уходит в свой domain_exception_handler и сюда не доходит.
     if isinstance(exc, BaseDomainError):
@@ -109,6 +127,9 @@ BASE_EXCEPTION_HANDLERS: dict[type[Exception], ExceptionHandlerT] = {
 def register_exception_handlers(app: FastAPI) -> None:
     """
     Регистрирует обработчики исключений для FastAPI приложения.
+
+    Scenarios:
+        - запуск API-приложения
 
     Args:
         app: Экземпляр FastAPI приложения

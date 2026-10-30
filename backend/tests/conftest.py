@@ -29,6 +29,9 @@ _TEST_ENV_DEFAULTS = {
     "JWT_SECRET_KEY": "test-secret-key-at-least-32-bytes-long",
     "RESEND_API_KEY": "test-resend-key",
     "RESEND_FROM_EMAIL": "test@example.com",
+    "MEDIA_S3_ENDPOINT_URL": "http://s3.localhost:9050",
+    "MEDIA_S3_ACCESS_KEY_ID": "test-access-key",
+    "MEDIA_S3_SECRET_ACCESS_KEY": "test-secret-key",
 }
 
 for _key, _value in _TEST_ENV_DEFAULTS.items():
@@ -37,19 +40,24 @@ for _key, _value in _TEST_ENV_DEFAULTS.items():
 
 # Импорты app/tests.fakes — строго ПОСЛЕ env-bootstrap: ``app`` на импорте строит
 # синглтон ``settings``, которому нужны заполненные env-поля (E402 осознанно).
-from app.auth.application.settings import EmailVerificationConfig  # noqa: E402
-from app.shared.infra.crypto import Sha256DeterministicHasher  # noqa: E402
+from app.auth.application.config import EmailVerificationConfig  # noqa: E402
+from app.shared.infra.crypto.sha256 import Sha256DeterministicHasher  # noqa: E402
+from tests.builders import LONDON_CITY_ID, make_city_location_response  # noqa: E402
 from tests.fakes import (  # noqa: E402
     FakeAuthUnitOfWork,
     FakeChallengeRepository,
+    FakeCitiesClient,
+    FakeCityRepository,
+    FakeGeoUnitOfWork,
     FakeJourneyRepository,
     FakeJourneyUnitOfWork,
-    FakePlaceRepository,
     FakeRefreshTokenRepository,
     FakeSaltedHasher,
     FakeTaskBus,
     FakeUserCredentialsRepository,
+    FakeUserRepository,
     FakeUsersClient,
+    FakeUserUnitOfWork,
 )
 
 _EMAIL_VERIFICATION_TTL_MINUTES = 15
@@ -61,7 +69,15 @@ _EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = 60
 # При добавлении нового уровня/домена обнови и эти кортежи, и список ``markers`` в
 # pyproject.toml (``--strict-markers`` запрещает незарегистрированные маркеры).
 _LEVEL_MARKERS = ("unit", "integration", "api")
-_DOMAIN_MARKERS = ("auth", "users", "shared", "journeys", "geo", "health")
+_DOMAIN_MARKERS = ("auth", "users", "shared", "journeys", "geo", "health", "media")
+
+# Потолок времени на один тест по уровню. Integration считает только сам тест: подъём
+# контейнера в session-фикстуре приходится на setup первого теста и в лимит не входит.
+_LEVEL_TIMEOUTS = {
+    "unit": pytest.mark.timeout(timeout=1),
+    "api": pytest.mark.timeout(timeout=1),
+    "integration": pytest.mark.timeout(timeout=30, func_only=True),
+}
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -83,6 +99,9 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     - ``pytest -m users`` / ``make test-users`` — все тесты домена users (любой уровень);
     - ``uv run pytest -m "unit and users"`` — пересечение осей (отдельного make-таргета нет).
 
+    Заодно по уровню ставит потолок времени на тест (``_LEVEL_TIMEOUTS``): тест, упёршийся в
+    него, сначала разбирают; поднимают лимит понемногу и только по объективной причине.
+
     Args:
         items: Собранные pytest'ом тест-элементы; маркеры добавляются in-place.
     """
@@ -92,6 +111,10 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         for marker_name in known_markers:
             if marker_name in path_segments:
                 item.add_marker(getattr(pytest.mark, marker_name))
+
+        level = next((name for name in _LEVEL_MARKERS if name in path_segments), None)
+        if level is not None:
+            item.add_marker(_LEVEL_TIMEOUTS[level])
 
 
 # Фикстуры, переиспользуемые между УРОВНЯМИ (unit + api). Каталоги нарезаны
@@ -136,6 +159,18 @@ def fake_users_client() -> FakeUsersClient:
 
 
 @pytest.fixture
+def fake_user_repository() -> FakeUserRepository:
+    return FakeUserRepository()
+
+
+@pytest.fixture
+def fake_user_uow(fake_user_repository: FakeUserRepository) -> FakeUserUnitOfWork:
+    # Репозиторий — отдельная фикстура того же инстанса: тест сидит/ассертит его состояние
+    # по конкретному типу (на uow он под port-типом, без .by_user_id).
+    return FakeUserUnitOfWork(user_repository=fake_user_repository)
+
+
+@pytest.fixture
 def fake_salted_hasher() -> FakeSaltedHasher:
     return FakeSaltedHasher()
 
@@ -152,8 +187,24 @@ def deterministic_hasher() -> Sha256DeterministicHasher:
 
 
 @pytest.fixture
-def fake_place_repository() -> FakePlaceRepository:
-    return FakePlaceRepository()
+def fake_city_repository() -> FakeCityRepository:
+    return FakeCityRepository()
+
+
+@pytest.fixture
+def fake_geo_uow(fake_city_repository: FakeCityRepository) -> FakeGeoUnitOfWork:
+    return FakeGeoUnitOfWork(city_repository=fake_city_repository)
+
+
+@pytest.fixture
+def fake_cities_client() -> FakeCitiesClient:
+    """Справочник с Москвой и Лондоном — в порядке запроса поездки Москва → Лондон."""
+    return FakeCitiesClient(
+        locations=(
+            make_city_location_response(),
+            make_city_location_response(city_id=LONDON_CITY_ID, country_code="GB", latitude=51.5, longitude=-0.12),
+        )
+    )
 
 
 @pytest.fixture
@@ -169,9 +220,9 @@ def fake_journey_uow(fake_journey_repository: FakeJourneyRepository) -> FakeJour
 
 
 @pytest.fixture
-def email_verification_settings() -> EmailVerificationConfig:
+def email_verification_config() -> EmailVerificationConfig:
     return EmailVerificationConfig(
-        email_verification_ttl_minutes=_EMAIL_VERIFICATION_TTL_MINUTES,
-        email_verification_max_attempts=_EMAIL_VERIFICATION_MAX_ATTEMPTS,
-        email_verification_resend_cooldown_seconds=_EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS,
+        ttl_minutes=_EMAIL_VERIFICATION_TTL_MINUTES,
+        max_attempts=_EMAIL_VERIFICATION_MAX_ATTEMPTS,
+        resend_cooldown_seconds=_EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS,
     )

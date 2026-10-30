@@ -2,7 +2,7 @@
 
 import logging
 
-from app.shared.exceptions import BaseDomainError, ErrorCategory
+from app.shared.exceptions import BaseDomainError, ErrorCategoryEnum
 from app.shared.exceptions.mappings import resolve_http_status
 
 
@@ -12,6 +12,9 @@ def get_status_code_from_exception(exc: Exception) -> int:
 
     Делегирует единому HTTP-резолву (`resolve_http_status`), чтобы статус в логах
     совпадал со статусом HTTP-ответа.
+
+    Scenarios:
+        - лог HTTP-запроса, завершившегося исключением
 
     Args:
         exc: Исключение
@@ -26,6 +29,9 @@ def get_log_level_for_exception(exc: Exception) -> int:
     """
     Определяет уровень логирования на основе типа исключения.
 
+    Scenarios:
+        - лог HTTP-запроса, завершившегося исключением
+
     Args:
         exc: Исключение
 
@@ -33,7 +39,7 @@ def get_log_level_for_exception(exc: Exception) -> int:
         Уровень логирования (logging.ERROR, logging.WARNING и т.д.)
     """
     if isinstance(exc, BaseDomainError):
-        if exc.category is ErrorCategory.INTERNAL:
+        if exc.category is ErrorCategoryEnum.INTERNAL:
             # Внутренние ошибки - error
             return logging.ERROR
         # Клиентские ошибки - warning

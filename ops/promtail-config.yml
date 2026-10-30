@@ -16,7 +16,7 @@ scrape_configs:
     relabel_configs:
       # Фильтруем только наши контейнеры (должно быть ПЕРВЫМ)
       - source_labels: ['__meta_docker_container_name']
-        regex: '/mindtrace.*'
+        regex: '/myjourney.*'
         action: keep
       # Извлекаем имя контейнера
       - source_labels: ['__meta_docker_container_name']
@@ -27,7 +27,7 @@ scrape_configs:
         target_label: 'stream'
       # Добавляем метку для приложения
       - target_label: 'app'
-        replacement: 'mindtrace'
+        replacement: 'myjourney'
     pipeline_stages:
       # Парсим JSON логи
       - json:

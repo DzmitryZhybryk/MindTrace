@@ -10,7 +10,7 @@ import pytest
 from fastapi.responses import JSONResponse
 
 from app.shared.exceptions import NotFoundError
-from app.shared.logging import HTTPLoggingMiddleware
+from app.shared.logging.middleware import HTTPLoggingMiddleware
 from app.shared.schemas.base import BFastAPI
 
 

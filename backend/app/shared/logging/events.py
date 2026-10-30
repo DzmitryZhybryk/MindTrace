@@ -14,6 +14,9 @@ def get_event_name(request: Request) -> str:
     обратно в middleware, поэтому совпавший роут переподбирается вручную по
     ``request.app.routes``.
 
+    Scenarios:
+        - лог каждого HTTP-запроса: имя события
+
     Args:
         request: HTTP-запрос (уже прошедший роутинг)
 

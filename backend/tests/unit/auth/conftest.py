@@ -9,12 +9,13 @@
 
 import pytest
 
-from app.auth.application.auth_service import AuthService
-from app.auth.application.email_verification_service import EmailVerificationService
-from app.auth.application.settings import EmailVerificationConfig
-from app.auth.application.token_issuer import TokenIssuer
-from app.shared.infra.crypto import Sha256DeterministicHasher
-from app.shared.infra.jwt import JWTService
+from app.auth.application.config import EmailVerificationConfig
+from app.auth.application.services.account import AccountService
+from app.auth.application.services.auth import AuthService
+from app.auth.application.services.email_verification import EmailVerificationService
+from app.auth.application.services.token_issuer import TokenIssuer
+from app.shared.infra.crypto.sha256 import Sha256DeterministicHasher
+from app.shared.infra.jwt.service import JWTService
 from tests.fakes import (
     FakeAuthUnitOfWork,
     FakeEmailVerificationService,
@@ -30,7 +31,7 @@ _REFRESH_TOKEN_TTL_DAYS = 30
 def token_issuer(deterministic_hasher: Sha256DeterministicHasher, jwt_service: JWTService) -> TokenIssuer:
     return TokenIssuer(
         deterministic_hasher=deterministic_hasher,
-        jwt_service=jwt_service,
+        access_token_issuer=jwt_service,
         refresh_token_ttl_days=_REFRESH_TOKEN_TTL_DAYS,
     )
 
@@ -58,15 +59,20 @@ def auth_service(
 
 
 @pytest.fixture
+def account_service(fake_uow: FakeAuthUnitOfWork) -> AccountService:
+    return AccountService(uow=fake_uow)
+
+
+@pytest.fixture
 def email_verification_service(
     fake_uow: FakeAuthUnitOfWork,
     fake_salted_hasher: FakeSaltedHasher,
     fake_task_bus: FakeTaskBus,
-    email_verification_settings: EmailVerificationConfig,
+    email_verification_config: EmailVerificationConfig,
 ) -> EmailVerificationService:
     return EmailVerificationService(
         uow=fake_uow,
         salted_hasher=fake_salted_hasher,
         task_bus=fake_task_bus,
-        email_verification_settings=email_verification_settings,
+        config=email_verification_config,
     )
