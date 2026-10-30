@@ -20,7 +20,7 @@ MyJourney — FastAPI-сервис (Python 3.14+, async), Domain-Driven Design. 
 
 Монорепо из самодостаточных частей:
 
-- **`backend/`** — FastAPI-сервис: `app`, `migrations`, `tests`, `pyproject.toml`, `uv.lock`, `Dockerfile`, `Makefile`. Самодостаточный uv-проект: backend-команды (`uv`, `make`, `pytest`) запускаются **из `backend/`**, venv — `backend/.venv`. Домены — каталоги в `backend/app/` (каждый: `domain/` `application/` `infra/` `presentation/`), общая инфраструктура — `backend/app/shared/`.
+- **`backend/`** — FastAPI-сервис: `app`, `migrations`, `tests`, `devtools` (только dev и тесты), `pyproject.toml`, `uv.lock`, `Dockerfile`, `Makefile`. Самодостаточный uv-проект: backend-команды (`uv`, `make`, `pytest`) запускаются **из `backend/`**, venv — `backend/.venv`. Домены — каталоги в `backend/app/` (каждый: `domain/` `application/` `infra/` `presentation/`), общая инфраструктура — `backend/app/shared/`.
 - **`frontend/`** — Vite/React SPA (свой `Dockerfile`, build context `./frontend`).
 - **`ops/`** — оркестрация и инфра-конфиги: compose-файлы (общий `base` плюс override dev, prod, e2e), `Caddyfile`, конфиги логирования. Compose запускается через `make`-таргеты (`--project-directory .`), поэтому пути внутри относятся к **корню** репо, а не к `ops/`.
 - **Корень** — `.env` / `.env.example`, `Makefile`-оркестратор, `CHANGELOG.md`, `docs/`.

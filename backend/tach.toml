@@ -107,5 +107,22 @@ depends_on = [
 ]
 
 [[modules]]
+path = "app.media.exceptions"
+depends_on = ["app.shared"]
+
+[[modules]]
+path = "app.media.application"
+depends_on = []
+
+[[modules]]
+path = "app.media.infra"
+depends_on = ["app.media.application", "app.media.exceptions", "app.shared"]
+
+[[modules]]
 path = "app.shared"
 depends_on = []
+
+# Инструменты локальной разработки и тестов вне пакета app: в образ прода не попадают, app о них не знает.
+[[modules]]
+path = "devtools"
+depends_on = ["app.media.infra", "app.shared"]

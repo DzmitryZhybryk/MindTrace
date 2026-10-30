@@ -1,4 +1,4 @@
-.PHONY: help format format-check lint typecheck dead-code audit arch check check-ci test coverage test-unit test-integration test-api test-auth test-users test-shared test-journeys test-geo test-health openapi-dump
+.PHONY: help format format-check lint typecheck dead-code audit arch check check-ci test coverage test-unit test-integration test-api test-auth test-users test-shared test-journeys test-geo test-health test-media openapi-dump
 
 # Colors for output
 ifeq ($(OS),Windows_NT)
@@ -25,7 +25,7 @@ else
 endif
 
 # Sources to check
-RUFF_SOURCES := app migrations tests
+RUFF_SOURCES := app migrations tests devtools
 
 # Docker-окружение для testcontainers (integration-уровень). Применяется к таргету
 # test-integration — единственному, который запускает integration-тесты.
@@ -111,6 +111,9 @@ test-geo: ## Run geo-domain tests, any level (-m geo)
 
 test-health: ## Run health-domain tests, any level (-m health)
 	@uv run pytest -m health || [ $$? -eq 5 ]
+
+test-media: ## Run media-domain tests, any level (-m media)
+	@uv run pytest -m media || [ $$? -eq 5 ]
 
 openapi-dump: ## Rewrite backend/openapi.json from the app (drift gate is the snapshot test in make test)
 	@echo "${GREEN}INFO :  ${AZURE}Update '${PURPLE}openapi.json${AZURE}' snapshot${RESET}"

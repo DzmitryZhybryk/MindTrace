@@ -10,6 +10,7 @@ from app.blueprints import TASK_BLUEPRINTS
 from app.geo.presentation.routes import geo_router
 from app.health.presentation.routes import health_router
 from app.journeys.presentation.routes import journey_router
+from app.media.infra.component import MediaStorageComponent
 from app.shared.enums import AppEnvEnum
 from app.shared.exceptions.handlers import register_exception_handlers
 from app.shared.infra.di.base import BaseComponent
@@ -116,6 +117,7 @@ def create_app() -> BFastAPI:
         components=[
             SqlAlchemyComponent(settings=settings),
             ResendComponent(settings=settings),
+            MediaStorageComponent(settings=settings),
             ProcrastinateComponent(settings=settings, blueprints=TASK_BLUEPRINTS),
             TaskBusComponent(),
         ],

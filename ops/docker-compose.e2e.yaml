@@ -10,12 +10,16 @@
 # изолирует контейнеры/тома/сеть от дев-стека: можно держать оба разом. `container_name` нигде не
 # задаём (compose сам префиксует проектом → нет клеша с дев), сеть — дефолтная проектная
 # (`docker network create` не нужен). Имена сервисов myjourney_pg/app совпадают с хостами в .env и
-# vite.config (API_PROXY_TARGET) → .env переиспользуется как есть, без env-оверрайдов кроме Resend.
+# vite.config (API_PROXY_TARGET) → .env переиспользуется как есть. Оверрайды — только Resend и адрес
+# S3-эмулятора: у e2e свой порт (9051), чтобы стек жил рядом с дев-стеком, а дев-.env указывает на 9050.
 name: myjourney_e2e
 
 x-e2e-backend: &e2e-backend
   build:
     target: dev
+
+x-e2e-storage-endpoint: &e2e-storage-endpoint
+  MEDIA_S3_ENDPOINT_URL: "http://s3.localhost:9051"
 
 services:
 
@@ -36,16 +40,60 @@ services:
     volumes:
       - ./backend/.geo-cache:/src/.geo-cache
 
+  # Тот же эмулятор, что в деве (там — почему один порт внутри и снаружи), но данные в RAM.
+  myjourney_s3:
+    image: rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2
+    environment:
+      RUSTFS_ADDRESS: ":9051"
+      RUSTFS_ACCESS_KEY: ${MEDIA_S3_ACCESS_KEY_ID}
+      RUSTFS_SECRET_KEY: ${MEDIA_S3_SECRET_ACCESS_KEY}
+    ports:
+      - "9051:9051"
+    # tmpfs монтируется от root, а RustFS работает под своим пользователем (uid 10001).
+    tmpfs:
+      - /data:uid=10001,gid=10001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9051/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    networks:
+      default:
+        aliases:
+          - s3.localhost
+
+  myjourney_s3_bootstrap:
+    <<: *e2e-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    env_file: .env
+    environment: *e2e-storage-endpoint
+    command: python -m devtools.storage_bootstrap --cors-origin http://localhost:5273
+    depends_on:
+      myjourney_s3:
+        condition: service_healthy
+    restart: "no"
+
   # RESEND_BASE_URL → мёртвый адрес: письма-джобы упрутся в connection refused (упадут в
   # throwaway-БД), реальный Resend не дёргается.
   myjourney_worker:
     <<: *e2e-backend
     environment:
+      <<: *e2e-storage-endpoint
       RESEND_BASE_URL: "http://localhost:9"
+    depends_on:
+      myjourney_s3_bootstrap:
+        condition: service_completed_successfully
 
   # Без хост-порта — фронт ходит к нему по внутренней сети проекта.
   app:
     <<: *e2e-backend
+    environment: *e2e-storage-endpoint
+    depends_on:
+      myjourney_s3_bootstrap:
+        condition: service_completed_successfully
     command: sh -c "uvicorn app.main:create_app --factory --no-use-colors --host 0.0.0.0 --port 8000 --log-level error"
     # 127.0.0.1, а не localhost: uvicorn слушает IPv4 (--host 0.0.0.0), а localhost в alpine/musl
     # резолвится в IPv6 ::1 первым → connection refused (та же ловушка, что у frontend ниже).

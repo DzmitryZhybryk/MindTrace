@@ -51,6 +51,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project
 
 COPY --from=source /src /src
+COPY ./devtools ./devtools
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked

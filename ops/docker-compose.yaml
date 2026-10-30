@@ -42,6 +42,46 @@ services:
     <<: *dev-backend
     container_name: myjourney_geo_load
 
+  # S3-эмулятор вместо R2. Порт внутри и снаружи один и тот же, а алиас s3.localhost бэкенд резолвит
+  # через DNS docker-сети, браузер — как loopback: подписанная ссылка годится обоим, потому что хост
+  # и порт входят в подпись.
+  myjourney_s3:
+    image: rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2
+    container_name: myjourney_s3
+    environment:
+      RUSTFS_ADDRESS: ":9050"
+      RUSTFS_ACCESS_KEY: ${MEDIA_S3_ACCESS_KEY_ID}
+      RUSTFS_SECRET_KEY: ${MEDIA_S3_SECRET_ACCESS_KEY}
+    ports:
+      - "9050:9050"
+    volumes:
+      - s3_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9050/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - s3.localhost
+    logging: *default-logging
+
+  myjourney_s3_bootstrap:
+    <<: *dev-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    env_file: .env
+    container_name: myjourney_s3_bootstrap
+    command: python -m devtools.storage_bootstrap --cors-origin http://localhost:5173
+    depends_on:
+      myjourney_s3:
+        condition: service_healthy
+    restart: "no"
+
   app:
     <<: *dev-backend
     container_name: myjourney_app
@@ -52,12 +92,18 @@ services:
       ${RELOAD:+--reload --reload-dir app}"
     ports:
       - "8050:8000"
+    depends_on:
+      myjourney_s3_bootstrap:
+        condition: service_completed_successfully
     restart: unless-stopped
     develop: *rebuild-on-deps
 
   myjourney_worker:
     <<: *dev-backend
     container_name: myjourney_worker
+    depends_on:
+      myjourney_s3_bootstrap:
+        condition: service_completed_successfully
     restart: unless-stopped
     develop: *rebuild-on-deps
 
@@ -140,6 +186,7 @@ services:
 
 volumes:
   pg_data:
+  s3_data:
   loki_data:
   grafana_data:
   frontend_node_modules:

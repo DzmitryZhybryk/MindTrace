@@ -1,6 +1,6 @@
 [project]
 name = "MyJourney"
-version = "6.0.5"
+version = "6.0.6"
 description = "Personal travel atlas: journeys, cities and routes on a globe"
 authors = [
     { name = "Dzmitry Zhybryk", email = "mr.zhybryk@gmail.com" }
@@ -22,6 +22,7 @@ dependencies = [
     "procrastinate>=3.10.0",
     "jinja2>=3.1.6",
     "psycopg[binary]>=3.3.6",
+    "aiobotocore>=3.10.0",
 ]
 
 [dependency-groups]
@@ -34,6 +35,7 @@ dev = [
     "tach>=0.35.3",
     "testcontainers[postgres]>=4.15.0",
     "ty>=0.0.90",
+    "types-aiobotocore-s3>=3.10.0",
     "vulture>=2.16",
 ]
 
@@ -61,6 +63,7 @@ markers = [
     "journeys: тесты домена journeys",
     "geo: тесты домена geo",
     "health: тесты домена health",
+    "media: тесты домена media",
 ]
 
 [tool.coverage.run]

@@ -29,6 +29,9 @@ _TEST_ENV_DEFAULTS = {
     "JWT_SECRET_KEY": "test-secret-key-at-least-32-bytes-long",
     "RESEND_API_KEY": "test-resend-key",
     "RESEND_FROM_EMAIL": "test@example.com",
+    "MEDIA_S3_ENDPOINT_URL": "http://s3.localhost:9050",
+    "MEDIA_S3_ACCESS_KEY_ID": "test-access-key",
+    "MEDIA_S3_SECRET_ACCESS_KEY": "test-secret-key",
 }
 
 for _key, _value in _TEST_ENV_DEFAULTS.items():
@@ -66,7 +69,7 @@ _EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = 60
 # При добавлении нового уровня/домена обнови и эти кортежи, и список ``markers`` в
 # pyproject.toml (``--strict-markers`` запрещает незарегистрированные маркеры).
 _LEVEL_MARKERS = ("unit", "integration", "api")
-_DOMAIN_MARKERS = ("auth", "users", "shared", "journeys", "geo", "health")
+_DOMAIN_MARKERS = ("auth", "users", "shared", "journeys", "geo", "health", "media")
 
 # Потолок времени на один тест по уровню. Integration считает только сам тест: подъём
 # контейнера в session-фикстуре приходится на setup первого теста и в лимит не входит.
@@ -97,7 +100,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     - ``uv run pytest -m "unit and users"`` — пересечение осей (отдельного make-таргета нет).
 
     Заодно по уровню ставит потолок времени на тест (``_LEVEL_TIMEOUTS``): тест, упёршийся в
-    него, — дефект теста, а не повод поднять лимит.
+    него, сначала разбирают; поднимают лимит понемногу и только по объективной причине.
 
     Args:
         items: Собранные pytest'ом тест-элементы; маркеры добавляются in-place.
