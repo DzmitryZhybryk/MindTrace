@@ -32,3 +32,16 @@
   code from `openapi.json`.
 - Revisit when: a client outside this repo generates code from `openapi.json`.
 - Source: PR #172, 2026-10-28
+
+## `info.version` in the `openapi.json` snapshot is a constant, not the package version
+- The snapshot test (`test_openapi_schema.py`, `_SNAPSHOT_VERSION`) replaces `info.version` before comparing and
+  before writing the file through `make openapi-dump`. The running app still reports the package version in its
+  live schema and `/docs`.
+- Why: the committed file is the codegen input of the frontend SDK, and the generator ignores `info.version`; with
+  the real version every backend bump rewrote `openapi.json` without a contract change.
+- Rejected: the real version in the snapshot (until 2026-10-30) — every bump turned the snapshot gate red and added
+  an `openapi.json` diff to a commit that did not touch the API.
+- Rejected: no `version` passed to `FastAPI` — OpenAPI requires `info.version`, so FastAPI fills in `0.1.0`, a
+  misleading number in `/docs`.
+- Revisit when: a client outside this repo generates code from or reads `openapi.json`.
+- Source: PR #176, 2026-10-30

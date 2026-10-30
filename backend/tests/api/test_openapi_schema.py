@@ -15,6 +15,8 @@ from app.shared.types import DictStrAny
 
 _SNAPSHOT_PATH: Final[Path] = Path(__file__).resolve().parents[2] / "openapi.json"
 _UPDATE_ENV_VAR: Final[str] = "UPDATE_OPENAPI"
+# Версия пакета меняется на каждом бампе, а контракт API от неё не зависит — в снапшоте она константа.
+_SNAPSHOT_VERSION: Final[str] = "snapshot"
 
 
 def _render(schema: DictStrAny) -> str:
@@ -22,8 +24,9 @@ def _render(schema: DictStrAny) -> str:
 
 
 def test_openapi_snapshot_matches_app(openapi_schema: DictStrAny) -> None:
-    """Закоммиченный openapi.json совпадает со схемой приложения."""
-    rendered = _render(openapi_schema)
+    """Закоммиченный openapi.json совпадает со схемой приложения с точностью до ``info.version``."""
+    schema = {**openapi_schema, "info": {**openapi_schema["info"], "version": _SNAPSHOT_VERSION}}
+    rendered = _render(schema)
 
     if os.environ.get(_UPDATE_ENV_VAR):
         _SNAPSHOT_PATH.write_text(rendered, encoding="utf-8")
