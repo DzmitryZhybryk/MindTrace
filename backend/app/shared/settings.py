@@ -2,7 +2,7 @@ from functools import cache
 from pathlib import Path
 from typing import Final
 
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.shared.enums import AppEnvEnum
@@ -111,6 +111,18 @@ class GeoDatasetsSettings(BaseModel):
     GEO_DATASETS_CACHE_DIR: Path = _ROOT_DIR / ".geo-cache"
 
 
+class MediaStorageSettings(BaseModel):
+    MEDIA_S3_ENDPOINT_URL: str
+    MEDIA_S3_ACCESS_KEY_ID: SecretStr
+    MEDIA_S3_SECRET_ACCESS_KEY: SecretStr
+    MEDIA_S3_REGION: str = "auto"
+    MEDIA_S3_PRIVATE_BUCKET: str = Field(default="media-private", min_length=3, max_length=63)
+    MEDIA_S3_PUBLIC_BUCKET: str = Field(default="media-public", min_length=3, max_length=63)
+    MEDIA_S3_MAX_ATTEMPTS: int = 3
+    MEDIA_S3_CONNECT_TIMEOUT_SECONDS: float = 5.0
+    MEDIA_S3_READ_TIMEOUT_SECONDS: float = 30.0
+
+
 class ProcrastinateSettings(PostgresSettings):
     """
     Procrastinate шарит БД с приложением — наследует PG-конфиг для DSN.
@@ -131,6 +143,7 @@ class Settings(
     ResendSettings,
     EmailVerificationSettings,
     GeoDatasetsSettings,
+    MediaStorageSettings,
     ProcrastinateSettings,
 ):
     model_config = SettingsConfigDict(frozen=True, env_file=".env", extra="ignore")

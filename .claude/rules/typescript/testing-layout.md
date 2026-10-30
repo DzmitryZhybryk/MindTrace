@@ -28,7 +28,9 @@ codes (A/B/D/K/L…) in the docstrings of the specs; there is no separate plan f
 
 - **Vitest** reuses `vite.config.ts`; the `test` block sets `environment: "jsdom"`,
   `setupFiles: ["./src/test/setup.ts"]`, v8 coverage and `testTimeout` — the per-test cap. A test
-  near the cap is the defect: speed it up, never raise the cap for it.
+  near the cap is analysed before anything changes: a cause in the test or the code is fixed there; an
+  objective one that only a workaround would remove raises the cap in a small step, for that test alone
+  when only it is slow, with the cause stated next to the new value.
 - **Testing Library** (`react`, `user-event`, `jest-dom`) for components; **MSW** for the network in
   component tests; **Playwright** for e2e.
 - Scripts: `npm run test` (watch), `test:run` (one-shot), `coverage`. The suite splits by

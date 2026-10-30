@@ -15,8 +15,8 @@ Two orthogonal axes: **level** (speed and dependencies) and **domain** (mirror o
 
 | Level | Touches I/O? | Covers |
 |---|---|---|
-| **unit** | no | domain entities and VOs, application services on fakes, pure helpers, crypto/jwt roundtrips |
-| **integration** | real Postgres | repositories, UoW, SQL, `FOR UPDATE` locks, unique constraints, migrations |
+| **unit** | no | domain entities and VOs, application services on fakes, pure helpers, crypto/jwt roundtrips, adapters of external clients with the transport stubbed (`AioStubber` for S3) |
+| **integration** | real Postgres, S3 emulator (RustFS) | repositories, UoW, SQL, `FOR UPDATE` locks, unique constraints, migrations; what only a real store shows — signature enforcement, bucket policy, CORS |
 | **api** | ASGI app | routes, wiring, `resolve_http_status`, cookies, error envelope |
 
 Most of the value is in `unit/`; keep integration and api thin.
@@ -38,9 +38,13 @@ or domain must be registered in `pyproject.toml` `markers`, the conftest tuples 
 rejects unregistered ones) and, for a domain, a `test-<domain>` target in `backend/Makefile` — `make`
 fails on an unknown target, so a missing one shows up as an error, not a green run.
 
-The same hook caps each test's time by level (`_LEVEL_TIMEOUTS`, pytest-timeout). A test that hits
-the cap is the defect: speed it up, never raise the cap for it. `--durations=5` lists the slowest
-tests in every run.
+The same hook caps each test's time by level (`_LEVEL_TIMEOUTS`, pytest-timeout). The cap exists so
+that it is never raised without thought: a test that hits it is analysed first. A cause in the test or
+in the code under test is fixed there. An objective cause that only a workaround would remove (a test
+that spawns a process, a dependency the code legitimately imports) raises the cap in a small step —
+for that test alone with `@pytest.mark.timeout` when only it is slow, for the level when the level as a
+whole has grown — with the cause stated next to the new value. `--durations=5` lists the slowest tests
+in every run, CI logs included.
 
 ## Where a fixture lives
 

@@ -2,7 +2,8 @@
 Worker entrypoint для procrastinate-задач.
 
 Поднимает только те компоненты, которые нужны исполнителю tasks:
-``ResendComponent`` (даёт ``EmailTransportPort``) и ``ProcrastinateComponent``
+``ResendComponent`` (даёт ``EmailTransportPort``), ``MediaStorageComponent``
+(хранилища бакетов media) и ``ProcrastinateComponent``
 (App + подключённые blueprint'ы доменов). ``SqlAlchemyComponent`` намеренно
 отсутствует — текущая task ``send_verification_email`` БД не трогает,
 рендерит письмо и зовёт provider.
@@ -15,12 +16,13 @@ Schema procrastinate worker не трогает: её применяет шаг 
 
 Процесс блокируется в ``run_worker_async`` до SIGTERM/SIGINT; procrastinate
 сам graceful-shutdown'ит in-flight jobs, после чего ``run_components``
-освобождает ресурсы компонентов (psycopg-пул, httpx-пул) в обратном порядке.
+освобождает ресурсы компонентов (psycopg-пул, httpx-пул, клиент S3) в обратном порядке.
 """
 
 import asyncio
 
 from app.blueprints import TASK_BLUEPRINTS
+from app.media.infra.component import MediaStorageComponent
 from app.shared.enums import AppEnvEnum
 from app.shared.infra.di.base import BaseComponent
 from app.shared.infra.di.lifecycle import run_components
@@ -45,6 +47,7 @@ async def run_worker() -> None:  # pragma: no cover — entry-point обвязк
     registry = ComponentRegistry()
     components: list[BaseComponent] = [
         ResendComponent(settings=settings),
+        MediaStorageComponent(settings=settings),
         ProcrastinateComponent(settings=settings, blueprints=TASK_BLUEPRINTS),
     ]
     async with run_components(components=components, registry=registry):
