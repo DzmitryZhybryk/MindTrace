@@ -99,6 +99,7 @@ skill `dev-database`. Контракт API (`openapi.json` → сгенерир�
 | `python/docstring-scenarios.md` | секция `Scenarios:` в докстринге: в каких сценариях нужна функция |
 | `python/dto.md` | `*Command`/`*Result`/`*Request`/`*Response`, роли параметров use case (actor/target/payload/metadata), объекты портов (`*Scope`/`*Filters`), pydantic vs dataclass, типы коллекций, где валидация |
 | `python/shared-infrastructure.md` | вертикали `shared/`, исключения, паттерны composition root, `TaskBusPort` |
+| `python/external-calls.md` | сбой внешней зависимости: адаптер классифицирует (`UnavailableError` → 503, `InternalError`), границы по статусам, повторы — у вызывающего |
 | `python/imports.md` | откуда импортировать из shared-пакета; `TYPE_CHECKING` в портах |
 | `python/component-lifecycle.md` | component+registry против `@cache`-фабрики |
 | `python/testing.md` | философия, fakes, детерминизм, reuse-before-create |

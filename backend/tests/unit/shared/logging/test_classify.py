@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from app.shared.exceptions.base import InternalError, InvalidInputError, NotFoundError
+from app.shared.exceptions.base import InternalError, InvalidInputError, NotFoundError, UnavailableError
 from app.shared.logging.classify import get_log_level_for_exception, get_status_code_from_exception
 
 
@@ -10,12 +10,13 @@ from app.shared.logging.classify import get_log_level_for_exception, get_status_
     ("error", "expected_level"),
     [
         (InternalError(), logging.ERROR),
+        (UnavailableError(), logging.WARNING),
         (InvalidInputError(), logging.WARNING),
         (ValueError("boom"), logging.ERROR),
     ],
 )
 def test_get_log_level_for_exception(error: Exception, expected_level: int) -> None:
-    """INTERNAL → ERROR, клиентские доменные → WARNING, не-доменные → ERROR."""
+    """INTERNAL → ERROR, UNAVAILABLE и клиентские доменные → WARNING, не-доменные → ERROR."""
     assert get_log_level_for_exception(error) == expected_level
 
 

@@ -10,7 +10,7 @@
 обёртке поверх BaseComponent — здесь её намеренно нет, чтобы не смешивать роли.
 """
 
-from http import HTTPMethod
+from http import HTTPMethod, HTTPStatus
 from typing import Any
 
 import httpx
@@ -24,8 +24,8 @@ from app.shared.logging import get_logger
 
 logger = get_logger(__name__)
 
-# 502/503/504 — апстрим/гейтвей; 500 и 429 сознательно НЕ временные (см. exceptions.py)
-_TEMPORARY_STATUSES: frozenset[int] = frozenset({502, 503, 504})
+# Граница как у botocore в standard mode: 5xx, троттлинг и таймаут запроса повторяемы, остальные 4xx — нет.
+_TEMPORARY_CLIENT_STATUSES: frozenset[int] = frozenset({HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.TOO_MANY_REQUESTS})
 
 
 class BaseHTTPClient:
@@ -84,10 +84,10 @@ class BaseHTTPClient:
 
         body = self._safe_parse_body(response)
         message = self._extract_error_message(body) or f"HTTP {response.status_code}"
-        exc_class = (
-            ExternalAPITemporaryError if response.status_code in _TEMPORARY_STATUSES else ExternalAPIPersistentError
-        )
-        bound_log.error(
+        is_temporary = _is_temporary_status(response.status_code)
+        exc_class = ExternalAPITemporaryError if is_temporary else ExternalAPIPersistentError
+        log = bound_log.warning if is_temporary else bound_log.error
+        log(
             "Внешний API: ошибка ответа",
             status=response.status_code,
             error_message=message,
@@ -119,3 +119,7 @@ class BaseHTTPClient:
                 return value
 
         return None
+
+
+def _is_temporary_status(status: int) -> bool:
+    return status >= HTTPStatus.INTERNAL_SERVER_ERROR or status in _TEMPORARY_CLIENT_STATUSES

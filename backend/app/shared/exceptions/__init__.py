@@ -9,6 +9,7 @@ from app.shared.exceptions.base import (
     PermissionDeniedError,
     RateLimitedError,
     UnauthenticatedError,
+    UnavailableError,
     UnprocessableError,
 )
 
@@ -25,5 +26,6 @@ __all__ = [
     "PermissionDeniedError",
     "RateLimitedError",
     "UnauthenticatedError",
+    "UnavailableError",
     "UnprocessableError",
 ]

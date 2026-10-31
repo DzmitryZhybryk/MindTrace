@@ -216,6 +216,7 @@ async def test_delete_objects_failed_keys_raise_temporary_error_with_codes(
         (500, ObjectStorageTemporaryError),
         (503, ObjectStorageTemporaryError),
         (429, ObjectStorageTemporaryError),
+        (408, ObjectStorageTemporaryError),
         (400, ObjectStoragePersistentError),
         (403, ObjectStoragePersistentError),
     ],
@@ -228,10 +229,24 @@ async def test_storage_call_classifies_error_response(
     status: int,
     error_class: type[Exception],
 ) -> None:
-    """Ответ 5xx и 429 — временный сбой, остальные отказы хранилища — постоянный."""
+    """Ответ 5xx, 429 и 408 — временный сбой, остальные отказы хранилища — постоянный."""
     s3_stubber.add_client_error(method=operation, service_error_code="Error", http_status_code=status)
 
     with pytest.raises(error_class):
+        await call(storage)
+
+
+@pytest.mark.parametrize(("operation", "call"), _STORAGE_CALLS, ids=[operation for operation, _ in _STORAGE_CALLS])
+async def test_storage_call_retryable_error_code_raises_temporary_error(
+    storage: S3ObjectStorage,
+    s3_stubber: AioStubber,
+    operation: str,
+    call: Callable[[S3ObjectStorage], Awaitable[object]],
+) -> None:
+    """Код, который botocore повторяет сам (``RequestTimeout`` со статусом 400), — временный сбой, не постоянный."""
+    s3_stubber.add_client_error(method=operation, service_error_code="RequestTimeout", http_status_code=400)
+
+    with pytest.raises(ObjectStorageTemporaryError):
         await call(storage)
 
 

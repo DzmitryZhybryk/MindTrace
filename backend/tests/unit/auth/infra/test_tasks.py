@@ -2,7 +2,7 @@ import pytest
 from procrastinate import JobContext
 
 from app.auth.infra.tasks import send_verification_email
-from app.shared.infra.http.exceptions import ExternalAPIPersistentError, ExternalAPITemporaryError
+from app.shared.exceptions import InternalError, UnavailableError
 from tests.fakes import FakeEmailTransport
 
 
@@ -21,37 +21,32 @@ async def test_send_verification_email_renders_and_sends(
     assert "123456" in message.text
 
 
-async def test_send_verification_email_propagates_temporary_error(
+@pytest.mark.parametrize("error", [UnavailableError(), InternalError()], ids=["unavailable", "internal"])
+async def test_send_verification_email_propagates_transport_error(
     job_context: JobContext,
     fake_email_transport: FakeEmailTransport,
+    error: Exception,
 ) -> None:
-    """temporary-ошибка транспорта пробрасывается (не глотается → сработает retry); письмо не отправлено."""
-    fake_email_transport.error = ExternalAPITemporaryError(
-        method="POST",
-        url="https://api.resend.com/emails",
-        status=503,
-        message="upstream unavailable",
-    )
+    """Сбой транспорта любой классификации пробрасывается, не глотается; письмо не отправлено."""
+    fake_email_transport.error = error
 
-    with pytest.raises(ExternalAPITemporaryError):
+    with pytest.raises(type(error)):
         await send_verification_email(job_context, user_id="user-1", email="user@example.com", code="123456")
 
     assert fake_email_transport.sent == []
 
 
-async def test_send_verification_email_propagates_persistent_error(
+@pytest.mark.parametrize(
+    ("error", "is_retried"),
+    [(UnavailableError(), True), (InternalError(), False)],
+    ids=["unavailable", "internal"],
+)
+def test_send_verification_email_retries_only_temporary_failures(
     job_context: JobContext,
-    fake_email_transport: FakeEmailTransport,
+    error: Exception,
+    is_retried: bool,
 ) -> None:
-    """persistent-ошибка транспорта пробрасывается, не глотается (retry по ней не делается); письмо не отправлено."""
-    fake_email_transport.error = ExternalAPIPersistentError(
-        method="POST",
-        url="https://api.resend.com/emails",
-        status=400,
-        message="bad request",
-    )
+    """Стратегия задачи повторяет любой ``UnavailableError`` и не повторяет постоянный сбой."""
+    retry = send_verification_email.get_retry_exception(exception=error, job=job_context.job)
 
-    with pytest.raises(ExternalAPIPersistentError):
-        await send_verification_email(job_context, user_id="user-1", email="user@example.com", code="123456")
-
-    assert fake_email_transport.sent == []
+    assert (retry is not None) is is_retried

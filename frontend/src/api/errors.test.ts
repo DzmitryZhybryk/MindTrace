@@ -18,6 +18,12 @@ describe("messageForCode", () => {
     expect(messageForCode("totally.unknown")).toBe("Something went wrong. Please try again.");
   });
 
+  it("резолвит код временной недоступности (503) в просьбу повторить позже", () => {
+    expect(messageForCode("unavailable")).toBe(
+      "The service is temporarily unavailable. Please try again in a minute.",
+    );
+  });
+
   it("использует переданный fallback для неизвестного кода", () => {
     expect(messageForCode("totally.unknown", "Custom fallback")).toBe("Custom fallback");
   });

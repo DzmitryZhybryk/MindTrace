@@ -23,7 +23,7 @@ class EmailTransportPort(Protocol):
             message: Готовое письмо с отрендеренным телом
 
         Raises:
-            ExternalAPITemporaryError: временный сбой провайдера — кандидат на retry
-            ExternalAPIPersistentError: постоянный сбой — без retry
+            UnavailableError: временный сбой провайдера, повтор может помочь
+            InternalError: постоянный сбой провайдера, повтор того же письма не поможет
         """
         ...

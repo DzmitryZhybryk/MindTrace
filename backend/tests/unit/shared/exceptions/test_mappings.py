@@ -10,6 +10,7 @@ from app.shared.exceptions.base import (
     PermissionDeniedError,
     RateLimitedError,
     UnauthenticatedError,
+    UnavailableError,
     UnprocessableError,
 )
 from app.shared.exceptions.mappings import resolve_http_status
@@ -26,6 +27,7 @@ from app.shared.exceptions.mappings import resolve_http_status
         (GoneError(), 410),
         (UnprocessableError(), 422),
         (RateLimitedError(), 429),
+        (UnavailableError(), 503),
         (InternalError(), 500),
     ],
 )
