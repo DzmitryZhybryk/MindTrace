@@ -16,6 +16,7 @@ from app.shared.exceptions import BaseDomainError
 from app.shared.exceptions.mappings import resolve_http_status
 from app.shared.exceptions.schemas import ErrorResponse
 from app.shared.logging import get_logger
+from app.shared.logging.context import set_handled_error
 
 logger = get_logger(__name__)
 
@@ -29,10 +30,17 @@ def _create_error_response(exc: BaseDomainError) -> JSONResponse:
     """
     Создает HTTP ответ для доменного исключения используя типизированную схему.
 
+    Для серверной категории наружу уходят только ``code`` и сообщение класса: инстансовое
+    сообщение и ``details`` описывают сбой для лога, не для клиента.
+
     Scenarios:
         - любой запрос, завершившийся доменной ошибкой
     """
-    error_response = ErrorResponse(code=exc.code, message=exc.message, details=exc.details)
+    if exc.category.is_server_side:
+        error_response = ErrorResponse(code=exc.code, message=type(exc).message)
+    else:
+        error_response = ErrorResponse(code=exc.code, message=exc.message, details=exc.details)
+
     return JSONResponse(
         status_code=resolve_http_status(exc),
         content=error_response.model_dump(mode="json"),
@@ -46,10 +54,11 @@ def domain_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     Scenarios:
         - любой запрос, завершившийся доменной ошибкой
     """
-    # Логирование выполняется в HTTPLoggingMiddleware. Handler зарегистрирован на
-    # BaseDomainError, поэтому exc гарантированно доменный; HTTP-статус и тело берём
-    # прямо из исключения через единый resolve_http_status.
+    # Логирование выполняется в HTTPLoggingMiddleware: ему достаётся готовый ответ, поэтому само
+    # исключение остаётся на запросе. Handler зарегистрирован на BaseDomainError, поэтому exc
+    # гарантированно доменный; HTTP-статус и тело берём прямо из исключения через resolve_http_status.
     if isinstance(exc, BaseDomainError):
+        set_handled_error(request=request, exc=exc)
         return _create_error_response(exc)
 
     # Страховка на случай прямого вызова с не-доменным исключением.

@@ -23,7 +23,18 @@ class ErrorCategoryEnum(Enum):
     GONE = "gone"
     UNPROCESSABLE = "unprocessable"
     RATE_LIMITED = "rate_limited"
+    TEMPORARY = "temporary"
     INTERNAL = "internal"
+
+    @property
+    def is_server_side(self) -> bool:
+        """
+        Сбой на стороне сервера, а не в запросе клиента.
+
+        Клиенту уходят только код и сообщение класса: инстансовое сообщение и ``details`` несут
+        контекст сбоя для лога, где исключение пишется целиком, вместе с причиной.
+        """
+        return self in (ErrorCategoryEnum.TEMPORARY, ErrorCategoryEnum.INTERNAL)
 
 
 class BaseDomainError(Exception):
@@ -41,7 +52,8 @@ class BaseDomainError(Exception):
     (например, ``{"field": "email"}`` для подсветки конкретного поля формы);
     классовый дефолт для него наследники задают через `default_details` —
     отдельный ClassVar-канал, чтобы классовая константа не переопределяла
-    инстанс-атрибут `details`.
+    инстанс-атрибут `details`. У серверных категорий (`ErrorCategoryEnum.is_server_side`)
+    `details` и инстансовое `message` до клиента не доходят — только до лога.
     """
 
     category: ErrorCategoryEnum = ErrorCategoryEnum.INTERNAL
@@ -133,6 +145,19 @@ class RateLimitedError(BaseDomainError):
     category = ErrorCategoryEnum.RATE_LIMITED
     code = "rate_limited"
     message = "Превышен лимит запросов"
+
+
+class TemporaryError(BaseDomainError):
+    """
+    Базовое исключение для временного сбоя зависимости: сеть, таймаут, перегрузка, 5xx или троттлинг.
+
+    Повтор позже может помочь, поэтому политика повторов настраивается на этот класс, а не на
+    исключения отдельных адаптеров. Постоянный сбой зависимости — наследник `InternalError`.
+    """
+
+    category = ErrorCategoryEnum.TEMPORARY
+    code = "temporary"
+    message = "Сервис временно недоступен"
 
 
 class InternalError(BaseDomainError):

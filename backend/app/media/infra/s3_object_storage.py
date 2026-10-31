@@ -73,7 +73,7 @@ class S3ObjectStorage(PrivateStoragePort, PublicStoragePort):
             if _is_not_found(error):
                 return None
 
-            error_class = ObjectStorageTemporaryError if _is_server_failure(error) else ObjectStoragePersistentError
+            error_class = ObjectStorageTemporaryError if _is_temporary_failure(error) else ObjectStoragePersistentError
             raise error_class(details={"key": key}) from error
         except (BotocoreConnectionError, BotocoreHTTPClientError) as error:
             raise ObjectStorageTemporaryError(details={"key": key}) from error
@@ -89,7 +89,7 @@ class S3ObjectStorage(PrivateStoragePort, PublicStoragePort):
             if _is_missing_key(error):
                 raise ObjectNotFoundError(details={"key": key}) from error
 
-            error_class = ObjectStorageTemporaryError if _is_server_failure(error) else ObjectStoragePersistentError
+            error_class = ObjectStorageTemporaryError if _is_temporary_failure(error) else ObjectStoragePersistentError
             raise error_class(details={"key": key}) from error
         except (BotocoreConnectionError, BotocoreHTTPClientError) as error:
             raise ObjectStorageTemporaryError(details={"key": key}) from error
@@ -116,7 +116,7 @@ class S3ObjectStorage(PrivateStoragePort, PublicStoragePort):
                 CacheControl=cache_control,
             )
         except ClientError as error:
-            error_class = ObjectStorageTemporaryError if _is_server_failure(error) else ObjectStoragePersistentError
+            error_class = ObjectStorageTemporaryError if _is_temporary_failure(error) else ObjectStoragePersistentError
             raise error_class(details={"key": key}) from error
         except (BotocoreConnectionError, BotocoreHTTPClientError) as error:
             raise ObjectStorageTemporaryError(details={"key": key}) from error
@@ -131,18 +131,22 @@ class S3ObjectStorage(PrivateStoragePort, PublicStoragePort):
                     Delete={"Objects": [{"Key": key} for key in batch], "Quiet": True},
                 )
             except ClientError as error:
-                error_class = ObjectStorageTemporaryError if _is_server_failure(error) else ObjectStoragePersistentError
+                error_class = (
+                    ObjectStorageTemporaryError if _is_temporary_failure(error) else ObjectStoragePersistentError
+                )
                 raise error_class(details={"keys": batch}) from error
             except (BotocoreConnectionError, BotocoreHTTPClientError) as error:
                 raise ObjectStorageTemporaryError(details={"keys": batch}) from error
             except BotoCoreError as error:
                 raise ObjectStoragePersistentError(details={"keys": batch}) from error
 
-            # Отказ по отдельным ключам приходит в теле ответа 200, а не исключением; повтор безопасен,
-            # поэтому такой отказ считается временным, а коды остаются в деталях для разбора.
+            # Отказ по отдельным ключам приходит в теле ответа 200, без HTTP-статуса: классифицировать его
+            # можно только по кодам, и временным он считается, лишь когда временны все коды.
             failed_keys = {error.get("Key"): error.get("Code") for error in response.get("Errors", ())}
             if failed_keys:
-                raise ObjectStorageTemporaryError(details={"failed_keys": failed_keys})
+                is_temporary = all(code in _TEMPORARY_KEY_ERROR_CODES for code in failed_keys.values())
+                error_class = ObjectStorageTemporaryError if is_temporary else ObjectStoragePersistentError
+                raise error_class(details={"failed_keys": failed_keys})
 
 
 def _signed_upload_headers(*, content_type: str) -> dict[str, str]:
@@ -159,6 +163,39 @@ def _is_missing_key(error: ClientError) -> bool:
     return error.response.get("Error", {}).get("Code") == "NoSuchKey"
 
 
-def _is_server_failure(error: ClientError) -> bool:
+# Коды, которые botocore в standard mode повторяет сам (``botocore/retries/standard.py``): сюда они доходят
+# с исчерпанными попытками и остаются временными, хотя статус у части из них 400.
+_TEMPORARY_ERROR_CODES: frozenset[str] = frozenset(
+    {
+        "RequestTimeout",
+        "RequestTimeoutException",
+        "PriorRequestNotComplete",
+        "Throttling",
+        "ThrottlingException",
+        "ThrottledException",
+        "RequestThrottledException",
+        "RequestThrottled",
+        "TooManyRequestsException",
+        "ProvisionedThroughputExceededException",
+        "TransactionInProgressException",
+        "RequestLimitExceeded",
+        "BandwidthLimitExceeded",
+        "LimitExceededException",
+        "SlowDown",
+        "EC2ThrottledException",
+    }
+)
+
+
+# У отказа по ключу нет статуса, поэтому коды серверных сбоев, которые у запроса узнаются по 5xx, перечислены явно.
+_TEMPORARY_KEY_ERROR_CODES: frozenset[str] = _TEMPORARY_ERROR_CODES | {"InternalError", "ServiceUnavailable"}
+
+_TEMPORARY_CLIENT_STATUSES: frozenset[int] = frozenset({HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.TOO_MANY_REQUESTS})
+
+
+def _is_temporary_failure(error: ClientError) -> bool:
     status = error.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
-    return status >= HTTPStatus.INTERNAL_SERVER_ERROR or status == HTTPStatus.TOO_MANY_REQUESTS
+    if status >= HTTPStatus.INTERNAL_SERVER_ERROR or status in _TEMPORARY_CLIENT_STATUSES:
+        return True
+
+    return error.response.get("Error", {}).get("Code") in _TEMPORARY_ERROR_CODES

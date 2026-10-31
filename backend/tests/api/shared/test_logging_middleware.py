@@ -3,8 +3,10 @@ api-тесты ``HTTPLoggingMiddleware`` на минимальном ASGI-при
 
 Проверяют наблюдаемое поведение: middleware пробрасывает ответ/исключение без изменений
 и логирует событие на уровне по классу исхода (2xx→info, 4xx→warning, 5xx→error,
-необработанное исключение→error). Логи снимаются через ``structlog.testing.capture_logs``,
-имя события выводится из ``route.name`` (``ok_handler`` → ``"Ok handler"``).
+необработанное исключение→error). Доменная ошибка, которую обработчик превратил в ответ,
+логируется по самому исключению: серверная категория — с traceback, клиентская — без.
+Логи снимаются через ``structlog.testing.capture_logs``, имя события выводится из
+``route.name`` (``ok_handler`` → ``"Ok handler"``).
 """
 
 from collections.abc import Callable
@@ -12,6 +14,7 @@ from collections.abc import Callable
 from httpx import AsyncClient
 from structlog.testing import capture_logs
 
+from app.shared.exceptions import InternalError, TemporaryError
 from app.shared.schemas.base import BFastAPI
 
 
@@ -92,3 +95,58 @@ async def test_warning_classified_exception_logs_warning(
     matching = [entry for entry in logs if entry.get("event") == "Domain error handler"]
     assert len(matching) == 1
     assert matching[0]["log_level"] == "warning"
+
+
+async def test_handled_temporary_error_logs_warning_with_exception(
+    handled_errors_app: BFastAPI,
+    make_async_client: Callable[[BFastAPI], AsyncClient],
+) -> None:
+    """TEMPORARY, превращённая обработчиком в 503: одна запись warning с исключением, кодом, текстом и details."""
+    with capture_logs() as logs:
+        async with make_async_client(handled_errors_app) as client:
+            response = await client.get("/temporary")
+
+    assert response.status_code == 503
+    matching = [entry for entry in logs if entry.get("event") == "Temporary handler"]
+    assert len(matching) == 1
+    entry = matching[0]
+    assert entry["log_level"] == "warning"
+    assert entry["status_code"] == 503
+    assert entry["error_code"] == "temporary"
+    assert entry["error_message"] == "upstream said SlowDown"
+    assert entry["error_details"] == {"key": "u1/original.jpg"}
+    assert isinstance(entry["exc_info"], TemporaryError)
+
+
+async def test_handled_internal_error_logs_error_with_exception(
+    handled_errors_app: BFastAPI,
+    make_async_client: Callable[[BFastAPI], AsyncClient],
+) -> None:
+    """INTERNAL, превращённая обработчиком в 500: запись error с самим исключением, а не только статусом."""
+    with capture_logs() as logs:
+        async with make_async_client(handled_errors_app) as client:
+            response = await client.get("/internal")
+
+    assert response.status_code == 500
+    matching = [entry for entry in logs if entry.get("event") == "Internal handler"]
+    assert len(matching) == 1
+    assert matching[0]["log_level"] == "error"
+    assert matching[0]["error_code"] == "internal"
+    assert isinstance(matching[0]["exc_info"], InternalError)
+
+
+async def test_handled_client_error_logs_warning_without_traceback(
+    handled_errors_app: BFastAPI,
+    make_async_client: Callable[[BFastAPI], AsyncClient],
+) -> None:
+    """Клиентская доменная ошибка, превращённая обработчиком в 404: warning с кодом, без traceback."""
+    with capture_logs() as logs:
+        async with make_async_client(handled_errors_app) as client:
+            response = await client.get("/not-found")
+
+    assert response.status_code == 404
+    matching = [entry for entry in logs if entry.get("event") == "Not found handler"]
+    assert len(matching) == 1
+    assert matching[0]["log_level"] == "warning"
+    assert matching[0]["error_code"] == "not_found"
+    assert matching[0].get("exc_info") is None

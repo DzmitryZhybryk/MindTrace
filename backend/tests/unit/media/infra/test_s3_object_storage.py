@@ -10,6 +10,7 @@ from aiohttp import ClientPayloadError
 from app.media.application.ports.private_storage import ObjectInfo
 from app.media.exceptions import (
     ObjectNotFoundError,
+    ObjectStorageError,
     ObjectStoragePersistentError,
     ObjectStorageTemporaryError,
     ObjectTooLargeError,
@@ -190,23 +191,37 @@ async def test_delete_objects_without_keys_sends_nothing(storage: S3ObjectStorag
     await storage.delete_objects([])
 
 
-async def test_delete_objects_failed_keys_raise_temporary_error_with_codes(
-    storage: S3ObjectStorage, s3_stubber: AioStubber
+@pytest.mark.parametrize(
+    ("codes", "error_class"),
+    [
+        pytest.param(("InternalError", "SlowDown"), ObjectStorageTemporaryError, id="all-temporary"),
+        pytest.param(("AccessDenied", "AccessDenied"), ObjectStoragePersistentError, id="all-persistent"),
+        pytest.param(("SlowDown", "AccessDenied"), ObjectStoragePersistentError, id="mixed"),
+    ],
+)
+async def test_delete_objects_failed_keys_classified_by_codes(
+    storage: S3ObjectStorage,
+    s3_stubber: AioStubber,
+    codes: tuple[str, str],
+    error_class: type[ObjectStorageError],
 ) -> None:
-    """Отказ по ключам в ответе 200 — временный сбой, коды отказов в деталях ошибки."""
+    """Отказ по ключам в ответе 200 временный, только если временны все коды; коды отказов в деталях ошибки."""
+    keys = ("u1/f1/original.jpg", "u1/f2/original.jpg")
     s3_stubber.add_response(
         method="delete_objects",
-        service_response={"Errors": [{"Key": "u1/f1/original.jpg", "Code": "AccessDenied", "Message": "Denied"}]},
+        service_response={
+            "Errors": [{"Key": key, "Code": code, "Message": "Failed"} for key, code in zip(keys, codes, strict=True)]
+        },
         expected_params={
             "Bucket": "media-private",
-            "Delete": {"Objects": [{"Key": "u1/f1/original.jpg"}, {"Key": "u1/f2/original.jpg"}], "Quiet": True},
+            "Delete": {"Objects": [{"Key": key} for key in keys], "Quiet": True},
         },
     )
 
-    with pytest.raises(ObjectStorageTemporaryError) as error_info:
-        await storage.delete_objects(["u1/f1/original.jpg", "u1/f2/original.jpg"])
+    with pytest.raises(error_class) as error_info:
+        await storage.delete_objects(keys)
 
-    assert error_info.value.details == {"failed_keys": {"u1/f1/original.jpg": "AccessDenied"}}
+    assert error_info.value.details == {"failed_keys": dict(zip(keys, codes, strict=True))}
 
 
 @pytest.mark.parametrize(("operation", "call"), _STORAGE_CALLS, ids=[operation for operation, _ in _STORAGE_CALLS])
@@ -216,6 +231,7 @@ async def test_delete_objects_failed_keys_raise_temporary_error_with_codes(
         (500, ObjectStorageTemporaryError),
         (503, ObjectStorageTemporaryError),
         (429, ObjectStorageTemporaryError),
+        (408, ObjectStorageTemporaryError),
         (400, ObjectStoragePersistentError),
         (403, ObjectStoragePersistentError),
     ],
@@ -228,10 +244,24 @@ async def test_storage_call_classifies_error_response(
     status: int,
     error_class: type[Exception],
 ) -> None:
-    """Ответ 5xx и 429 — временный сбой, остальные отказы хранилища — постоянный."""
+    """Ответ 5xx, 429 и 408 — временный сбой, остальные отказы хранилища — постоянный."""
     s3_stubber.add_client_error(method=operation, service_error_code="Error", http_status_code=status)
 
     with pytest.raises(error_class):
+        await call(storage)
+
+
+@pytest.mark.parametrize(("operation", "call"), _STORAGE_CALLS, ids=[operation for operation, _ in _STORAGE_CALLS])
+async def test_storage_call_retryable_error_code_raises_temporary_error(
+    storage: S3ObjectStorage,
+    s3_stubber: AioStubber,
+    operation: str,
+    call: Callable[[S3ObjectStorage], Awaitable[object]],
+) -> None:
+    """Код, который botocore повторяет сам (``RequestTimeout`` со статусом 400), — временный сбой, не постоянный."""
+    s3_stubber.add_client_error(method=operation, service_error_code="RequestTimeout", http_status_code=400)
+
+    with pytest.raises(ObjectStorageTemporaryError):
         await call(storage)
 
 

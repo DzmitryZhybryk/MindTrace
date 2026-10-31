@@ -6,6 +6,41 @@ from app.shared.exceptions import BaseDomainError
 from app.shared.logging.classify import get_status_code_from_exception
 from app.shared.types import DictStrAny
 
+_HANDLED_ERROR_STATE_KEY = "handled_error"
+
+
+def set_handled_error(*, request: Request, exc: BaseDomainError) -> None:
+    """
+    Оставляет на запросе доменное исключение, уже превращённое обработчиком в ответ.
+
+    Обработчик исключений работает глубже логирующего middleware, и до того доходит только готовый
+    ответ; через состояние запроса middleware получает само исключение и пишет его в лог целиком.
+
+    Scenarios:
+        - любой запрос, завершившийся доменной ошибкой
+
+    Args:
+        request: HTTP-запрос
+        exc: Доменное исключение, по которому построен ответ
+    """
+    setattr(request.state, _HANDLED_ERROR_STATE_KEY, exc)
+
+
+def get_handled_error(request: Request) -> BaseDomainError | None:
+    """
+    Возвращает доменное исключение, оставленное на запросе обработчиком.
+
+    Scenarios:
+        - лог HTTP-запроса, завершившегося доменной ошибкой
+
+    Args:
+        request: HTTP-запрос
+
+    Returns:
+        Исключение, по которому построен ответ, или ``None``, если запрос завершился без него
+    """
+    return getattr(request.state, _HANDLED_ERROR_STATE_KEY, None)
+
 
 def extract_request_context(request: Request) -> DictStrAny:
     """
@@ -84,6 +119,9 @@ def build_error_log_context(
     """
     Формирует контекст для логирования ошибки и определяет параметры логирования.
 
+    Traceback нужен не-доменному исключению и доменному серверной категории: причина сбоя
+    зависимости видна только в его цепочке. Ошибка клиента пишется без traceback.
+
     Scenarios:
         - лог HTTP-запроса, завершившегося исключением
 
@@ -110,7 +148,10 @@ def build_error_log_context(
     if isinstance(exc, BaseDomainError):
         log_context["error_code"] = exc.code
         log_context["error_message"] = exc.message
-        include_traceback = False
+        if exc.details is not None:
+            log_context["error_details"] = exc.details
+
+        include_traceback = exc.category.is_server_side
     else:
         log_context["error_message"] = str(exc)
         include_traceback = True

@@ -29,6 +29,9 @@ def get_log_level_for_exception(exc: Exception) -> int:
     """
     Определяет уровень логирования на основе типа исключения.
 
+    Ошибка клиента и временная недоступность зависимости — warning: первая не сбой сервера, за
+    второй следят по доле 503. Внутренняя ошибка и необработанное исключение — error.
+
     Scenarios:
         - лог HTTP-запроса, завершившегося исключением
 
@@ -40,10 +43,8 @@ def get_log_level_for_exception(exc: Exception) -> int:
     """
     if isinstance(exc, BaseDomainError):
         if exc.category is ErrorCategoryEnum.INTERNAL:
-            # Внутренние ошибки - error
             return logging.ERROR
-        # Клиентские ошибки - warning
+
         return logging.WARNING
 
-    # Необработанные исключения - error
     return logging.ERROR

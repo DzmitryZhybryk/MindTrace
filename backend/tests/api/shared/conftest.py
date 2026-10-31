@@ -3,13 +3,16 @@
 
 ``middleware_app`` — минимальное ASGI-приложение с навешенным ``HTTPLoggingMiddleware``
 и роутами под каждый класс исхода (2xx / 4xx-response / 5xx-response / необработанное
-исключение). Имена роутов заданы явно — middleware выводит из них имя события.
+исключение). ``handled_errors_app`` — то же плюс обработчики исключений: доменная ошибка
+доходит до middleware готовым ответом, как в боевом приложении. Имена роутов заданы явно —
+middleware выводит из них имя события.
 """
 
 import pytest
 from fastapi.responses import JSONResponse
 
-from app.shared.exceptions import NotFoundError
+from app.shared.exceptions import InternalError, NotFoundError, TemporaryError
+from app.shared.exceptions.handlers import register_exception_handlers
 from app.shared.logging.middleware import HTTPLoggingMiddleware
 from app.shared.schemas.base import BFastAPI
 
@@ -40,6 +43,28 @@ def middleware_app() -> BFastAPI:
     # до middleware как исключение — это покрывает WARNING-ветку except (доменная ошибка = клиентская).
     @app.get("/domain-error", name="domain_error_handler")
     async def _domain_error() -> JSONResponse:
+        raise NotFoundError
+
+    return app
+
+
+@pytest.fixture
+def handled_errors_app() -> BFastAPI:
+    """ASGI-приложение с ``HTTPLoggingMiddleware`` и обработчиками исключений; роут на каждую категорию."""
+    app = BFastAPI()
+    app.add_middleware(HTTPLoggingMiddleware)
+    register_exception_handlers(app)
+
+    @app.get("/temporary", name="temporary_handler")
+    async def _temporary() -> JSONResponse:
+        raise TemporaryError(message="upstream said SlowDown", details={"key": "u1/original.jpg"})
+
+    @app.get("/internal", name="internal_handler")
+    async def _internal() -> JSONResponse:
+        raise InternalError
+
+    @app.get("/not-found", name="not_found_handler")
+    async def _not_found() -> JSONResponse:
         raise NotFoundError
 
     return app

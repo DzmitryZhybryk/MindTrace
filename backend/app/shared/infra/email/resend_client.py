@@ -2,8 +2,8 @@
 ResendClient — реализация EmailTransportPort поверх HTTP API Resend.
 
 Использует общий BaseHTTPClient (httpx) — без resend-sdk: тот синхронный,
-а вся отправка идёт из async-контекста. Ошибки клиента мапятся через
-BaseHTTPClient в ExternalAPI*Error, по которым procrastinate решает retry/fail.
+а вся отправка идёт из async-контекста. Сбои классифицирует BaseHTTPClient
+в ExternalAPI*Error; повторять ли письмо, решает вызывающая задача.
 """
 
 from app.shared.infra.email.schemas import EmailMessage
@@ -37,8 +37,8 @@ class ResendClient(BaseHTTPClient):
             message: Готовое сообщение с отрендеренным телом.
 
         Raises:
-            ExternalAPITemporaryError: 502/503/504, таймаут, сетевая ошибка — кандидат на retry.
-            ExternalAPIPersistentError: 4xx/500 — без retry.
+            ExternalAPITemporaryError: 5xx, 429, 408, таймаут или сетевая ошибка.
+            ExternalAPIPersistentError: остальные 4xx.
         """
         await self.post(
             endpoint="/emails",

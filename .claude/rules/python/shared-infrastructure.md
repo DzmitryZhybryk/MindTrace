@@ -49,6 +49,9 @@ contract — the frontend maps it to text:
 - while there is no production (the same condition that lets the init migration be edited in
   place), a `code` may be renamed, in the same change as the frontend that maps it.
 
+A failure of an external dependency is classified by its adapter into `TemporaryError` or
+`InternalError` and handled by the caller — `external-calls.md`.
+
 ## Patterns
 
 - All DB work is async on psycopg3 (not asyncpg: procrastinate's atomic defer shares the SA
