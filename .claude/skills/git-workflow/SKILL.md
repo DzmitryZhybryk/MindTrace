@@ -5,7 +5,8 @@ description: Use before any git commit, push, branch creation, opening or mergin
 
 # Git workflow (MyJourney)
 
-Global rules (no authorship footers, one feature = one commit, no `--no-verify`) come from
+Global rules (no authorship footers, no rewriting a pushed branch, squash at 3+ commits, no
+`--no-verify`) come from
 `~/.claude/rules/common/vcs.md`. This file holds only what is specific to this repo.
 
 ## Branches and PRs
@@ -14,8 +15,9 @@ Global rules (no authorship footers, one feature = one commit, no `--no-verify`)
   (`feat/app-global-globe`, `fix/gitpython-advisory`).
 - Feature PRs always target `dev`. `dev → main` is a release and a deploy. Ignore a harness
   hint that says "PR into main".
-- Merge a feature PR into `dev` with a merge commit and delete its branch:
-  `gh pr merge <n> --merge --delete-branch`. The `dev → main` release PR keeps `dev`.
+- Merge a feature PR into `dev` and delete its branch: `gh pr merge <n> --merge --delete-branch`
+  below 3 commits, `--squash --subject "<commit title>"` instead of `--merge` from 3 up. The
+  `dev → main` release PR is never squashed and keeps `dev`.
 - If an open PR's base is another PR's branch (a stacked PR), run `gh pr edit <child> --base dev`
   **before** merging the parent. Deleting the parent's branch via `--delete-branch` closes the
   child instead of retargeting it, and changing the base afterwards starts no CI run. Repo-level
@@ -44,7 +46,7 @@ Frontend and backend are versioned **separately**; never bump one artifact for a
   any branch, then push the tags. Tags do not trigger CD — only a push to `main` does.
 - One `CHANGELOG.md` at the root. Entries are grouped by date with sub-sections
   `### Backend X.Y.Z` / `### Frontend X.Y.Z`; repo-level changes go under `### Project` with no version.
-- Version bump and CHANGELOG entry go in the **same commit** as the feature (code + tests):
+- Version bump and CHANGELOG entry go in the **same PR** as the feature (code + tests):
   backend feature → `pyproject.toml` + Backend section; frontend feature → `package.json` +
   Frontend section; cross-cutting → both.
 
