@@ -23,7 +23,7 @@ class EmailTransportPort(Protocol):
             message: Готовое письмо с отрендеренным телом
 
         Raises:
-            UnavailableError: временный сбой провайдера, повтор может помочь
+            TemporaryError: временный сбой провайдера, повтор может помочь
             InternalError: постоянный сбой провайдера, повтор того же письма не поможет
         """
         ...

@@ -16,7 +16,7 @@ import datetime as dt
 import pytest
 from httpx import AsyncClient
 
-from app.shared.exceptions import BaseDomainError, InternalError, UnavailableError
+from app.shared.exceptions import BaseDomainError, InternalError, TemporaryError
 from app.shared.types import DictStrAny
 from tests.fakes import FakeAuthUnitOfWork
 
@@ -96,10 +96,10 @@ async def test_non_domain_exception_returns_internal_without_leak(
     ("error", "expected_status", "expected_body"),
     [
         pytest.param(
-            UnavailableError(message="upstream said SlowDown", details={"key": "u1/original.jpg"}),
+            TemporaryError(message="upstream said SlowDown", details={"key": "u1/original.jpg"}),
             503,
-            {"code": "unavailable", "message": "Сервис временно недоступен"},
-            id="unavailable",
+            {"code": "temporary", "message": "Сервис временно недоступен"},
+            id="temporary",
         ),
         pytest.param(
             InternalError(message="pool exhausted at 10.0.0.5", details={"dsn": "postgres://db"}),

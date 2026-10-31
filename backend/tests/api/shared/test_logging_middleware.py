@@ -14,7 +14,7 @@ from collections.abc import Callable
 from httpx import AsyncClient
 from structlog.testing import capture_logs
 
-from app.shared.exceptions import InternalError, UnavailableError
+from app.shared.exceptions import InternalError, TemporaryError
 from app.shared.schemas.base import BFastAPI
 
 
@@ -97,25 +97,25 @@ async def test_warning_classified_exception_logs_warning(
     assert matching[0]["log_level"] == "warning"
 
 
-async def test_handled_unavailable_error_logs_warning_with_exception(
+async def test_handled_temporary_error_logs_warning_with_exception(
     handled_errors_app: BFastAPI,
     make_async_client: Callable[[BFastAPI], AsyncClient],
 ) -> None:
-    """UNAVAILABLE, превращённая обработчиком в 503: одна запись warning с исключением, кодом, текстом и details."""
+    """TEMPORARY, превращённая обработчиком в 503: одна запись warning с исключением, кодом, текстом и details."""
     with capture_logs() as logs:
         async with make_async_client(handled_errors_app) as client:
-            response = await client.get("/unavailable")
+            response = await client.get("/temporary")
 
     assert response.status_code == 503
-    matching = [entry for entry in logs if entry.get("event") == "Unavailable handler"]
+    matching = [entry for entry in logs if entry.get("event") == "Temporary handler"]
     assert len(matching) == 1
     entry = matching[0]
     assert entry["log_level"] == "warning"
     assert entry["status_code"] == 503
-    assert entry["error_code"] == "unavailable"
+    assert entry["error_code"] == "temporary"
     assert entry["error_message"] == "upstream said SlowDown"
     assert entry["error_details"] == {"key": "u1/original.jpg"}
-    assert isinstance(entry["exc_info"], UnavailableError)
+    assert isinstance(entry["exc_info"], TemporaryError)
 
 
 async def test_handled_internal_error_logs_error_with_exception(

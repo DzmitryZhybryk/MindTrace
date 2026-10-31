@@ -6,7 +6,7 @@
 переходит: его 404 для нашего клиента остаётся сбоем сервера.
 """
 
-from app.shared.exceptions import BaseDomainError, InternalError, UnavailableError
+from app.shared.exceptions import BaseDomainError, InternalError, TemporaryError
 
 
 class ExternalAPIError(BaseDomainError):
@@ -33,7 +33,7 @@ class ExternalAPIError(BaseDomainError):
         self.body = body
 
 
-class ExternalAPITemporaryError(ExternalAPIError, UnavailableError):
+class ExternalAPITemporaryError(ExternalAPIError, TemporaryError):
     """Временный сбой внешнего API: 5xx, 429, 408, таймаут или сетевая ошибка."""
 
 

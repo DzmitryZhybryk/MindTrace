@@ -8,8 +8,8 @@ from app.shared.exceptions.base import (
     NotFoundError,
     PermissionDeniedError,
     RateLimitedError,
+    TemporaryError,
     UnauthenticatedError,
-    UnavailableError,
     UnprocessableError,
 )
 
@@ -25,7 +25,7 @@ __all__ = [
     "NotFoundError",
     "PermissionDeniedError",
     "RateLimitedError",
+    "TemporaryError",
     "UnauthenticatedError",
-    "UnavailableError",
     "UnprocessableError",
 ]

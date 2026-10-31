@@ -26,6 +26,6 @@
   "validation_error": "Please check the entered data and try again",
   "network": "Network error. Please try again.",
   "invalid_response": "Unexpected server response. Please try again.",
-  "unavailable": "The service is temporarily unavailable. Please try again in a minute.",
+  "temporary": "The service is temporarily unavailable. Please try again in a minute.",
   "fallback": "Something went wrong. Please try again."
 }

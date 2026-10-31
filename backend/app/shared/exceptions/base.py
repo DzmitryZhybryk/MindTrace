@@ -23,7 +23,7 @@ class ErrorCategoryEnum(Enum):
     GONE = "gone"
     UNPROCESSABLE = "unprocessable"
     RATE_LIMITED = "rate_limited"
-    UNAVAILABLE = "unavailable"
+    TEMPORARY = "temporary"
     INTERNAL = "internal"
 
     @property
@@ -34,7 +34,7 @@ class ErrorCategoryEnum(Enum):
         Клиенту уходят только код и сообщение класса: инстансовое сообщение и ``details`` несут
         контекст сбоя для лога, где исключение пишется целиком, вместе с причиной.
         """
-        return self in (ErrorCategoryEnum.UNAVAILABLE, ErrorCategoryEnum.INTERNAL)
+        return self in (ErrorCategoryEnum.TEMPORARY, ErrorCategoryEnum.INTERNAL)
 
 
 class BaseDomainError(Exception):
@@ -147,7 +147,7 @@ class RateLimitedError(BaseDomainError):
     message = "Превышен лимит запросов"
 
 
-class UnavailableError(BaseDomainError):
+class TemporaryError(BaseDomainError):
     """
     Базовое исключение для временного сбоя зависимости: сеть, таймаут, перегрузка, 5xx или троттлинг.
 
@@ -155,8 +155,8 @@ class UnavailableError(BaseDomainError):
     исключения отдельных адаптеров. Постоянный сбой зависимости — наследник `InternalError`.
     """
 
-    category = ErrorCategoryEnum.UNAVAILABLE
-    code = "unavailable"
+    category = ErrorCategoryEnum.TEMPORARY
+    code = "temporary"
     message = "Сервис временно недоступен"
 
 

@@ -2,7 +2,7 @@
 Unit-тесты ``BaseHTTPClient`` через ``httpx.MockTransport`` (без сети).
 
 Покрывают маппинг ответов внешнего API в ``ExternalAPI*Error``: успех проходит,
-таймаут, сетевая ошибка, 5xx, 429 и 408 → temporary (``UnavailableError``), остальные 4xx →
+таймаут, сетевая ошибка, 5xx, 429 и 408 → temporary (``TemporaryError``), остальные 4xx →
 persistent, плюс извлечение сообщения об ошибке из тела.
 
 Клиент создаётся фабрикой ``make_http_client`` (conftest) — она же закрывает его в
@@ -16,7 +16,7 @@ import httpx
 import pytest
 from structlog.testing import capture_logs
 
-from app.shared.exceptions import UnavailableError
+from app.shared.exceptions import TemporaryError
 from app.shared.infra.http.client import BaseHTTPClient
 from app.shared.infra.http.exceptions import ExternalAPIError, ExternalAPIPersistentError, ExternalAPITemporaryError
 
@@ -83,19 +83,19 @@ async def test_network_error_raises_temporary_error(
 
 
 @pytest.mark.parametrize("status", [500, 502, 503, 504, 429, 408])
-async def test_temporary_status_raises_unavailable_error(
+async def test_temporary_status_raises_temporary_error(
     install_mock_transport: _InstallTransport,
     make_http_client: _MakeClient,
     status: int,
 ) -> None:
-    """Любой 5xx, 429 и 408 — временный сбой: ``ExternalAPITemporaryError`` категории UNAVAILABLE."""
+    """Любой 5xx, 429 и 408 — временный сбой: ``ExternalAPITemporaryError`` категории TEMPORARY."""
     install_mock_transport(lambda request: httpx.Response(status))
     client = make_http_client()
 
     with pytest.raises(ExternalAPITemporaryError) as exc_info:
         await client.get("/ping")
 
-    assert isinstance(exc_info.value, UnavailableError)
+    assert isinstance(exc_info.value, TemporaryError)
     assert exc_info.value.status == status
 
 

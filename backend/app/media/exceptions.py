@@ -1,4 +1,4 @@
-from app.shared.exceptions import BaseDomainError, InternalError, UnavailableError
+from app.shared.exceptions import BaseDomainError, InternalError, TemporaryError
 
 
 class ObjectStorageError(BaseDomainError):
@@ -10,7 +10,7 @@ class ObjectStorageError(BaseDomainError):
     """
 
 
-class ObjectStorageTemporaryError(ObjectStorageError, UnavailableError):
+class ObjectStorageTemporaryError(ObjectStorageError, TemporaryError):
     """Сбой, который может пройти сам: сеть, таймаут, перегрузка, троттлинг или внутренняя ошибка хранилища."""
 
 

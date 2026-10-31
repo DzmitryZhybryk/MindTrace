@@ -15,7 +15,7 @@ from procrastinate import Blueprint, JobContext, RetryStrategy
 
 from app.auth.application.ports.tasks import SEND_VERIFICATION_EMAIL_TASK
 from app.auth.infra.email_renderer import render_verification_email
-from app.shared.exceptions import UnavailableError
+from app.shared.exceptions import TemporaryError
 from app.shared.infra.di.registry import ComponentRegistry
 from app.shared.infra.email import EmailTransportPort
 from app.shared.infra.procrastinate.component import WORKER_REGISTRY_KEY
@@ -33,7 +33,7 @@ logger = get_logger(__name__)
         max_attempts=3,
         wait=10,
         exponential_wait=2,
-        retry_exceptions={UnavailableError},
+        retry_exceptions={TemporaryError},
     ),
 )
 async def send_verification_email(
@@ -46,7 +46,7 @@ async def send_verification_email(
     """
     Отправляет письмо с одноразовым кодом подтверждения email.
 
-    Временный сбой транспорта (``UnavailableError``) попадает под retry-стратегию: 3 попытки,
+    Временный сбой транспорта (``TemporaryError``) попадает под retry-стратегию: 3 попытки,
     экспоненциальный backoff от 10 сек. Постоянный сбой падает сразу, без повтора.
 
     Scenarios:

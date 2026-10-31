@@ -11,7 +11,7 @@ middleware выводит из них имя события.
 import pytest
 from fastapi.responses import JSONResponse
 
-from app.shared.exceptions import InternalError, NotFoundError, UnavailableError
+from app.shared.exceptions import InternalError, NotFoundError, TemporaryError
 from app.shared.exceptions.handlers import register_exception_handlers
 from app.shared.logging.middleware import HTTPLoggingMiddleware
 from app.shared.schemas.base import BFastAPI
@@ -55,9 +55,9 @@ def handled_errors_app() -> BFastAPI:
     app.add_middleware(HTTPLoggingMiddleware)
     register_exception_handlers(app)
 
-    @app.get("/unavailable", name="unavailable_handler")
-    async def _unavailable() -> JSONResponse:
-        raise UnavailableError(message="upstream said SlowDown", details={"key": "u1/original.jpg"})
+    @app.get("/temporary", name="temporary_handler")
+    async def _temporary() -> JSONResponse:
+        raise TemporaryError(message="upstream said SlowDown", details={"key": "u1/original.jpg"})
 
     @app.get("/internal", name="internal_handler")
     async def _internal() -> JSONResponse:

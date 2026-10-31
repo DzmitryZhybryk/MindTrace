@@ -140,11 +140,13 @@ class S3ObjectStorage(PrivateStoragePort, PublicStoragePort):
             except BotoCoreError as error:
                 raise ObjectStoragePersistentError(details={"keys": batch}) from error
 
-            # Отказ по отдельным ключам приходит в теле ответа 200, а не исключением; повтор безопасен,
-            # поэтому такой отказ считается временным, а коды остаются в деталях для разбора.
+            # Отказ по отдельным ключам приходит в теле ответа 200, без HTTP-статуса: классифицировать его
+            # можно только по кодам, и временным он считается, лишь когда временны все коды.
             failed_keys = {error.get("Key"): error.get("Code") for error in response.get("Errors", ())}
             if failed_keys:
-                raise ObjectStorageTemporaryError(details={"failed_keys": failed_keys})
+                is_temporary = all(code in _TEMPORARY_KEY_ERROR_CODES for code in failed_keys.values())
+                error_class = ObjectStorageTemporaryError if is_temporary else ObjectStoragePersistentError
+                raise error_class(details={"failed_keys": failed_keys})
 
 
 def _signed_upload_headers(*, content_type: str) -> dict[str, str]:
@@ -184,6 +186,9 @@ _TEMPORARY_ERROR_CODES: frozenset[str] = frozenset(
     }
 )
 
+
+# У отказа по ключу нет статуса, поэтому коды серверных сбоев, которые у запроса узнаются по 5xx, перечислены явно.
+_TEMPORARY_KEY_ERROR_CODES: frozenset[str] = _TEMPORARY_ERROR_CODES | {"InternalError", "ServiceUnavailable"}
 
 _TEMPORARY_CLIENT_STATUSES: frozenset[int] = frozenset({HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.TOO_MANY_REQUESTS})
 

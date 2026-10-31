@@ -2,14 +2,14 @@
 
 import pytest
 
-from app.shared.exceptions import BaseDomainError, ErrorCategoryEnum, InternalError, UnavailableError
+from app.shared.exceptions import BaseDomainError, ErrorCategoryEnum, InternalError, TemporaryError
 from app.shared.infra.http.exceptions import ExternalAPIError, ExternalAPIPersistentError, ExternalAPITemporaryError
 
 
 @pytest.mark.parametrize(
     ("error_class", "category_base", "expected_category", "expected_code"),
     [
-        (ExternalAPITemporaryError, UnavailableError, ErrorCategoryEnum.UNAVAILABLE, "unavailable"),
+        (ExternalAPITemporaryError, TemporaryError, ErrorCategoryEnum.TEMPORARY, "temporary"),
         (ExternalAPIPersistentError, InternalError, ErrorCategoryEnum.INTERNAL, "external_api_error"),
     ],
 )

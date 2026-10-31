@@ -10,6 +10,7 @@ from aiohttp import ClientPayloadError
 from app.media.application.ports.private_storage import ObjectInfo
 from app.media.exceptions import (
     ObjectNotFoundError,
+    ObjectStorageError,
     ObjectStoragePersistentError,
     ObjectStorageTemporaryError,
     ObjectTooLargeError,
@@ -190,23 +191,37 @@ async def test_delete_objects_without_keys_sends_nothing(storage: S3ObjectStorag
     await storage.delete_objects([])
 
 
-async def test_delete_objects_failed_keys_raise_temporary_error_with_codes(
-    storage: S3ObjectStorage, s3_stubber: AioStubber
+@pytest.mark.parametrize(
+    ("codes", "error_class"),
+    [
+        pytest.param(("InternalError", "SlowDown"), ObjectStorageTemporaryError, id="all-temporary"),
+        pytest.param(("AccessDenied", "AccessDenied"), ObjectStoragePersistentError, id="all-persistent"),
+        pytest.param(("SlowDown", "AccessDenied"), ObjectStoragePersistentError, id="mixed"),
+    ],
+)
+async def test_delete_objects_failed_keys_classified_by_codes(
+    storage: S3ObjectStorage,
+    s3_stubber: AioStubber,
+    codes: tuple[str, str],
+    error_class: type[ObjectStorageError],
 ) -> None:
-    """Отказ по ключам в ответе 200 — временный сбой, коды отказов в деталях ошибки."""
+    """Отказ по ключам в ответе 200 временный, только если временны все коды; коды отказов в деталях ошибки."""
+    keys = ("u1/f1/original.jpg", "u1/f2/original.jpg")
     s3_stubber.add_response(
         method="delete_objects",
-        service_response={"Errors": [{"Key": "u1/f1/original.jpg", "Code": "AccessDenied", "Message": "Denied"}]},
+        service_response={
+            "Errors": [{"Key": key, "Code": code, "Message": "Failed"} for key, code in zip(keys, codes, strict=True)]
+        },
         expected_params={
             "Bucket": "media-private",
-            "Delete": {"Objects": [{"Key": "u1/f1/original.jpg"}, {"Key": "u1/f2/original.jpg"}], "Quiet": True},
+            "Delete": {"Objects": [{"Key": key} for key in keys], "Quiet": True},
         },
     )
 
-    with pytest.raises(ObjectStorageTemporaryError) as error_info:
-        await storage.delete_objects(["u1/f1/original.jpg", "u1/f2/original.jpg"])
+    with pytest.raises(error_class) as error_info:
+        await storage.delete_objects(keys)
 
-    assert error_info.value.details == {"failed_keys": {"u1/f1/original.jpg": "AccessDenied"}}
+    assert error_info.value.details == {"failed_keys": dict(zip(keys, codes, strict=True))}
 
 
 @pytest.mark.parametrize(("operation", "call"), _STORAGE_CALLS, ids=[operation for operation, _ in _STORAGE_CALLS])

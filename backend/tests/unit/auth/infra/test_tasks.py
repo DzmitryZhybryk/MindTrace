@@ -2,7 +2,7 @@ import pytest
 from procrastinate import JobContext
 
 from app.auth.infra.tasks import send_verification_email
-from app.shared.exceptions import InternalError, UnavailableError
+from app.shared.exceptions import InternalError, TemporaryError
 from tests.fakes import FakeEmailTransport
 
 
@@ -21,7 +21,7 @@ async def test_send_verification_email_renders_and_sends(
     assert "123456" in message.text
 
 
-@pytest.mark.parametrize("error", [UnavailableError(), InternalError()], ids=["unavailable", "internal"])
+@pytest.mark.parametrize("error", [TemporaryError(), InternalError()], ids=["temporary", "internal"])
 async def test_send_verification_email_propagates_transport_error(
     job_context: JobContext,
     fake_email_transport: FakeEmailTransport,
@@ -38,15 +38,15 @@ async def test_send_verification_email_propagates_transport_error(
 
 @pytest.mark.parametrize(
     ("error", "is_retried"),
-    [(UnavailableError(), True), (InternalError(), False)],
-    ids=["unavailable", "internal"],
+    [(TemporaryError(), True), (InternalError(), False)],
+    ids=["temporary", "internal"],
 )
 def test_send_verification_email_retries_only_temporary_failures(
     job_context: JobContext,
     error: Exception,
     is_retried: bool,
 ) -> None:
-    """Стратегия задачи повторяет любой ``UnavailableError`` и не повторяет постоянный сбой."""
+    """Стратегия задачи повторяет любой ``TemporaryError`` и не повторяет постоянный сбой."""
     retry = send_verification_email.get_retry_exception(exception=error, job=job_context.job)
 
     assert (retry is not None) is is_retried

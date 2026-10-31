@@ -3,13 +3,13 @@
 import pytest
 
 from app.media.exceptions import ObjectStorageError, ObjectStoragePersistentError, ObjectStorageTemporaryError
-from app.shared.exceptions import BaseDomainError, ErrorCategoryEnum, InternalError, UnavailableError
+from app.shared.exceptions import BaseDomainError, ErrorCategoryEnum, InternalError, TemporaryError
 
 
 @pytest.mark.parametrize(
     ("error_class", "category_base", "expected_category", "expected_code"),
     [
-        (ObjectStorageTemporaryError, UnavailableError, ErrorCategoryEnum.UNAVAILABLE, "unavailable"),
+        (ObjectStorageTemporaryError, TemporaryError, ErrorCategoryEnum.TEMPORARY, "temporary"),
         (
             ObjectStoragePersistentError,
             InternalError,

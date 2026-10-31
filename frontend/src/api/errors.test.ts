@@ -19,7 +19,7 @@ describe("messageForCode", () => {
   });
 
   it("резолвит код временной недоступности (503) в просьбу повторить позже", () => {
-    expect(messageForCode("unavailable")).toBe(
+    expect(messageForCode("temporary")).toBe(
       "The service is temporarily unavailable. Please try again in a minute.",
     );
   });
